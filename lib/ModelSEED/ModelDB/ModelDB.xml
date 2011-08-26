@@ -1,0 +1,615 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project label="ModelSEED::ModelDB">
+	<object label="REFERENCE" >
+		<scalar label="objectID" type="INTEGER" mandatory="1" />
+		<scalar label="DBENTITY" type="INTEGER" mandatory="1" />
+		<scalar label="pubmedID" type="CHAR(32)" mandatory="1" />
+		<scalar label="notation" type="TEXT" mandatory="1" />
+		<scalar label="date" type="INTEGER" mandatory="1" />
+		<index><attribute label="objectID"/></index>
+		<index><attribute label="DBENTITY"/></index>
+		<index><attribute label="pubmedID"/></index>
+	</object>
+	<object label="COMMENT" >
+		<scalar label="objectID" type="INTEGER" mandatory="1" />
+		<scalar label="DBENTITY" type="INTEGER" mandatory="1" />
+		<scalar label="name" type="CHAR(32)" mandatory="1" />
+		<scalar label="user" type="CHAR(32)" mandatory="1" />
+		<scalar label="comment" type="TEXT" mandatory="1" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<index><attribute label="objectID"/></index>
+		<index><attribute label="DBENTITY"/></index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="user"/></index>
+	</object>
+	<object label="MESSAGE" >
+		<scalar label="function" type="CHAR(255)" mandatory="1" />
+		<scalar label="package" type="CHAR(255)" mandatory="1" />
+		<scalar label="user" type="CHAR(32)" mandatory="1" />
+		<scalar label="time" type="TIMESTAMP" mandatory="1" />
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="message" type="TEXT" mandatory="1" />
+		<scalar label="thread" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="function"/></index>
+		<index><attribute label="package"/></index>
+		<index><attribute label="user"/></index>
+		<index><attribute label="time"/></index>
+		<index><attribute label="id"/></index>
+		<index><attribute label="thread"/></index>
+	</object>
+	<object label="DBLINKS" >
+		<scalar label="refEntity" type="CHAR(100)" mandatory="1" />
+		<scalar label="refAttribute" type="CHAR(100)" mandatory="1" />
+		<scalar label="linkEntity" type="CHAR(100)" mandatory="1" />
+		<scalar label="linkAttribute" type="CHAR(100)" mandatory="1" />
+		<index><attribute label="refEntity"/></index>
+		<index><attribute label="refAttribute"/></index>
+		<index><attribute label="linkEntity"/></index>
+		<index><attribute label="linkAttribute"/></index>
+	</object>
+	<object label="DBENTITY" >
+		<scalar label="id" type="INTEGER" default="-1" />
+		<scalar label="attribute" type="CHAR(255)" mandatory="1" />
+		<scalar label="objectType" type="CHAR(255)" mandatory="1" />
+		<scalar label="idAttribute" type="CHAR(255)" mandatory="1" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="attribute"/></index>
+		<index><attribute label="objectType"/></index>
+		<index><attribute label="idAttribute"/></index>
+	</object>
+	<object label="HISTORY" >
+		<scalar label="objectID" type="CHAR(255)" mandatory="1" />
+		<scalar label="DBENTITY" type="INTEGER" mandatory="1" />
+		<scalar label="oldValue" type="TEXT" mandatory="1" />
+		<scalar label="newValue" type="TEXT" mandatory="1" />
+		<scalar label="explanation" type="TEXT" mandatory="1" />
+		<scalar label="user" type="CHAR(32)" mandatory="1" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<index><attribute label="DBENTITY"/></index>
+		<index><attribute label="objectID"/></index>
+		<index><attribute label="user"/></index>
+		<index><attribute label="modificationDate"/></index>
+	</object>
+	<object label="MODEL_HISTORY_TRANSACTION" >
+		<scalar label="cause" type="CHAR(32)" mandatory="1" />
+		<scalar label="user" type="CHAR(32)" mandatory="1" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="version" type="CHAR(32)" mandatory="1" />
+		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="cause"/></index>
+		<index><attribute label="user"/></index>
+		<index><attribute label="modificationDate"/></index>
+		<index><attribute label="version"/></index>
+	</object>
+	<object label="MODEL_HISTORY" >
+		<scalar label="TRANSACTION" type="INTEGER" mandatory="1" />
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="directionality" type="CHAR(7)" mandatory="1" />
+		<scalar label="compartment" type="CHAR(3)" mandatory="1" />
+		<scalar label="pegs" type="TEXT" mandatory="1" />
+		<scalar label="action" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="TRANSACTION"/></index>
+		<index><attribute label="REACTION"/></index>
+		<index><attribute label="action"/></index>
+	</object>
+	<object label="OUTPUTID" >
+		<scalar label="creationDate" type="INTEGER" default="0" />
+		<scalar label="finishedDate" type="INTEGER" default="0" />
+		<scalar label="folderExists" type="BOOLEAN" default="0" />
+		<scalar label="user" type="CHAR(32)" default="UNKNOWN" />
+		<scalar label="function" type="CHAR(32)" default="UNKNOWN" />
+	</object>
+	<object label="GENOMESTATS" >	
+		<scalar label="GENOME" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" default="unknown" />
+		<scalar label="taxonomy" type="CHAR(255)" default="unknown" />
+		<scalar label="source" type="CHAR(32)" default="unknown" />
+		<scalar label="owner" type="CHAR(32)" default="unknown" />
+		<scalar label="class" type="CHAR(32)" default="unknown" />
+		<scalar label="size" type="INTEGER" default="0" />
+		<scalar label="genes" type="INTEGER" default="0" />
+		<scalar label="gramPosGenes" type="INTEGER" default="0" />
+		<scalar label="gramNegGenes" type="INTEGER" default="0" />
+		<scalar label="genesWithFunctions" type="INTEGER" default="0" />
+		<scalar label="genesInSubsystems" type="INTEGER" default="0" />
+		<scalar label="public" type="INTEGER" default="0" />
+		<scalar label="gcContent" type="FLOAT" default="0.5" />
+		<unique_index><attribute label="GENOME"/></unique_index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="taxonomy"/></index>
+		<index><attribute label="source"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="class"/></index>
+		<index><attribute label="source"/></index>
+		<index><attribute label="public"/></index>
+	</object>
+	<object label="MODEL" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="owner" type="CHAR(32)" default="master" />
+		<scalar label="public" type="INTEGER" default="0" />
+		<scalar label="genome" type="CHAR(32)" default="unknown" />
+		<scalar label="source" type="CHAR(32)" default="unknown" />
+		<scalar label="modificationDate" type="INTEGER" default="0" />
+		<scalar label="builtDate" type="INTEGER" default="-1" />
+		<scalar label="autocompleteDate" type="INTEGER" default="-1" />
+		<scalar label="status" type="INTEGER" default="-2" />
+		<scalar label="version" type="INTEGER" default="-1" />
+		<scalar label="message" type="TEXT" default="None" />
+		<scalar label="cellwalltype" type="CHAR(32)" default="unknown" />
+		<scalar label="associatedGenes" type="INTEGER" default="-1" />
+		<scalar label="associatedSubsystemGenes" type="INTEGER" default="-1" />
+		<scalar label="reactions" type="INTEGER" default="-1" />
+		<scalar label="compounds" type="INTEGER" default="-1" />
+		<scalar label="transporters" type="INTEGER" default="-1" />
+		<scalar label="autoCompleteReactions" type="INTEGER" default="-1" />
+		<scalar label="biologReactions" type="INTEGER" default="-1" />
+		<scalar label="gapFillReactions" type="INTEGER" default="-1" />
+		<scalar label="spontaneousReactions" type="INTEGER" default="-1" />
+		<scalar label="autoCompleteTime" type="INTEGER" default="-1" />
+		<scalar label="autocompletionDualityGap" type="FLOAT" default="-1" />
+		<scalar label="autocompletionObjective" type="FLOAT" default="-1" />
+		<scalar label="autoCompleteMedia" type="CHAR(32)" default="Complete" />
+		<scalar label="biomassReaction" type="CHAR(32)" default="NONE" />
+		<scalar label="growth" type="FLOAT" default="0" />
+		<scalar label="noGrowthCompounds" type="TEXT" default="NONE" />
+		<scalar label="defaultStudyMedia" type="TEXT" default="Complete" />
+		<scalar label="name" type="CHAR(255)" default="unknown" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="version"/></index>
+		<index><attribute label="genome"/></index>
+		<index><attribute label="status"/></index>
+		<index><attribute label="autoCompleteMedia"/></index>
+		<index><attribute label="biomassReaction"/></index>
+		<index><attribute label="source"/></index>
+		<index><attribute label="cellwalltype"/></index>
+		<index><attribute label="name"/></index>
+	</object>
+	<object label="MODELVERSIONS" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="canonicalID" type="CHAR(32)" mandatory="1" />
+		<scalar label="owner" type="CHAR(32)" default="master" />
+		<scalar label="public" type="INTEGER" default="0" />
+		<scalar label="genome" type="CHAR(32)" default="unknown" />
+		<scalar label="source" type="CHAR(32)" default="unknown" />
+		<scalar label="modificationDate" type="INTEGER" default="0" />
+		<scalar label="builtDate" type="INTEGER" default="-1" />
+		<scalar label="autocompleteDate" type="INTEGER" default="-1" />
+		<scalar label="status" type="INTEGER" default="-2" />
+		<scalar label="version" type="INTEGER" default="-1" />
+		<scalar label="message" type="TEXT" default="None" />
+		<scalar label="cellwalltype" type="CHAR(32)" default="unknown" />
+		<scalar label="associatedGenes" type="INTEGER" default="-1" />
+		<scalar label="associatedSubsystemGenes" type="INTEGER" default="-1" />
+		<scalar label="reactions" type="INTEGER" default="-1" />
+		<scalar label="compounds" type="INTEGER" default="-1" />
+		<scalar label="transporters" type="INTEGER" default="-1" />
+		<scalar label="autoCompleteReactions" type="INTEGER" default="-1" />
+		<scalar label="biologReactions" type="INTEGER" default="-1" />
+		<scalar label="gapFillReactions" type="INTEGER" default="-1" />
+		<scalar label="spontaneousReactions" type="INTEGER" default="-1" />
+		<scalar label="autoCompleteTime" type="INTEGER" default="-1" />
+		<scalar label="autocompletionDualityGap" type="FLOAT" default="-1" />
+		<scalar label="autocompletionObjective" type="FLOAT" default="-1" />
+		<scalar label="autoCompleteMedia" type="CHAR(32)" default="Complete" />
+		<scalar label="biomassReaction" type="CHAR(32)" default="NONE" />
+		<scalar label="growth" type="FLOAT" default="0" />
+		<scalar label="noGrowthCompounds" type="TEXT" default="NONE" />
+		<scalar label="name" type="CHAR(255)" default="unknown" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="canonicalID"/></index>
+		<index><attribute label="version"/></index>
+		<index><attribute label="genome"/></index>
+		<index><attribute label="status"/></index>
+		<index><attribute label="autoCompleteMedia"/></index>
+		<index><attribute label="biomassReaction"/></index>
+		<index><attribute label="source"/></index>
+		<index><attribute label="cellwalltype"/></index>
+		<index><attribute label="name"/></index>
+	</object>
+	<object label="FBA_RESULTS" >
+		<scalar label="time" type="INTEGER" default="0" />
+		<scalar label="owner" type="CHAR(32)" mandatory="1" />
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<scalar label="media" type="CHAR(32)" mandatory="1" />
+		<scalar label="method" type="CHAR(32)" mandatory="1" />
+		<scalar label="rxnKO" type="TEXT" default="none" />
+		<scalar label="pegKO" type="TEXT" default="none" />
+		<scalar label="results" type="TEXT" default="none" />
+		<scalar label="growth" type="FLOAT" mandatory="1" />
+		<scalar label="flux" type="TEXT" mandatory="1" />
+		<scalar label="drainFlux" type="TEXT" mandatory="1" />
+		<index><attribute label="owner"/></index>
+		<index><attribute label="model"/></index>
+		<index><attribute label="media"/></index>
+		<index><attribute label="method"/></index>
+	</object>
+	<object label="MEDIA_COMPOUND" >
+		<scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+		<scalar label="entity" type="CHAR(32)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<scalar label="concentration" type="FLOAT" mandatory="1" />
+		<scalar label="maxFlux" type="FLOAT" mandatory="1" />
+		<scalar label="minFlux" type="FLOAT" mandatory="1" />
+		<unique_index>
+		  <attribute label="MEDIA" />
+		  <attribute label="entity" />
+		</unique_index>
+		<index><attribute label="concentration"/></index>
+		<index><attribute label="maxFlux"/></index>
+		<index><attribute label="minFlux"/></index>
+		<index><attribute label="type"/></index>
+	</object>
+	<object label="MEDIA" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="owner" type="CHAR(32)" mandatory="1" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="creationDate" type="INTEGER" mandatory="1" />
+		<scalar label="aliases" type="TEXT"/>
+		<scalar label="aerobic" type="BOOLEAN"/>
+		<scalar label="public" type="INTEGER" mandatory="1" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="public"/></index>
+	</object>
+	<object label="COMPOUND" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="abbrev" type="CHAR(255)" mandatory="1" />
+		<scalar label="formula" type="CHAR(125)"/>
+		<scalar label="mass" type="FLOAT"/>
+		<scalar label="charge" type="FLOAT"/>
+		<scalar label="deltaG" type="FLOAT"/>
+		<scalar label="deltaGErr" type="FLOAT"/>
+		<scalar label="structuralCues" type="TEXT"/>
+		<scalar label="stringcode" type="TEXT"/>
+		<scalar label="pKa" type="TEXT"/>
+		<scalar label="pKb" type="TEXT"/>
+		<scalar label="owner" type="CHAR(32)"/>
+		<scalar label="scope" type="TEXT" default="all" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="creationDate" type="INTEGER" mandatory="1" />
+		<scalar label="public" type="INTEGER" default="1" />
+		<scalar label="abstractCompound" type="CHAR(32)" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="public"/></index>
+		<index><attribute label="abbrev"/></index>
+		<index><attribute label="formula"/></index>
+		<index><attribute label="mass"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="abstractCompound"/></index>
+	</object>
+	<object label="COMPOUND_ALIAS" >
+		<scalar label="COMPOUND" type="CHAR(32)" mandatory="1" />
+		<scalar label="alias" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<unique_index>
+		  <attribute label="alias" />
+		  <attribute label="type" />
+		  <attribute label="COMPOUND" />
+		</unique_index>
+	</object>
+	<object label="COMPOUND_GROUPING" >
+		<scalar label="COMPOUND" type="CHAR(32)" mandatory="1" />
+		<scalar label="grouping" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<unique_index>
+		  <attribute label="COMPOUND" />
+		  <attribute label="grouping" />
+		  <attribute label="type" />
+		</unique_index>
+	</object>
+	<object label="REACTION" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="abbrev" type="CHAR(255)" mandatory="1" />
+		<scalar label="enzyme" type="TEXT" />
+		<scalar label="code" type="TEXT" mandatory="1" />
+		<scalar label="equation" type="TEXT" mandatory="1" />
+		<scalar label="definition" type="TEXT" mandatory="1" />
+		<scalar label="deltaG" type="FLOAT" />
+		<scalar label="deltaGErr" type="FLOAT" />
+		<scalar label="structuralCues" type="TEXT" />
+		<scalar label="reversibility" type="CHAR(3)"/>
+		<scalar label="thermoReversibility" type="CHAR(3)"/>
+		<scalar label="owner" type="CHAR(32)" />
+		<scalar label="scope" type="TEXT" default="all" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="creationDate" type="INTEGER" mandatory="1" />
+		<scalar label="public" type="INTEGER" default="1" />
+		<scalar label="status" type="CHAR(32)" />
+		<scalar label="abstractReaction" type="CHAR(32)" />
+		<scalar label="transportedAtoms" type="TEXT" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="abbrev"/></index>
+		<index><attribute label="public"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="status"/></index>
+		<index><attribute label="abstractReaction"/></index>
+	</object>
+	<object label="COMPOUND_REACTION" >
+		<scalar label="COMPOUND" type="CHAR(32)" mandatory="1" />
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="coefficient" type="FLOAT" mandatory="1" />
+		<scalar label="cofactor" type="BOOLEAN" default="false" />
+		<scalar label="compartment" type="CHAR(1)" mandatory="1" />
+		<unique_index>
+		  <attribute label="COMPOUND" />
+		  <attribute label="REACTION" />
+		  <attribute label="compartment" />
+		</unique_index>
+	</object>
+	<object label="REACTION_ALIAS" >
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="alias" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<unique_index>
+		  <attribute label="alias" />
+		  <attribute label="type" />
+		  <attribute label="REACTION" />
+		</unique_index>
+	</object>
+	<object label="REACTION_GROUPING" >
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="grouping" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<unique_index>
+		  <attribute label="REACTION" />
+		  <attribute label="grouping" />
+		  <attribute label="type" />
+		</unique_index>
+	</object>
+	<object label="ROLE" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="searchname" type="CHAR(255)" mandatory="1" />
+		<scalar label="exemplarid" type="CHAR(64)" default="NONE" />
+		<scalar label="exemplarmd5" type="CHAR(64)" default="NONE" />
+		<unique_index><attribute label="id" /></unique_index>
+		<unique_index><attribute label="name" /></unique_index>
+		<unique_index><attribute label="searchname" /></unique_index>
+		<index><attribute label="exemplarid" /></index>
+		<index><attribute label="exemplarmd5" /></index>
+	</object>
+	<object label="SUBSYSTEM_ROLE" >
+		<scalar label="ROLE" type="CHAR(32)" mandatory="1" />
+		<scalar label="SUBSYSTEM" type="CHAR(32)" mandatory="1" />
+		<unique_index>
+			<attribute label="ROLE" />
+			<attribute label="SUBSYSTEM" />
+		</unique_index>
+	</object>
+	<object label="SUBSYSTEM" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="status" type="CHAR(32)" mandatory="1" />
+		<scalar label="classOne" type="CHAR(255)" mandatory="1" />
+		<scalar label="classTwo" type="CHAR(255)" mandatory="1" />
+		<unique_index><attribute label="id" /></unique_index>
+		<unique_index><attribute label="name" /></unique_index>
+	</object>
+	<object label="COMPLEX" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<unique_index><attribute label="id" /></unique_index>
+	</object>
+	<object label="COMPLEX_ROLE" >
+		<scalar label="ROLE" type="CHAR(32)" mandatory="1" />
+		<scalar label="COMPLEX" type="CHAR(32)" default="-1" />
+		<scalar label="type" type="CHAR(1)" />
+		<unique_index>
+		  <attribute label="ROLE" />
+		  <attribute label="COMPLEX" />
+		</unique_index>
+		<index><attribute label="type"/></index>
+	</object>
+	<object label="REACTION_COMPLEX" >
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="COMPLEX" type="CHAR(32)" mandatory="1" />
+		<scalar label="master" type="BOOLEAN" mandatory="1" />
+		<unique_index>
+		  <attribute label="REACTION" />
+		  <attribute label="COMPLEX" />
+		</unique_index>
+		<index><attribute label="master"/></index>
+	</object>
+	<object label="REACTION_MODEL" >
+		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
+		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+		<scalar label="directionality" type="CHAR(3)" mandatory="1" />
+		<scalar label="compartment" type="CHAR(1)" mandatory="1" />
+		<scalar label="pegs" type="TEXT" mandatory="1" />
+		<scalar label="confidence" type="INTEGER" />
+		<scalar label="notes" type="TEXT" default="NONE"/>
+		<scalar label="reference" type="TEXT" default="NONE"/>
+		<unique_index>
+		  <attribute label="REACTION" />
+		  <attribute label="MODEL" />
+		  <attribute label="compartment" />
+		</unique_index>
+	</object>
+	<object label="BIOMASS" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(32)" mandatory="1" />
+		<scalar label="equation" type="TEXT" mandatory="1" />
+		<scalar label="owner" type="CHAR(32)" default="master"/>
+		<scalar label="cofactorPackage" type="CHAR(32)" default="NONE" />
+		<scalar label="lipidPackage" type="CHAR(32)" default="NONE" />
+		<scalar label="cellWallPackage" type="CHAR(32)" default="NONE" />
+		<scalar label="unknownPackage" type="CHAR(32)" default="NONE" />
+		<scalar label="energy" type="FLOAT" mandatory="1" />
+		<scalar label="protein" type="FLOAT" mandatory="1" />
+		<scalar label="DNA" type="FLOAT" mandatory="1" />
+		<scalar label="RNA" type="FLOAT" mandatory="1" />
+		<scalar label="lipid" type="FLOAT" mandatory="1" />
+		<scalar label="cellWall" type="FLOAT" mandatory="1" />
+		<scalar label="cofactor" type="FLOAT" mandatory="1" />
+		<scalar label="DNACoef" type="CHAR(255)" mandatory="1" />
+		<scalar label="RNACoef" type="CHAR(255)" mandatory="1" />
+		<scalar label="proteinCoef" type="CHAR(255)" mandatory="1" />
+		<scalar label="lipidCoef" type="CHAR(255)" default="NONE" />
+		<scalar label="cellWallCoef" type="CHAR(255)" default="NONE" />
+		<scalar label="cofactorCoef" type="CHAR(255)" default="NONE" />
+		<scalar label="unknownCoef" type="CHAR(255)" default="NONE" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="creationDate" type="INTEGER" mandatory="1" />
+		<scalar label="essentialRxn" type="TEXT" />
+		<scalar label="public" type="INTEGER" default="1" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="public"/></index>
+		<index><attribute label="cofactorPackage"/></index>
+		<index><attribute label="lipidPackage"/></index>
+		<index><attribute label="cellWallPackage"/></index>
+		<index><attribute label="unknownPackage"/></index>
+	</object>
+	<object label="COMPOUND_BIOMASS" >
+		<scalar label="COMPOUND" type="CHAR(32)" mandatory="1" />
+		<scalar label="BIOMASS" type="CHAR(32)" mandatory="1" />
+		<scalar label="coefficient" type="FLOAT" mandatory="1" />
+		<scalar label="compartment" type="CHAR(1)" mandatory="1" />
+		<scalar label="category" type="CHAR(1)" mandatory="1" />
+		<unique_index>
+		  <attribute label="COMPOUND" />
+		  <attribute label="BIOMASS" />
+		  <attribute label="compartment" />
+		</unique_index>
+		<index><attribute label="category"/></index>
+	</object>
+	<object label="CURRENTID" >
+		<scalar label="id" type="INTEGER" mandatory="1" />
+		<scalar label="digits" type="INTEGER" default="5" />
+		<scalar label="prefix" type="CHAR(32)" mandatory="1" />
+		<scalar label="object" type="CHAR(32)" mandatory="1" />
+		<unique_index><attribute label="object" /></unique_index>
+	</object>
+	<object label="ESSENTIALITYSET" >
+		<scalar label="id" type="INTEGER"/>
+		<scalar label="GENOME" type="CHAR(32)" mandatory="1" />
+		<scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+		<scalar label="reference" type="INTEGER" mandatory="1" />
+		<unique_index><attribute label="id" /></unique_index>
+		<index><attribute label="reference" /></index>
+		<index><attribute label="GENOME" /></index>
+		<index><attribute label="MEDIA" /></index>
+	</object>
+	<object label="GENE_ESSENTIALITY" >
+		<scalar label="ESSENTIALITYSET" type="INTEGER" mandatory="1" />
+		<scalar label="essentiality" type="CHAR(32)" mandatory="1" />
+		<scalar label="FEATURE" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="ESSENTIALITYSET"/></index>
+		<index><attribute label="essentiality" /></index>
+		<index><attribute label="FEATURE" /></index>
+	</object>
+	<object label="DIAGRAM" >
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="altid" type="CHAR(32)" default="NONE" />
+		<scalar label="type" type="CHAR(32)" default="SEED" />
+		<scalar label="name" type="CHAR(255)" default="NONE" />
+		<scalar label="image" type="CHAR(255)" default="NONE" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="altid"/></index>
+		<index><attribute label="type"/></index>
+		<index><attribute label="name" /></index>
+	</object>
+	<object label="DIAGRAM_OBJECTS">
+		<scalar label="entity" type="CHAR(32)" mandatory="1" />
+		<scalar label="entitytype" type="CHAR(32)" mandatory="1" />
+		<scalar label="location" type="TEXT" default="NONE" />
+		<scalar label="DIAGRAM" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="entitytype"/></index>
+		<index><attribute label="DIAGRAM"/></index>
+		<index><attribute label="entity" /></index>
+	</object>
+	<object label="EXPERIMENT">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(32)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<scalar label="public" type="INTEGER" mandatory="1" />
+		<scalar label="owner" type="CHAR(32)" mandatory="1" />
+		<scalar label="authors" type="TEXT" mandatory="1" />
+		<scalar label="GENOME" type="CHAR(32)" mandatory="1" />
+		<scalar label="mutations" type="TEXT" mandatory="1" />
+		<scalar label="description" type="TEXT" mandatory="1" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="GENOME"/></index>
+		<index><attribute label="type"/></index>
+		<index><attribute label="public"/></index>
+		<index><attribute label="owner" /></index>
+	</object>
+	<object label="BIOLOG_SIGNALS">
+		<scalar label="plateLocation" type="CHAR(32)" mandatory="1" />
+		<scalar label="COMPOUND" type="CHAR(32)" mandatory="1" />
+		<scalar label="aliases" type="TEXT" mandatory="1" />
+		<scalar label="rootMedia" type="CHAR(32)" mandatory="1" />
+		<scalar label="signals" type="TEXT" mandatory="1" />
+		<scalar label="EXPERIMENT" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="plateLocation"/></index>
+		<index><attribute label="COMPOUND"/></index>
+		<index><attribute label="rootMedia" /></index>
+		<index><attribute label="EXPERIMENT"/></index>
+	</object>
+	<object label="MODEL_FVA">
+		<scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+		<scalar label="parameters" type="CHAR(255)" mandatory="1" />
+		<scalar label="inactive" type="TEXT"/>
+		<scalar label="dead" type="TEXT"/>
+		<scalar label="positive" type="TEXT"/>
+		<scalar label="negative" type="TEXT"/>
+		<scalar label="variable" type="TEXT"/>
+		<scalar label="posvar" type="TEXT"/>
+		<scalar label="negvar" type="TEXT"/>
+		<scalar label="positiveBounds" type="TEXT"/>
+		<scalar label="negativeBounds" type="TEXT"/>
+		<scalar label="variableBounds" type="TEXT"/>
+		<scalar label="posvarBounds" type="TEXT"/>
+		<scalar label="negvarBounds" type="TEXT"/>
+		<index><attribute label="MEDIA"/></index>
+		<index><attribute label="MODEL"/></index>
+		<index><attribute label="parameters"/></index>
+	</object>
+	<object label="MODEL_ESSENTIALITY">
+		<scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+		<scalar label="parameters" type="CHAR(255)" mandatory="1" />
+		<scalar label="essentials" type="TEXT"/>
+		<index><attribute label="MEDIA"/></index>
+		<index><attribute label="MODEL"/></index>
+		<index><attribute label="parameters"/></index>
+	</object>
+    <object label="PERMISSIONS">
+        <scalar label="id" type="CHAR(255)" mandatory="1" />
+        <scalar label="permission" type="CHAR(255)" mandatory="1" />
+        <scalar label="user" type="CHAR(255)" mandatory="1" />
+        <scalar label="type" type="CHAR(255)" mandatory="1" />
+		<unique_index>
+            <attribute label="id"/>
+            <attribute label="user"/>
+            <attribute label="type"/>
+        </unique_index>
+        <index><attribute label="id"/></index>
+        <index><attribute label="type"/></index>
+        <index><attribute label="user"/></index>
+    </object>
+    <object label="COMPARTMENTS">
+        <scalar label="id" type="CHAR(32)" mandatory="1" />
+        <scalar label="name" type="CHAR(255)" mandatory="1" />
+        <scalar label="outside" type="CHAR(255)" default="e" />
+	<unique_index><attribute label="id"/></unique_index>
+        <unique_index><attribute label="name"/></unique_index>
+    </object>
+    <object label="COMPARTMENT_ALIAS" >
+	<scalar label="COMPARTMENT" type="CHAR(32)" mandatory="1" />
+	<scalar label="alias" type="CHAR(255)" mandatory="1" />
+	<scalar label="type" type="CHAR(32)" mandatory="1" />
+	<unique_index>
+		 <attribute label="alias" />
+		 <attribute label="type" />
+		 <attribute label="COMPARTMENT" />
+	</unique_index>
+	</object>
+</project>

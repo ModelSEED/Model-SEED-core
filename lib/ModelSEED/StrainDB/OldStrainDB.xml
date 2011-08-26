@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project label="StrainDB">
+    <object label="STRAIN">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />#Unique DB ID for the strain
+		<scalar label="genome" type="CHAR(32)" mandatory="1" />#The original wild-type genome this strain is derived from
+		<scalar label="lineage" type="TEXT" default="" />#Delimited list of all parents of this strain
+		<scalar label="parent" type="CHAR(32)" default="NONE" />#The ID of the direct parent of this strain
+		<scalar label="method" type="CHAR(255)" default="NONE" />#The experimental method used to create the strain
+		<scalar label="strainAttempted" type="BOOLEAN" default="FALSE" />#Indicates if an attempt was made to implement the strain in the wetlab
+		<scalar label="strainImplemented" type="BOOLEAN" default="FALSE" />#Indicates whether or not the strain was created in wetlab
+		<scalar label="INSTITUTION" type="CHAR(32)" default="NONE" />#ID of the institution/organization created the strain
+		<scalar label="experimenter" type="CHAR(32)" default="NONE" />#ID of the person who experimentally created the strain
+        <scalar label="creationDate" type="INTEGER" default="0" />#When the strain was computationally conceived
+		<scalar label="experimentDate" type="INTEGER" default="0" />#When the strain was experimentally implemented
+        <scalar label="modificationDate" type="INTEGER" default="0"/>#Simple modification date for strain data
+		<scalar label="owner" type="CHAR(32)" default="master"/>#The owner/creater of the strain data
+        <scalar label="users" type="CHAR(255)" default="all"/>#The users who can access the strain
+    </object>
+
+	<object label="PRIMER">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />#Unique DB ID for the primer
+		<scalar label="creationStrain" type="CHAR(32)" mandatory="1" />#ID of the strain the primer was used to create
+		<scalar label="targetStrain" type="CHAR(32)" mandatory="1" />#ID of the strain the primer was used to transform
+		<scalar label="sequence" type="CHAR(255)" default="" />#DNA sequence of the primer
+		<scalar label="type" type="INTEGER" default="" />#Describes role of the primer in the knockout
+	</object>
+	
+    <object label="INTERVAL">
+        <scalar label="id" type="CHAR(32)" mandatory="1" />
+        <scalar label="genome" type="CHAR(32)" mandatory="1" />
+        <scalar label="startCoordinate" type="INTEGER" mandatory="1" />
+        <scalar label="endCoordinate" type="INTEGER" mandatory="1" />
+        <scalar label="sequence" type="TEXT" default="" />
+        <scalar label="description" type="TEXT" default="" />#I'm not sure we need a description      
+        <scalar label="creationDate" type="INTEGER" default="0" />
+        <scalar label="modificationDate" type="INTEGER" default="0"/>
+        <unique_index><attribute label="id"/></unique_index>
+        <index><attribute label="startCoordinate" /></index>
+        <index><attribute label="endCoordinate" /></index>
+        <index><attribute label="owner"/></index>
+        <index><attribute label="user"/></index>
+    </object>
+	
+    <object label="STRAIN_INTERVAL">
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="INTERVAL" type="CHAR(32)" mandatory="1" />
+    </object>
+
+	<object label="INSTITUTION">#It's going to be important that labs get proper credit for the work they do
+		<scalar label="id" type="CHAR(32)" mandatory="1" />#Unique DB ID for the institution
+		<scalar label="name" type="CHAR(255)" mandatory="1" />#Name of the institution
+		<scalar label="department" type="CHAR(255)" mandatory="1" />#Department of the institution
+		<scalar label="PI" type="CHAR(32)" mandatory="1" />#ID of the principle investigator
+		<scalar label="city" type="CHAR(255)" default="" />#City where the institution is located
+		<scalar label="country" type="INTEGER" default="" />#Country where the institution is located
+	</object>
+	
+	<object label="PERSON">#It's going to be important that project participants get proper credit for the work they do
+		<scalar label="id" type="CHAR(32)" mandatory="1" />#Unique DB ID for the person
+		<scalar label="firstName" type="CHAR(255)" mandatory="1" />
+		<scalar label="lastName" type="CHAR(255)" mandatory="1" />
+		<scalar label="INSTITUION" type="CHAR(32)" mandatory="1" />#ID of the institution to which the person is associated
+		<scalar label="username" type="CHAR(255)" mandatory="1" />#Username of person in BaSynthEC project
+	</object>
+	
+    <object label="PHENOTYPE">
+        <scalar label="id" type="CHAR(32)" mandatory="1" />
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+        <scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+        <scalar label="growth" type="DOUBLE" mandatory="1" />
+        <scalar label="description" type="TEXT" default="" />
+        <scalar label="owner" type="CHAR(32)" default="master"/>
+        <scalar label="user" type="CHAR(255)" default="all"/>
+        <scalar label="creationDate" type="INTEGER" default="0" />
+        <scalar label="modificationDate" type="INTEGER" default="0"/>
+        <unique_index><attribute label="id"/></unique_index>
+        <index><attribute label="STRAIN"/></index>
+        <index><attribute label="owner"/></index>
+        <index><attribute label="user"/></index>
+    </object>
+    
+    <object label="PREDICTIONS">
+        <scalar label="id" type="CHAR(32)" mandatory="1" />
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+        <scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+
+        <scalar label="growth" type="DOUBLE" mandatory="1" />
+        <scalar label="description" type="TEXT" default="" />
+        <scalar label="owner" type="CHAR(32)" default="master"/>
+        <scalar label="user" type="CHAR(255)" default="all"/>
+        <scalar label="creationDate" type="INTEGER" default="0" />
+        <scalar label="modificationDate" type="INTEGER" default="0"/>
+        <unique_index><attribute label="id"/></unique_index>
+        <index><attribute label="STRAIN"/></index>
+        <index><attribute label="owner"/></index>
+        <index><attribute label="user"/></index>
+    </object>
+	
+	<object label="REFERENCE" >#I copied this from model DB, because we need something similar here...
+		<scalar label="value" type="CHAR(32)" mandatory="1" />
+		<scalar label="attribute" type="CHAR(32)" mandatory="1" />
+		<scalar label="object" type="CHAR(32)" mandatory="1" />
+		<scalar label="pubmedID" type="CHAR(32)" mandatory="1" />
+		<scalar label="date" type="INTEGER" mandatory="1" />
+		<index><attribute label="object"/></index>
+		<index><attribute label="attribute"/></index>
+		<index><attribute label="value"/></index>
+		<index><attribute label="pubmedID"/></index>
+	</object>
+	
+	<object label="COMMENT" >#I copied this from model DB, because we need something similar here...
+		<scalar label="value" type="CHAR(32)" mandatory="1" />
+		<scalar label="attribute" type="CHAR(32)" mandatory="1" />
+		<scalar label="object" type="CHAR(32)" mandatory="1" />
+		<scalar label="user" type="CHAR(32)" mandatory="1" />
+		<scalar label="comment" type="TEXT" mandatory="1" />
+		<scalar label="date" type="INTEGER" mandatory="1" />
+		<index><attribute label="object"/></index>
+		<index><attribute label="attribute"/></index>
+		<index><attribute label="value"/></index>
+		<index><attribute label="user"/></index>
+	</object>
+</project>
