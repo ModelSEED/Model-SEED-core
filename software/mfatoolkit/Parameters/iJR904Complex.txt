@@ -1,8 +1,0 @@
-exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:100;cpd08636[c]:-100:0||MFA parameters
-user bounds filename|iJRComplex.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
-Reactions use variables|1|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
-Minimize reactions|1|comment
-objective|MAX;DRAIN_FLUX;Biomass;c;-1|"This is the objective of the MFA optmization where each term in the objective is specified by ""VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT;VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT..."""|MFA parameters
-Default max drain flux|100|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
-output folder|iJRComplex/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
-find tight bounds|0|This binary parameter indicates whether the tight bounds on the problem variables should be determined.|MFA parameters

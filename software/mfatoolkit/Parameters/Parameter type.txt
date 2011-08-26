@@ -1,2 +1,0 @@
-tight bounds search variables|MFA parameters|0|MFA parameters
-exchange species|MFA parameters||MFA parameters

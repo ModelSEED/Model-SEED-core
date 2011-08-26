@@ -1,5 +1,0 @@
-flux minimization|1|null|null
-constrain objective to this fraction of the optimal value|0.1|null|null
-objective|MAX;FLUX;R_BiomassEcoli;none;1|null|null
-output path|ReactionDB/MFAToolkitOutputFiles/|null|null
-output folder|Results/|null|null

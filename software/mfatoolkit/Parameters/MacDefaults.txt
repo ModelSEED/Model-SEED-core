@@ -1,8 +1,0 @@
-web interface solutions directory|/Users/chenry/Projects/MFAToolkitCGI/MFAToolkitCGIDB/Solutions|Location where solution data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
-web interface model directory|/Users/chenry/Projects/MFAToolkitCGI/MFAToolkitCGIDB/Models/|Location where model data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
-web interface settings directory|/Users/chenry/Projects/MFAToolkitCGI/MFAToolkitCGIDB/Userfiles/|Location where user data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
-text DB file|Input/DatabaseFile.txt|List of the various databases that will be maintaned|Directories where key database flatfiles will be stored
-scripts directory|/Users/chenry/Projects/Scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
-output folder|Test/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
-perl directory|/usr/bin/|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
-os|linux|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters

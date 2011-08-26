@@ -1,5 +1,0 @@
-print model data|1|Indicates whether or not the database will be printed into a combined database file vertically arranged in columns with headers at the top of the file.|Data calculation specifications
-print reactions|1|Indicates whether or not the database reactions will be printed into the combined database file|Data calculation specifications
-output folder|SetDirectionalityFromThermo/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
-reaction data to print|LOAD;DIRECTIONALITY;COMPARTMENT;ASSOCIATED PEG;REFERENCE|"This indicates the data that should be printed in the reaction flat files. The term ""INPUT_HEADER"" means that the output file should contain the same headers as the input file."|Headers indicating what data should be printed in the database flatfiles
-calculate directionality from thermodynamics|1|This binary parameter indicates whether or not the reaction directionality should be set based on the reaction thermodynamic feasibility.|Reaction calculation specifications

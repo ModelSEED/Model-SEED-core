@@ -1,2 +1,0 @@
-tight bounds search variables|0|0|MFA parameters
-exchange species|"This parameter indicates special compounds that are not located in the default exchange compartment for which drain fluxes should be added. Multiple compounds can be specified here using the "";"" delimiter. Use ""none"" for this parameter is no compounds are to be specified."||MFA parameters

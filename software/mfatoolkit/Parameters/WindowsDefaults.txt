@@ -1,4 +1,0 @@
-text DB file|Input/GenericDatabaseFile.txt|List of the various databases that will be maintaned|Directories where key database flatfiles will be stored
-scripts directory|Scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
-perl directory|C:/Perl/bin/perl.exe|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
-os|windows|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters
