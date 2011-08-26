@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project label="SchedulerDB">
+	<object label="JOB" >
+		<scalar label="ID" type="INTEGER" />
+		<scalar label="PROCESSID" type="INTEGER" default="0" />
+		<scalar label="COMMAND" type="TEXT" mandatory="1" />
+		<scalar label="PRIORITY" type="INTEGER" default="3" />
+		<scalar label="USER" type="CHAR(32)" default="unknown" />
+		<scalar label="STATUS" type="TEXT" default="unknown" />
+		<scalar label="STATE" type="INTEGER" default="0" />
+		<scalar label="QUEUE" type="INTEGER" default="-1" />
+		<scalar label="QUEUETIME" type="TIMESTAMP" mandatory="1" />
+		<scalar label="START" type="TIMESTAMP" />
+		<scalar label="FINISHED" type="TIMESTAMP" />
+        <scalar label="EXCLUSIVEKEY" type="CHAR(255)"/>
+		<unique_index><attribute label="ID"/></unique_index>
+		<index><attribute label="PRIORITY"/></index>
+		<index><attribute label="PROCESSID"/></index>
+		<index><attribute label="QUEUE"/></index>
+		<index><attribute label="USER"/></index>
+	</object>
+	  
+	<object label="QUEUE" >
+	  	<scalar label="ID" type="INTEGER" />
+	  	<scalar label="NAME" type="CHAR(16)" mandatory="1" />
+	  	<scalar label="TYPE" type="CHAR(16)" default="QSUB" />
+	  	<scalar label="MAXPROCESSES" type="INTEGER" default="-1" />
+	  	<unique_index><attribute label="ID"/></unique_index>
+	  	<unique_index><attribute label="NAME"/></unique_index>
+	</object>
+</project>

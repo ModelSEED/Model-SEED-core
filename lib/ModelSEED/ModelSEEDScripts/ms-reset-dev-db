@@ -1,0 +1,144 @@
+#!/usr/bin/env perl 
+use strict;
+use warnings;
+use File::Temp qw(tempfile);
+use Sys::Hostname qw(hostname);
+use Cwd 'abs_path';
+
+# THIS SCRIPT MUST BE CALLED FROM bio-admin-3.mcs.anl.gov
+my $hostname = hostname();
+unless($hostname eq "bio-admin-3.mcs.anl.gov") {
+    warn "This script can only be run on bio-admin-3.mcs.anl.gov as it\n".
+    "executes commands in the mysql database on this machine. Currently\n".
+    "it appears that you are using $hostname as your machine.\n".
+    "Attempting to ssh into bio-admin-3.mcs.anl.gov, where all further commands will execute:\n";
+    my $username = getpwuid($<);
+    system("ssh $username\@bio-admin-3.mcs.anl.gov 'perl " . abs_path($0) . ' ' . join(' ', @ARGV) . "'\n");
+    exit();
+}
+# Summary of Steps:
+# #################
+# Save Copy of ModelDB database
+# Drop DevModelDB Database (saving a copy)
+# Restore DevModelDB schema from ModelDB xml (assumes schema up to date)
+# Duplicate copy of ModelDB database and change all references from ModelDB to DevModelDB
+# Load data from file into DevModelDB
+my $usage = <<EGASU;
+Usage: ms-reset-dev-db source-database target-database [xml-schema file]
+Resets the schema and data of target-database to the schema
+and data of source-database. This drops the current contents of
+target-database. Additionally, this makes changes in the schema pointer
+for target-database to still use the source-database's schema.
+EGASU
+
+my $DB_SOURCE;
+my $DB_TARGET;
+if(@ARGV >= 2) {
+    $DB_SOURCE = shift @ARGV;
+    $DB_TARGET = shift @ARGV;
+} else {
+    print $usage;
+    exit();
+}
+
+if($DB_TARGET eq "ModelDB") {
+    print "Yea, that ain't happening...\n";
+    print $usage;
+    exit();
+}
+
+# Save a copy of DevModelDB database
+# And the ModelDB database
+sub copyDatabase {
+    my ($dbName, $dir) = @_;
+    my ($dbFH, $dbFileName) = tempfile("dbcopy-XXXXXX", DIR => $dir);
+    close($dbFH);
+    system("mysqldump -u webappuser --host=bio-app-authdb.mcs.anl.gov --socket=/var/lib/mysql/mysql.sock $dbName > $dbFileName");
+    print "Copied $dbName to $dbFileName\n";
+    return $dbFileName;
+}
+
+my $homeDir = $ENV{HOME};
+my $tmpDir = "/vol/model-dev/MODEL_DEV_DB/tmp";
+my $xmlSchemaLocation = "";
+if($DB_SOURCE eq "ModelDB") {
+    $xmlSchemaLocation = $homeDir . "/FIGdisk/dist/releases/current/ModelSEED/ModelDB/ModelDB.xml";
+} elsif(@ARGV > 0) {
+    $xmlSchemaLocation = shift @ARGV;
+} else {
+    print "You must supply a schema definition file for $DB_SOURCE\n";
+    print $usage;
+    exit();
+}
+
+my $backupModelDbFile = copyDatabase($DB_SOURCE, $tmpDir);
+
+# Drop DevModelDB Database (saving a copy)
+sub dropDatabase {
+    my ($dbName, $dir) = @_;
+    my $dbCopy = copyDatabase($dbName, $dir);
+    print "Dropping $dbName, a copy has been saved at " . $dbCopy . "\n";
+    my $dropCommand = <<TXET;
+    USE $dbName
+    DROP DATABASE $dbName
+TXET
+    my ($dropScriptFH, $dropScriptFilename) = tempfile("dbscript-XXXXXX", DIR => $dir);
+    print $dropScriptFH $dropCommand;
+    close($dropScriptFH);
+    my $userName = getpwuid($<);
+    system("mysql --socket=/var/lib/mysql/mysql.sock -u webappuser --host=bio-app-authdb.mcs.anl.gov < $dropScriptFilename");
+    unlink($dropScriptFH);
+    return $dbCopy;
+}
+my $backupDevModelDBFile = dropDatabase($DB_TARGET, $tmpDir);
+
+# Restore DevModelDB schema from ModelDB xml (assumes schema up to date)
+sub restoreSchema {
+    my ($dbName, $schemaXMLFile) = @_;
+    unless(-e $schemaXMLFile) {
+        warn "Unable to find schema xml file $schemaXMLFile!".
+        " Exiting without restoring database $dbName!\n";
+        exit();
+    }
+    my $schemaRestoreScript = "ppo_generate -xml $schemaXMLFile ".
+    "-database $dbName -backend MySQL -host bio-app-authdb.mcs.anl.gov ".
+    "-user webappuser -port 3306 -socket /var/lib/mysql/mysql.sock";
+    system($schemaRestoreScript);
+}
+restoreSchema($DB_TARGET, $xmlSchemaLocation);    
+
+# Duplicate copy of ModelDB database and change all references from ModelDB to DevModelDB
+my ($modelDBDataCopyFH, $modelDBDataCopyFilename) = tempfile("dbcopy-XXXXXX", DIR => $tmpDir);
+close($modelDBDataCopyFH);
+print "Copying $DB_SOURCE data to $modelDBDataCopyFilename\n";
+system("cp $backupModelDbFile $modelDBDataCopyFilename");
+sub replaceInfo {
+    my ($o, $n, $filename) = @_;
+    system("perl -pi -e 's/".$o."/".$n."/g' $filename");
+}
+print "Replacing all instances of $DB_SOURCE with $DB_TARGET in $modelDBDataCopyFilename\n";
+replaceInfo($DB_SOURCE, $DB_TARGET, $modelDBDataCopyFilename);
+
+# Load data from file into DevModelDB
+sub loadSQLDataFromFile {
+    my ($dbName, $filename) = @_;
+    print "Restoring database $dbName from file $filename\n";
+    system("mysql --socket=/var/lib/mysql/mysql.sock -u webappuser --host=bio-app-authdb.mcs.anl.gov $dbName < $filename");
+}
+loadSQLDataFromFile($DB_TARGET, $modelDBDataCopyFilename); 
+
+# Finally, change _metainfo table to point to ModelDB instead of DevModelDB
+sub changeMetaInfo {
+    my ($dbName, $metaInfoName, $dir) = @_;
+    print "Changing PPO pointer to $metaInfoName for database $dbName.\n".
+    "( This is needed to avoid duplicate copies of the PPO for schemea $metaInfoName )\n";
+    my $changeScript = "UPDATE $dbName._metainfo SET info_value='".$metaInfoName."';";
+    my ($changeScriptFH, $changeScriptFilename) = tempfile("dbscript-XXXXXX", DIR => $dir);
+    print $changeScriptFH $changeScript;
+    close($changeScriptFH);
+    system("mysql --socket=/var/lib/mysql/mysql.sock -u webappuser --host=bio-app-authdb.mcs.anl.gov < $changeScriptFilename");
+    unlink($changeScriptFilename);
+}
+changeMetaInfo($DB_TARGET, 'ModelSEED::'.$DB_SOURCE, $tmpDir);
+print "Successfully reset $DB_TARGET to $DB_SOURCE!\n";
+# Removing really old files from $tmpDir

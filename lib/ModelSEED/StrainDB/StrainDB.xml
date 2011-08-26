@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project label="ModelSEED::StrainDB">
+    <object label="FEATURE">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="start" type="INTEGER" mandatory="1" />
+		<scalar label="stop" type="INTEGER" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<scalar label="annotation" type="CHAR(255)" default="none" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="type"/></index>
+		<index><attribute label="annotation"/></index>
+	</object>
+	<object label="EXPERIMENTER">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="institution" type="CHAR(255)" mandatory="1" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="institution"/></index>
+    </object>
+	<object label="FEATURE_ALIAS">
+		<scalar label="FEATURE" type="CHAR(32)" mandatory="1" />
+		<scalar label="alias" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="FEATURE"/></index>
+		<index><attribute label="alias"/></index>
+		<index><attribute label="type"/></index>
+    </object>
+	<object label="FEATURE_CONTIG">
+		<scalar label="FEATURE" type="CHAR(32)" mandatory="1" />
+        <scalar label="CONTIG" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="FEATURE"/></index>
+		<index><attribute label="CONTIG"/></index>
+    </object>
+	<object label="CONTIG">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="start" type="INTEGER" mandatory="1" />
+		<scalar label="stop" type="INTEGER" mandatory="1" />
+        <scalar label="creationDate" type="TIMESTAMP" />
+        <scalar label="modificationDate" type="TIMESTAMP" />
+        <scalar label="owner" type="CHAR(32)" default="master" />
+		<scalar label="public" type="INTEGER" default="0" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="public"/></index>
+    </object>
+    <object label="STRAIN">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="parent" type="CHAR(32)" default="none" />
+		<scalar label="lineage" type="TEXT" default="none" />
+		<scalar label="method" type="CHAR(255)" default="none" />
+		<scalar label="competance" type="CHAR(32)" mandatory="1" />
+		<scalar label="resistance" type="CHAR(32)" mandatory="1" />
+		<scalar label="strainAttempted" type="INTEGER" default="0" />
+		<scalar label="strainImplemented" type="INTEGER" default="0" />
+		<scalar label="EXPERIMENTER" type="CHAR(32)" />
+		<scalar label="creationDate" type="TIMESTAMP" />
+		<scalar label="modificationDate" type="TIMESTAMP" />
+		<scalar label="experimentDate" type="TIMESTAMP" />
+		<scalar label="owner" type="CHAR(32)" default="master" />
+		<scalar label="public" type="INTEGER" default="0" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="parent"/></index>
+		<index><attribute label="method"/></index>
+		<index><attribute label="competance"/></index>
+		<index><attribute label="resistance"/></index>
+		<index><attribute label="strainAttempted"/></index>
+		<index><attribute label="strainImplemented"/></index>
+		<index><attribute label="EXPERIMENTER"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="public"/></index>
+    </object>
+    <object label="STRAIN_CONTIG">
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="CONTIG" type="CHAR(32)" mandatory="1" />
+        <scalar label="deletionOrder" type="INTEGER" mandatory="1" />
+		<index><attribute label="STRAIN"/></index>
+		<index><attribute label="CONTIG"/></index>
+		<index><attribute label="deletionOrder"/></index>
+    </object>
+	<object label="CONTIGPRIMER">
+		<scalar label="CONTIG" type="CHAR(32)" mandatory="1" />
+		<scalar label="start" type="INTEGER" mandatory="1" />
+		<scalar label="stop" type="INTEGER" mandatory="1" />
+		<scalar label="sequence" type="CHAR(255)" mandatory="1" />
+		<scalar label="type" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="CONTIG"/></index>
+		<index><attribute label="sequence"/></index>
+		<index><attribute label="type"/></index>
+	</object>
+    <object label="PHENOTYPE">
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+        <scalar label="EXPERIMENTER" type="CHAR(32)" />
+        <scalar label="relativeGrowth" type="FLOAT" mandatory="1" />
+        <scalar label="description" type="TEXT" />
+        <scalar label="creationDate" type="TIMESTAMP" />
+        <scalar label="modificationDate" type="TIMESTAMP" />
+		<index><attribute label="STRAIN"/></index>
+		<index><attribute label="MEDIA"/></index>
+		<index><attribute label="EXPERIMENTER"/></index>
+    </object>
+    <object label="PREDICTIONS">
+        <scalar label="STRAIN" type="CHAR(32)" mandatory="1" />
+        <scalar label="MEDIA" type="CHAR(32)" mandatory="1" />
+        <scalar label="MODEL" type="CHAR(32)" mandatory="1" />
+        <scalar label="version" type="INTEGER" mandatory="1" />
+        <scalar label="relativeGrowth" type="FLOAT" mandatory="1" />
+        <scalar label="noGrowthCompounds" type="TEXT" mandatory="1" />
+        <scalar label="description" type="TEXT" />
+        <scalar label="creationDate" type="TIMESTAMP" />
+        <scalar label="modificationDate" type="TIMESTAMP" />
+		<index><attribute label="STRAIN"/></index>
+		<index><attribute label="MEDIA"/></index>
+		<index><attribute label="MODEL"/></index>
+		<index><attribute label="version"/></index>
+    </object>
+</project>
