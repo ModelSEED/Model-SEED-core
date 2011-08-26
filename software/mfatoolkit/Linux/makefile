@@ -1,0 +1,42 @@
+SYSTEM     = x86-64_rhel4.0_3.4
+LIBFORMAT  = static_pic
+# ---------------------------------------------------------------------
+# Directories section 
+# ---------------------------------------------------------------------
+
+SRCDIR = ../Source
+OBJDIR = ../Source
+INCDIR = ../Include
+ALLGLPK = ../../solvers/glpk
+GLPKINC = $(ALLGLPK)/include
+GLPKLIB = $(ALLGLPK)/src/.libs/
+ALLCPLEX = ../../solvers/cplex
+CPLEXLIBDIR   = $(ALLCPLEX)/lib/x86-64_rhel4.0_3.4/static_pic
+CPLEXINCDIR   = $(ALLCPLEX)/include/ilcplex
+EXEC = mfatoolkit
+
+# ---------------------------------------------------------------------
+# Compiler section 
+# ---------------------------------------------------------------------
+CCC = g++
+# ---------------------------------------------------------------------
+# Compiler options 
+# ---------------------------------------------------------------------
+CCOPT = -O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX
+
+CCLNFLAGS = -L$(GLPKLIB) -lglpk -L$(CPLEXLIBDIR) -lilocplex -lcplex -lm -lpthread -lz
+
+CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(GLPKINC) -I$(INCDIR) -DNOSAFEMEM -DNOBLOCKMEM
+
+SRCFILES = $(SRCDIR)/driver.cpp $(SRCDIR)/MFAProblem.cpp $(SRCDIR)/CPLEXapi.cpp $(SRCDIR)/SCIPapi.cpp $(SRCDIR)/GLPKapi.cpp $(SRCDIR)/LINDOapiEMPTY.cpp $(SRCDIR)/SolverInterface.cpp $(SRCDIR)/Species.cpp $(SRCDIR)/Data.cpp $(SRCDIR)/InterfaceFunctions.cpp $(SRCDIR)/Identity.cpp $(SRCDIR)/Reaction.cpp $(SRCDIR)/GlobalFunctions.cpp $(SRCDIR)/AtomCPP.cpp $(SRCDIR)/UtilityFunctions.cpp $(SRCDIR)/AtomType.cpp $(SRCDIR)/Gene.cpp $(SRCDIR)/GeneInterval.cpp $(SRCDIR)/stringDB.cpp
+
+OBJFILES = $(SRCFILES:.cpp=.o)
+
+MFATOOLKIT: $(OBJFILES)
+	$(CCC) $(CCFLAGS) -o $(EXEC) $(^) $(CCLNFLAGS)
+
+%.o: %.cpp
+	$(CCC) $(CCFLAGS) -c $<; mv *.o $(OBJDIR)
+
+clean:
+	rm -f $(OBJDIR)/*.o $(EXEC)

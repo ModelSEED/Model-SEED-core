@@ -1,0 +1,27 @@
+save query data on input|1|0|Database information
+perform MFA|1|0|MFA parameters
+output folder|DatabaseProcessing/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+MFASolver|GLPK|This indicates which solver should be used to solve the MFA problems.|MFA parameters
+objective|MAX;DRAIN_FLUX;Biomass;c;-1|"This is the objective of the MFA optmization where each term in the objective is specified by ""VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT;VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT..."""|MFA parameters
+user bounds filename|NoBounds.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+Default max drain flux|1000|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
+Default min drain flux|-1000|This is the negative of the default maximum rate at which any extracellular compound may be consumed.|MFA parameters
+Max flux|1000|This indicates the maximum possible flux any reaction can have.|MFA parameters
+Min flux|-1000|This indicates the minimum possible flux any reaction can have.|MFA parameters
+Reactions use variables|0|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
+Force use variables for all reactions|0|This binary parameter indicates whether or not use variables should be added for every reaction and not just the reactions that can be inactive (flux bounds include 0).|MFA parameters
+Decompose reversible reactions|0|This binary parameter indicates whether or not reversible reactions in the model should be decomposed into separate forward and backward reactions.|MFA parameters
+Thermodynamic constraints|0|This binary parameter indicates whether or not thermodynamic constraints should be used. Using thermodynamic constraints automatically turns on use variables. |MFA parameters
+Make all reactions reversible in MFA|1|This sets every reaction in the model to reversible for the MFA. This should only be done with thermodynamic constraints turned ON.|MFA parameters
+Account for error in delta G|1|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters
+Max deltaG error|DEFAULT|"Indicates the maximum value the error in each reaction delta G can take. If you want to use the uncertainty in the reaction delta G, set this parameter to DEFAULT."|MFA parameters
+include error use variables|0|Set to one to introduce binary use variables for the reaction error. These variables allow you to minimize the number of reactions with error.|MFA parameters
+minimize deltaG error|0|0|MFA parameters
+simple thermo constraints|0|0|MFA parameters
+write LP file|1|0|MFA parameters
+write variable key|1|0|MFA parameters
+just print LP file|1|0|MFA parameters
+Balanced reactions in gap filling only|0|0|MFA parameters
+dissapproved compartments|none|0|MFA parameters
+Complete model biomass reaction|bio00011|0|MFA parameters
+use simple variable and constraint names|1|0|MFA parameters

@@ -1,0 +1,21 @@
+database spec file|../Input/Singlefile.txt|
+input directory|../Input/|Directory where input files are stored|MFA files
+structural cue database file|FinalGroups.dat|0|Directories where key database flatfiles will be stored
+scripts directory|../../Scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
+output folder|Test/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+compartments file|Compartments.dat|This indicates where the file containing the cellular compartment data is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
+perl directory|/usr/bin/perl|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
+filename for file reference data|FileReferences.dat|This is the name of the file which contains the data used to parse input files into the internal database.|Filenames required for proper program start up
+atom types filename|AtomTypes.dat|This indicates where the file containing the data on the various types of atoms is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
+Lindo license|NONE|0|MFA files
+CoA structure file location|Cofactors/Coa.dat|This indicates where the molfile containing the complete structure of coa is located.|Misc data
+FIGMODEL config file|masterfiles/FIGMODELConfig.txt|0|Misc data
+scip executable|/home/bnice/Software/solvers/scip/bin/scip|0|MFA parameters
+Gene strain definition file|DeletionData/GeneStrains.txt|0|MFA parameters
+Interval strain definition file|DeletionData/IntervalStrains.txt|0|MFA parameters
+Complete reaction list|CompleteReactionList.txt|0|MFA parameters
+Tight bounds input filename|Tightbounds.txt|"When tight bounds are read in by the solver, this indicates the file from which they are read."|MFA files
+user constraints filename|UserConstraints.txt|This indicates where the file containing the special constraint constructed by the user are located. This can be relative to the program directory or a complete path.|MFA files
+MFA solutions filename|MFAOutput/Solutions.txt|This file holds the data on the solutions of the MFA run.|MFA files
+MFA problem report filename|MFAOutput/ProblemReports.txt|This file holds the summary printed by the MFA toolkit each time an optmization is performed. This file is stored in the output path|MFA files
+os|linux|setting the oprating system for the program

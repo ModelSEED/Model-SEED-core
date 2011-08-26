@@ -1,0 +1,2 @@
+perl directory|/usr/bin/perl|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
+os|linux|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters

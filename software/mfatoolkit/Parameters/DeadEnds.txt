@@ -1,0 +1,3 @@
+identify dead ends|1|This binary parameter indicates if dead ends in the reaction network should be identified by scanning the reaction network for intracellular compounds that are produced and not consumed or consumed and not produced.|Compound calculation specifications
+output folder|MiniBSub/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+Account for error in delta G|-16.11809565|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters

@@ -1,0 +1,44 @@
+perform MFA|1|0|MFA parameters
+output folder|RegConstTest/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+MFASolver|CPLEX|This indicates which solver should be used to solve the MFA problems.|MFA parameters
+maximize single objective|1|0|MFA parameters
+objective|FLUX;Biomass;none;1|"This is the objective of the MFA optmization where each term in the objective is specified by ""VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT;VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT..."""|MFA parameters
+metabolites to optimize|REACTANTS;Biomass|0|MFA parameters
+optimize metabolite production if objective is zero|0|0|MFA parameters
+exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:100;cpd08636[c]:-100:0|MFA parameters
+user bounds filename|Carbon-D-glucose.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+Default max drain flux|0|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
+Default min drain flux|-1000|This is the negative of the default maximum rate at which any extracellular compound may be consumed.|MFA parameters
+Max flux|1000|This indicates the maximum possible flux any reaction can have.|MFA parameters
+Min flux|-1000|This indicates the minimum possible flux any reaction can have.|MFA parameters
+Reactions use variables|0|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
+Force use variables for all reactions|0|This binary parameter indicates whether or not use variables should be added for every reaction and not just the reactions that can be inactive (flux bounds include 0).|MFA parameters
+Add use variables for any drain fluxes|0|This binary parameter indicates whether or not a use variable should be added for each drain flux. Using drain use variables automatically turns on drain flux decomposition.|MFA parameters
+Force use variables for all drain fluxes|0|This binary parameter indicates whether or not use variables should be added for every drain flux and not just the drain fluxes that can be inactive (flux bounds include 0).|MFA parameters
+Decompose reversible reactions|0|This binary parameter indicates whether or not reversible reactions in the model should be decomposed into separate forward and backward reactions.|MFA parameters
+Decompose reversible drain fluxes|0|This binary parameter indicates whether or not reversible drain fluxes in the model should be decomposed into separate forward and backward drain fluxes.|MFA parameters
+Recursive MILP solution size interval|2|0|MFA parameters
+Recursive MILP solution limit|1|0|MFA parameters
+Recursive MILP timeout|1800|0|MFA parameters
+CPLEX solver time limit|1800|1|MFA parameters
+Mass balance constraints|1|This binary parameter indicates whether or not mass-balance constraints should be used.|MFA parameters
+write LP file|1|0|MFA parameters
+write variable key|0|0|MFA parameters
+Add regulatory constraint to problem|0|MFA parameters
+Regulatory constraint file|C:/ReactionDB/MFAToolkitInputFiles/iJR904Regulation.txt|MFA parameters
+perform single KO experiments|0|0|MFA parameters
+Thermodynamic constraints|0|This binary parameter indicates whether or not thermodynamic constraints should be used. Using thermodynamic constraints automatically turns on use variables. |MFA parameters
+Make all reactions reversible in MFA|0|This sets every reaction in the model to reversible for the MFA. This should only be done with thermodynamic constraints turned ON.|MFA parameters
+Account for error in delta G|1|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters
+Max deltaG error|10000|"Indicates the maximum value the error in each reaction delta G can take. If you want to use the uncertainty in the reaction delta G, set this parameter to DEFAULT."|MFA parameters
+include error use variables|0|Set to one to introduce binary use variables for the reaction error. These variables allow you to minimize the number of reactions with error.|MFA parameters
+minimize deltaG error|0|0|MFA parameters
+simple thermo constraints|0|0|MFA parameters
+run media experiments|0|0|MFA parameters
+media list file|MFAToolkitInputFiles/EcoliMediaList.txt|Filename listing media for media experiments|MFA parameters
+Perform gap filling|0|0|MFA parameters
+Gene dictionary|83333.1-dictionary.txt|0|MFA parameters
+Regulation conditions|C:/ReactionDB/MFAToolkitInputFiles/EcoliConditionsPoorMedia.txt|0|MFA parameters
+LP solver filename|C:/Projects/OptimizationSolvers/scip.exe|0|MFA parameters
+LP job directory|C:/JobDirectory/|0|MFA parameters
+Compounds to have potential constraint|ALL|MFA parameter

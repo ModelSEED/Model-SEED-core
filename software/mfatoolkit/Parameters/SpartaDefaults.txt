@@ -1,0 +1,20 @@
+calculate properties from groups|1|0|Compound calculation specifications
+load compound structure|1|0|Compound calculation specifications
+load cue structures|1|0|Compound calculation specifications
+determine stringcode|1|0|Compound calculation specifications
+look for cycles|1|0|Compound calculation specifications
+label atoms|1|0|Compound calculation specifications
+determine formula from structure file|1|0|Compound calculation specifications
+poll structural cues|1|0|Data calculation specifications
+web interface solutions directory|/var/www/html/MFAToolkitCGI/Solutions/|Location where solution data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
+web interface model directory|/var/www/html/MFAToolkitCGI/Models/|Location where model data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
+web interface settings directory|/var/www/html/MFAToolkitCGI/Userfiles/|Location where user data will be stored in the MFA toolkit CGI|Directories where key database flatfiles will be stored
+text DB file|Input/SpartaDatabaseFile.txt|List of the various databases that will be maintaned|Directories where key database flatfiles will be stored
+scripts directory|/usr/local/scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
+output folder|WebGCM/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+perl directory|/usr/bin/|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
+media list file|Database/media/MediaList.txt|0|MFA parameters
+deletion experiment list file|Database/DeletionData/intervals|0|MFA files
+user bounds filename|ArgonneLBMedia.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+lumped reaction database|Database/model/lumpedreactions.txt|This indicates where the flat file listing the lumped reactions that should be loaded is located.|MFA files
+os|linux|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters

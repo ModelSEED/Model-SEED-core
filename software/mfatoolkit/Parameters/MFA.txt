@@ -1,0 +1,6 @@
+objective|MAX;DRAIN_FLUX;cpd00056;c;-1|"This is the objective of the MFA optmization where each term in the objective is specified by ""VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT;VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT..."""|MFA parameters
+exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:100;cpd08636[c]:-100:0;cpd00056[c]:-100:0||MFA parameters
+flux minimization|1|This binary parameter indicates that the sum of the fluxes in the solution should be minimized
+find tight bounds|0|This binary parameter indicates whether the tight bounds on the problem variables should be determined.|MFA parameters
+Constrain objective to this fraction of the optimal value|0.05|0|MFA parameters
+user bounds filename|GMM_gln.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files

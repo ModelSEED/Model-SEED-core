@@ -1,0 +1,9 @@
+exchange species|cpd11574[c]:0:100;cpd03422[c]:-100:100;cpd01997[c]:-100:100;cpd11416[c]:-100:0;cpd15378[c]:-100:0;cpd15486[c]:-100:0|MFA parameters
+user bounds filename|iAFMin.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+Reactions use variables|1|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
+optimize organism genes|0|comment
+objective|MAX;FLUX;rxn13762;none;1|comment
+Default max drain flux|0|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
+output folder|iAFMin/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+find tight bounds|0|This binary parameter indicates whether the tight bounds on the problem variables should be determined.|MFA parameters
+Minimize reactions|1|0|MFA parameters

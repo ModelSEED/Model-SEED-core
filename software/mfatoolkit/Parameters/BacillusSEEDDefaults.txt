@@ -1,0 +1,28 @@
+database priority|ARGONNE;KEGG;PALSSON|0|Database information
+reactants to merge|NONE|0|Database information
+indicate cofactors in reaction equation|0|This binary parameter indicates whether or not cofactors in reactions should be denoted with capital or lowercase compartment notation.|Cofactor data
+Gene directory|/disks/www/Network_Data/ReactionDB/genes/|0|Gene analysis
+new gene directory|/disks/www/Network_Data/ReactionDB/newgenes/|0|Gene analysis
+text DB file|Input/SEEDDatabaseFile.txt|List of the various databases that will be maintaned|Directories where key database flatfiles will be stored
+new reaction directory|/disks/www/Network_Data/ReactionDB/newreactions/|This indicates where all of the reaction database flat files are stored.|Directories where key database flatfiles will be stored
+new compound directory|/disks/www/Network_Data/ReactionDB/newcompounds/|This indicates where all of the compound database flat files are stored.|Directories where key database flatfiles will be stored
+reaction directory|/disks/www/Network_Data/ReactionDB/reactions/|This indicates where all of the reaction database flat files are stored.|Directories where key database flatfiles will be stored
+new structural cue directory|/disks/www/Network_Data/ReactionDB/newcues/|This indicates where all structural cue database flat files are stored. These files are needed for thermodynanic estimates.|Directories where key database flatfiles will be stored
+database directory|/disks/www/Network_Data/ReactionDB/models/|This is where the model flat files will be stored.|Directories where key database flatfiles will be stored
+compound directory|/disks/www/Network_Data/ReactionDB/compounds/|This indicates where all of the compound database flat files are stored.|Directories where key database flatfiles will be stored
+structural cue directory|/disks/www/Network_Data/ReactionDB/cues/|This indicates where all structural cue database flat files are stored. These files are needed for thermodynanic estimates.|Directories where key database flatfiles will be stored
+molfile directory|/disks/www/Network_Data/ReactionDB/mol/|This is the directory where all molfiles are stored. This should be a complete path.|Directories where key database flatfiles will be stored
+gds file location|/disks/www/Network_Data/ReactionDB/cues/StructureFiles/|This indicates where the files describing the molecular structure of the structural cues are stored.|Directories where key database flatfiles will be stored
+scripts directory|/disks/www/Network_Data/ReactionDB/Scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
+perl directory|/usr/bin/perl|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
+output path|/disks/www/Network_Data/ReactionDB/MFAToolkitOutputFiles/|This is the directory where all output files and folders will be written. This should be a complete path.|Filenames required for proper program start up
+MFA input directory|/disks/www/Network_Data/ReactionDB/|0|MFA files
+CoA structure file location|/disks/www/Network_Data/ReactionDB/mol/Cofactors/Coa.dat|This indicates where the molfile containing the complete structure of coa is located.|Misc data
+FIGMODEL config file|/disks/www/Network_Data/ReactionDB/masterfiles/FIGMODELConfig.txt|0|Misc data
+FIGMODEL database directory|/disks/www/Network_Data/|0|Misc data
+MFASolver|GLPK|This indicates which solver should be used to solve the MFA problems.|MFA parameters
+Solution data for model optimization|/disks/www/Network_Data/ReactionDB/MFAToolkitInputFiles/GapFillingErrorMatrix.txt|0|MFA parameters
+Complete reaction list|/disks/www/Network_Data/ReactionDB/MFAToolkitInputFiles/CompleteReactionList.txt|0|MFA parameters
+user constraints filename|MFAToolkitInputFiles/UserConstraints.txt|This indicates where the file containing the special constraint constructed by the user are located. This can be relative to the program directory or a complete path.|MFA files
+lumped reaction database|LumpedReactions.txt|This indicates where the flat file listing the lumped reactions that should be loaded is located.|MFA files
+os|linux|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters

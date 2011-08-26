@@ -1,0 +1,17 @@
+identify dead ends|1|This binary parameter indicates if dead ends in the reaction network should be identified by scanning the reaction network for intracellular compounds that are produced and not consumed or consumed and not produced.|Compound calculation specifications
+output folder|NetworkPrinting/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+print model network|1|Should the network view of the model be printed?|Network printing specifications
+essential reaction color|Green|0|Network printing specifications
+deadend compound color|Red|0|Network printing specifications
+Reaction labels|DATABASE;NAME|0|Network printing specifications
+Print cofactors in network|0|0|Network printing specifications
+variable reaction color|Blue|0|Network printing specifications
+optimal essential reaction color|Purple|0|Network printing specifications
+Compound labels|DATABASE;NAME|0|Network printing specifications
+dead reaction color|Red|0|Network printing specifications
+blocked reaction color|Gray|0|Network printing specifications
+extracellular compound color|Green|0|Network printing specifications
+Print bipartite network|0|0|Network printing specifications
+dead compound color|Orange|0|Network printing specifications
+default compound color|Blue|0|Network printing specifications
+default reaction color|Black|0|Network printing specifications

@@ -1,0 +1,8 @@
+save query data on input|1|0|Database information
+identify dead ends|1|This binary parameter indicates if dead ends in the reaction network should be identified by scanning the reaction network for intracellular compounds that are produced and not consumed or consumed and not produced.|Compound calculation specifications
+perform MFA|1|0|MFA parameters
+Run for MFA cgi|1|0|MFA parameters
+output folder|MFA_CGI/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+maximize individual metabolite production|0|0|MFA parameters
+find tight bounds|1|This binary parameter indicates whether the tight bounds on the problem variables should be determined.|MFA parameters
+exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:100;cpd15301[c]:-100:100;cpd15486[c]:-100:0;cpd08636[c]:-100:0;cpd01027[c]:-100:0;cpd04122[c]:-100:0;cpd15378[c]:-100:0;cpd15380[c]:-100:0;cpd01997[c]:-100:100;cpd03422[c]:-100:100||MFA parameters

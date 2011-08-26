@@ -1,0 +1,4 @@
+output folder|MicroarrayOutput/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+MFASolver|CPLEX|This indicates which solver should be used to solve the MFA problems.|MFA parameters
+user bounds filename|Carbon-D-Glucose.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+Microarray assertions|Seed83333.1;0;peg.3130:-1;peg.4035:-1|MFA parameters

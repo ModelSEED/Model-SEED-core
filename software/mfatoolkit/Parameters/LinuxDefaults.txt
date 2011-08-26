@@ -1,0 +1,4 @@
+Network output location|{MFA input directory}MFAToolkitOutputFiles/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+perl directory|/usr/bin/perl|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
+scip executable|/home/chenry/Software/solvers/scip/scip|0|MFA parameters
+os|linux|"This indicates the operating system on which the program is running. Can take the values: ""windows"" or ""linux"""|System parameters
