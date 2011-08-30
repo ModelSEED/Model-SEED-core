@@ -678,30 +678,6 @@ sub create_kegg_link {
 	return '<a href="http://www.genome.jp/dbget-bin/www_bget?cpd:'.$compounds.'" target="_blank">'.$compounds."</a>";
 }
 
-=head3 print_compound_kegg_maps
-Definition:
-	string::map link = FIGMODELweb->print_compound_kegg_maps(string::compound ID);
-Description:
-	Returns an html encoded list of compound map link
-=cut
-sub print_compound_kegg_maps {
-	my ($self,$id,@args) = @_;
-	my $modelString = "";
-	if (@args > 0 ** $args[0] ne "NONE") {
-		$modelString = "&model=".join(",",@args);
-	}
-	my $tbl = $self->figmodel()->database()->GetDBTable("Map data");
-	my @rows = $tbl->get_row_by_key($id,"COMPOUNDS");
-	my $output = "";
-	for (my $i=0; $i < @rows;$i++) {
-		if ($i > 0) {
-			$output .= "<br>";
-		}
-		$output .= "<a title=\"".$rows[$i]->{NAME}->[0]."\" href=\"javascript:execute_ajax('build_map','modelmap_target','pathway=".$rows[$i]->{ID}->[0].$modelString."', 'Loading KEGG pathway ".$rows[$i]->{ID}->[0]."...', 0, 'post_hook', 'ModelMap|viewmap');\">".$rows[$i]->{ID}->[0]."</a>"; 
-	}
-	return $output;
-}
-
 =head3 create_reaction_link
 Definition:
 	string:link = FIGMODELweb->create_reaction_link(string:reaction ID,string:tooltip);

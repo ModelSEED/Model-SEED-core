@@ -486,6 +486,7 @@ sub generate_perl {
 
   my $module = $self->module;
   my $dir = $target_dir.$module;
+  $dir =~ s/::/\//g;
   unless (-d $dir) {
     mkdir($dir, 0755);
   }

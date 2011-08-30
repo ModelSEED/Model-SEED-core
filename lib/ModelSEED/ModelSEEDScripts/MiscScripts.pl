@@ -60,52 +60,6 @@ sub new {
     return bless $self;
 }
 
-#Individual subroutines are all listed here
-sub addstrains {
-    my($self,@Data) = @_;
-
-    if (@Data < 2) {
-        print "Syntax for this command: addstrains?(Definition filename).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    my $DefinitionTable = FIGMODELTable::load_table($self->{_figmodel}->{"interval directory"}->[0].$Data[1],"\t","|",0,["Strain"]);
-    my $RankTable = FIGMODELTable::load_table($self->{_figmodel}->{"interval directory"}->[0]."IntervalRanks.txt","\t","|",0,["Rank","Interval"]);
-    my $CurrentStrainTable = $self->{_figmodel}->GetDBTable("STRAIN TABLE");
-
-    my $Date = time();
-    for (my $i=0; $i < $DefinitionTable->size(); $i++) {
-        my $Strain = $DefinitionTable->get_row($i);
-        my $IntervalList;
-        my $Base = "None";
-        my $Growth;
-        if (defined($Strain->{"ArgonneLBMedia"}->[0])) {
-            push(@{$Growth},"ArgonneLBMedia:".$Strain->{"ArgonneLBMedia"}->[0]);
-        }
-        if (defined($Strain->{"ArgonneNMSMedia"}->[0])) {
-            push(@{$Growth},"ArgonneNMSMedia:".$Strain->{"ArgonneNMSMedia"}->[0]);
-        }
-        my @IntervalRanks = split(/\./,$Strain->{"Strain"}->[0]);
-        for (my $j=0; $j < @IntervalRanks; $j++) {
-            my $Row = $RankTable->get_row_by_key($IntervalRanks[$j],"Rank");
-            if (defined($Row->{"Interval"}->[0])) {
-                push(@{$IntervalList},$Row->{"Interval"}->[0]);
-            }
-        }
-        if (@IntervalRanks > 2) {
-            $Base = $IntervalRanks[0];
-            for (my $j=1; $j < (@IntervalRanks-1); $j++) {
-                $Base .= ".".$IntervalRanks[$j];
-            }
-        }
-        $CurrentStrainTable->add_row({"ID" => [$Strain->{"Strain"}->[0]],"INTERVALS" => $IntervalList, "GROWTH" => $Growth,"BASE" => [$Base],"OWNER" => ["ALL"],"DATE" => [$Date]});
-    }
-
-    $CurrentStrainTable->save();
-
-    return "SUCCESS";
-}
-
 sub parsenfsimoutput {
 	my($self,@Data) = @_;
 

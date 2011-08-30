@@ -22,7 +22,7 @@ sub new {
 		return undef;
 	}
 	my $self = {_figmodel => $args->{figmodel}};
-	weaken($self->{_figmodel});
+    weaken($self->{_figmodel});
 	bless $self;
 	$args = $self->figmodel()->process_arguments($args,["figmodel"],{id => undef});
 	if (defined($args->{id})) {
@@ -744,7 +744,6 @@ sub createReactionCode {
 			if (defined($CompoundHashRef->{$Data[$i]})) {
 				$CurrentReactant = $CompoundHashRef->{$Data[$i]};
 			} else {
-			    print "Unmatched compound: ".$Data[$i].".";
 				if ($Data[$i] !~ m/cpd\d\d\d\d\d/) {
 					$error .= "Unmatched compound:".$Data[$i].".";
 				}
@@ -1017,7 +1016,7 @@ sub collapseGeneExpression {
 	my $geneHash;
 	my $geneArrays;
 	for (my $i=0; $i < @{$args->{originalGPR}}; $i++) {
-		my $list = split(/\+/,$args->{originalGPR}->[$i]);
+		my $list = [split(/\+/,$args->{originalGPR}->[$i])];
 		push(@{$geneArrays},$list);
 		for (my $j=0; $j < @{$list}; $j++) {
 			$geneHash->{$list->[$j]} = 1;

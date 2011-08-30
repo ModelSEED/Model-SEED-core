@@ -599,17 +599,18 @@
         <scalar label="id" type="CHAR(32)" mandatory="1" />
         <scalar label="name" type="CHAR(255)" mandatory="1" />
         <scalar label="outside" type="CHAR(255)" default="e" />
-	<unique_index><attribute label="id"/></unique_index>
+		<unique_index><attribute label="id"/></unique_index>
         <unique_index><attribute label="name"/></unique_index>
     </object>
-    <object label="COMPARTMENT_ALIAS" >
-	<scalar label="COMPARTMENT" type="CHAR(32)" mandatory="1" />
-	<scalar label="alias" type="CHAR(255)" mandatory="1" />
-	<scalar label="type" type="CHAR(32)" mandatory="1" />
-	<unique_index>
-		 <attribute label="alias" />
-		 <attribute label="type" />
-		 <attribute label="COMPARTMENT" />
-	</unique_index>
+    <object label="USERS">
+		<scalar label="email" type="CHAR(255)" mandatory="1" />
+		<scalar label="login" type="CHAR(64)" mandatory="1" />
+		<scalar label="password" type="CHAR(255)" />
+		<scalar label="firstname" type="CHAR(64)" />
+		<scalar label="lastname" type="CHAR(64)" />
+		<unique_index><attribute label="login" /></unique_index>
+		<unique_index><attribute label="email" /></unique_index>
+		<index><attribute label="lastname" /></index>
+		<index><attribute label="firstname" /></index>
 	</object>
 </project>

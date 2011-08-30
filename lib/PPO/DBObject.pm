@@ -295,7 +295,6 @@ database table(s).
 
 sub set_attributes {
   my ($self, $values) = @_;
-
   unless (ref $self) {
     Confess("Not called as an object method.");
   }
@@ -308,7 +307,6 @@ sub set_attributes {
   my $data = {};
   my @arrays = ();
   foreach my $key (keys(%$values)) {
-
     # check if attribute exists 
     unless ($self->_knows_attribute($key)) {
       Confess("Object class ".ref($self)." has no attribute '$key'.");
@@ -370,7 +368,7 @@ sub set_attributes {
     my $id = $self->_master->backend->insert_row( $self->_table, $data );
     
     unless ($id) {
-      confess "Creating new object failed.";
+      die "Creating new object failed.";
     }
     
     # update the perl object
@@ -482,49 +480,38 @@ sub get_objects {
     }
   }
   
-  # prepare SQL where clause 
-  my $conditions = "";
-  if (scalar(keys(%$values)) > 0) {
-
-    my @filter_by = ();
-    foreach my $key (keys(%$values)) {
-
-      # check if attribute exists
-      unless ($key eq '_id' or $self->_knows_attribute($key)) {
-	Confess("Object class ".ref($self)." has no attribute '$key'.");
-      }
-
-      if ($key eq '_id' or $self->attributes->{$key}->[0] == DB_SCALAR) {
-	if (ref($values->{$key}) eq 'ARRAY') {
-	  push(@filter_by, $key . " " . $values->{$key}->[1] . " " . $self->_master->backend->quote($values->{$key}->[0]));
-	} else {
-	  push(@filter_by, $key . "=" . $self->_master->backend->quote($values->{$key}));
+	# prepare SQL where clause 
+	my $conditions = "";
+	if (scalar(keys(%$values)) > 0) {
+	    my @filter_by = ();
+	    foreach my $key (keys(%$values)) {
+			# check if attribute exists
+			unless ($key eq '_id' or $self->_knows_attribute($key)) {
+				Confess("Object class ".ref($self)." has no attribute '$key'.");
+			}
+			if ($key eq '_id' or $self->attributes->{$key}->[0] == DB_SCALAR) {
+				if (ref($values->{$key}) eq 'ARRAY') {
+					push(@filter_by, $key . " " . $values->{$key}->[1] . " " . $self->_master->backend->quote($values->{$key}->[0]));
+				} elsif ($values->{$key} =~ m/%/) {
+					push(@filter_by, $key . " like " . $self->_master->backend->quote($values->{$key}));
+				} else {
+					push(@filter_by, $key . "=" . $self->_master->backend->quote($values->{$key}));
+				}
+			} elsif ($self->attributes->{$key}->[0] == DB_OBJECT) {
+				if (ref $values->{$key}) {
+		  			my ($db_id, $obj_id) = $self->_master->translate_ref_to_ids($values->{$key});
+		  			push(@filter_by, '_'.$key."_db=" . $self->_master->backend->quote($db_id));
+					push(@filter_by, $key."=" . $self->_master->backend->quote($obj_id));
+		  		} else {
+					push(@filter_by, '_'.$key."_db IS NULL");
+					push(@filter_by, $key." IS NULL");
+				}
+			} else {
+				Confess("Attribute '$key' is neither a scalar nor an object.");
+			}
+		}
+	    $conditions = join(" AND ", @filter_by);
 	}
-      }
-      elsif ($self->attributes->{$key}->[0] == DB_OBJECT) {
-	
-	if (ref $values->{$key}) {
-	  
-	  my ($db_id, $obj_id) = $self->_master->translate_ref_to_ids($values->{$key});
-	  
-	  push(@filter_by, '_'.$key."_db=" . $self->_master->backend->quote($db_id));
-	  push(@filter_by, $key."=" . $self->_master->backend->quote($obj_id));
-	  
-	}
-	else {
-	  
-	  push(@filter_by, '_'.$key."_db IS NULL");
-	  push(@filter_by, $key." IS NULL");
-	  
-	}
-      }
-      else {
-	Confess("Attribute '$key' is neither a scalar nor an object.");
-      }
-    }
-
-    $conditions = join(" AND ", @filter_by);
-  }
  
   my $objects = [];
 
