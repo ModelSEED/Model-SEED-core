@@ -35,34 +35,26 @@ if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
     $extension = ".bat";
 }
 # Setting paths to absolute, otherwise a path like ../../foo/bar would cause massive issues...
-$args->{"-p"} = abs_path($args->{"-p"});
-$args->{"-d"} = abs_path($args->{"-d"});
+$args->{"-p"} = abs_path($args->{"-p"}).'/';
+$args->{"-d"} = abs_path($args->{"-d"}).'/';
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
 $args->{"-dbhost"} = abs_path($args->{"-dbhost"}) if(defined($args->{"-dbhost"}));
 $args->{"-dbusr"} = abs_path($args->{"-dbusr"}) if(defined($args->{"-dbusr"}));
-$args->{"-dbpwd"} = abs_path($args->{"-dbpwd"}) if(defined($args->{"-dbpwd"}));
+$args->{"-dbpwd"} = abs_path($args->{"-dbpwd"}).'/' if(defined($args->{"-dbpwd"}));
 
-#Creating environment shell script
-{
-    my $data = &loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
-    for (my $i=0; $i < @{$data}; $i++) {
-    if ($data->[$i] =~ m/database\sroot\sdirectory/) {
-        $data->[$i] = "database root directory|".$args->{"-d"}->[0];
-    } elsif ($data->[$i] =~ m/software\sroot\sdirectory/) {
-            $data->[$i] = "software root directory|".$args->{"-p"}->[0];
-        }
-    }
-    &printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
-}
+
+warn $args->{"-p"}."\n";
+
 #Creating FIGMODELConfig.txt
 {
-    my $data = &loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
+    my $data = loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
     for (my $i=0; $i < @{$data}; $i++) {
-        if ($data->[$i] =~ m/database\sroot\sdirectory/) {
-            $data->[$i] = "database root directory|".$args->{"-d"}->[0];
-        } elsif ($data->[$i] =~ m/software\sroot\sdirectory/) {
-            $data->[$i] = "software root directory|".$args->{"-p"}->[0];
+        my ($key, @values) = split(/\|/, $data->[$i]); 
+        if ($key =~ m/database\sroot\sdirectory/) {
+            $data->[$i] = "database root directory|".$args->{"-d"};
+        } elsif ($key =~ m/software\sroot\sdirectory/) {
+            $data->[$i] = "software root directory|".$args->{"-p"};
         }
     }
 &printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
@@ -72,46 +64,50 @@ my ($modeldriver,$queuedriver);
 $modeldriver = ["source ".$args->{"-p"}."config/envConfig".$extension];
 $queuedriver = ["source ".$args->{"-p"}."config/envConfig".$extension];
 if (defined($args->{"-cplex"})) {
-    push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"}->[0]);
-    push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"}->[0]);
+    push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
+    push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
 }
-my $configFiles = "export FIGMODEL_CONFIG=".$args->{"-p"}->[0]."config/FIGMODELConfig.txt";
+my $configFiles = "export FIGMODEL_CONFIG=".$args->{"-p"}."config/FIGMODELConfig.txt";
 if (defined($args->{"-figconfig"})) {
     $configFiles .= ":".join(":",@{$args->{"-figconfig"}});
 }
 push(@{$queuedriver},$configFiles);
 push(@{$modeldriver},$configFiles);
-push(@{$queuedriver},"export ARGONNEDB=".$args->{"-d"}->[0]."ReactionDB/");
-push(@{$modeldriver},"export ARGONNEDB=".$args->{"-d"}->[0]."ReactionDB/");
+push(@{$queuedriver},"export ARGONNEDB=".$args->{"-d"}."ReactionDB/");
+push(@{$modeldriver},"export ARGONNEDB=".$args->{"-d"}."ReactionDB/");
 if (defined($args->{"-usr"}) && defined($args->{"-pwd"})) {
     push(@{$queuedriver},"export FIGMODEL_USER=".$args->{"-usr"});
     push(@{$modeldriver},"export FIGMODEL_PASSWORD=".$args->{"-pwd"});
 }
-push(@{$queuedriver},"perl ".$args->{"-p"}->[1]."lib/ModelSEED/FIGMODELscheduler.pl \$*");
-push(@{$modeldriver},"perl ".$args->{"-p"}->[0]."lib/ModelSEED/ModelDriver.pl \$*");
+push(@{$queuedriver},"perl ".$args->{"-p"}."lib/ModelSEED/FIGMODELscheduler.pl \$*");
+push(@{$modeldriver},"perl ".$args->{"-p"}."lib/ModelSEED/ModelDriver.pl \$*");
 &printFile($args->{"-p"}."bin/ModelDriver".$extension,$modeldriver);
 &printFile($args->{"-p"}."bin/QueueDriver".$extension,$queuedriver);
+
+$args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
+$args->{"-dbuser"} = "" unless(defined($args->{"-dbuser"}));
+$args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
 
 #Configuring database
 system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
     ."ModelDB?"
-    .$args->{"-dbhost"}->[0]."?"
-    .$args->{"-dbusr"}->[0]."?"
-    .$args->{"-dbpwd"}->[0]."???"
+    .$args->{"-dbhost"}."?"
+    .$args->{"-dbusr"}."?"
+    .$args->{"-dbpwd"}."???"
     .$args->{"-p"}."config/FIGMODELConfig.txt"
 );
 system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
     ."SchedulerDB?"
-    .$args->{"-dbhost"}->[0]."?"
-    .$args->{"-dbusr"}->[0]."?"
-    .$args->{"-dbpwd"}->[0]."???"
+    .$args->{"-dbhost"}."?"
+    .$args->{"-dbusr"}."?"
+    .$args->{"-dbpwd"}."???"
     .$args->{"-p"}."config/FIGMODELConfig.txt"
 );
 system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
     ."UserDB?"
-    .$args->{"-dbhost"}->[0]."?"
-    .$args->{"-dbusr"}->[0]."?"
-    .$args->{"-dbpwd"}->[0]."???"
+    .$args->{"-dbhost"}."?"
+    .$args->{"-dbusr"}."?"
+    .$args->{"-dbpwd"}."???"
     .$args->{"-p"}."config/FIGMODELConfig.txt"
 );
 
@@ -127,9 +123,9 @@ sub printFile {
 }
 
 sub loadFile {
-    my ($self,$Filename) = @_;
+    my ($Filename) = @_;
     my $DataArrayRef = [];
-    if (open (INPUT, "<$Filename")) {
+    if (open (INPUT, "<", $Filename)) {
         while (my $Line = <INPUT>) {
             chomp($Line);
             push(@{$DataArrayRef},$Line);
@@ -138,6 +134,7 @@ sub loadFile {
     }
     return $DataArrayRef;
 }
+
 
 $|=1; # ??
 
