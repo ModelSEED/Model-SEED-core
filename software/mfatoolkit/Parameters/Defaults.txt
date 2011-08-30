@@ -1,3 +1,11 @@
+database spec file|../../Input/Singlefile.txt|
+input directory|../Input/|Directory where input files are stored|MFA files
+scripts directory|../../../bin/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
+output folder|Test/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+compartments file|Compartments.dat|This indicates where the file containing the cellular compartment data is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
+filename for file reference data|FileReferences.dat|This is the name of the file which contains the data used to parse input files into the internal database.|Filenames required for proper program start up
+atom types filename|AtomTypes.dat|This indicates where the file containing the data on the various types of atoms is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
+FIGMODEL config file|../../../config/FIGMODELConfig.txt|0|Misc data
 source database|NONE|Filename of source database
 print all output to stdout|0|This binary parameter indicates when output should be redirected to the standard output|Database information
 MFA output|MFAOutput/|Subdirectory where output from FBA studies is printed
