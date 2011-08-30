@@ -141,7 +141,7 @@ sub FIGMODELWARNING {
 
 sub LoadFIGMODELConfig {
     my ($self,$file_to_load,$clearOnLoad) = @_;
-    if (open (INPUT, "<$file_to_load")) {
+    open (INPUT, "<", $file_to_load) || die($@);
 		my $DatabaseData;
 		while (my $Line = <INPUT>) {
 			chomp($Line);
@@ -163,9 +163,9 @@ sub LoadFIGMODELConfig {
 			    if ($temparray->[0] =~ m/^%/) {
 					my $keyarray = [split(/;/,$temparray->[$j])];
 					if (defined($clearOnLoad) && $clearOnLoad == 1) {
-						delete $self->{substr($temparray->[0],1)}->{$keyarray->[0]};
+                    delete $self->{substr($temparray->[0],1)};
 					}
-					if (defined($keyarray->[1])) {
+                if (@$keyarray > 1) {
 					    for (my $m=1; $m < @{$keyarray}; $m++) {
 							push(@{$self->{substr($temparray->[0],1)}->{$keyarray->[0]}},$keyarray->[$m]);
 					    }
@@ -173,8 +173,10 @@ sub LoadFIGMODELConfig {
 					    $self->{substr($temparray->[0],1)}->{$keyarray->[0]} = $j;
 					}
 			    } else {
-					$self->{$temparray->[0]}->[$j-1]= $temparray->[$j];
+                if(defined($clearOnLoad) && $clearOnLoad == 1) {
+                    delete $self->{$temparray->[0]}
 			    }
+                $self->{$temparray->[0]}->[$j-1]= $temparray->[$j];
 			}
 	    }
     }
