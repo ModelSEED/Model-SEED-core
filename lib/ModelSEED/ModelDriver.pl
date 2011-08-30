@@ -121,7 +121,11 @@ sub usage {
 	for (my $i=0; $i < @{$array}; $i++) {
 		$output .= "?".$array->[$i]->[0];
 		if ($array->[$i]->[1] == 0) {
-			$output .= "(".$array->[$i]->[2].")";
+			if (!defined($array->[$i]->[2])) {
+				$output .= "(undef)";
+			} else {
+				$output .= "(".$array->[$i]->[2].")";
+			}
 		}
 	}
 	$output .= "\n";
@@ -632,43 +636,6 @@ sub simulateintervalphenotypes {
 	$tbl->save();
 }
 
-sub simulatestrains {
-    my($self,@Data) = @_;
-
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 2) {
-        print "Syntax for this command: simulatestrains?(Model name)?(Strain)\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    my $StrainList;
-    my $MediaHash;
-    my $IntervalTable = $self->figmodel()->database()->GetDBTable("INTERVAL TABLE");
-    for (my $i=0; $i < $IntervalTable->size(); $i++) {
-        push(@{$StrainList},$IntervalTable->get_row($i)->{"ID"}->[0]);
-        for (my $j=0; $j < @{$IntervalTable->get_row($i)->{"GROWTH"}}; $j++) {
-            my @Temp = split(/:/,$IntervalTable->get_row($i)->{"GROWTH"}->[$j]);
-            if (-e $self->figmodel()->config("Media directory")->[0].$Temp[0].".txt") {
-                $MediaHash->{$Temp[0]} = 1;
-            }
-        }
-    }
-	my $StrainTable = $self->figmodel()->database()->GetDBTable("STRAIN TABLE");
-    for (my $i=0; $i < $StrainTable->size(); $i++) {
-        push(@{$StrainList},$StrainTable->get_row($i)->{"ID"}->[0]);
-        for (my $j=0; $j < @{$StrainTable->get_row($i)->{"GROWTH"}}; $j++) {
-            my @Temp = split(/:/,$StrainTable->get_row($i)->{"GROWTH"}->[$j]);
-            if (-e $self->figmodel()->config("Media directory")->[0].$Temp[0].".txt") {
-                $MediaHash->{$Temp[0]} = 1;
-            }
-        }
-    }
-    my $MediaList;
-    push(@{$MediaList},keys(%{$MediaHash}));
-	push(@{$MediaList},("Spizizen-No-citrate","Fabret-No-citrate","Complete"));
-    $self->figmodel()->SimulateIntervalKO($StrainList,$Data[1],$MediaList);
-}
-
 sub studyunviablestrain {
 	my($self,@Data) = @_;
 	print "Syntax for this command: studyunviablestrain?(Model name)?(Strain)?(Media)\n\n";
@@ -690,61 +657,6 @@ sub studyunviablestrain {
 		print "Rescue media:".$output->{"RESCUE_MEDIA"}->[0]."\n";
 	}
     return "SUCCESS";
-}
-
-sub comparemodels {
-    my($self,@Data) = @_;
-
-    #Checking the argument to ensure all required parameters are present
-	if (@Data >= 2 && $Data[1] =~ m/LIST-(.+)/) {
-		my $List = FIGMODEL::LoadSingleColumnFile($1,"");
-		my $CombinedResults;
-        foreach my $Pair (@{$List}) {
-            push(@{$CombinedResults->{"COMPARISON"}},$Pair);
-            my ($ModelOne,$ModelTwo) = split(/-/,$Pair);
-            my $ComparisonResults = $self->figmodel()->CompareModels($ModelOne,$ModelTwo);
-            my @KeyList = keys(%{$ComparisonResults});
-            foreach my $Key (@KeyList) {
-                my $Number = shift(@{$ComparisonResults->{$Key}});
-                my $Items = join(",",@{$ComparisonResults->{$Key}});
-                $Key =~ s/$ModelOne/A/g;
-                $Key =~ s/$ModelTwo/B/g;
-                push(@{$CombinedResults->{$Key}},$Number);
-                push(@{$CombinedResults->{"Items ".$Key}},$Items);
-            }
-		}
-		FIGMODEL::SaveHashToHorizontalDataFile($self->figmodel()->{"database message file directory"}->[0]."ModelComparison.txt",";",$CombinedResults);
-        my $EquivalentReactionArray;
-        my @ReactionArray = keys(%{$self->figmodel()->{"EquivalentReactions"}});
-        my $ReactionTable = $self->figmodel()->GetDBTable("REACTIONS");
-        foreach my $Reaction (@ReactionArray) {
-            my @EquivalentReactions = keys(%{$self->figmodel()->{"EquivalentReactions"}->{$Reaction}});
-            foreach my $EquivReaction (@EquivalentReactions) {
-                my $LoadedReaction = $self->figmodel()->LoadObject($Reaction);
-                my $LoadedEquivReaction = $self->figmodel()->LoadObject($EquivReaction);
-                if (!defined($self->figmodel()->{"ModelReactions"}->{$Reaction}) && !defined($self->figmodel()->{"ForeignReactions"}->{$EquivReaction})) {
-                    push(@{$EquivalentReactionArray},$Reaction.";".$EquivReaction.";".$LoadedReaction->{"DEFINITION"}->[0].";".$LoadedEquivReaction->{"DEFINITION"}->[0].";".$self->figmodel()->{"EquivalentReactions"}->{$Reaction}->{$EquivReaction}->{"Count"}.";".$self->figmodel()->{"EquivalentReactions"}->{$Reaction}->{$EquivReaction}->{"Source"});
-                }
-            }
-        }
-        FIGMODEL::PrintArrayToFile($self->figmodel()->{"database message file directory"}->[0]."EquivalentReactions.txt",$EquivalentReactionArray);
-        $self->figmodel()->{"Global A exclusive roles"}->save();
-		$self->figmodel()->{"Global A exclusive reactions"}->save();
-		$self->figmodel()->{"Global A reversible"}->save();
-		$self->figmodel()->{"Global B exclusive roles"}->save();
-		$self->figmodel()->{"Global B exclusive reactions"}->save();
-		$self->figmodel()->{"Global B reversible"}->save();
-		$self->figmodel()->{"Global directionality conflicts"}->save();
-    } elsif (@Data >= 3) {
-		my $ComparisonResults = $self->figmodel()->CompareModels($Data[1],$Data[2]);
-		FIGMODEL::SaveHashToHorizontalDataFile($self->figmodel()->{"database message file directory"}->[0].$Data[1]."-".$Data[2].".txt",";",$ComparisonResults);
-	} else {
-		print "Syntax for this command: comparemodels?(Model one)?(Model two) or comparemodels?LIST-(name of file with ; delimited pairs).\n\n";
-        exit(1);
-	}
-
-    #Printing run success line
-    print "Model comparison successful.\n\n";
 }
 
 sub comparemodelreactions {
@@ -858,48 +770,6 @@ sub buildbiomass {
     foreach my $Model (@{$ModelList}) {
         print "Now processing model: ".$Model->id()."\n";
 	$Model->BuildSpecificBiomassReaction();
-    }
-}
-
-sub predictessentiality {
-    my($self,@Data) = @_;
-
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 2) {
-        print "Syntax for this command: predictessentiality?(Model name)?(Media).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    #Handling default media
-    if (!defined($Data[2])) {
-        $Data[2] = "Complete";
-    }
-
-    #Model list
-    my $ModelList;
-    my $Success = "SUCCESS:";
-    my $Fail = "FAIL:";
-    if ($Data[1] eq "ALL") {
-        my $ModelTable = $self->figmodel()->GetDBTable('MODELS');
-        for (my $i=0; $i < $ModelTable->size(); $i++) {
-            push(@{$ModelList},$ModelTable->get_row($i)->{id}->[0]);
-        }
-    } else {
-        push(@{$ModelList},split(/[;,]/,$Data[1]));
-    }
-
-    #Processing model list
-    foreach my $Model (@{$ModelList}) {
-        print "Now processing model: ".$Model."\n";
-        my $modelObject = $self->figmodel()->get_model($Model);
-        my $result = $self->figmodel()->RunFBASimulation($Model,"SINGLEKO",undef,undef,[$Model],[$Data[2]]);
-        #Checking that the table is defined and the output file exists
-        if (!defined($result)) {
-            $Fail .= $Model.";";
-        } elsif (defined($result->get_row(0)->{"ESSENTIALGENES"})) {
-            $self->figmodel()->database()->print_array_to_file($modelObject->directory()."EssentialGenes-".$Model."-".$Data[2].".tbl",[join("\n",@{$result->get_row(0)->{"ESSENTIALGENES"}})]);
-            $Success .= $Model.";";
-        }
     }
 }
 
@@ -1449,22 +1319,6 @@ sub manualgapgen {
 	return "SUCCESS";
 }
 
-sub optimizedeletions {
-    my($self,@Data) = @_;
-
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 5) {
-        print "Syntax for this command: optimizedeletions?(Model ID)?(Media)?(Min deletions)?(Max deletions).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    (my $Directory,my $ModelName) = $self->figmodel()->GetDirectoryForModel($Data[1]);
-
-    my $UniqueFilename = $self->figmodel()->filename();
-
-    system($self->figmodel()->{"MFAToolkit executable"}->[0].' parameterfile Parameters/DeletionOptimization.txt resetparameter "Minimum number of deletions" '.$Data[3].' resetparameter "Maximum number of deletions" '.$Data[4].' resetparameter "user bounds filename" "Media/'.$Data[2].'.txt" resetparameter output_folder "'.$UniqueFilename.'/" LoadCentralSystem "'.$Directory.$ModelName.'.txt" > '.$self->figmodel()->{"Reaction database directory"}->[0]."log/".$UniqueFilename.'.log');
-}
-
 sub rungapgeneration {
     my($self,@Data) = @_;
     #Checking the argument to ensure all required parameters are present
@@ -1484,19 +1338,6 @@ sub rungapgeneration {
     	return "SUCCESS";
     }
     return "FAIL";
-}
-
-sub gathermodelstats {
-    my($self,@Data) = @_;
-
-    if (@Data < 2) {
-        my $ModelTable = $self->figmodel()->GetDBTable("MODEL LIST");
-        for (my $i=0; $i < $ModelTable->size(); $i++) {
-            $self->figmodel()->get_model($ModelTable->get_row($i)->{"MODEL ID"}->[0])->update_model_stats();
-        }
-    } else {
-		$self->figmodel()->get_model($Data[1])->update_model_stats();
-    }
 }
 
 sub rundeletions {
@@ -2391,32 +2232,6 @@ sub addstoichcorrection {
     return "SUCCESS";
 }
 
-sub printreactionroles {
-    my($self,@Data) = @_;
-
-    my $Reactions = $self->figmodel()->GetDBTable("REACTIONS");
-
-    my $Table = ModelSEED::FIGMODEL::FIGMODELTable->new(["REACTION","EQUATION","ROLES","MODEL ROLES"],$self->outputdirectory()."ReactionRoles.txt",undef,"\t","|",undef);
-    for (my $i=0; $i < $Reactions->size(); $i++) {
-        my $Reaction = $Reactions->get_row($i)->{"DATABASE"}->[0];
-        my $NewRow = {"REACTION" => [$Reaction]};
-        my $Object = $self->figmodel()->LoadObject($Reaction);
-        if ($Object ne "0" && defined($Object->{"DEFINITION"}->[0])) {
-            $NewRow->{"EQUATION"}->[0] = $Object->{"DEFINITION"}->[0];
-        }
-        my $Data = $self->figmodel()->roles_of_reaction($Reaction);
-        if (defined($Data)) {
-           $NewRow->{"ROLES"} = $Data;
-        }
-        my @ModelRoles = $self->figmodel()->GetDBTable("ROLE MAPPING TABLE")->get_rows_by_key($Reaction,"REACTION");
-        if (@ModelRoles > 0) {
-            push(@{$NewRow->{"MODEL ROLES"}},@ModelRoles);
-        }
-        $Table->add_row($NewRow);
-    }
-    $Table->save();
-}
-
 sub rscript {
     my($self,@Data) = @_;
 
@@ -2503,15 +2318,6 @@ sub rscript {
     return "SUCCESS";
 }
 
-sub movemodels {
-    my($self,@Data) = @_;
-
-    my @Filenames = glob($self->figmodel()->{"organism directory"}->[0]."*");
-    for (my $i=0; $i < @Filenames; $i++) {
-        system("rm -rf ".$Filenames[$i]."/Model");
-    }
-}
-
 sub createdblp {
     my($self,@Data) = @_;
     if (defined($Data[1])) {
@@ -2546,18 +2352,6 @@ sub runmodelcheck {
     } else {
         $self->figmodel()->RunModelChecks($Data[1]);
     }
-}
-
-sub runmfalite {
-    my($self,@Data) = @_;
-
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 3) {
-        print "Syntax for this command: runmfalite?(Job file)?(Output file).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    system($self->figmodel()->{"mfalite executable"}->[0]." ".$self->figmodel()->{"Reaction database directory"}->[0]."masterfiles/MediaTable.txt ".$Data[1]." ".$Data[2]);
 }
 
 sub test {
@@ -2783,45 +2577,6 @@ sub CPLEXpatternsearch {
     system("/home/devoid/kmers/bin/cplexpatternsearch.sh ".join(" ",@Data));
 }
 
-sub getgapfillcandidates {
-    my($self,@Data) = @_;
-
-    if (@Data < 2) {
-        print "Syntax for this command: getgapfillcandidates?(model).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-
-    #Model list
-    my $ModelList;
-    my $Success = "SUCCESS:";
-    my $Fail = "FAIL:";
-    if ($Data[1] eq "ALL") {
-        my $ModelTable = $self->figmodel()->GetDBTable('MODEL LIST');
-        for (my $i=0; $i < $ModelTable->size(); $i++) {
-            push(@{$ModelList},$ModelTable->get_row($i)->{"MODEL ID"}->[0]);
-        }
-    } else {
-        push(@{$ModelList},split(/;/,$Data[1]));
-    }
-
-    #Processing model list
-    foreach my $Model (@{$ModelList}) {
-        my $result = $self->figmodel()->find_genes_for_gapfill_reactions([$Model]);
-        #Checking that the table is defined and the output file exists
-        if (!defined($result)) {
-            $Fail .= $Model.";";
-        } else {
-        	my $mdlObj = $self->figmodel()->get_model($Model);
-            $result->save($mdlObj->directory()."GapFillCandidates.txt");
-            $Success .= $Model.";";
-        }
-    }
-
-    #Printing and returning run results
-    print $Success.$Fail."\n";
-    return $Success.$Fail;
-}
-
 sub findsimilargenomes {
     my($self,@Data) = @_;
 
@@ -3009,57 +2764,6 @@ sub buildskeletonfiles {
         return "ARGUMENT SYNTAX FAIL";
     }
 	$self->figmodel()->PrepSkeletonDirectory($Data[1],$Data[2]);
-	return "SUCCESS";
-}
-
-sub collectmodelstats {
-	my($self,@Data) = @_;
-
-	my $ResultTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["MODEL","TOTAL GENES","MODEL GENES","ESSENTIAL GENES","TOTAL REACTIONS","GAP FILLED REACTIONS","DEAD REACTIONS","ACTIVE REACTIONS","ESSENTIAL REACTIONS","TOTAL COMPOUNDS","DEAD COMPOUNDS","TRANSPORTABLE COMPOUNDS","ESSENTIAL NUTRIENTS"],$self->figmodel()->config("Reaction database directory")->[0]."MiscDataTables/ModelFBAStats.tbl",["MODEL"],";","|",undef);
-    for (my $i=0; $i < $self->figmodel()->number_of_models(); $i++) {
-		my $model = $self->figmodel()->get_model($i);
-		if (defined($model->stats())) {
-			my $NewRow = {"MODEL"=>[$model->id()],"MODEL GENES"=>[$model->stats()->{"Genes with reactions"}->[0]],"ESSENTIAL NUTRIENTS"=>[0],"TRANSPORTABLE COMPOUNDS"=>[0],"DEAD COMPOUNDS"=>[0],"ESSENTIAL REACTIONS"=>[0],"ACTIVE REACTIONS"=>[0],"DEAD REACTIONS"=>[0],"ESSENTIAL GENES"=>[0],"TOTAL GENES"=>[$model->stats()->{"Total genes"}->[0]],"TOTAL REACTIONS"=>[$model->stats()->{"Number of reactions"}->[0]],"GAP FILLED REACTIONS"=>[$model->stats()->{"Gap filling reactions"}->[0]],"TOTAL COMPOUNDS"=>[$model->stats()->{"Metabolites"}->[0]]};
-			my $essentialgenes = $model->get_essential_genes("Complete");
-			if (defined($essentialgenes)) {
-				$NewRow->{"ESSENTIAL GENES"}->[0] = @{$essentialgenes};
-			}
-			my $reactionclasses = $model->reaction_class_table();
-			if (defined($reactionclasses)) {
-				for (my $i=0; $i < $reactionclasses->size();$i++) {
-					my $row = $reactionclasses->get_row($i);
-					if ($row->{MEDIA}->[0] =~ m/Complete/) {
-						if ($row->{CLASS}->[0] eq "Dead" || $row->{CLASS}->[0] eq "Blocked") {
-							$NewRow->{"DEAD REACTIONS"}->[0]++;
-						} elsif ($row->{CLASS}->[0] =~ m/variable/i) {
-							$NewRow->{"ACTIVE REACTIONS"}->[0]++;
-						} elsif ($row->{CLASS}->[0] eq "Positive" || $row->{CLASS}->[0] eq "Negative") {
-							$NewRow->{"ESSENTIAL REACTIONS"}->[0]++;
-						}
-					}
-				}
-			}
-			my $compoundclasses = $model->compound_class_table();
-			if (defined($compoundclasses)) {
-				for (my $i=0; $i < $compoundclasses->size();$i++) {
-					my $row = $compoundclasses->get_row($i);
-					if ($row->{MEDIA}->[0] =~ m/Complete/) {
-						if ($row->{COMPOUND}->[0] =~ m/e/) {
-							$NewRow->{"TRANSPORTABLE COMPOUNDS"}->[0]++;
-							if ($row->{CLASS}->[0] eq "Positive" || $row->{CLASS}->[0] eq "Negative") {
-								$NewRow->{"ESSENTIAL NUTRIENTS"}->[0]++;
-							}
-						} elsif ($row->{CLASS}->[0] eq "Dead") {
-							$NewRow->{"DEAD COMPOUNDS"}->[0]++;
-						}
-					}
-				}
-			}
-			$ResultTable->add_row($NewRow);
-		}
-	}
-	$ResultTable->save();
-
 	return "SUCCESS";
 }
 
@@ -4638,5 +4342,65 @@ sub inspectmodelstate {
 	    	});
 		}
 	}
+    return "SUCCESS";
+}
+#Configuration functions
+sub configureserver {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["database",1],
+		["hostname",1],
+		["username",1],
+		["password",0,""],
+		["socket",0,"/var/lib/mysql/mysql.sock"],
+		["port",0,3306],
+		["configfile",0,$self->figmodel()->config("software root directory")->[0]."config/FIGMODELConfig.txt"]
+	],[@Data]);
+	my $data = $self->figmodel()->database()->load_single_column_file($args->{configfile},"");
+	for (my $i=0; $i < @{$data}; $i++) {
+		if ($data->[$i] =~ m/^%PPO_tbl_(\w+)\|.*name;(\w+)\|.*table;(\w+)\|/) {
+			if ($2 eq $args->{database}) {
+				$data->[$i] = "%PPO_tbl_".$1."|"
+					."name;".$args->{database}."|"
+					."table;".$2."|"
+					."host;".$args->{hostname}."|"
+					."user;".$args->{username}."|"
+					."password;".$args->{password}."|"
+					."port;".$args->{port}."|"
+					."socket;".$args->{"socket"}."|"
+					."status;1|"
+					."type;PPO";
+			}
+		}
+	}
+	$self->figmodel()->database()->print_array_to_file($args->{configfile},$data);
+    return "SUCCESS";
+}
+
+#Adds a new user to the ModelSEED user table
+sub adduser {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["login",1],
+		["password",1],
+		["first name",1],
+		["last name",1],
+		["email",1]
+	],[@Data]);
+	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot use this function to add user to any database except ModelDB");
+	}
+	my $usr = $self->figmodel()->database()->get_object("user",{login => $args->{login}});
+	if (defined($usr)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("User with login ".$args->{login}." already exists!");	
+	}
+	$usr = $self->figmodel()->database()->create_object("user",{
+		login => $args->{login},
+		password => "NONE",
+		firstname => $args->{"first name"},
+		lastname => $args->{"last name"},
+		email => $args->{email}
+	});
+	$usr->set_password($args->{password});
     return "SUCCESS";
 }

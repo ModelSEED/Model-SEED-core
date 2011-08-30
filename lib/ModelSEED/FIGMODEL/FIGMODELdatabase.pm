@@ -203,7 +203,7 @@ Description:
 =cut
 sub get_config {
     my ($self, $type) = @_;
-    my $type = $self->config("PPO_tbl_".$type);
+    $type = $self->config("PPO_tbl_".$type);
     return $type || undef;
 }
 
@@ -462,69 +462,6 @@ sub is_type {
 	return 0;
 }
 
-=head3 db_link
-Definition:
-	{string:from type IDs => [string]:list of to type IDs} = FIGMODELdatabase->db_link(string:link from type,string:link to type,{string:type=>[string]:type list]});
-Description:
-	Returns a hash with the "from type" as keys and arrays of "to types" as values.
-=cut
-sub db_link {
-	my ($self,$fromType,$toType,$idlist) = @_;
-	my $result;
-	foreach my $id (@{$idlist}) {
-		if ($fromType eq "interval") {
-			if ($toType eq "feature") {
-				my $IntervalTable = $self->GetDBTable("INTERVAL TABLE");
-	            if (defined($IntervalTable)) {
-	            	my $Row = $IntervalTable->get_row_by_key($id,"ID");
-	           		if (defined($Row) && defined($Row->{"START"}->[0]) && defined($Row->{"END"}->[0])) {
-	                	my $GeneList = $self->figmodel()->genes_of_interval($Row->{"START"}->[0],$Row->{"END"}->[0],$Row->{GENOME}->[0]);
-	                	for(my $i=0; $i < @{$GeneList}; $i++) {
-	                		$GeneList->[$i] = "fig|".$Row->{GENOME}->[0].".".$GeneList->[$i];
-	                	}
-	                	if (defined($GeneList)) {
-	                		$result->{$id} = $GeneList;
-	                  	}
-	                }
-	            }
-			}
-		} elsif ($fromType eq "strain") {
-			if ($toType eq "interval") {
-				my $StrainTable = $self->GetDBTable("STRAIN TABLE");
-              	if (defined($StrainTable)) {
-                	my $Row = $StrainTable->get_row_by_key($id,"ID");
-                	if (defined($Row) && defined($Row->{"INTERVALS"})) {
-                  		$result->{$id} = $Row->{"INTERVALS"};
-                	}
-              	}	
-			} elsif ($toType eq "feature") {
-				my $temp = $self->db_link("strain","interval",[$id]);
-				if (defined($temp->{$id})) {
-					my $newArray;
-					for (my $i=0; $i < @{$temp->{$id}}; $i++) {
-						my $temptwo = $self->db_link("interval","feature",[$temp->{$id}->[$i]]);
-						if (defined($temptwo->{$temp->{$id}->[$i]})) {
-							push(@{$newArray},@{$temptwo->{$temp->{$id}->[$i]}});
-						}
-					}
-				}
-			}
-		} else {
-			my $tbl = $self->GetLinkTable(uc($toType),uc($fromType));
-			if (!defined($tbl)) {
-				$tbl = $self->GetLinkTable(uc($fromType),uc($toType));
-			}
-			if (defined($tbl)) {
-				my @rows = $tbl->get_rows_by_key($id,uc($fromType));
-				for (my $i=0; $i < @rows; $i++) {
-					push(@{$result->{$id}},$rows[$i]->{uc($toType)}->[0]);
-				}
-			}
-		}
-	}
-	return $result;
-}
-
 =head3 set_cache
 Definition:
 	FIGMODELdatabase->set_cache(string::key,ref::data);
@@ -677,37 +614,6 @@ sub genericUnlock {
 	return $self->figmodel()->success();
 }
 
-=head3 LockDBTable
-Definition:
-	FIGMODELTable = FIGMODELdatabase->LockDBTable(string::table name);
-Description:
-	This function checks out a table from the database for editing. This table can then no longer be checked out for editing by any other programing running.
-=cut
-sub LockDBTable {
-	my($self,$TableName) = @_;
-	#Locking to the tablename
-	$self->genericLock($TableName);
-	#Clearing the cached table data
-	$self->figmodel()->database()->ClearDBTable($TableName);
-	#Loading and returning the tale data from file
-	my $currentUser = $self->figmodel()->user();
-	my $tbl = $self->GetDBTable($TableName);
-	return $tbl;
-}
-
-=head3 UnlockDBTable
-Definition:
-	status(1/0) = FIGMODELdatabase->UnlockDBTable(string::table name);
-Description:
-	This function checks a table into the database freeing the table for editing by other programs.
-=cut
-sub UnlockDBTable {
-	my($self,$TableName) = @_;
-	#Unlocking the file
-	$self->genericUnlock($TableName);
-	return $self->figmodel()->success();
-}
-
 =head3 ManageFileLocking
 Definition:
 	FIGMODELdatabase->ManageFileLocking($FileHandle,$Operation,$UseFcntl);
@@ -783,147 +689,6 @@ sub update_row {
 	return $self->figmodel()->success();
 }
 
-=head3 get_row_by_key
-Definition:
-	{string=>[string]}::table row = FIGMODELdatabase->get_row_by_key(string::table,string::value,string::key);
-Description:
-=cut
-sub get_row_by_key {
-	my ($self,$tablename,$value,$key) = @_;
-
-	#Checking that a table and query have been provided
-	if (!defined($tablename) || !defined($value) || !defined($key)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:get_row_by_key:Must provide table, key, and value.");
-		return undef;
-	}
-
-	#Getting the database table:may be pulled from a flat file or from SQL
-	my $table = $self->GetDBTable($tablename);
-	if (!defined($table)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:get_row_by_key:".$tablename." not found in database.");
-		return undef;
-	}
-
-	#Getting first table row matching the query
-	return $table->get_row_by_key($value,$key);
-}
-
-=head3 get_object_from_db
-Definition:
-	{string=>[string]}::table row = FIGMODELdatabase->get_object_from_db(string:type,{string:key=>value});
-Description:
-=cut
-sub get_object_from_db {
-	my ($self,$type,$searchhash) = @_;
-
-	#Checking that a table and query have been provided
-	if (!defined($type) || !defined($searchhash)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:get_object_from_db:Must provide type and search terms.");
-		return undef;
-	}
-	
-	#Getting the database table:may be pulled from a flat file or from SQL
-	my $table = $self->GetDBTable($type);
-	if (!defined($table)) {
-		return undef;
-	}
-	my @searchkeys = keys(%{$searchhash}); 
-	for (my $i=0; $i < @searchkeys; $i++) {
-		$table = $table->get_table_by_key($searchhash->{$searchkeys[$i]},$searchkeys[$i]);
-	}
-	return $table->get_row(0);
-}
-
-=head3 add_object_to_db
-Definition:
-	{string:key=>value}:object = FIGMODELdatabase->add_object_to_db({string:key=>value}:object);
-Description:
-=cut
-sub add_object_to_db {
-	my ($self,$object,$update) = @_;
-
-	#Checking that a table and query have been provided
-	if (!defined($object)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:add_object_to_db:Object must be provided.");
-		return undef;
-	}
-	
-	#Locking the table or making sure it's already locked
-	my $newlock = 0;
-	if (!defined($self->{"LOCKS"}->{$object->{_type}})) {
-		$newlock = 1;
-		$self->LockDBTable($object->{_type});
-	}
-	my $tbl = $self->GetDBTable($object->{_type});
-	
-	#Checking if another object with the same primary key already exists
-	my $existing_object = $self->get_object_from_db($object->{_type},{$object->{_key}=>$object->{$object->{_key}}->[0]});
-	if (defined($existing_object)) {
-		if (defined($update) && $update == 1) {
-			my @objkeys = keys(%{$object});
-			for (my $i=0; $i < @objkeys; $i++) {
-				if ($objkeys[$i] !~ m/^_/) {
-					$existing_object->{$objkeys[$i]} = $object->{$objkeys[$i]};
-				} 
-			}
-		}
-		return $existing_object;
-	}
-	
-	#Adding the object
-	$tbl->add_row($object);
-	
-	#If the lock is new, unlocking the table
-	if ($newlock == 1) {
-		$tbl->save();
-		$self->UnlockDBTable($object->{_type});
-	}
-	return $object;
-}
-
-=head3 add_columns_to_db
-Definition:
-	FIGMODELdatabase->add_columns_to_db({string:new column name=>value:default value});
-Description:
-=cut
-sub add_columns_to_db {
-	my ($self,$type,$columns) = @_;
-	
-	if (!defined($type) || !defined($columns)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:add_columns_to_db:Columnn and object type must be provided.");
-		return $self->fail();
-	}
-	#Locking the table or making sure it's already locked
-	my $newlock = 0;
-	if (!defined($self->{"LOCKS"}->{$type})) {
-		$newlock = 1;
-		$self->LockDBTable($type);
-	}
-	my $tbl = $self->GetDBTable($type);
-	if (!defined($tbl)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:add_columns_to_db:could not load object table of type:".$type);
-		return $self->fail();
-	}
-	my @columnNames = keys(%{$columns});
-	$tbl->add_headings(@columnNames);
-	for (my $j=0; $j < $tbl->size(); $j++) {
-		for (my $i=0; $i < @columnNames; $i++) {
-			if (!defined($tbl->get_row($j)->{$columnNames[$i]})) {
-				$tbl->get_row($j)->{$columnNames[$i]}->[0] = $columns->{$columnNames[$i]};
-			}
-		}
-	}
-	
-	#If the lock is new, unlocking the table
-	if ($newlock == 1) {
-		$tbl->save();
-		$self->UnlockDBTable($type);
-	}
-	return $self->success();
-}
-
-
-
 =head3 save_table
 Definition:
 	FIGMODELdatabase->save_table(FIGMODELTable::table);
@@ -937,9 +702,9 @@ sub save_table {
 	$table->save($filename,$delimiter,$itemdelimiter,$prefix);
 }
 
-=head3 GetDBTable
+=head3 check_user
 Definition:
-	(1/0) = FIGMODELdatabase->GetDBTable([string]::authorized user list,string::user ID);
+	(1/0) = FIGMODELdatabase->check_user([string]::authorized user list,string::user ID);
 Description:
 	Checks to see if the input user is authorized to view an object based on the authorized user list 
 =cut
@@ -953,24 +718,6 @@ sub check_user {
 	}
 	
 	return 0;
-}
-
-sub ClearDBTable {
-	my ($self,$TableName,$Delete) = @_;
-
-	if (defined($Delete) && $Delete eq "DELETE") {
-		delete $self->{"CACHE"}->{$TableName};
-	}
-	$self->{"CACHE"}->{$TableName} = undef;
-}
-
-sub ClearDBModel {
-	my ($self,$ModelName,$Delete) = @_;
-
-	if (defined($Delete) && ($Delete eq "DELETE" || $Delete eq "1")) {
-		delete $self->{"CACHE"}->{"MODEL_".$ModelName};
-	}
-	$self->{"CACHE"}->{"MODEL_".$ModelName} = undef;
 }
 
 =head3 create_table_prototype
@@ -1049,114 +796,6 @@ sub get_table {
 	return $self->{_cache}->{$TableName};
 }
 
-=head3 GetDBTable
-Definition:
-	FIGMODELTable::table = FIGMODELdatabase->GetDBTable(string::table,int::cache entire table);
-Description:
-	Returns a FIGMODELTable object containing the data for the specified table.
-	The second argument is optional, but if this argument is equal to "1" and the specified table is in SQL, the table will not be loaded entirely from SQL.
-=cut
-sub GetDBTable {
-	my ($self,$TableName) = @_;
-
-	#Checking if the table is already loaded
-	if (defined($self->{"CACHE"}->{$TableName})) {
-		return $self->{"CACHE"}->{$TableName};
-	}
-
-	#Loading the table list if it is not already loaded
-	if ($TableName ne "TABLE LIST" && !defined($self->{"CACHE"}->{"TABLE LIST"})) {
-		my $Table = $self->GetDBTable("TABLE LIST");
-	}
-
-	#Declaring all variables used in this function
-	my ($Filename,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
-	#Check that table list has been loaded
-	if ($TableName eq "TABLE LIST") {
-	        my $names = $self->config("table list filename");
-		$Filename = $names->[0];
-		$Delimiter = "\t";
-		$ItemDelimiter = "`";
-		$HeadingLine = 0;
-		$HashColumns->[0] = "NAME";
-	} elsif (!defined($self->{"CACHE"}->{"TABLE LIST"}->{$TableName})) {
-		return undef;
-	} else {
-		$Filename = $self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"FILENAME"}->[0];
-		#Translating variable filenames
-		$_ = $Filename;
-		my @MatchArray = /\{([^\}]+)\}/g;
-		foreach my $Tag (@MatchArray) {
-			if (defined($self->GetProtectVariable($Tag))) {
-				my $Replace = $self->GetProtectVariable($Tag);
-				$Tag = "\{".$Tag."\}";
-				$Filename =~ s/$Tag/$Replace/;
-			} elsif (defined($self->config($Tag))) {
-			        my $names = $self->config($Tag);
-				my $Replace = $names->[0];
-				$Tag = "\{".$Tag."\}";
-				$Filename =~ s/$Tag/$Replace/;
-			}
-		}
-		$Delimiter = $self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"DELIMITER"}->[0];
-		$ItemDelimiter = "";
-		if (defined($self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"ITEM DELIMITER"})) {
-			$ItemDelimiter = $self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"ITEM DELIMITER"}->[0];
-		}
-		$HeadingLine = 0;
-		if (defined($self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"HEADING LINE"})) {
-			$HeadingLine = $self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"HEADING LINE"}->[0];
-		}
-		$HashColumns = $self->{"CACHE"}->{"TABLE LIST"}->{$TableName}->[0]->{"HASH COLUMNS"};
-	}
-
-	$self->{"CACHE"}->{$TableName} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($Filename,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
-	if (!defined($self->{"CACHE"}->{$TableName})) {
-		$self->{"CACHE"}->{$TableName} = $self->create_table($TableName);
-	}
-
-	#Removing private reactions
-	if (lc($self->figmodel()->user()) ne "master") {
-		if ($TableName eq "MODELS") {
-			my $tbl = $self->{"CACHE"}->{$TableName};
-			for (my $i=0; $i < $tbl->size(); $i++) {
-				if ($self->check_user($tbl->get_row($i)->{users},$self->figmodel()->user()) == 0) {
-					my $id = $tbl->get_row($i)->{id}->[0];
-					$tbl->delete_row($i);
-					$i--;
-				}
-			}
-		} elsif ($TableName eq "REACTIONS" || $TableName eq "COMPOUNDS") {
-			my $tbl = $self->{"CACHE"}->{$TableName};
-			my $type = "REACTION";
-			if ($TableName eq "COMPOUNDS") {
-				$type = "COMPOUND";
-			}
-			my $linktbl = $self->GetLinkTable($type,"SOURCE");
-			my $ModelTable = $self->GetDBTable("MODELS");
-			for (my $i=0; $i < $tbl->size(); $i++) {
-				my $id = $tbl->get_row($i)->{"DATABASE"}->[0];
-				my $row = $linktbl->get_row_by_key($id,$type);
-				if (defined($row)) {
-					my $authorized = 0;
-					for (my $j=0; $j < @{$row->{"SOURCE"}};$j++) {
-						if ($row->{"SOURCE"}->[$j] eq "KEGG"  || defined($ModelTable->get_row_by_key($row->{"SOURCE"}->[$j],"id"))) {
-							$authorized = 1;
-							last;
-						}
-					}
-					if ($authorized == 0) {
-						$tbl->delete_row($i);
-						$i--;
-					}
-				}
-			}
-		}
-	}
-
-	return $self->{"CACHE"}->{$TableName};
-}
-
 =head3 GetProtectVariable
 Definition:
 	string::variable value = FIGMODELdatabase->GetProtectVariable(string::variable name,0/1::delete variable);
@@ -1184,35 +823,6 @@ Description:
 sub SetProtectedVariable {
 	my ($self,$VariableName,$VariableValue) = @_;
 	$self->{"PROTECTED VARIABLES"}->{$VariableName}->[0] = $VariableValue;
-}
-
-=head3 GetDBModel
-Definition:
-	FIGMODELTable = FIGMODELdatabase->GetDBModel(string::model id);
-Description:
-	setting the value of the specified protected variable
-=cut
-sub GetDBModel {
-	my ($self,$ModelName) = @_;
-
-	if (defined($self->{"CACHE"}->{"MODEL_".$ModelName})) {
-		return $self->{"CACHE"}->{"MODEL_".$ModelName};
-	}
-
-	my $model = $self->figmodel()->get_model($ModelName);
-	if (!defined($model)) {
-		$self->figmodel()->error_message("FIGMODELdatabase:GetDBModel: Could not find model ".$ModelName);
-		return undef;
-	}
-	$self->SetProtectedVariable("MODEL DIRECTORY",$model->filename());
-	my $ModelTable = $self->GetDBTable("MODEL BUFFER TABLE");
-	if (defined($ModelTable)) {
-		$self->{"CACHE"}->{"MODEL_".$ModelName} = $ModelTable;
-	}
-	$self->{"CACHE"}->{"MODEL BUFFER TABLE"} = undef;
-	$self->GetProtectVariable("MODEL DIRECTORY",1);
-
-	return $ModelTable;
 }
 
 =head3 GetDBModelGenes
@@ -1331,72 +941,6 @@ sub mg_model_data {
 	}
 
 	return $self->{_mg_model_data}->{$genome_id};
-}
-
-=head3 get_media
-Definition:
-	{string=>[string]} = FIGMODELdatabase->get_media(string::media id);
-Description:
-	Returns the media row from the media table
-=cut
-sub get_media {
-	my($self,$id) = @_;
-
-	my $tbl = $self->GetDBTable("MEDIA");
-	if (!defined($tbl)) {
-		return undef;
-	}
-
-	if ($id =~ m/^\d+$/) {
-		return $tbl->get_row($id);
-	}
-	return $tbl->get_row_by_key($id,"NAME");
-}
-
-=head3 get_media_number
-Definition:
-	int = FIGMODELdatabase->get_media_number();
-Description:
-	Returns the number of media formulations in the database
-=cut
-sub get_media_number {
-	my($self) = @_;
-
-	my $tbl = $self->GetDBTable("MEDIA");
-	return $tbl->size();
-}
-
-=head3 get_compound
-Definition:
-	{string=>[string]}::compound data = FIGMODEL->get_compound(string::compound ID);
-Description:
-=cut
-sub get_compound {
-	my ($self,$id) = @_;
-
-	if ($id =~ m/^\d+$/) {
-		my $cpdtbl = $self->GetDBTable("COMPOUNDS");
-		if (!defined($cpdtbl)) {
-			return undef;
-		}
-		return $cpdtbl->get_row($id);
-	}
-	return $self->get_row_by_key("COMPOUNDS",$id,"DATABASE");
-}
-
-=head3 get_compound_number
-Definition:
-	int = FIGMODEL->get_compound_number();
-Description:
-=cut
-sub get_compound_number {
-	my ($self) = @_;
-
-	my $cpdtbl = $self->database()->GetDBTable("COMPOUNDS");
-	if (!defined($cpdtbl)) {
-		return 0;
-	}
-	return $cpdtbl->size();
 }
 
 =head3 ConsolidateMediaFiles

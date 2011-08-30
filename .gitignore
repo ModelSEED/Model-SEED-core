@@ -3,3 +3,9 @@
 *.swp
 *.#*
 data/*
+.includepath
+.project
+.metadata/*
+bin/ModelDriver.sh
+bin/QueueDriver.sh
+logs/*

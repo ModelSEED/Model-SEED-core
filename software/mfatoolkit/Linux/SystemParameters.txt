@@ -1,4 +1,4 @@
-database spec file|../Input/Singlefile.txt|
+database spec file|../
 input directory|../Input/|Directory where input files are stored|MFA files
 structural cue database file|FinalGroups.dat|0|Directories where key database flatfiles will be stored
 scripts directory|../../Scripts/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up

@@ -94,16 +94,23 @@ sub new {
         	biochemSource => $args->{biochemSource}
         });
         if ($args->{runPreliminaryReconstruction} eq "1") {
-            #Setting gapfilling of model
-            my $RunGapFilling = "";
-            if ($args->{gapfilling} eq "1") {
-                $RunGapFilling = "?1";
+            if ($args->{queue} eq "NONE") {
+            	$self->preliminary_reconstruction({
+			    	runGapfilling => $args->{gapfilling},	
+			    });	
+            } else {
+            	my $RunGapFilling = "";
+	            if ($args->{gapfilling} eq "1") {
+	                $RunGapFilling = "?1";
+	            }
+	            $self->figmodel()->add_job_to_queue({
+	            	command => "preliminaryreconstruction?".$args->{id}.$RunGapFilling,
+	            	queue => $args->{queue},
+	            	user => $args->{owner}
+	            });
             }
-            $self->figmodel()->add_job_to_queue({command => "preliminaryreconstruction?".
-                $args->{id}.$RunGapFilling,queue => $args->{queue},user => $args->{owner}});
         }
         $id = $args->{id};
-        
     }
     my $id_parts = $self->parseId($self->fullId());  
     # if the model isn't the current version, the ppo is in model_version
@@ -637,44 +644,6 @@ sub create_model_rights {
         # Give the model owner admin rights over the model, biomass
         $self->changeRight($self->owner(), "admin","force");
     }
-}
-
-=head3 inherit_rights_from_genome
-Definition:
-    FIGMODELTable = FIGMODELmodel->inherit_rights_from_genome({
-        genome => FIGMODELmodel->ppo()->genome()    
-    });
-Description:
-    Inherits the rights for a genome into the model
-=cut
-sub inherit_rights_from_genome {
-    my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args,[],{genome => $self->ppo()->genome()});
-    if (defined($args->{error})) {return $self->error_message({function => "inherit_rights_from_genome",args => $args});}
-    # Build a hash of scope_id => list of logins 
-    my $user_scopes = $self->db()->get_objects("userscope"); 
-    my $scope_to_users = {};
-    my $users_by_id = { map { $_->_id() => $_->login() } @{$self->db()->get_objects("users")} };
-    foreach my $user_scope (@$user_scopes) {
-        push(@{$scope_to_users->{$user_scope->scope()}}, $users_by_id->{$user_scope->user()});
-    }
-    my $objs = $self->figmodel()->database()->get_objects("right",{
-    	data_type => "genome",
-    	granted => 1,
-    	data_id => $args->{genome}
-    });
-    for (my $i=0; $i < @{$objs}; $i++) {
-        my $right = "view";
-        if ($objs->[$i]->name() ne "view") {
-            $right = "admin";
-        }
-        my $scope_id = $objs->[$i]->scope();
-        my $users = $scope_to_users->{$scope_id} || [];
-        foreach my $user (@$users) {
-            $self->changeRight($user, $right);
-        }
-    }
-    return {msg => undef,error => undef,success => 1};
 }
 
 =head3 transfer_rights_to_biomass
@@ -2267,13 +2236,6 @@ sub GapFillModel {
         system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$UniqueFilename."TestMedia",["GapFilling"],{"MFASolver"=>"CPLEX","Allowable unbalanced reactions"=>$self->config("acceptable unbalanced reactions")->[0],"print lp files rather than solve" => $lpFileOnlyParameter,"Default max drain flux" => 0,"dissapproved compartments"=>$self->config("diapprovied compartments")->[0],"Reactions to knockout" => $self->config("permanently knocked out reactions")->[0]},"GapFill".$self->id().".log",undef));
         unlink($self->config("Media directory")->[0].$UniqueFilename."TestMedia.txt");
     }
-    if (defined($createLPFileOnly) && $createLPFileOnly == 1) {
-        if (-e $self->figmodel()->config("MFAToolkit output directory")->[0].$UniqueFilename."/MFAOutput/LPFiles/0.lp") {;
-            system("cp ".$self->figmodel()->config("MFAToolkit output directory")->[0].$UniqueFilename."/MFAOutput/LPFiles/0.lp ".$self->figmodel()->config("LP file directory")->[0]."GapFilling-".$self->id().".lp");
-            return $self->figmodel()->success();
-        }
-        return $self->figmodel()->fail();
-    }
 
     #Looking for gapfilling report
     if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingReport.txt") {
@@ -2868,7 +2830,7 @@ sub generate_fulldb_model {
     my ($self,$args) = @_;
     $args = $self->figmodel()->process_arguments($args,[],{});
     #Clearing the old models
-    my $rxnmdl = $self->db()->get_objects("rxnmdl");
+    my $rxnmdl = $self->rxnmdl();
     for (my $i=0; $i < @{$rxnmdl}; $i++) {
     	$rxnmdl->[$i]->delete();
     }
@@ -4492,47 +4454,6 @@ sub combine_minimal_pathways {
     $tbl->save();    
 }
 
-=head3 RunAllStudiesWithDataFast
-Definition:
-    (integer::false positives,integer::false negatives,integer::correct negatives,integer::correct positives,string::error vector,string heading vector) = FIGMODELmodel->RunAllStudiesWithDataFast(string::experiment,0/1::print result);
-Description:
-    Simulates every experimental condition currently available for the model.
-=cut
-
-sub RunAllStudiesWithDataFast {
-    my ($self,$Experiment,$PrintResults) = @_;
-
-    #Printing lp and key file for model
-    if (!-e $self->directory()."FBA-".$self->id().$self->selected_version().".lp") {
-        $self->PrintModelLPFile();
-    }
-    my $UniqueFilename = $self->figmodel()->filename();
-
-    #Determing the simulations that need to be run
-    my $ExperimentalDataTable = $self->figmodel()->GetExperimentalDataTable($self->genome(),$Experiment);
-    #Creating the table of jobs to submit
-    my $JobArray = $self->GetSimulationJobTable($ExperimentalDataTable,$Experiment,$UniqueFilename);
-    #Printing the job file
-    if (!-d $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/") {
-        system("mkdir ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/");
-    }
-    $JobArray->save();
-
-    #Running simulations
-    system($self->config("mfalite executable")->[0]." ".$self->config("Reaction database directory")->[0]."masterfiles/MediaTable.txt ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Jobfile.txt ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt");
-    #Parsing the results
-    my $Results = $self->figmodel()->database()->load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt",";","\\|",0,undef);
-    if (!defined($Results)) {
-        return $self->error_message({function => "RunAllStudiesWithDataFast",message => "Could not find simulation results: ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt"});
-    }
-    my ($FalsePostives,$FalseNegatives,$CorrectNegatives,$CorrectPositives,$Errorvector,$HeadingVector,$SimulationResults) = $self->EvaluateSimulationResults($Results,$ExperimentalDataTable);
-    #Printing results to file
-    $self->figmodel()->database()->save_table($SimulationResults,undef,undef,undef,"False negatives\tFalse positives\tCorrect negatives\tCorrect positives\n".$FalseNegatives."\t".$FalsePostives."\t".$CorrectNegatives."\t".$CorrectPositives."\n");
-    $self->figmodel()->clearing_output($UniqueFilename);
-
-    return ($FalsePostives,$FalseNegatives,$CorrectNegatives,$CorrectPositives,$Errorvector,$HeadingVector);
-}
-
 =head3 GetSimulationJobTable
 Definition:
     my $JobTable = $model->GetSimulationJobTable($Experiment,$PrintResults,$Version);
@@ -4740,102 +4661,7 @@ sub EvaluateSimulationResults {
     return ($FalsePostives,$FalseNegatives,$CorrectNegatives,$CorrectPositives,join(";",@Errorvector),join(";",@HeadingVector),$SimulationResults);
 }
 
-=head3 InspectSolution
-Definition:
-    $model->InspectSolution(string::gene knocked out,string::media condition,[string]::list of reactions);
-Description:
-=cut
 
-sub InspectSolution {
-    my ($self,$GeneKO,$Media,$ReactionList) = @_;
-
-    #Getting a directory for the results
-    my $UniqueFilename = $self->figmodel()->filename();
-    system("mkdir ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/");
-    my $TempVersion = "V".$UniqueFilename;
-
-    #Setting gene ko to none if no genes are to be knocked out
-    if ($GeneKO !~ m/^peg\./) {
-        $GeneKO = "none";
-    }
-
-    #Implementing the input solution in the test model
-    my $ReactionArray;
-    my $DirectionArray;
-    my %SolutionHash;
-    for (my $k=0; $k < @{$ReactionList}; $k++) {
-        if ($ReactionList->[$k] =~ m/(.+)(rxn\d\d\d\d\d)/) {
-            my $Reaction = $2;
-            my $Sign = $1;
-            if (defined($SolutionHash{$Reaction})) {
-                $SolutionHash{$Reaction} = "<=>";
-            } elsif ($Sign eq "-") {
-                $SolutionHash{$Reaction} = "<=";
-            } elsif ($Sign eq "+") {
-                $SolutionHash{$Reaction} = "=>";
-            } else {
-                $SolutionHash{$Reaction} = $Sign;
-            }
-        }
-    }
-    my @TempList = keys(%SolutionHash);
-    for (my $k=0; $k < @TempList; $k++) {
-        push(@{$ReactionArray},$TempList[$k]);
-        push(@{$DirectionArray},$SolutionHash{$TempList[$k]});
-    }
-
-    print "Integrating solution!\n";
-    $self->figmodel()->IntegrateGrowMatchSolution($self->id().$self->selected_version(),$self->directory().$self->id().$TempVersion.".txt",$ReactionArray,$DirectionArray,"SolutionInspection",1,1);
-
-    #Printing lp and key file for model
-    $self->PrintModelLPFile();
-
-    #Running FBA on the test model
-    my $JobTable = $self->figmodel()->CreateJobTable($UniqueFilename);
-    $JobTable->add_row({"LABEL" => ["TEST"],"RUNTYPE" => ["GROWTH"],"LP FILE" => [$self->directory()."FBA-".$self->id().$TempVersion],"MODEL" => [$self->directory().$self->id().$TempVersion.".txt"],"MEDIA" => [$Media],"REACTION KO" => ["none|".join("|",@{$ReactionList})],"GENE KO" => [$GeneKO],"SAVE FLUXES" => [0],"SAVE NONESSENTIALS" => [0]});
-    $JobTable->save();
-
-    #Running simulations
-    system($self->config("mfalite executable")->[0]." ".$self->config("Reaction database directory")->[0]."masterfiles/MediaTable.txt ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Jobfile.txt ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt");
-
-    #Parsing the results
-    my $Results = $self->figmodel()->database()->load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt",";","\\|",0,undef);
-    if (!defined($Results)) {
-        return $self->error_message({function => "InspectSolution",message => "Could not load problem report ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/Output.txt"});
-    }
-
-    #Making sure that the model grew with all reactions present
-    my $Found = 0;
-    for (my $i=0; $i < $Results->size(); $i++) {
-        if (defined($Results->get_row($i)->{"KOGENES"}->[0]) && defined($Results->get_row($i)->{"KOREACTIONS"}->[0]) && $Results->get_row($i)->{"KOREACTIONS"}->[0] eq "none" && $Results->get_row($i)->{"KOGENES"}->[0] eq $GeneKO && $Results->get_row($i)->{"OBJECTIVE"}->[0] > 0.00001) {
-            $Found = 1;
-        }
-    }
-    if ($Found == 0) {
-        print "Solution no longer valid\n";
-        return undef;
-    }
-
-    #Making sure all of the reactions added are still necessary
-    my $FinalReactionList;
-    for (my $k=0; $k < $Results->size(); $k++) {
-        if (defined($Results->get_row($k)->{"KOGENES"}->[0]) && $Results->get_row($k)->{"KOGENES"}->[0] eq $GeneKO) {
-            if (defined($Results->get_row($k)->{"KOREACTIONS"}->[0]) && $Results->get_row($k)->{"KOREACTIONS"}->[0] =~ m/rxn\d\d\d\d\d/ && $Results->get_row($k)->{"OBJECTIVE"}->[0] < 0.000001) {
-                push(@{$FinalReactionList},$Results->get_row($k)->{"KOREACTIONS"}->[0]);
-            }
-        }
-    }
-
-    #Deleting extra files created
-    unlink($self->directory()."FBA-".$self->id().$TempVersion.".lp");
-    unlink($self->directory()."FBA-".$self->id().$TempVersion.".key");
-    unlink($self->directory().$self->id().$TempVersion.".txt");
-
-    #Deleting the test model and the MFA folder
-    $self->figmodel()->clearing_output($UniqueFilename);
-
-    return $FinalReactionList;
-}
 
 =head3 GapFillingAlgorithm
 

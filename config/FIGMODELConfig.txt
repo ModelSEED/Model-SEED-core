@@ -1,17 +1,17 @@
-database root directory|/vol/model-dev/MODEL_DEV_DB/
-software root directory|/home/chenry/ModelSEED/
+database root directory|C:/Code/Model-SEED-core/data/
+software root directory|C:/Code/Model-SEED-core/
 #Data directories and filenames
-model directory|${database root directory}Models2/
+model directory|${database root directory}models/
 MFAToolkit input files|${database root directory}ReactionDB/MFAToolkitInputFiles/
 MFAToolkit output directory|${database root directory}ReactionDB/MFAToolkitOutputFiles/
 reaction priority list|${database root directory}ReactionDB/masterfiles/ReactionPriorities.txt
 compound directory|${database root directory}ReactionDB/compounds/
 reaction directory|${database root directory}ReactionDB/reactions/
-backup directory|${database root directory}ReactionDB/backup/
-corrected KEGG molfile directory|${database root directory}ReactionDB/CorrectedKEGGMolfiles/
-corrected Argonne molfile directory|${database root directory}ReactionDB/CorrectedArgonneMolfiles/
+backup directory|${database root directory}backup/
+corrected KEGG molfile directory|${database root directory}ReactionDB/mol/CorrectedKEGGMolfiles/
+corrected Argonne molfile directory|${database root directory}ReactionDB/mol/CorrectedArgonneMolfiles/
 Argonne molfile directory|${database root directory}ReactionDB/mol/
-temp file directory|${database root directory}ReactionDB/temp/
+temp file directory|${database root directory}temp/
 biolog raw data filename|${database root directory}ReactionDB/ExperimentalData/BiologRawData.txt
 Translation directory|${database root directory}ReactionDB/translation/
 Media directory|${database root directory}ReactionDB/Media/
@@ -20,12 +20,12 @@ Reaction database directory|${database root directory}ReactionDB/
 Model molfile directory|${database root directory}ReactionDB/mol/ModelMolfiles/
 locked table list filename|${database root directory}ReactionDB/LockedTables/
 #Program locations
-MFAToolkit executable|/home/chenry/Software/MFAToolkitRepository/Linux/mfatoolkit
+MFAToolkit executable|${software root directory}software/mfatoolkit/bin/mfatoolkit/
 marvinbeans executable|${software root directory}software/MarvinBeans/bin/cxcalc
-Model driver executable|/home/chenry/ProdModelDriver.sh
-scheduler executable|/home/chenry/QueueDriver.sh
+Model driver executable|${software root directory}bin/ModelDriver.sh
+scheduler executable|${software root directory}bin/QueueDriver.sh
 Recursive model driver executable|qsub -l fs_scratch=100 -l arch=lx26-amd64 -b yes -e ${software root directory}logs/QSubError/ -o ${software root directory}logs/QSubOutput/ ${software root directory}bin/ModelDriver.sh
-database message file directory|${database root directory}ReactionDB/logs/
+database message file directory|${software root directory}logs/
 #Parameter arrays
 data filenames|compounds|compound links|reactions|reaction links|cues|media
 .compounds data filename|${database root directory}ReactionDB/MFAToolkitInputFiles/compoundTable.txt

@@ -583,6 +583,39 @@ sub indices {
 
 1;
 
+package ModelSEED::ModelDB::USERS;
+
+use DBObject;
+use base qw(DBObject);
+
+sub attributes {
+     return {
+		firstname => [ DB_SCALAR, undef, 0, undef ],
+		email => [ DB_SCALAR, undef, 1, undef ],
+		password => [ DB_SCALAR, undef, 0, undef ],
+		lastname => [ DB_SCALAR, undef, 0, undef ],
+		login => [ DB_SCALAR, undef, 1, undef ],
+	};
+}
+
+sub unique_indices {
+     return 
+		[
+			[ "login" ],
+			[ "email" ],
+		];
+}
+
+sub indices {
+     return 
+		[
+			[ "lastname" ],
+			[ "firstname" ],
+		];
+}
+
+1;
+
 package ModelSEED::ModelDB::MODEL_HISTORY;
 
 use DBObject;
