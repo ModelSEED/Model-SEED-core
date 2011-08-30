@@ -8,4 +8,7 @@ data/*
 .metadata/*
 bin/ModelDriver.sh
 bin/QueueDriver.sh
+bin/StartScheduler.sh
+bin/UpdateModelSEED.sh
+config/FIGMODELConfig.txt
 logs/*
