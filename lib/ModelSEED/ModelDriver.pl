@@ -4362,7 +4362,7 @@ sub configureserver {
 			if ($2 eq $args->{database}) {
 				$data->[$i] = "%PPO_tbl_".$1."|"
 					."name;".$args->{database}."|"
-					."table;".$2."|"
+					."table;".$3."|"
 					."host;".$args->{hostname}."|"
 					."user;".$args->{username}."|"
 					."password;".$args->{password}."|"
