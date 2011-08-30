@@ -61,8 +61,8 @@ warn $args->{"-p"}."\n";
 }
 #Creating shell scripts
 my ($modeldriver,$queuedriver);
-$modeldriver = ["source ".$args->{"-p"}."config/envConfig".$extension];
-$queuedriver = ["source ".$args->{"-p"}."config/envConfig".$extension];
+$modeldriver = ["source ".$args->{"-p"}."bin/envConfig".$extension];
+$queuedriver = ["source ".$args->{"-p"}."bin/envConfig".$extension];
 if (defined($args->{"-cplex"})) {
     push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
     push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
@@ -81,12 +81,18 @@ if (defined($args->{"-usr"}) && defined($args->{"-pwd"})) {
 }
 push(@{$queuedriver},"perl ".$args->{"-p"}."lib/ModelSEED/FIGMODELscheduler.pl \$*");
 push(@{$modeldriver},"perl ".$args->{"-p"}."lib/ModelSEED/ModelDriver.pl \$*");
-&printFile($args->{"-p"}."bin/ModelDriver".$extension,$modeldriver);
-&printFile($args->{"-p"}."bin/QueueDriver".$extension,$queuedriver);
+printFile($args->{"-p"}."bin/ModelDriver".$extension,$modeldriver);
+printFile($args->{"-p"}."bin/QueueDriver".$extension,$queuedriver);
+chmod 0775, $args->{"-p"}."bin/ModelDriver".$extension;
+chmod 0775, $args->{"-p"}."bin/QueueDriver".$extension;
 
 $args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
 $args->{"-dbuser"} = "" unless(defined($args->{"-dbuser"}));
 $args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
+
+#Creating envConfig.sh
+my $script = fillEnvConfigTemplate($args->{"-p"}, $args->{"-d"});
+printFile($args->{"-p"}."bin/envConfig".$extension, [$script]);
 
 #Configuring database
 system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
@@ -135,6 +141,20 @@ sub loadFile {
     return $DataArrayRef;
 }
 
+sub fillEnvConfigTemplate {
+    my ($root, $data) = @_;
+    my $script = <<TPIRCS;
+#!/usr/bin/sh
+PATH=\${PATH}:$root/bin
+PATH=\${PATH}:$root/lib/ModelSEED/ModelSEEDScripts/
+export PATH
+
+PERL5LIB=\${PERL5LIB}:$root/lib/PPO
+PERL5LIB=\${PERL5LIB}:$root/lib/
+export PERL5LIB
+TPIRCS
+   return $script; 
+}
 
 $|=1; # ??
 
