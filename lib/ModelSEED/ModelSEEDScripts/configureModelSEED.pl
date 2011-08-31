@@ -48,13 +48,15 @@ warn $args->{"-p"}."\n";
 
 #Creating FIGMODELConfig.txt
 {
-    my $data = loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
+    my $data = loadFile($args->{"-p"}."lib/ModelSEED/FIGMODELConfig.txt");
     for (my $i=0; $i < @{$data}; $i++) {
         my ($key, @values) = split(/\|/, $data->[$i]); 
         if ($key =~ m/database\sroot\sdirectory/) {
             $data->[$i] = "database root directory|".$args->{"-d"};
         } elsif ($key =~ m/software\sroot\sdirectory/) {
             $data->[$i] = "software root directory|".$args->{"-p"};
+        } elsif ($key =~ m/software\/mfatoolkit\/bin\/mfatoolkit/ && defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
+            $data->[$i] = $data->[$i].".exe";
         }
     }
 &printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);

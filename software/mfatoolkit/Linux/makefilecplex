@@ -1,20 +1,14 @@
-SYSTEM     = x86-64_rhel4.0_3.4
-LIBFORMAT  = static_pic
 # ---------------------------------------------------------------------
 # Directories section 
 # ---------------------------------------------------------------------
-
 SRCDIR = ../Source
 OBJDIR = ../Source
 INCDIR = ../Include
-ALLGLPK = ../../solvers/glpk
-GLPKINC = $(ALLGLPK)/include
-GLPKLIB = $(ALLGLPK)/src/.libs/
-ALLCPLEX = ../../solvers/cplex
-CPLEXLIBDIR   = $(ALLCPLEX)/lib/x86-64_rhel4.0_3.4/static_pic
-CPLEXINCDIR   = $(ALLCPLEX)/include/ilcplex
+GLPKINC = $(GLPKDIRECTORY)/include
+GLPKLIB = $(GLPKDIRECTORY)/src/.libs/
+CPLEXLIBDIR   = $(CPLEXDIRECTORY)/lib/x86-64_rhel4.0_3.4/static_pic
+CPLEXINCDIR   = $(CPLEXDIRECTORY)/include/ilcplex
 EXEC = mfatoolkit
-
 # ---------------------------------------------------------------------
 # Compiler section 
 # ---------------------------------------------------------------------

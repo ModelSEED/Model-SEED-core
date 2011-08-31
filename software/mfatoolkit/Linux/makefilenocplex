@@ -1,17 +1,12 @@
-SYSTEM     = x86-64_rhel4.0_3.4
-LIBFORMAT  = static_pic
 # ---------------------------------------------------------------------
 # Directories section 
 # ---------------------------------------------------------------------
-
 SRCDIR = ../Source
 OBJDIR = ../Source
 INCDIR = ../Include
-ALLGLPK = ../../solvers/glpk
-GLPKINC = $(ALLGLPK)/include
-GLPKLIB = $(ALLGLPK)/src/.libs/
+GLPKINC = $(GLPKDIRECTORY)/include
+GLPKLIB = $(GLPKDIRECTORY)/src/.libs/
 EXEC = mfatoolkit
-
 # ---------------------------------------------------------------------
 # Compiler section 
 # ---------------------------------------------------------------------
