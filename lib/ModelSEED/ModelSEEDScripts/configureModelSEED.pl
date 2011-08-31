@@ -48,7 +48,7 @@ warn $args->{"-p"}."\n";
 
 #Creating FIGMODELConfig.txt
 {
-    my $data = loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
+    my $data = loadFile($args->{"-p"}."lib/ModelSEED/FIGMODELConfig.txt");
     for (my $i=0; $i < @{$data}; $i++) {
         my ($key, @values) = split(/\|/, $data->[$i]); 
         if ($key =~ m/database\sroot\sdirectory/) {
@@ -57,7 +57,7 @@ warn $args->{"-p"}."\n";
             $data->[$i] = "software root directory|".$args->{"-p"};
         }
     }
-&printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
+printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
 }
 #Creating shell scripts
 my ($modeldriver,$queuedriver);
@@ -93,6 +93,7 @@ $args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
 #Creating envConfig.sh
 my $script = fillEnvConfigTemplate($args->{"-p"}, $args->{"-d"});
 printFile($args->{"-p"}."bin/envConfig".$extension, [$script]);
+chmod 0775, $args->{"-p"}."bin/envConfig".$extension;
 
 #Configuring database
 system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
@@ -151,6 +152,7 @@ export PATH
 
 PERL5LIB=\${PERL5LIB}:$root/lib/PPO
 PERL5LIB=\${PERL5LIB}:$root/lib/
+PERL5LIB=\${PERL5LIB}:$root/lib/myRAST
 export PERL5LIB
 TPIRCS
    return $script; 
