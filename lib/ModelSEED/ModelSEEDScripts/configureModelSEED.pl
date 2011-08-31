@@ -15,7 +15,9 @@ my $args = {};
 my $result = GetOptions(
     "p|installation_directory=s" => \$args->{"-p"},
     "d|data_directory=s" => \$args->{"-d"},
-    "cplex|cplex_licence=s" => \$args->{"-cplex"},
+    "g|glpk=s" => \$args->{"-glpk"},
+    "cl|cplex_licence=s" => \$args->{"-licence"},
+    "c|cplex=s" => \$args->{"-cplex"},
     "os|operating_system=s" => \$args->{"-os"},
     "usr|username=s" => \$args->{"-usr"},
     "figconfig=s" => \$args->{"-figconfig"},
@@ -37,6 +39,7 @@ if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
 # Setting paths to absolute, otherwise a path like ../../foo/bar would cause massive issues...
 $args->{"-p"} = abs_path($args->{"-p"}).'/';
 $args->{"-d"} = abs_path($args->{"-d"}).'/';
+$args->{"-glpk"} = abs_path($args->{"-glpk"}) if(defined($args->{"-glpk"}));
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
 $args->{"-dbhost"} = abs_path($args->{"-dbhost"}) if(defined($args->{"-dbhost"}));
@@ -65,9 +68,9 @@ warn $args->{"-p"}."\n";
 my ($modeldriver,$queuedriver);
 $modeldriver = ["source ".$args->{"-p"}."bin/envConfig".$extension];
 $queuedriver = ["source ".$args->{"-p"}."bin/envConfig".$extension];
-if (defined($args->{"-cplex"})) {
-    push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
-    push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
+if (defined($args->{"-licence"})) {
+    push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-licence"});
+    push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-licence"});
 }
 my $configFiles = "export FIGMODEL_CONFIG=".$args->{"-p"}."config/FIGMODELConfig.txt";
 if (defined($args->{"-figconfig"})) {
@@ -91,6 +94,21 @@ chmod 0775, $args->{"-p"}."bin/QueueDriver".$extension;
 $args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
 $args->{"-dbuser"} = "" unless(defined($args->{"-dbuser"}));
 $args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
+
+#Configuring MFAToolkit
+my $cplex = "";
+if (defined($args->{"-cplex"})) {
+	$cplex = " --cplex ".$args->{"-cplex"};	
+}
+my $os = "";
+if (defined($args->{"-os"})) {
+	$os = " --os ".$args->{"-os"};	
+}
+system("perl configureMFAToolkit.pl"
+	." -p ".$args->{"-p"}
+	." --glpk ".$args->{"-glpk"}
+	.$cplex.$os
+);
 
 #Creating envConfig.sh
 my $script = fillEnvConfigTemplate($args->{"-p"}, $args->{"-d"});
@@ -178,7 +196,9 @@ Options:
     --man                           returns this documentation
 *   --installation_directory [-p]   location of ModelSEED installation directory
 *   --data_directory [-d]           location of ModelSEED data directory
-    --cplex                         location of CPLEX licence file
+*   --glpk_directory [-g] 			location of glpk installation directory
+    --cplex [-c]                    location of cplex installation directory
+    --cplex_licence [-cl]           location of CPLEX licence file
     --os                            operating system, "windows", "osx" or "linux"
     --username [--usr]               
     --figconfig 
