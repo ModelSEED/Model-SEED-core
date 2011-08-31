@@ -42,10 +42,6 @@ $args->{"-d"} = abs_path($args->{"-d"}).'/';
 $args->{"-glpk"} = abs_path($args->{"-glpk"}) if(defined($args->{"-glpk"}));
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
-$args->{"-dbhost"} = abs_path($args->{"-dbhost"}) if(defined($args->{"-dbhost"}));
-$args->{"-dbusr"} = abs_path($args->{"-dbusr"}) if(defined($args->{"-dbusr"}));
-$args->{"-dbpwd"} = abs_path($args->{"-dbpwd"}).'/' if(defined($args->{"-dbpwd"}));
-
 
 warn $args->{"-p"}."\n";
 
@@ -196,7 +192,7 @@ Options:
     --man                           returns this documentation
 *   --installation_directory [-p]   location of ModelSEED installation directory
 *   --data_directory [-d]           location of ModelSEED data directory
-*   --glpk_directory [-g] 			location of glpk installation directory
+*   --glpk [-g] 			        location of glpk installation directory
     --cplex [-c]                    location of cplex installation directory
     --cplex_licence [-cl]           location of CPLEX licence file
     --os                            operating system, "windows", "osx" or "linux"
