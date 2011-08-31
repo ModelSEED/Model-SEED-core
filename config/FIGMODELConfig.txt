@@ -7,11 +7,11 @@ MFAToolkit output directory|${database root directory}ReactionDB/MFAToolkitOutpu
 reaction priority list|${database root directory}ReactionDB/masterfiles/ReactionPriorities.txt
 compound directory|${database root directory}ReactionDB/compounds/
 reaction directory|${database root directory}ReactionDB/reactions/
-backup directory|${database root directory}backup/
-corrected KEGG molfile directory|${database root directory}ReactionDB/mol/CorrectedKEGGMolfiles/
-corrected Argonne molfile directory|${database root directory}ReactionDB/mol/CorrectedArgonneMolfiles/
+backup directory|${database root directory}ReactionDB/backup/
+corrected KEGG molfile directory|${database root directory}ReactionDB/CorrectedKEGGMolfiles/
+corrected Argonne molfile directory|${database root directory}ReactionDB/CorrectedArgonneMolfiles/
 Argonne molfile directory|${database root directory}ReactionDB/mol/
-temp file directory|${database root directory}temp/
+temp file directory|${database root directory}ReactionDB/temp/
 biolog raw data filename|${database root directory}ReactionDB/ExperimentalData/BiologRawData.txt
 Translation directory|${database root directory}ReactionDB/translation/
 Media directory|${database root directory}ReactionDB/Media/
@@ -20,7 +20,7 @@ Reaction database directory|${database root directory}ReactionDB/
 Model molfile directory|${database root directory}ReactionDB/mol/ModelMolfiles/
 locked table list filename|${database root directory}ReactionDB/LockedTables/
 #Program locations
-MFAToolkit executable|${software root directory}software/mfatoolkit/bin/mfatoolkit/
+MFAToolkit executable|${software root directory}software/mfatoolkit/Linux/mfatoolkit
 marvinbeans executable|${software root directory}software/MarvinBeans/bin/cxcalc
 Model driver executable|${software root directory}bin/ModelDriver.sh
 scheduler executable|${software root directory}bin/QueueDriver.sh
@@ -90,43 +90,43 @@ Database version|ModelDB
 #Database table access configurations
 %PPO_tbl_queue|name;SchedulerDB|table;QUEUE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_job|name;SchedulerDB|table;JOB|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_user|name;WebAppBackend|table;User|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_model|name;ModelDB|table;MODEL|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_model_version|name;ModelDB|table;MODELVERSIONS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_fbaresult|name;ModelDB|table;FBA_RESULTS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_media|name;ModelDB|table;MEDIA|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mediacpd|name;ModelDB|table;MEDIA_COMPOUND|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_complex|name;ModelDB|table;COMPLEX|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_compound|name;ModelDB|table;COMPOUND|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_compartment|name;ModelDB|table;COMPARTMENTS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_bof|name;ModelDB|table;BIOMASS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_reaction|name;ModelDB|table;REACTION|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_role|name;ModelDB|table;ROLE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_subsystem|name;ModelDB|table;SUBSYSTEM|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_ssroles|name;ModelDB|table;SUBSYSTEM_ROLE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_cpxrole|name;ModelDB|table;COMPLEX_ROLE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_cpdals|name;ModelDB|table;COMPOUND_ALIAS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_cpdbof|name;ModelDB|table;COMPOUND_BIOMASS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_cpdgrp|name;ModelDB|table;COMPOUND_GROUPING|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_cpdrxn|name;ModelDB|table;COMPOUND_REACTION|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_rxnals|name;ModelDB|table;REACTION_ALIAS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_rxncpx|name;ModelDB|table;REACTION_COMPLEX|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_rxngrp|name;ModelDB|table;REACTION_GROUPING|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_rxnmdl|name;ModelDB|table;REACTION_MODEL|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_id|name;ModelDB|table;CURRENTID|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_filename|name;ModelDB|table;OUTPUTID|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_history|name;ModelDB|table;HISTORY|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_entity|name;ModelDB|table;DBENTITY|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mdlhist|name;ModelDB|table;MODEL_HISTORY|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mdlhisttrans|name;ModelDB|table;MODEL_HISTORY_TRANSACTION|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_reference|name;ModelDB|table;REFERENCE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_esssets|name;ModelDB|table;ESSENTIALITYSET|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_essgenes|name;ModelDB|table;GENE_ESSENTIALITY|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_diagram|name;ModelDB|table;DIAGRAM|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_dgmobj|name;ModelDB|table;DIAGRAM_OBJECTS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_genomestats|name;ModelDB|table;GENOMESTATS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mdlfva|name;ModelDB|table;MODEL_FVA|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mdless|name;ModelDB|table;MODEL_ESSENTIALITY|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_dblinks|name;ModelDB|table;DBLINKS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_message|name;ModelDB|table;MESSAGE|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_permissions|name;ModelDB|table;PERMISSIONS|host;bio-app-authdb.mcs.anl.gov|user;webappuser|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_user|name;ModelDB|table;USERS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_model|name;ModelDB|table;MODEL|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_model_version|name;ModelDB|table;MODELVERSIONS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_fbaresult|name;ModelDB|table;FBA_RESULTS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_media|name;ModelDB|table;MEDIA|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_mediacpd|name;ModelDB|table;MEDIA_COMPOUND|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_complex|name;ModelDB|table;COMPLEX|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_compound|name;ModelDB|table;COMPOUND|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_compartment|name;ModelDB|table;COMPARTMENTS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_bof|name;ModelDB|table;BIOMASS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_reaction|name;ModelDB|table;REACTION|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_role|name;ModelDB|table;ROLE|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_subsystem|name;ModelDB|table;SUBSYSTEM|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_ssroles|name;ModelDB|table;SUBSYSTEM_ROLE|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_cpxrole|name;ModelDB|table;COMPLEX_ROLE|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_cpdals|name;ModelDB|table;COMPOUND_ALIAS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_cpdbof|name;ModelDB|table;COMPOUND_BIOMASS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_cpdgrp|name;ModelDB|table;COMPOUND_GROUPING|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_cpdrxn|name;ModelDB|table;COMPOUND_REACTION|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_rxnals|name;ModelDB|table;REACTION_ALIAS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_rxncpx|name;ModelDB|table;REACTION_COMPLEX|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_rxngrp|name;ModelDB|table;REACTION_GROUPING|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_rxnmdl|name;ModelDB|table;REACTION_MODEL|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_id|name;ModelDB|table;CURRENTID|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_filename|name;ModelDB|table;OUTPUTID|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_history|name;ModelDB|table;HISTORY|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_entity|name;ModelDB|table;DBENTITY|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_mdlhist|name;ModelDB|table;MODEL_HISTORY|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_mdlhisttrans|name;ModelDB|table;MODEL_HISTORY_TRANSACTION|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_reference|name;ModelDB|table;REFERENCE|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_esssets|name;ModelDB|table;ESSENTIALITYSET|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_essgenes|name;ModelDB|table;GENE_ESSENTIALITY|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_diagram|name;ModelDB|table;DIAGRAM|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_dgmobj|name;ModelDB|table;DIAGRAM_OBJECTS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_genomestats|name;ModelDB|table;GENOMESTATS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_mdlfva|name;ModelDB|table;MODEL_FVA|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_mdless|name;ModelDB|table;MODEL_ESSENTIALITY|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_dblinks|name;ModelDB|table;DBLINKS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_message|name;ModelDB|table;MESSAGE|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
+%PPO_tbl_permissions|name;ModelDB|table;PERMISSIONS|host;localhost|user;modelseed|password;seed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
