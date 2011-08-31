@@ -2423,8 +2423,9 @@ sub import_model {
 		$id .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model
-	my $mdl = $self->get_model($id);
-	if (!defined($mdl) || defined($mdl->{error})) {
+	my $mdl;
+	my $modelObj = $self->database()->get_object("model",{id => $id});
+	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
 			id => $id,
 			owner => $args->{owner},
@@ -2436,6 +2437,7 @@ sub import_model {
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
 	}
+	$mdl = $self->get_model($id);
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
 		for (my $i=0; $i < @{$importTables}; $i++) {

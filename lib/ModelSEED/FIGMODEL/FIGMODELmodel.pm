@@ -33,7 +33,7 @@ sub new {
         my $isDebug    = $figmodel->config("Database version")->[0] eq "DevModelDB";
         my $default_id = "Seed".$args->{genome};
 		my $user = $figmodel->database()->get_object("user",
-            {login=>$args->{owner}}) if(defined($args->{owner}));
+            {login=>$args->{owner}}) if(defined($args->{owner}) && $args->{owner} ne "master");
         my $user_id;
         if(defined($user)) {
             $user_id = $user->_id();
@@ -1333,18 +1333,22 @@ owner => user id, not username
 version => version number
 =cut
 sub parseId {
-my ($self, $id) = @_;
+	my ($self, $id) = @_;
     my ($owner, $model_version, $canonical) = undef;
     if($id =~ /^(.+)\.v(\d+)$/) {
          $model_version = $2;
          $id = $1;
     }
-    if(!defined($model_version)) {
-    	$model_version = $self->ppo()->version();
-    }
     $canonical = $id;
-    if ($self->ppo()->owner() ne "master" && defined($self->userObj())) {
-    	$owner = $self->userObj()->_id();
+    if($id =~ /^Seed\d+\.\d+/ || $id =~ /^Opt\d+\.\d+/) {
+    	if($id =~ /\d+\.\d+\.(\d+)$/) {
+	    	$owner = $1;
+    	}
+    } elsif ($id =~ /\.(\d+)$/) {
+    	$owner = $1;
+    }
+    if (defined($self->ppo())) {
+    	$model_version = $self->ppo()->version();
     }
     return { canonical => $canonical, owner => $owner, version => $model_version,
              full => "$canonical.v$model_version" };
@@ -3460,7 +3464,7 @@ sub GenerateModelProvenance {
     # Doing biochemistry
     my $model_directory = $args->{targetDirectory}; 
     if(!-d $model_directory) {
-        File::Path::make_path $model_directory;
+        File::Path::mkpath $model_directory;
     }
     my $db = $self->figmodel()->database();
     {

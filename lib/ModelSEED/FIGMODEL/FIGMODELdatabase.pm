@@ -2739,7 +2739,7 @@ sub ppo_rows_to_table {
         my %rowHash = map { $_ => [] } values %{$config->{'heading_remap'}};
         foreach my $key (keys %{$config->{'heading_remap'}}) {
             my $value = $config->{'heading_remap'}->{$key};
-            if($row->_knows_attribute($key)) {
+            if($row->_knows_attribute($key) && defined($row->$key())) {
                push(@{$rowHash{$value}}, ($re) ? split($re, $row->$key()) : $row->$key());
             }
         }
