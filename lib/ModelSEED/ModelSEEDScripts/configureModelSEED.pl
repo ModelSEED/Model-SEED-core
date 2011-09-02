@@ -10,6 +10,8 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 use Cwd qw(abs_path);
+use File::Path qw(make_path);
+use Data::Dumper;
 
 my $args = {};
 my $result = GetOptions(
@@ -39,12 +41,7 @@ $args->{"-p"} = abs_path($args->{"-p"}).'/';
 $args->{"-d"} = abs_path($args->{"-d"}).'/';
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
-$args->{"-dbhost"} = abs_path($args->{"-dbhost"}) if(defined($args->{"-dbhost"}));
-$args->{"-dbusr"} = abs_path($args->{"-dbusr"}) if(defined($args->{"-dbusr"}));
-$args->{"-dbpwd"} = abs_path($args->{"-dbpwd"}).'/' if(defined($args->{"-dbpwd"}));
-
-
-warn $args->{"-p"}."\n";
+$args->{"-dbhost"} = abs_path($args->{"-dbhost"}) if(defined($args->{"-dbhost"}) && -f$args->{"-dbhost"});
 
 #Creating FIGMODELConfig.txt
 {
@@ -67,6 +64,7 @@ if (defined($args->{"-cplex"})) {
     push(@{$queuedriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
     push(@{$modeldriver},"export ILOG_LICENSE_FILE=".$args->{"-cplex"});
 }
+make_path($args->{"-p"}."config") unless(-d $args->{"-p"}."config");
 my $configFiles = "export FIGMODEL_CONFIG=".$args->{"-p"}."config/FIGMODELConfig.txt";
 if (defined($args->{"-figconfig"})) {
     $configFiles .= ":".join(":",@{$args->{"-figconfig"}});
@@ -86,47 +84,49 @@ printFile($args->{"-p"}."bin/QueueDriver".$extension,$queuedriver);
 chmod 0775, $args->{"-p"}."bin/ModelDriver".$extension;
 chmod 0775, $args->{"-p"}."bin/QueueDriver".$extension;
 
-$args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
-$args->{"-dbuser"} = "" unless(defined($args->{"-dbuser"}));
-$args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
-
 #Creating envConfig.sh
 my $script = fillEnvConfigTemplate($args->{"-p"}, $args->{"-d"});
 printFile($args->{"-p"}."bin/envConfig".$extension, [$script]);
 chmod 0775, $args->{"-p"}."bin/envConfig".$extension;
 
-#Configuring database
-system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
-    ."ModelDB?"
-    .$args->{"-dbhost"}."?"
-    .$args->{"-dbusr"}."?"
-    .$args->{"-dbpwd"}."???"
-    .$args->{"-p"}."config/FIGMODELConfig.txt"
-);
-system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
-    ."SchedulerDB?"
-    .$args->{"-dbhost"}."?"
-    .$args->{"-dbusr"}."?"
-    .$args->{"-dbpwd"}."???"
-    .$args->{"-p"}."config/FIGMODELConfig.txt"
-);
-system($args->{"-p"}."bin/ModelDriver".$extension." configureserver?"
-    ."UserDB?"
-    .$args->{"-dbhost"}."?"
-    .$args->{"-dbusr"}."?"
-    .$args->{"-dbpwd"}."???"
-    .$args->{"-p"}."config/FIGMODELConfig.txt"
-);
+#Configuring databases
+if(!defined("-dbhost")) {
+    $args->{"-dbhost"} = $args->{"-p"}."data/ModelDB.db";
+    make_path($args->{"-p"}."data/");
+    print "No dbhost supplied. Configuring SQLite database at ".
+    $args->{"-dbhost"}."\n";
+}
+if(!defined($args->{"-dbusr"})) {
+    my $sqlite = `which sqlite3`;
+    chomp $sqlite;
+    if(!-f $sqlite) {
+        print "Could not find installation of SQLite. Please install a copy!\n";    
+    }
+} else {
+    my $mysql = `which mysql`;
+    if(!-f $mysql) {
+        print "Could not find installation of mySQL! Please install a copy!\n";
+    }
+}
+foreach my $db (qw(ModelDB SchedulerDB UserDB)) {
+    my $cmd = $args->{"-p"}."bin/ModelDriver".$extension." configureserver?".$db."?".$args->{"-dbhost"};
+    $cmd .= (defined($args->{"-dbusr"})) ? "?".$args->{"-dbusr"} : "?";
+    $cmd .= (defined($args->{"-dbpwd"})) ? "?".$args->{"-dbpwd"} : "?";
+    $cmd .= "???";
+    $cmd .= $args->{"-p"}."config/FIGMODELConfig.txt";
+    warn $cmd;
+    system($cmd);
+}
 
 sub printFile {
     my ($filename,$arrayRef) = @_;
-    open (OUTPUT, ">$filename");
+    open ( my $fh, ">", $filename) || die("Failure to open file: $filename, $!");
     foreach my $Item (@{$arrayRef}) {
         if (length($Item) > 0) {
-            print OUTPUT $Item."\n";
+            print $fh $Item."\n";
         }
     }
-    close(OUTPUT);
+    close($fh);
 }
 
 sub loadFile {
@@ -153,6 +153,7 @@ export PATH
 PERL5LIB=\${PERL5LIB}:$root/lib/PPO
 PERL5LIB=\${PERL5LIB}:$root/lib/
 PERL5LIB=\${PERL5LIB}:$root/lib/myRAST
+PERL5LIB=\${PERL5LIB}:$root/lib/FigKernelPackages 
 export PERL5LIB
 TPIRCS
    return $script; 

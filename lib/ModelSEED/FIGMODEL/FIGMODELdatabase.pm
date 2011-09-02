@@ -129,15 +129,23 @@ sub get_object_manager {
 			$self->{_dbhandles}->{$config->{name}->[0]}->DESTROY();
 		}
         if ($db_type eq 'PPO') {
-            my $temp = DBMaster->new(-database => $config->{name}->[0],
-                               -host     => $config->{host}->[0],
-                               -user     => $config->{user}->[0],
-                               -password => $config->{password}->[0],
-                               -port     => $config->{port}->[0],
-                               -socket   => $config->{"socket"}->[0]);
-            $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
+            # Either have a mySQL database (has user, port and socket) 
+            # Or just have database host =  filename, which indicates SQLite
+            if( defined($config->{host}) && defined($config->{user}) &&
+                defined($config->{port}) && defined($config->{socket})) {
+                my $temp = DBMaster->new(
+                    -database => $config->{name}->[0],
+                    -host     => $config->{host}->[0],
+                    -user     => $config->{user}->[0],
+                    -password => $config->{password}->[0],
+                    -port     => $config->{port}->[0],
+                    -socket   => $config->{"socket"}->[0]);
+                $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
+            } elsif( defined($config->{host}->[0]) && -f $config->{host}->[0] ) {
+                my $temp = DBMaster->new(-database => $config->{host}->[0]);
+                $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
+            }
         } elsif ($db_type eq 'FIGMODELTable') {
-            my $config = $config;
             my $params = {
                 filename  => $config->{name}->[0],
                 delimiter => $config->{delimiter}->[0] || undef,

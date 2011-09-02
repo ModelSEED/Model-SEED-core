@@ -13,6 +13,7 @@ use Data::Dumper;
 use ModelSEED::FIGMODEL;
 use FBAMODELserver;
 use LWP::Simple;
+use Cwd qw(abs_path);
 $|=1;
 
 #First checking to see if at least one argument has been provided
@@ -4350,30 +4351,28 @@ sub configureserver {
 	my $args = $self->check([
 		["database",1],
 		["hostname",1],
-		["username",1],
+		["username",0],
 		["password",0,""],
 		["socket",0,"/var/lib/mysql/mysql.sock"],
 		["port",0,3306],
-		["configfile",0,$self->figmodel()->config("software root directory")->[0]."config/FIGMODELConfig.txt"]
+		["configFile",0,$self->figmodel()->config("software root directory")->[0]."config/FIGMODELConfig.txt"]
 	],[@Data]);
-	my $data = $self->figmodel()->database()->load_single_column_file($args->{configfile},"");
+    my $configuration;
+    my $hashCopy = \%$args;
+    delete $hashCopy->{configFile};
+    $configuration = join("|", map { $_ = $_ . ";" . $hashCopy->{$_} } keys %$hashCopy); 
+    open(my $fh, "<", $args->{configFile}) || die($@);
+    my $data = [ <$fh> ];
+    close($fh);
 	for (my $i=0; $i < @{$data}; $i++) {
 		if ($data->[$i] =~ m/^%PPO_tbl_(\w+)\|.*name;(\w+)\|.*table;(\w+)\|/) {
 			if ($2 eq $args->{database}) {
-				$data->[$i] = "%PPO_tbl_".$1."|"
-					."name;".$args->{database}."|"
-					."table;".$3."|"
-					."host;".$args->{hostname}."|"
-					."user;".$args->{username}."|"
-					."password;".$args->{password}."|"
-					."port;".$args->{port}."|"
-					."socket;".$args->{"socket"}."|"
-					."status;1|"
-					."type;PPO";
+				$data->[$i] = "%PPO_tbl_".$1."|".$configuration.
+                    "|table;".$3."|status;1|type;PPO";
 			}
 		}
 	}
-	$self->figmodel()->database()->print_array_to_file($args->{configfile},$data);
+	$self->figmodel()->database()->print_array_to_file($args->{configFile},$data);
     return "SUCCESS";
 }
 
