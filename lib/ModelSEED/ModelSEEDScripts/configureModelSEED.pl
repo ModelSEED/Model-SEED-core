@@ -133,22 +133,6 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		chmod 0775,$args->{"-p"}."bin/".$function.$extension;
 	}
 }
-#Configuring MFAToolkit
-{	
-	my $cplex = "";
-	if (defined($args->{"-cplex"})) {
-		$cplex = " --cplex ".$args->{"-cplex"};	
-	}
-	my $os = "";
-	if (defined($args->{"-os"})) {
-		$os = " --os ".$args->{"-os"};	
-	}
-	system("perl configureMFAToolkit.pl"
-		." -p ".$args->{"-p"}
-		." --glpk ".$args->{"-glpk"}
-		.$cplex.$os
-	);
-}
 #Configuring database
 {
 	$args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
@@ -175,6 +159,22 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		}
 	}
 	printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
+}
+#Configuring MFAToolkit
+{	
+	my $cplex = "";
+	if (defined($args->{"-cplex"})) {
+		$cplex = " --cplex ".$args->{"-cplex"};	
+	}
+	my $os = "";
+	if (defined($args->{"-os"})) {
+		$os = " --os ".$args->{"-os"};	
+	}
+	system("perl configureMFAToolkit.pl"
+		." -p ".$args->{"-p"}
+		." --glpk ".$args->{"-glpk"}
+		.$cplex.$os
+	);
 }
 
 1;
