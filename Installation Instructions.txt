@@ -1,0 +1,38 @@
+1.) Clone the git repository for the Model SEED
+2.) Download and install the flatfile data
+	a.) Download the default flat file datafiles from here:
+	http://bioseed.mcs.anl.gov/~chenry/data.rar
+	b.) Extract to this directory:
+	Model-SEED-core/data/
+3.) Configure the Model SEED by running the configuration scripts
+	a.) Select the appropriate script depending on your operating system:
+		Model-SEED-core/bin/configureModelSEED.cmd (for windows)
+		Model-SEED-core/bin/configureModelSEED.sh (for linux and OSX)
+	b.) Edit the configuration script arguments based on your installation and database properties:
+		-p "installation directory"
+		-d "data directory"
+		-g "glpk installation directory"
+		-c "cplex installation directory" (delete these if you don't have cplex)
+		-cl "cplex license file location" (delete these if you don't have cplex)
+		-os "windows/linus/osx" 
+		-usr "Model SEED username"
+		-pwd "Model SEED password"
+		-dbhost "database hostname"
+		-dbuser "database username"
+		-dbpwd "database password"
+	c.) Run the configuration script. You should see no errors.
+4.) Install needed non-default perl libraries, all readily available through CPAN or perl package manager:
+	a.) File/Copy/Recursive
+	b.) Spreadsheet/WriteExcel
+	c.) XML/DOM
+	d.) YAML
+5.) Create the empty database scheme
+	a.) Set up an SQL server on your computer or identify a server you have access to
+	b.) Run this script: Model-SEED-core/bin/CreateDBScheme.(sh/cmd) (Extension depends on OS)
+	c.) Should run with no errors.
+6.) Load the database scheme
+	a.) Download the default database content from here:
+	http://bioseed.mcs.anl.gov/~chenry/sql.rar
+	b.) Extract the SQL file, and import it into the "ModelDB" scheme created in step 4
+7.) Test environment by running Model Driver with no arguments:
+	a.) Run this script: Model-SEED-core/bin/ModelDriver.(sh/cmd)
