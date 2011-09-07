@@ -4025,15 +4025,26 @@ sub printrolecpxrxn {
 
 sub importmodel {
     my($self,@Data) = @_;
-    my $args = $self->check([["model name",1],["genome id",1],["owner",0,$self->figmodel()->user()],["path",0,undef],["overwrite",0,0]],[@Data]);
+    my $args = $self->check([
+    	["name",1],
+    	["genome",1],
+    	["owner",0,$self->figmodel()->user()],
+    	["path",0,undef],
+    	["overwrite",0,0],
+    	["biochemsource",0,undef]
+    ],[@Data]);
+	my $public = 0;
+	if ($args->{"owner"} eq "master") {
+		$public = 1;
+	}
 	$self->figmodel()->import_model({
-		baseid => $args->{"model name"},
-		genome => $args->{"genome id"},
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
 		owner => $args->{"owner"},
 		path => $args->{"path"},
-		public => 0,
+		public => $public,
 		overwrite => $args->{"overwrite"},
-		biochemSource => $args->{"biochemistry source"}
+		biochemSource => $args->{"biochemsource"}
 	});
 	return "SUCCESS";
 }

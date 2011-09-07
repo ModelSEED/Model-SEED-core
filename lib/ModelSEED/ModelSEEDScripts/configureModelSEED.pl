@@ -10,7 +10,6 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 use Cwd qw(abs_path);
-use ModelSEED::ModelDriver;
 
 my $args = {};
 my $result = GetOptions(
