@@ -1,0 +1,1 @@
+perl ../lib/ModelSEED/ModelSEEDScripts/configureModelSEED.pl -p "installation directory" -d "data directory" -g "glpk installation directory" -c "cplex installation directory" -cl "cplex license file location" -os "windows/linus/osx" -usr "Model SEED username" -pwd "Model SEED password" -dbhost "database hostname" -dbuser "database username" -dbpwd "database password"
