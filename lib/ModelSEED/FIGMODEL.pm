@@ -11,6 +11,7 @@ use Class::ISA;
 use File::Temp qw(tempfile);
 use Carp qw(cluck);
 use Data::Dumper;
+use LWP::Simple;
 use File::Path;
 use File::Copy::Recursive;
 use Spreadsheet::WriteExcel;
@@ -53,59 +54,55 @@ Description:
 	The constructor handles the configuration of the FIGMODEL object including the configuration of the database location.
 =cut
 sub new {
-    my ($userObj, $username, $password, $configFiles) = undef;
+	my ($userObj, $username, $password, $configFiles) = undef;
 	my $self = {FAIL => [-1],SUCCESS => [1],_debug => 0};
 	bless $self;
 	my $class = shift @_;
-    my $args  = shift @_;
-    if(ref($args) eq "HASH") {
-        $username    = $args->{username} if(defined($args->{username}));
-        $username    = $args->{user} if(defined($args->{user}));
-        $password    = $args->{password} if(defined($args->{password}));
-        $configFiles = $args->{configFiles} if(defined($args->{configFiles}));
-        $userObj     = $args->{userObj} if(defined($args->{userObj}));
-    } else {
-        $username = $args; # depreciated new(username,password) interface
-        $password = shift @_;
-    }
+	my $args  = shift @_;
+	if(ref($args) eq "HASH") {
+		$username	= $args->{username} if(defined($args->{username}));
+		$username	= $args->{user} if(defined($args->{user}));
+		$password	= $args->{password} if(defined($args->{password}));
+		$configFiles = $args->{configFiles} if(defined($args->{configFiles}));
+		$userObj	 = $args->{userObj} if(defined($args->{userObj}));
+	} else {
+		$username = $args; # depreciated new(username,password) interface
+		$password = shift @_;
+	}
 	#Getting the list of FIGMODELConfig files to be loaded
 	my @figmodelConfigFiles;
 	if (defined($ENV{"FIGMODEL_DEBUG"})) {
 		$self->{_debug} = $ENV{"FIGMODEL_DEBUG"};
 	}
-    if(defined($configFiles)) {
-        push(@figmodelConfigFiles, @$configFiles);
-    }
-    if(scalar(@figmodelConfigFiles) == 0) {
-        # need to load something, so...
-        # load a single default file from
-        # 1. FIGMODEL_CONFIG env parameter
-        # 2. FIG_Config.pm FIGMODEL_CONFIG global
-        # 3. FIGMODELConfig.txt in FIGdisk/config/ directory
-        # 4. Global default
-        if (defined($ENV{"FIGMODEL_CONFIG"})) {
-            @figmodelConfigFiles = split(/:/,$ENV{"FIGMODEL_CONFIG"});
-        } elsif (defined($FIG_Config::FIGMODEL_CONFIG)) {
-            @figmodelConfigFiles = split(/:/,$FIG_Config::FIGMODEL_CONFIG);
-        } elsif (defined($FIG_Config::fig_disk) && -f $FIG_Config::fig_disk.'/config/FIGMODELConfig.txt') {
-            push(@figmodelConfigFiles, $FIG_Config::fig_disk.'/config/FIGMODELConfig.txt');
-        } else {
-            @figmodelConfigFiles = ("../config/FIGMODELConfig.txt");
-        }
-    }
-    $self->{_configSettings} = \@figmodelConfigFiles;
+	if(defined($configFiles)) {
+		push(@figmodelConfigFiles, @$configFiles);
+	}
+	if(scalar(@figmodelConfigFiles) == 0) {
+		# need to load something, so...
+		# load a single default file from
+		# 1. FIGMODEL_CONFIG env parameter
+		# 2. FIG_Config.pm FIGMODEL_CONFIG global
+		# 3. FIGMODELConfig.txt in FIGdisk/config/ directory
+		# 4. Global default
+		if (defined($ENV{"FIGMODEL_CONFIG"})) {
+			@figmodelConfigFiles = split(/;/,$ENV{"FIGMODEL_CONFIG"});
+		} else {
+			@figmodelConfigFiles = ("../config/FIGMODELConfig.txt");
+		}
+	}
+	$self->{_configSettings} = \@figmodelConfigFiles;
 	#Loading the FIGMODELConfig files
 	for (my $k=0;$k < @figmodelConfigFiles; $k++) {
-        if (ref($figmodelConfigFiles[$k]) eq 'HASH') {
-            my $hash_config = $figmodelConfigFiles[$k];
-            for my $key (keys %$hash_config) {
-               $self->{$key} = $hash_config->{$key};
-            }
-        } elsif (-f $figmodelConfigFiles[$k]) {
-		    $self->LoadFIGMODELConfig($figmodelConfigFiles[$k],1);
+		if (ref($figmodelConfigFiles[$k]) eq 'HASH') {
+			my $hash_config = $figmodelConfigFiles[$k];
+			for my $key (keys %$hash_config) {
+			   $self->{$key} = $hash_config->{$key};
+			}
+		} elsif (-f $figmodelConfigFiles[$k]) {
+			$self->LoadFIGMODELConfig($figmodelConfigFiles[$k],1);
 		} else {
-            warn "Could not locate configuration file: ".$figmodelConfigFiles[$k].", continuing to load...\n";
-        }
+			warn "Could not locate configuration file: ".$figmodelConfigFiles[$k].", continuing to load...\n";
+		}
 	}
 	#Getting the directory where all the model data is located
 	$self->{_directory}->[0] = $self->{"database root directory"}->[0];
@@ -115,17 +112,17 @@ sub new {
 	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($self->{"database root directory"}->[0],$self);
 	$self->{"_figmodelweb"}->[0] = ModelSEED::FIGMODEL::FIGMODELweb->new($self);
 	#Authenticating the user
-    if (defined($userObj)) {
-        $self->{_user_acount}->[0] = $userObj;
-    } else {
-        if (!defined($username) && defined($ENV{"FIGMODEL_USER"}) && defined($ENV{"FIGMODEL_PASSWORD"})) {
-            $username = $ENV{"FIGMODEL_USER"};
-            $password = $ENV{"FIGMODEL_PASSWORD"};
-        }
-        if (defined($username) && defined($password)) {
-            $self->authenticate_user($username,$password);
-        }
-    }
+	if (defined($userObj)) {
+		$self->{_user_acount}->[0] = $userObj;
+	} else {
+		if (!defined($username) && defined($ENV{"FIGMODEL_USER"}) && defined($ENV{"FIGMODEL_PASSWORD"})) {
+			$username = $ENV{"FIGMODEL_USER"};
+			$password = $ENV{"FIGMODEL_PASSWORD"};
+		}
+		if (defined($username) && defined($password)) {
+			$self->authenticate_user($username,$password);
+		}
+	}
 	return $self;
 }
 
@@ -140,46 +137,43 @@ sub FIGMODELWARNING {
 }
 
 sub LoadFIGMODELConfig {
-    my ($self,$file_to_load,$clearOnLoad) = @_;
-    open (INPUT, "<", $file_to_load) || die($@);
-		my $DatabaseData;
-		while (my $Line = <INPUT>) {
-			chomp($Line);
-			push(@{$DatabaseData},$Line);
-		}
-		close(INPUT);
-	    for (my $i=0; $i < @{$DatabaseData}; $i++) {
-			while ($DatabaseData->[$i] =~ m/\$\{([^\}]+)\}/) {
-		    	my $var = $1;
-		    	if (defined($self->config($var)->[0])) {
-		    		my $value = $self->config($var)->[0];
-		    		my $search = "\\\$\\{".$var."\\}";
-		    		$search =~ s/\s/\\s/g;
-		    		$DatabaseData->[$i] =~ s/$search/$value/g;
-		    	}
-		    }
-			my $temparray = [split(/\|/,$DatabaseData->[$i])];
-			for (my $j=1; $j < @{$temparray}; $j++) {
-			    if ($temparray->[0] =~ m/^%/) {
-					my $keyarray = [split(/;/,$temparray->[$j])];
-					if (defined($clearOnLoad) && $clearOnLoad == 1) {
-                    delete $self->{substr($temparray->[0],1)};
-					}
-                if (@$keyarray > 1) {
-					    for (my $m=1; $m < @{$keyarray}; $m++) {
-							push(@{$self->{substr($temparray->[0],1)}->{$keyarray->[0]}},$keyarray->[$m]);
-					    }
-					} else {
-					    $self->{substr($temparray->[0],1)}->{$keyarray->[0]} = $j;
-					}
-			    } else {
-                if(defined($clearOnLoad) && $clearOnLoad == 1) {
-                    delete $self->{$temparray->[0]}
-			    }
-                $self->{$temparray->[0]}->[$j-1]= $temparray->[$j];
+	my ($self,$file_to_load,$clearOnLoad) = @_;
+	open (INPUT, "<", $file_to_load) || die($@);
+	my $DatabaseData;
+	while (my $Line = <INPUT>) {
+		chomp($Line);
+		push(@{$DatabaseData},$Line);
+	}
+	close(INPUT);
+	for (my $i=0; $i < @{$DatabaseData}; $i++) {
+		while ($DatabaseData->[$i] =~ m/\$\{([^\}]+)\}/) {
+			my $var = $1;
+			if (defined($self->config($var)->[0])) {
+				my $value = $self->config($var)->[0];
+				my $search = "\\\$\\{".$var."\\}";
+				$search =~ s/\s/\\s/g;
+				$DatabaseData->[$i] =~ s/$search/$value/g;
 			}
-	    }
-    }
+		}
+		my $temparray = [split(/\|/,$DatabaseData->[$i])];
+		if (defined($clearOnLoad) && $clearOnLoad == 1) {
+			delete $self->{substr($temparray->[0],1)};
+		}
+		for (my $j=1; $j < @{$temparray}; $j++) {
+			if ($temparray->[0] =~ m/^%/) {
+				my $keyarray = [split(/;/,$temparray->[$j])];
+				if (@$keyarray > 1) {
+					for (my $m=1; $m < @{$keyarray}; $m++) {
+						push(@{$self->{substr($temparray->[0],1)}->{$keyarray->[0]}},$keyarray->[$m]);
+					}
+				} else {
+					$self->{substr($temparray->[0],1)}->{$keyarray->[0]} = $j;
+				}
+			} else {
+				$self->{$temparray->[0]}->[$j-1]= $temparray->[$j];
+			}
+		}
+	}
 }
 
 =head3 directory
@@ -265,30 +259,30 @@ Definition:
 		error => string:error message
 	}
 Description:
-    Returns the errors message when FIGMODEL functions fail
+	Returns the errors message when FIGMODEL functions fail
 =cut
 sub new_error_message {
-    my ($self,$args) = @_;
-    $args = $self->process_arguments($args,[],{
-    	"package" => "FIGMODEL",
-    	function => "?",
-    	message=>"",
-    	args=>{}
-    });
-    
-    my $errorMsg = $args->{"package"}.":".$args->{function}.":".$args->{message};
-    if (defined($args->{args}->{error})) {
-    	$errorMsg .= $args->{args}->{error};
-    }
-    if(defined($self->{"warn_level"}) && $self->{"warn_level"} == 1) {
-        warn $errorMsg."\n";
-    } elsif(!defined($self->{warn_level})) {
-        print STDERR $errorMsg."\n";
-    }
-    $args->{args}->{error} = $errorMsg;
-    $args->{args}->{msg} = $errorMsg;
-    $args->{args}->{success} = 0;
-    return $args->{args};
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args,[],{
+		"package" => "FIGMODEL",
+		function => "?",
+		message=>"",
+		args=>{}
+	});
+	
+	my $errorMsg = $args->{"package"}.":".$args->{function}.":".$args->{message};
+	if (defined($args->{args}->{error})) {
+		$errorMsg .= $args->{args}->{error};
+	}
+	if(defined($self->{"warn_level"}) && $self->{"warn_level"} == 1) {
+		warn $errorMsg."\n";
+	} elsif(!defined($self->{warn_level})) {
+		print STDERR $errorMsg."\n";
+	}
+	$args->{args}->{error} = $errorMsg;
+	$args->{args}->{msg} = $errorMsg;
+	$args->{args}->{success} = 0;
+	return $args->{args};
 }
 =head3 globalMessage
 Definition:
@@ -308,7 +302,7 @@ sub globalMessage {
 	});
 	my @calldata = caller($args->{callIndex});
 	my @temp = split(/:/,$calldata[3]);
-    my $function = pop(@temp);
+	my $function = pop(@temp);
 	my $package = pop(@temp);
 	$self->database()->create_object("message",{
 		message => $args->{msg},
@@ -453,15 +447,15 @@ sub daily_maintenance {
 	#ModelDB Database backups
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
 	my $directory = $self->config("database root directory")->[0]."ReactionDB/backup/";
-    chdir($directory);
-    my $dirname = sprintf("%d\_%02d\_%02d", $year+1900, $mon+1, $mday);
-    mkdir($dirname) unless(-d $dirname);
+	chdir($directory);
+	my $dirname = sprintf("%d\_%02d\_%02d", $year+1900, $mon+1, $mday);
+	mkdir($dirname) unless(-d $dirname);
 	my $filename = $directory.$dirname."/"."ModelDBBackup.sql";
 	system("mysqldump --host=bio-app-authdb.mcs.anl.gov --user=webappuser --port=3306 --socket=/var/lib/mysql/mysql.sock --result-file=".$filename." --databases ModelDB SchedulerDB");
 	system("tar -czf ".$dirname.".tgz ".$dirname);
-    system("chmod 666 $dirname.tgz");
+	system("chmod 666 $dirname.tgz");
 	unlink($filename);
-    rmdir($dirname);
+	rmdir($dirname);
 	if (-e $directory."daily/".$wday.".sql.tgz") {
 		unlink($directory."daily/".$wday.".sql.tgz");
 	}
@@ -499,47 +493,47 @@ sub config {
 Definition:
 	{key=>value} = FBAMODEL->process_arguments( {key=>value} );
 Description:
-    Processes arguments to authenticate users and perform other needed tasks
+	Processes arguments to authenticate users and perform other needed tasks
 =cut
 sub process_arguments {
-    my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
-    if (defined($mandatoryArguments)) {
-    	for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
-    		if (!defined($args->{$mandatoryArguments->[$i]})) {
+	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
+	if (defined($mandatoryArguments)) {
+		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
+			if (!defined($args->{$mandatoryArguments->[$i]})) {
 				push(@{$args->{_error}},$mandatoryArguments->[$i]);
-    		}
-    	}
-    }
+			}
+		}
+	}
 	ModelSEED::FIGMODEL::FIGMODELERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
-    if (defined($optionalArguments)) {
-    	foreach my $argument (keys(%{$optionalArguments})) {
-    		if (!defined($args->{$argument})) {
-    			$args->{$argument} = $optionalArguments->{$argument};
-    		}
-    	}	
-    }
-    if (defined($args->{user}) && defined($args->{password})) {
+	if (defined($optionalArguments)) {
+		foreach my $argument (keys(%{$optionalArguments})) {
+			if (!defined($args->{$argument})) {
+				$args->{$argument} = $optionalArguments->{$argument};
+			}
+		}	
+	}
+	if (defined($args->{user}) && defined($args->{password})) {
 		$self->authenticate_user($args->{user},$args->{password});
-    }
-    return $args;
+	}
+	return $args;
 }
 
 =head3 print_usage
 Definition:
 	string = FBAMODEL->print_usage([]:madatory arguments,{}:optional arguments);
 Description:
-    Prints the usage for the current function call.
+	Prints the usage for the current function call.
 =cut
 sub print_usage {
-    my ($self,$mandatoryArguments,$optionalArguments,$args) = @_;
+	my ($self,$mandatoryArguments,$optionalArguments,$args) = @_;
 	my @calldata = caller(1);
-    my $call = $calldata[3];
-    if ($call eq "ModelSEED::FIGMODEL::process_arguments") {
-    	@calldata = caller(2);
-    	$call = $calldata[3];
-    }
-    my $usage = "";
-    if (defined($mandatoryArguments)) {
+	my $call = $calldata[3];
+	if ($call eq "ModelSEED::FIGMODEL::process_arguments") {
+		@calldata = caller(2);
+		$call = $calldata[3];
+	}
+	my $usage = "";
+	if (defined($mandatoryArguments)) {
 		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
 			if (length($usage) > 0) {
 				$usage .= "/";	
@@ -554,10 +548,10 @@ sub print_usage {
 				}
 			}
 		}
-    }
-    if (defined($optionalArguments)) {
-    	my $optArgs = [keys(%{$optionalArguments})];
-    	for (my $i=0; $i < @{$optArgs}; $i++) {
+	}
+	if (defined($optionalArguments)) {
+		my $optArgs = [keys(%{$optionalArguments})];
+		for (my $i=0; $i < @{$optArgs}; $i++) {
 			if (length($usage) > 0) {
 				$usage .= "/";	
 			}
@@ -571,109 +565,109 @@ sub print_usage {
 				}
 			}
 		}
-    }
+	}
 	return $call."{".$usage."}";
 }
 
 =head3 public_compound_table 
 Definition:
-    FIGMODELTable = FIGMODEL->public_compound_table()
+	FIGMODELTable = FIGMODEL->public_compound_table()
 Description:
-    Generates a FIGMODELTable of the public compound data in the figmodel
-    biochemistry database. Used by ModelSEEDdownload.cgi to generate an
-    Excel spreadsheet of the biochemistry database.
+	Generates a FIGMODELTable of the public compound data in the figmodel
+	biochemistry database. Used by ModelSEEDdownload.cgi to generate an
+	Excel spreadsheet of the biochemistry database.
 =cut
 sub public_compound_table {
-    my ($self) = @_;
-    my $headings = [ "DATABASE", "PRIMARY NAME", "ABBREVIATION",
-                     "NAMES", "KEGG ID(S)", "FORMULA", "CHARGE",
-                     "DELTAG (kcal/mol)", "DELTAG ERROR (kcal/mol)", "MASS"];
-    my $heading_to_cpd_attr = { "DATABASE" => "id", "PRIMARY NAME" => "name",
-                                "MASS" => "mass", "ABBREVIATION" => "abbrev",
-                                "FORMULA" => "formula", "CHARGE" => "charge",
-                                "DELTAG (kcal/mol)" => "deltaG",
-                                "DELTAG ERROR (kcal/mol)" => "deltaGErr"
-                              };
-    my $heading_to_other_func = {
-        "NAMES" => sub {
-                    my $id = shift @_;
-                    my $names = $self->database()->get_objects("cpdals", {"COMPOUND" => $id, "type" => "name"});
-                    return map { $_->alias() } @$names;
-                  },
-        "KEGG ID(S)" => sub {
-                    my $id = shift @_;
-                    my $keggids = $self->database()->get_objects("cpdals", {"COMPOUND" => $id, "type" => "KEGG"});
-                    return map { $_->alias() } @$keggids;
-                }
-    };
-    my ($fh, $filename) = File::Temp::tempfile("compound-db-XXXXXXX");
-    close($fh);
+	my ($self) = @_;
+	my $headings = [ "DATABASE", "PRIMARY NAME", "ABBREVIATION",
+					 "NAMES", "KEGG ID(S)", "FORMULA", "CHARGE",
+					 "DELTAG (kcal/mol)", "DELTAG ERROR (kcal/mol)", "MASS"];
+	my $heading_to_cpd_attr = { "DATABASE" => "id", "PRIMARY NAME" => "name",
+								"MASS" => "mass", "ABBREVIATION" => "abbrev",
+								"FORMULA" => "formula", "CHARGE" => "charge",
+								"DELTAG (kcal/mol)" => "deltaG",
+								"DELTAG ERROR (kcal/mol)" => "deltaGErr"
+							  };
+	my $heading_to_other_func = {
+		"NAMES" => sub {
+					my $id = shift @_;
+					my $names = $self->database()->get_objects("cpdals", {"COMPOUND" => $id, "type" => "name"});
+					return map { $_->alias() } @$names;
+				  },
+		"KEGG ID(S)" => sub {
+					my $id = shift @_;
+					my $keggids = $self->database()->get_objects("cpdals", {"COMPOUND" => $id, "type" => "KEGG"});
+					return map { $_->alias() } @$keggids;
+				}
+	};
+	my ($fh, $filename) = File::Temp::tempfile("compound-db-XXXXXXX");
+	close($fh);
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,$filename,undef,"\t","|",undef);	
-    my $cpds = $self->database()->get_objects("compound");
-    foreach my $cpd (@$cpds) {
-        next unless defined $cpd;
-        my $newRow = {};
-        foreach my $heading (@$headings) {
-            if(defined($heading_to_cpd_attr->{$heading})) {
-                my $attr = $heading_to_cpd_attr->{$heading};
-                $newRow->{$heading} = [$cpd->$attr()];
-            } elsif(defined($heading_to_other_func->{$heading})) {
-                my $func = $heading_to_other_func->{$heading};
-                my @data = &$func($cpd->id());
-                $newRow->{$heading} = \@data;
-            }
-        }
-        $tbl->add_row($newRow);
-    }
-    return $tbl;
+	my $cpds = $self->database()->get_objects("compound");
+	foreach my $cpd (@$cpds) {
+		next unless defined $cpd;
+		my $newRow = {};
+		foreach my $heading (@$headings) {
+			if(defined($heading_to_cpd_attr->{$heading})) {
+				my $attr = $heading_to_cpd_attr->{$heading};
+				$newRow->{$heading} = [$cpd->$attr()];
+			} elsif(defined($heading_to_other_func->{$heading})) {
+				my $func = $heading_to_other_func->{$heading};
+				my @data = &$func($cpd->id());
+				$newRow->{$heading} = \@data;
+			}
+		}
+		$tbl->add_row($newRow);
+	}
+	return $tbl;
 }
 
 
 =head3 public_reaction_table 
 Definition:
-    FIGMODELTable = FIGMODEL->public_reaction_table()
+	FIGMODELTable = FIGMODEL->public_reaction_table()
 Description:
-    Generates a FIGMODELTable of the public reaction data in the figmodel
-    biochemistry database. Used by ModelSEEDdownload.cgi to generate an
-    Excel spreadsheet of the biochemistry database.
+	Generates a FIGMODELTable of the public reaction data in the figmodel
+	biochemistry database. Used by ModelSEEDdownload.cgi to generate an
+	Excel spreadsheet of the biochemistry database.
 =cut
 sub public_reaction_table {
-    my ($self) = @_;
+	my ($self) = @_;
 	my $headings = ["DATABASE", "NAME","EC NUMBER(S)","KEGG ID(S)",
-                    "DELTAG (kcal/mol)","DELTAG ERROR (kcal/mol)",  
-                    "EQUATION","NAME EQ","THERMODYNAMIC FEASIBILTY",
-                   ];
-    my $heading_to_rxn_attr = { "DATABASE" => "id", "NAME" => "name",
-                                "DELTAG (kcal/mol)" => "deltaG",
-                                "DELTAG ERROR (kcal/mol)" => "deltaGErr",
-                                "EQUATION" => "equation", "NAME EQ" => "definition",
-                                "THERMODYNAMIC FEASIBILTY" => "thermoReversibility",
-                                "EC NUMBER(S)" => "enzyme",
-                              };
-    my $heading_to_other_hash = {
-        "KEGG ID(S)" => $self->database()->get_object_hash(
-            { type => "rxnals", attribute => "REACTION", parameters => { type => "KEGG" } }),
-    };
-    my ($fh, $filename) = File::Temp::tempfile("reaction-db-XXXXXXX");
-    close($fh);
+					"DELTAG (kcal/mol)","DELTAG ERROR (kcal/mol)",  
+					"EQUATION","NAME EQ","THERMODYNAMIC FEASIBILTY",
+				   ];
+	my $heading_to_rxn_attr = { "DATABASE" => "id", "NAME" => "name",
+								"DELTAG (kcal/mol)" => "deltaG",
+								"DELTAG ERROR (kcal/mol)" => "deltaGErr",
+								"EQUATION" => "equation", "NAME EQ" => "definition",
+								"THERMODYNAMIC FEASIBILTY" => "thermoReversibility",
+								"EC NUMBER(S)" => "enzyme",
+							  };
+	my $heading_to_other_hash = {
+		"KEGG ID(S)" => $self->database()->get_object_hash(
+			{ type => "rxnals", attribute => "REACTION", parameters => { type => "KEGG" } }),
+	};
+	my ($fh, $filename) = File::Temp::tempfile("reaction-db-XXXXXXX");
+	close($fh);
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,$filename,undef,"\t","|",undef);	
-    my $rxns = $self->database()->get_objects("reaction");
-    foreach my $rxn (@$rxns) {
-        next unless defined $rxn;
-        my $newRow = {};
-        foreach my $heading (@$headings) {
-            if(defined($heading_to_rxn_attr->{$heading})) {
-                my $attr = $heading_to_rxn_attr->{$heading};
-                $newRow->{$heading} = [$rxn->$attr()];
-            } elsif(defined($heading_to_other_hash->{$heading})) {
-                my $hash = $heading_to_other_hash->{$heading};
-                my $data = defined $hash->{$rxn->id()} ? $hash->{$rxn->id()}->[0]->alias() : "";
-                $newRow->{$heading} = [$data];
-            }
-        }
-        $tbl->add_row($newRow);
-    }
-    return $tbl;
+	my $rxns = $self->database()->get_objects("reaction");
+	foreach my $rxn (@$rxns) {
+		next unless defined $rxn;
+		my $newRow = {};
+		foreach my $heading (@$headings) {
+			if(defined($heading_to_rxn_attr->{$heading})) {
+				my $attr = $heading_to_rxn_attr->{$heading};
+				$newRow->{$heading} = [$rxn->$attr()];
+			} elsif(defined($heading_to_other_hash->{$heading})) {
+				my $hash = $heading_to_other_hash->{$heading};
+				my $data = defined $hash->{$rxn->id()} ? $hash->{$rxn->id()}->[0]->alias() : "";
+				$newRow->{$heading} = [$data];
+			}
+		}
+		$tbl->add_row($newRow);
+	}
+	return $tbl;
 }
 
 =head2 Routines that access or set other SEED modules
@@ -687,9 +681,9 @@ Description:
 sub sapSvr {
 	my($self,$target) = @_;
 	if (!defined($target)) {
-        $target = 'SEED';
-    }
-    $ENV{'SAS_SERVER'} = $target;
+		$target = 'SEED';
+	}
+	$ENV{'SAS_SERVER'} = $target;
 	return SAPserver->new();
 }
 
@@ -796,16 +790,17 @@ Description:
 sub authenticate {
 	my($self,$args) = @_;
 	if (defined($args->{cgi})) {
-           my $session = $self->database()->create_object("session",$args->{cgi});
-           if (!defined($session) || !defined($session->user)) {
-           		return "No user logged in";
-           } else {
-           		$self->{_user_acount}->[0] = $session->user;
-           		return $self->user()." logged in";
-           }
+		   my $session = $self->database()->create_object("session",$args->{cgi});
+		   if (!defined($session) || !defined($session->user)) {
+		   		return "No user logged in";
+		   } else {
+		   		$self->{_user_acount}->[0] = $session->user;
+		   		return $self->user()." logged in";
+		   }
 	} elsif (defined($args->{username}) && defined($args->{password})) {
-		if ($args->{username} eq "chenry" && $args->{password} eq "figmodel4all") {
-			$self->{_user_acount}->[0] = $self->database()->get_object("user",{login=>"chenry"});
+		if (defined($self->config("model administrators")->{$args->{username}}) 
+			&& $args->{password} eq $self->config("model administrators")->{$args->{username}}) {
+			$self->{_user_acount}->[0] = $self->database()->get_object("user",{login=>$args->{username}});
 		} else {
 			my $usrObj = $self->database()->get_object("user",{login=>$args->{username}});
 			if (!defined($usrObj)) {
@@ -823,13 +818,13 @@ sub authenticate {
 
 =head3 logout
 Definition:
-    FIGMODEL->logout()
+	FIGMODEL->logout()
 Description:
-    Logs the specified user out.
+	Logs the specified user out.
 =cut
 sub logout {
-    my ($self) = @_;
-    undef $self->{_user_acount};
+	my ($self) = @_;
+	undef $self->{_user_acount};
 }
 
 =head2 Functions relating to job queue
@@ -956,14 +951,14 @@ Description:
 =cut
 sub get_model {
 	my ($self,$id) = @_;
-    my $cached = $self->getCache({key => $id});
-    return $cached if defined($cached);
-    # if cache miss:
-    my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
-    if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
-        $self->setCache({key => $mdl->fullId(), data => $mdl});
-    }
-    return $mdl;
+	my $cached = $self->getCache({key => $id});
+	return $cached if defined($cached);
+	# if cache miss:
+	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
+	if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
+		$self->setCache({key => $mdl->fullId(), data => $mdl});
+	}
+	return $mdl;
 }
 
 =head3 get_models
@@ -1003,13 +998,13 @@ sub get_reaction {
 		return ModelSEED::FIGMODEL::FIGMODELreaction->new({figmodel => $self});
 	}
 	my $rxn = $self->getCache({key => "FIGMODELreaction:".$id});
-    if (!defined($rxn)) {
-    	$rxn = ModelSEED::FIGMODEL::FIGMODELreaction->new({figmodel => $self,id => $id});
-    	if (defined($rxn) && defined($id)) {
-    		$self->setCache({key => "FIGMODELreaction:".$id, data => $rxn});
-    	}
-    }
-    return $rxn;
+	if (!defined($rxn)) {
+		$rxn = ModelSEED::FIGMODEL::FIGMODELreaction->new({figmodel => $self,id => $id});
+		if (defined($rxn) && defined($id)) {
+			$self->setCache({key => "FIGMODELreaction:".$id, data => $rxn});
+		}
+	}
+	return $rxn;
 }
 
 =head3 get_media
@@ -1023,13 +1018,13 @@ sub get_media {
 		return ModelSEED::FIGMODEL::FIGMODELmedia->new({figmodel => $self});
 	}
 	my $rxn = $self->getCache({key => "FIGMODELmedia:".$id});
-    if (!defined($rxn)) {
-    	$rxn = ModelSEED::FIGMODEL::FIGMODELmedia->new({figmodel => $self,id => $id});
-    	if (defined($rxn) && defined($id)) {
-    		$self->setCache({key => "FIGMODELmedia:".$id, data => $rxn});
-    	}
-    }
-    return $rxn;
+	if (!defined($rxn)) {
+		$rxn = ModelSEED::FIGMODEL::FIGMODELmedia->new({figmodel => $self,id => $id});
+		if (defined($rxn) && defined($id)) {
+			$self->setCache({key => "FIGMODELmedia:".$id, data => $rxn});
+		}
+	}
+	return $rxn;
 }
 
 =head3 get_compound
@@ -1056,13 +1051,13 @@ Description:
 sub get_role {
 	my ($self,$id) = @_;
 	my $cached = $self->getCache({key => "FIGMODELrole:".$id});
-    return $cached if defined($cached);
-    my $role = ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self,id => $id});
-    if (defined($role) && defined($id)) {
-    	$self->setCache({key => "FIGMODELrole:".$role->id(), data => $role});
-    	$self->setCache({key => "FIGMODELrole:".$role->ppo()->name(), data => $role});
-    }
-    return $role
+	return $cached if defined($cached);
+	my $role = ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self,id => $id});
+	if (defined($role) && defined($id)) {
+		$self->setCache({key => "FIGMODELrole:".$role->id(), data => $role});
+		$self->setCache({key => "FIGMODELrole:".$role->ppo()->name(), data => $role});
+	}
+	return $role
 }
 
 =head2 FBA related methods
@@ -1090,7 +1085,7 @@ sub fba {
 
 =head3 fba_run_study
 =item Definition:
-    Output:{} = FBAMODEL->fba_run_study({
+	Output:{} = FBAMODEL->fba_run_study({
 		model => string,
 		media => string,
 		rxnKO => [string],
@@ -1099,9 +1094,9 @@ sub fba {
 			singleKnockout => 0/1,
 			fluxVariability => 0/1
 		}
-    });
-    Output: {
-    	model => string,
+	});
+	Output: {
+		model => string,
 		media => string,
 		rxnKO => [string],
 		geneKO  => [string],
@@ -1117,7 +1112,7 @@ sub fba {
 			noGrowthCompounds => [string],
 			fluxes => {string,double}
 		}
-    }   
+	}   
 =item Description:
 =cut
 
@@ -1363,32 +1358,32 @@ sub calculateModelDistances {
 			print "Getting data for model ".$i."...\n";
 			my $rxn_mdls = $self->database()->get_objects("rxnmdl",{MODEL=>$args->{models}->[$i]});
 			foreach my $rxnmdl (@$rxn_mdls) {
-			    next unless(defined($rxnmdl));
-			    if ($rxnmdl->pegs() !~ m/GAP/ && $rxnmdl->pegs() !~ m/AUTO/) {#Filtering out any gapfilling that's present
-			    	$rxn_mdls_hash->{$rxnmdl->MODEL()}->{$rxnmdl->REACTION().$rxnmdl->compartment()} = 1;
-			    }
+				next unless(defined($rxnmdl));
+				if ($rxnmdl->pegs() !~ m/GAP/ && $rxnmdl->pegs() !~ m/AUTO/) {#Filtering out any gapfilling that's present
+					$rxn_mdls_hash->{$rxnmdl->MODEL()}->{$rxnmdl->REACTION().$rxnmdl->compartment()} = 1;
+				}
 			}
 		}
 		print "Calculating distances for all models...\n";
 		my $del = "~";
 		foreach my $m (@{$args->{models}}) {
-		    foreach my $n (@{$args->{models}}) {
-		        if($m ne $n) {
-			        if(defined($distances->{$n."~".$m})) {
-			             $distances->{$m."~".$n} = $distances->{$n."~".$m};
-			        } else {
-			            my $one = 0;
-			            my $two = 0;
-			            foreach my $rxn (keys %{$rxn_mdls_hash->{$m}}) {
-					       $one++ unless(defined($rxn_mdls_hash->{$n}->{$rxn}));
-					    } 
-					    foreach my $rxn (keys %{$rxn_mdls_hash->{$n}}) {
-					       $two++ unless(defined($rxn_mdls_hash->{$m}->{$rxn}));
-					    }
-			            $distances->{$m."~".$n} = sqrt($one*$one+$two*$two);
-			        }
-		        }
-		    }
+			foreach my $n (@{$args->{models}}) {
+				if($m ne $n) {
+					if(defined($distances->{$n."~".$m})) {
+						 $distances->{$m."~".$n} = $distances->{$n."~".$m};
+					} else {
+						my $one = 0;
+						my $two = 0;
+						foreach my $rxn (keys %{$rxn_mdls_hash->{$m}}) {
+						   $one++ unless(defined($rxn_mdls_hash->{$n}->{$rxn}));
+						} 
+						foreach my $rxn (keys %{$rxn_mdls_hash->{$n}}) {
+						   $two++ unless(defined($rxn_mdls_hash->{$m}->{$rxn}));
+						}
+						$distances->{$m."~".$n} = sqrt($one*$one+$two*$two);
+					}
+				}
+			}
 		}
 	}
 	if ($args->{saveToFile} == 1 && -d $args->{directory}) {
@@ -1484,45 +1479,45 @@ sub parseSBMLtoTabTable {
 	#Seaver 07/07/11
 	#Processing file or directory
 	if(defined($args->{directory})){
-	    if(substr($args->{directory},-1) ne "/"){
+		if(substr($args->{directory},-1) ne "/"){
 		$args->{directory}.="/";
-	    }
+		}
 
-	    if(!defined($args->{error}) && !-d $args->{directory}){
+		if(!defined($args->{error}) && !-d $args->{directory}){
 		$args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
-	    }
+		}
 
 
-	    my $dir = $args->{directory};
-	    my $name = $args->{model_name};
-	    $name.="-";
+		my $dir = $args->{directory};
+		my $name = $args->{model_name};
+		$name.="-";
 
-	    $args = $self->process_arguments($args,["directory"],{
+		$args = $self->process_arguments($args,["directory"],{
 		SBMLFile => $dir."ModelData.xml",
 		compartmentFiles => $dir.$name."compartments.tbl",
 		compoundFiles => $dir.$name."compounds.tbl",
 		reactionFiles => $dir.$name."reactions.tbl"
 		});
 
-	    if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
 			$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-	    }
+		}
 
 	}elsif(defined($args->{file})){
-	    my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
-	    my $name = $args->{model_name};
-	    $name.="-";
+		my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
+		my $name = $args->{model_name};
+		$name.="-";
 
-	    $args = $self->process_arguments($args,["file"],{
+		$args = $self->process_arguments($args,["file"],{
 		SBMLFile => $args->{file},
 		compartmentFiles => $dir.$name."compartments.tbl",
 		compoundFiles => $dir.$name."compounds.tbl",
 		reactionFiles => $dir.$name."reactions.tbl"
 		});
 
-	    if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
 		$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-	    }
+		}
 
 	}
 
@@ -1536,46 +1531,46 @@ sub parseSBMLtoTabTable {
 	my @cmpts = $doc->getElementsByTagName("compartment");
 	my $cmpt_searchstring = "";
 	foreach my $cmpt (@cmpts) {
-	    my @attributes = $cmpt->getAttributes()->getValues();
-	    my $data;
-	    for (my $i=0; $i < @attributes; $i++) {
-		    if ($attributes[$i]->getName() eq "id") {
-		    	$cmpt_searchstring .= $attributes[$i]->getValue();
-		    }
-		    $data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();		    
-	    }
-	    push(@{$objectLists->{compartment}},$data);
+		my @attributes = $cmpt->getAttributes()->getValues();
+		my $data;
+		for (my $i=0; $i < @attributes; $i++) {
+			if ($attributes[$i]->getName() eq "id") {
+				$cmpt_searchstring .= $attributes[$i]->getValue();
+			}
+			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
+		}
+		push(@{$objectLists->{compartment}},$data);
 	}
 
 	my $compoundHeadings = ["id","name","charge"];
 	my @cpds = $doc->getElementsByTagName("species");
 	foreach my $cpd (@cpds) {
-	    my @attributes = $cpd->getAttributes()->getValues();
-	    my $data;
-	    for (my $i=0; $i < @attributes; $i++) {
+		my @attributes = $cpd->getAttributes()->getValues();
+		my $data;
+		for (my $i=0; $i < @attributes; $i++) {
 		if ($attributes[$i]->getName() eq "id") {
-		    if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
+			if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
 			$attributes[$i]->getValue()=substr($attributes[$i]->getValue(),0,-2);
-		    }elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
+			}elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
 			$attributes[$i]->getValue()=substr($attributes[$i]->getValue(),0,-3);
-		    }
+			}
 		}
-		$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();		    
-	    }
-	    push(@{$objectLists->{species}},$data);
+		$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
+		}
+		push(@{$objectLists->{species}},$data);
 	}
 
 	my $reactionHeadings = ["id","name","reversible","equation"];
 	my @rxns = $doc->getElementsByTagName("reaction");
 	foreach my $rxn (@rxns) {
 		my @attributes = $rxn->getAttributes()->getValues();
-	    my $data;
-	    for (my $i=0; $i < @attributes; $i++) {
-		    $data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();		    
-	    }
-	    my $eq = $self->get_reaction_equation_sbml($rxn,$cmpt_searchstring);
-	    push(@{$objectLists->{reaction}},$data);
-	    $data->{equation} = join(" ",@$eq);
+		my $data;
+		for (my $i=0; $i < @attributes; $i++) {
+			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
+		}
+		my $eq = $self->get_reaction_equation_sbml($rxn,$cmpt_searchstring);
+		push(@{$objectLists->{reaction}},$data);
+		$data->{equation} = join(" ",@$eq);
 	}
 
 	my $compartmentData = [join("\t",@{$compartmentHeadings})];
@@ -1627,69 +1622,69 @@ sub parseSBMLtoTabTable {
 
 =head3 get_reaction_equation_sbml
 Definition:
-    FIGMODEL->get_reaction_equation_sbml($SBML_Reaction_Object, $Compartments);
+	FIGMODEL->get_reaction_equation_sbml($SBML_Reaction_Object, $Compartments);
 =cut
 sub get_reaction_equation_sbml {
-    my ($self, $rxn, $cmpsearch) = @_;
-    my $eq = [];
-    my $reversable = $rxn->getAttribute("reversible");
-    (defined($reversable) && $reversable eq "true") ? $reversable = "<=>" : $reversable = "=>";
-    my @reactants = $rxn->getElementsByTagName("listOfReactants");
-    my @products = $rxn->getElementsByTagName("listOfProducts");
-    if(@reactants) {
-        @reactants = $reactants[0]->getElementsByTagName("speciesReference");
-        for(my $i=0; $i<@reactants; $i++) {
-            push(@$eq, "+") unless($i == 0);
-            my $reactant = $reactants[$i];
-            my $count = $reactant->getAttribute("stoichiometry");
-            $count = undef if ( defined($count) && ($count == 1 || $count eq "") );
-            push(@$eq, "(".$count.")") if defined($count);
+	my ($self, $rxn, $cmpsearch) = @_;
+	my $eq = [];
+	my $reversable = $rxn->getAttribute("reversible");
+	(defined($reversable) && $reversable eq "true") ? $reversable = "<=>" : $reversable = "=>";
+	my @reactants = $rxn->getElementsByTagName("listOfReactants");
+	my @products = $rxn->getElementsByTagName("listOfProducts");
+	if(@reactants) {
+		@reactants = $reactants[0]->getElementsByTagName("speciesReference");
+		for(my $i=0; $i<@reactants; $i++) {
+			push(@$eq, "+") unless($i == 0);
+			my $reactant = $reactants[$i];
+			my $count = $reactant->getAttribute("stoichiometry");
+			$count = undef if ( defined($count) && ($count == 1 || $count eq "") );
+			push(@$eq, "(".$count.")") if defined($count);
 
-            my $cpd = $reactant->getAttribute("species");
-	    my $text=$cpd;
-	    my $cmpt=undef;
-	    if($cpd =~ /.*_[$cmpsearch]$/){
+			my $cpd = $reactant->getAttribute("species");
+		my $text=$cpd;
+		my $cmpt=undef;
+		if($cpd =~ /.*_[$cmpsearch]$/){
 		$text=substr($cpd,0,-2);
 		$cmpt=substr($cpd,-1);
-	    }elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
+		}elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
 		$text=substr($cpd,0,-3);
 		$cmpt=substr($cpd,-2,1);
-	    }
-	    if(!defined($cmpt)){
+		}
+		if(!defined($cmpt)){
 		$cmpt='c';
-	    }
-	    $text.="[".$cmpt."]";
-            push(@$eq, $text);
-        }
-    }
-    push(@$eq, $reversable);
-    if(@products) {
-        @products = $products[0]->getElementsByTagName("speciesReference"); 
-        for(my $i=0; $i<@products; $i++) {
-            push(@$eq, "+") unless($i == 0);
-            my $product = $products[$i];
-            my $count = $product->getAttribute("stoichiometry");
-            $count = undef if ( defined($count) && ($count == 1 || $count eq "") );
-            push(@$eq, "(".$count.")") if defined($count);
+		}
+		$text.="[".$cmpt."]";
+			push(@$eq, $text);
+		}
+	}
+	push(@$eq, $reversable);
+	if(@products) {
+		@products = $products[0]->getElementsByTagName("speciesReference"); 
+		for(my $i=0; $i<@products; $i++) {
+			push(@$eq, "+") unless($i == 0);
+			my $product = $products[$i];
+			my $count = $product->getAttribute("stoichiometry");
+			$count = undef if ( defined($count) && ($count == 1 || $count eq "") );
+			push(@$eq, "(".$count.")") if defined($count);
 
-            my $cpd = $product->getAttribute("species");
-	    my $text=$cpd;
-	    my $cmpt=undef;
-	    if($cpd =~ /.*_[$cmpsearch]$/){
+			my $cpd = $product->getAttribute("species");
+		my $text=$cpd;
+		my $cmpt=undef;
+		if($cpd =~ /.*_[$cmpsearch]$/){
 		$text=substr($cpd,0,-2);
 		$cmpt=substr($cpd,-1);
-	    }elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
+		}elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
 		$text=substr($cpd,0,-3);
 		$cmpt=substr($cpd,-2,1);
-	    }
-	    if(!defined($cmpt)){
+		}
+		if(!defined($cmpt)){
 		$cmpt='c';
-	    }
-	    $text.="[".$cmpt."]";
-            push(@$eq, $text);
-        }
-    }
-    return $eq;
+		}
+		$text.="[".$cmpt."]";
+			push(@$eq, $text);
+		}
+	}
+	return $eq;
 }
 
 =head3 get_genome_stats
@@ -1881,7 +1876,7 @@ sub get_map_hash {
 	my($self,$args) = @_;
 	$args = $self->process_arguments($args,["type"]);
 	if (defined($args->{error})) {
-	    $args->{type} = "reaction";
+		$args->{type} = "reaction";
 	}
 	if (!defined($self->{_maphash}->{$args->{type}})) {
 		my $objs = $self->database()->get_objects("diagram",{type => "KEGG"});
@@ -1945,7 +1940,7 @@ Description:
 
 sub ApplyStoichiometryCorrections {
 	my($self,$Equation,$ReverseEquation,$FullEquation) = @_;
-
+	return ($Equation,$ReverseEquation,$FullEquation);
 	my $CorrectionTable = $self->database()->GetDBTable("STOICH CORRECTIONS");
 	if (defined($CorrectionTable)) {
 		my $Row = $CorrectionTable->get_row_by_key($Equation,"OLD CODE");
@@ -2272,7 +2267,7 @@ sub rebuild_reaction_database_table {
 				next;
 			}
 			#Checking if the reaction is involved in a forced mapping and if so, the equation is replaced with the forced mapping equation:
-			($Code,$ReverseCode,$FullEquation) = $self->ApplyStoichiometryCorrections($Code,$ReverseCode,$FullEquation);
+			#($Code,$ReverseCode,$FullEquation) = $self->ApplyStoichiometryCorrections($Code,$ReverseCode,$FullEquation);
 			#Checking if the reaction is already in the database
 			if ($Filename =~ m/(rxn\d\d\d\d\d)$/) {
 				$NewData = $tbl->get_row_by_key($Code,"CODE");
@@ -2474,12 +2469,12 @@ sub import_model {
 	}
 	#Loading the compound table
 	my $translation;
-    if (!-e $args->{path}.$args->{baseid}."-compounds.tbl") {
-        return $self->new_error_message({
-            message=> "could not find import file:".$args->{path}.$args->{baseid}."-compounds.tbl",
-            function => "import_model",
-            args => $args } )
-    }
+	if (!-e $args->{path}.$args->{baseid}."-compounds.tbl") {
+		return $self->new_error_message({
+			message=> "could not find import file:".$args->{path}.$args->{baseid}."-compounds.tbl",
+			function => "import_model",
+			args => $args } )
+	}
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-compounds.tbl","\t","|",0,["ID"]);
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
@@ -3628,9 +3623,9 @@ sub translate_gene_to_protein {
 	my ($ProteinAssociation,$GeneLocus,$GeneGI);
 	for (my $j=0; $j < @{$Genes}; $j++) {
 		if ($j > 0) {
-	        $ProteinAssociation .= " or ";
-	        $GeneLocus .= " or ";
-	        $GeneGI .= " or ";	
+			$ProteinAssociation .= " or ";
+			$GeneLocus .= " or ";
+			$GeneGI .= " or ";	
 		}
 		my $proteinTemp = $Genes->[$j];
 		my $locusTemp = $Genes->[$j];
@@ -3638,7 +3633,7 @@ sub translate_gene_to_protein {
 		$_ = $Genes->[$j];
 		my @OriginalArray = /(peg\.\d+)/g;
 		for (my $i=0; $i < @OriginalArray; $i++) {
-	        my $Row = $FeatureTable->get_row_by_key("fig|".$Genome.".".$OriginalArray[$i],"ID");
+			my $Row = $FeatureTable->get_row_by_key("fig|".$Genome.".".$OriginalArray[$i],"ID");
 			my $ProteinName = "NONE";
 			my $locus = "NONE";
 			my $giNum = "NONE";
@@ -3657,17 +3652,17 @@ sub translate_gene_to_protein {
 			}
 			my $Gene = $OriginalArray[$i];
 			if ($ProteinName ne "NONE") {
-	            $proteinTemp =~ s/$Gene(\D)/$ProteinName$1/g;
-	            $proteinTemp =~ s/$Gene$/$ProteinName/g;
+				$proteinTemp =~ s/$Gene(\D)/$ProteinName$1/g;
+				$proteinTemp =~ s/$Gene$/$ProteinName/g;
 			}
-	        if ($locus ne "NONE") {
-	            $locusTemp =~ s/$Gene(\D)/$locus$1/g;
-	            $locusTemp =~ s/$Gene$/$locus/g;
-	        }
-	        if ($giNum ne "NONE") {
-	            $giTemp =~ s/$Gene(\D)/$giNum$1/g;
-	            $giTemp =~ s/$Gene$/$giNum/g;
-	        }
+			if ($locus ne "NONE") {
+				$locusTemp =~ s/$Gene(\D)/$locus$1/g;
+				$locusTemp =~ s/$Gene$/$locus/g;
+			}
+			if ($giNum ne "NONE") {
+				$giTemp =~ s/$Gene(\D)/$giNum$1/g;
+				$giTemp =~ s/$Gene$/$giNum/g;
+			}
 		}
 		$proteinTemp =~ s/\s//g;
 		$locusTemp =~ s/\s//g;
@@ -3676,8 +3671,8 @@ sub translate_gene_to_protein {
 		$locusTemp =~ s/\+/ and /g;
 		$giTemp =~ s/\+/ and /g;
 		$ProteinAssociation .= $proteinTemp;
-	    $GeneLocus .= $locusTemp;
-	    $GeneGI .= $giTemp;
+		$GeneLocus .= $locusTemp;
+		$GeneGI .= $giTemp;
 	}
 	return ($ProteinAssociation,$GeneLocus,$GeneGI);
 }
@@ -3710,11 +3705,11 @@ sub SyncDatabaseMolfiles {
 		}
 	}
 
-    #First, reading in the latest mapping of IDs from the translation directory
-    my ($CompoundMappings,$HashReferenceForward) = &LoadSeparateTranslationFiles($self->{"Translation directory"}->[0]."CpdToKEGG.txt","\t");
+	#First, reading in the latest mapping of IDs from the translation directory
+	my ($CompoundMappings,$HashReferenceForward) = &LoadSeparateTranslationFiles($self->{"Translation directory"}->[0]."CpdToKEGG.txt","\t");
 
-    #Copying over the KEGG molfiles
-    my @CompoundIDs = keys(%{$CompoundMappings});
+	#Copying over the KEGG molfiles
+	my @CompoundIDs = keys(%{$CompoundMappings});
 	for (my $i=0; $i < @CompoundIDs; $i++) {
 		if (!defined($PreservedIDs{$CompoundIDs[$i]}) && defined($CompoundMappings->{$CompoundIDs[$i]}) && $CompoundMappings->{$CompoundIDs[$i]} =~ m/C\d\d\d\d\d/) {
 			$PreservedIDs{$CompoundIDs[$i]} = 1;
@@ -3728,9 +3723,9 @@ sub SyncDatabaseMolfiles {
 				system("cp ".$self->{"KEGG directory"}->[0]."mol/".$CompoundMappings->{$CompoundIDs[$i]}.".mol ".$self->{"Argonne molfile directory"}->[0].$CompoundIDs[$i].".mol");
 			}
 		}
-    }
+	}
 
-    #Copying over the Palsson molfiles
+	#Copying over the Palsson molfiles
 	my @TranslationFilename = glob($self->{"Translation directory"}->[0]."CpdTo*.txt");
 	my %NonOverwrittenCompounds;
 	for (my $j=0; $j < @TranslationFilename; $j++) {
@@ -7454,23 +7449,23 @@ sub ParseForLinks {
 	$_ = $Text;
 	@OriginalArray = /(C\d\d\d\d\d)/g;
 	for (my $i=0; $i < @OriginalArray; $i++) {
-        if (!defined($VisitedLinks{$OriginalArray[$i]})) {
-            $VisitedLinks{$OriginalArray[$i]} = 1;
-            my $Link = $self->KEGGCompoundLinks($OriginalArray[$i]);
-            my $Find = $OriginalArray[$i];
-            $Text =~ s/$Find/$Link/g;
-        }
+		if (!defined($VisitedLinks{$OriginalArray[$i]})) {
+			$VisitedLinks{$OriginalArray[$i]} = 1;
+			my $Link = $self->KEGGCompoundLinks($OriginalArray[$i]);
+			my $Find = $OriginalArray[$i];
+			$Text =~ s/$Find/$Link/g;
+		}
 	}
 	#Searching for KEGG reaction links
 	$_ = $Text;
 	@OriginalArray = /(R\d\d\d\d\d)/g;
 	for (my $i=0; $i < @OriginalArray; $i++) {
-        if (!defined($VisitedLinks{$OriginalArray[$i]})) {
-            $VisitedLinks{$OriginalArray[$i]} = 1;
-            my $Link = $self->KEGGReactionLinks($OriginalArray[$i]);
-            my $Find = $OriginalArray[$i];
-            $Text =~ s/$Find/$Link/g;
-        }
+		if (!defined($VisitedLinks{$OriginalArray[$i]})) {
+			$VisitedLinks{$OriginalArray[$i]} = 1;
+			my $Link = $self->KEGGReactionLinks($OriginalArray[$i]);
+			my $Find = $OriginalArray[$i];
+			$Text =~ s/$Find/$Link/g;
+		}
 	}
 
 	return $Text;
@@ -7547,8 +7542,8 @@ sub CreateLink {
 	if ($ObjectType eq "model") {
 		return '<a style="text-decoration:none" href="javascript: SubmitModelSelection(\''.$ID.'\');">'.$ID."</a>";
 	} elsif ($ObjectType eq "pubmed") {
-        return '<a style="text-decoration:none" href="http://www.ncbi.nlm.nih.gov/pubmed/'.substr($ID,4).'" target="_blank">'.$ID."</a>";
-    } elsif ($ObjectType eq "peg ID" || $ObjectType eq "Gene ID") {
+		return '<a style="text-decoration:none" href="http://www.ncbi.nlm.nih.gov/pubmed/'.substr($ID,4).'" target="_blank">'.$ID."</a>";
+	} elsif ($ObjectType eq "peg ID" || $ObjectType eq "Gene ID") {
 		return '<a href="linkin.cgi?id=fig|'.$Parameter.".".$ID.'" target="_blank">'.$ID."</a>";
 	} elsif ($ObjectType eq "Genome ID") {
 		return '<a href="seedviewer.cgi?page=Organism&organism='.$ID.'" target="_blank">'.$ID."</a>";
@@ -7583,41 +7578,41 @@ sub PubMedLinks{
 }
 
 sub MaizeSeqLinks{
-    my ($self,$ID) = @_;
-    my $db="g";
+	my ($self,$ID) = @_;
+	my $db="g";
 
-    if(substr($ID,-4,1) eq "T"){
+	if(substr($ID,-4,1) eq "T"){
 	$db="t";
-    }elsif(substr($ID,-4,1) eq "P"){
+	}elsif(substr($ID,-4,1) eq "P"){
 	$db="p";
-    }
+	}
 
-    return '<a href="http://www.maizesequence.org/Zea_mays/Gene?db=core;'.$db.'='.$ID.'" target="_blank">'.$ID.'</a>';
+	return '<a href="http://www.maizesequence.org/Zea_mays/Gene?db=core;'.$db.'='.$ID.'" target="_blank">'.$ID.'</a>';
 }
 
 sub NCBILinks{
-    my ($self,$ID) = @_;
-    my $db="protein";
+	my ($self,$ID) = @_;
+	my $db="protein";
 
-    if(substr($ID,1,1) eq "P"){
+	if(substr($ID,1,1) eq "P"){
 	$db="protein";
-    }elsif(substr($ID,1,1) eq "M"){
+	}elsif(substr($ID,1,1) eq "M"){
 	$db="nuccore";
-    }
+	}
 
-    return '<a href="http://www.ncbi.nlm.nih.gov/'.$db.'/'.$ID.'" target="_blank">'.$ID.'</a>';
+	return '<a href="http://www.ncbi.nlm.nih.gov/'.$db.'/'.$ID.'" target="_blank">'.$ID.'</a>';
 }
 
 sub EntrezGeneLinks {
-    my ($self,$ID) = @_;
+	my ($self,$ID) = @_;
 
-    return '<a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=gene&term='.$ID.'" target="_blank">'.$ID.'</a>';
+	return '<a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=gene&term='.$ID.'" target="_blank">'.$ID.'</a>';
 }
 
 sub TAIRGeneLinks {
-    my ($self,$ID) =@_;
+	my ($self,$ID) =@_;
 
-    return '<a href="http://www.arabidopsis.org/servlets/Search?type=general&search_action=detail&sub_type=gene&name='.$ID.'" target="_blank">'.$ID."</a>";
+	return '<a href="http://www.arabidopsis.org/servlets/Search?type=general&search_action=detail&sub_type=gene&name='.$ID.'" target="_blank">'.$ID."</a>";
 }
 
 sub KEGGECLinks {
@@ -7689,13 +7684,13 @@ sub get_growmatch_stats {
 
 =head3 CompileSimulationData
 Definition:
-    void $model->CompileSimulationData(string array ref::list of models)
+	void $model->CompileSimulationData(string array ref::list of models)
 Description:
 Example:
 =cut
 
 sub CompileSimulationData {
-    my ($self, $Organism) = @_;
+	my ($self, $Organism) = @_;
 
 	#Getting model data
 	my $ModelName = "Seed".$Organism;
@@ -7859,37 +7854,37 @@ sub CompileSimulationData {
 
 =head3 _roles_rxns_in_model
 Definition:
-    (string array ref::role names,string array ref::reaction IDs) = FIGMODEL->_roles_rxns_in_model(string array ref::list of models)
+	(string array ref::role names,string array ref::reaction IDs) = FIGMODEL->_roles_rxns_in_model(string array ref::list of models)
 Description:
 Example:
 =cut
 
 sub _roles_rxns_in_model {
-    my ($self, $org_id, $peg_id, $pegs_to_roles, $roles_to_rxns, $rxns_to_models ) = @_;
+	my ($self, $org_id, $peg_id, $pegs_to_roles, $roles_to_rxns, $rxns_to_models ) = @_;
 
-    my $roles = [];
-    my $reactions = [];
+	my $roles = [];
+	my $reactions = [];
 
-    # For each role
-    if( defined( $pegs_to_roles->{$peg_id} ) ){
-        foreach my $role ( @{ $pegs_to_roles->{$peg_id} } ){
-            my $insert = 0;
-            # Return it if any reaction came from an organism we supplied
-            if( defined($roles_to_rxns->{$role}) ){
-                # And return each reaction that qualifies
-                foreach my $rxn ( @{ $roles_to_rxns->{$role}} ){
-                    foreach( @{$rxns_to_models->{$rxn}} ){
-                        if( m/$org_id/ ){
-                            push @$reactions, $rxn;
-                            $insert = 1;
-                        }
-                    }
-                }
-            }
-            push( @$roles, $role ) if $insert;
-        }
-    }
-    return ( $roles, $reactions );
+	# For each role
+	if( defined( $pegs_to_roles->{$peg_id} ) ){
+		foreach my $role ( @{ $pegs_to_roles->{$peg_id} } ){
+			my $insert = 0;
+			# Return it if any reaction came from an organism we supplied
+			if( defined($roles_to_rxns->{$role}) ){
+				# And return each reaction that qualifies
+				foreach my $rxn ( @{ $roles_to_rxns->{$role}} ){
+					foreach( @{$rxns_to_models->{$rxn}} ){
+						if( m/$org_id/ ){
+							push @$reactions, $rxn;
+							$insert = 1;
+						}
+					}
+				}
+			}
+			push( @$roles, $role ) if $insert;
+		}
+	}
+	return ( $roles, $reactions );
 }
 
 sub PrepSkeletonDirectory {
@@ -7976,17 +7971,17 @@ sub GetRegulonById {
 	my ($self, $regulonId) = @_;
 	my $organism;
   	if( $regulonId =~ /fig\|(\d+\.\d+)/ ) { # get 211586.9 out of "fig|211586.9.reg.242"
-    	$organism = $1;
-    } else {
-        return undef;
-    }
+		$organism = $1;
+	} else {
+		return undef;
+	}
 	# Regulons located in file inside "DB ROOT"/TRN-DB/"organism-ID"/Regulons.tbl
-    my $regulonTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->{'database root directory'}->[0].'/TRN-DB/'.
+	my $regulonTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->{'database root directory'}->[0].'/TRN-DB/'.
 													$organism.'/' . "Regulons.tbl", '\t', ',', 0, ['ID']);
 	unless(defined($regulonTable)) {
 		return undef;
 	}
-    my $regulon = $regulonTable->get_row_by_key($regulonId, 'ID');
+	my $regulon = $regulonTable->get_row_by_key($regulonId, 'ID');
 	unless(defined($regulon)) {
 		return undef;
 	}
@@ -8023,7 +8018,7 @@ sub GetEffectorsOfRegulon {
 
 =head3 parse_experiment_description
 Definition:
-    FIGMODELTable:experiment table = FIGMODEL->parse_experiment_description([string]:experiment condition description)
+	FIGMODELTable:experiment table = FIGMODEL->parse_experiment_description([string]:experiment condition description)
 Description:
 =cut
 sub parse_experiment_description {
@@ -8176,73 +8171,73 @@ sub parse_experiment_description {
 }
 =head3 getExperimentsTable
 Definition:
-    FIGMODELTable:experiment table = FIGMODEL->getExperimentsTable()
+	FIGMODELTable:experiment table = FIGMODEL->getExperimentsTable()
 Description:
-    Returns the experiment table object.
+	Returns the experiment table object.
 =cut
 
 sub getExperimentsTable {
-    my ($self) = @_;
-    unless (defined($self->{"CACHE"}->{"EXPERIMENT_TABLE"})) {
-        $self->{"CACHE"}->{"EXPERIMENT_TABLE"} = $self->database()->load_table(
-            $self->{"Reaction database directory"}->[0]."masterfiles/Experiments.txt",
-            '\t', ',', 0, ['name', 'genome']) or die "Could not load Experiments database! Error: " . $!;
-    }
-    return $self->{"CACHE"}->{"EXPERIMENT_TABLE"};
+	my ($self) = @_;
+	unless (defined($self->{"CACHE"}->{"EXPERIMENT_TABLE"})) {
+		$self->{"CACHE"}->{"EXPERIMENT_TABLE"} = $self->database()->load_table(
+			$self->{"Reaction database directory"}->[0]."masterfiles/Experiments.txt",
+			'\t', ',', 0, ['name', 'genome']) or die "Could not load Experiments database! Error: " . $!;
+	}
+	return $self->{"CACHE"}->{"EXPERIMENT_TABLE"};
 }
 
 =head3 getExperimentsByGenome
 Definition:
-    ArrayRef[[string] experimentId]  = FIGMODEL->getExperimentsByGenome([string] genomeId)
+	ArrayRef[[string] experimentId]  = FIGMODEL->getExperimentsByGenome([string] genomeId)
 Description:
-    Returns a reference to an array of experimentId strings. 
-    Use getExperimentDetails to get experiment data.
+	Returns a reference to an array of experimentId strings. 
+	Use getExperimentDetails to get experiment data.
 =cut
 sub getExperimentsByGenome {
-    my ($self, $genomeId) = @_;
-    my $experimentsTable = $self->getExperimentsTable();
-    my @results = $experimentsTable->get_rows_by_key($genomeId, 'genome');
-    my @experimentIds;
-    foreach my $result (@results) {
-        push(@experimentIds, $result->{'name'});
-    }
-    return \@experimentIds;
+	my ($self, $genomeId) = @_;
+	my $experimentsTable = $self->getExperimentsTable();
+	my @results = $experimentsTable->get_rows_by_key($genomeId, 'genome');
+	my @experimentIds;
+	foreach my $result (@results) {
+		push(@experimentIds, $result->{'name'});
+	}
+	return \@experimentIds;
 }
 
 =head3 getExperimentDetails
 Definition:
    FIGMODELTable::row  = FIGMODEL->getExperimentDetails([string] experimentId)
 Description:
-    Returns a row (hash ref of key => []) containing details of experiment. 
+	Returns a row (hash ref of key => []) containing details of experiment. 
 =cut
 sub getExperimentDetails {
-    my ($self, $experimentId) = @_;
-    my $experimentsTable = $self->getExperimentsTable();
-    my $row = $experimentsTable->get_row_by_key($experimentId, 'name');
-    unless(defined($row)) { return {}; }
-    return $row;
+	my ($self, $experimentId) = @_;
+	my $experimentsTable = $self->getExperimentsTable();
+	my $row = $experimentsTable->get_row_by_key($experimentId, 'name');
+	unless(defined($row)) { return {}; }
+	return $row;
 }
 
 =head3 patch_models
 Definition:
    FIGMODEL->patch_models([] -or- {} of arguments for patch)
 Description:
-    Runs a patching function on every model in the database to quickly enact some kind of systematic change.
+	Runs a patching function on every model in the database to quickly enact some kind of systematic change.
 =cut
 sub patch_models {
-    my ($self,$list) = @_;
-    my $models;
-    my $start = 0;
-    if (!defined($list->[0])) {
-    	$models = $self->get_models();
-    } elsif ($list->[0] =~ m/^\d+$/) {
-    	$start = $list->[0];
-    	$models = $self->get_models();
-    } else {
-    	for (my $i=0; $i < @{$list}; $i++) {
-    		push(@{$models},$self->get_model($list->[$i]));
-    	}
-    }
+	my ($self,$list) = @_;
+	my $models;
+	my $start = 0;
+	if (!defined($list->[0])) {
+		$models = $self->get_models();
+	} elsif ($list->[0] =~ m/^\d+$/) {
+		$start = $list->[0];
+		$models = $self->get_models();
+	} else {
+		for (my $i=0; $i < @{$list}; $i++) {
+			push(@{$models},$self->get_model($list->[$i]));
+		}
+	}
 	for (my $i=$start; $i < @{$models}; $i++) {
 		print "Patching model ".$i." ".$models->[$i]->id()."...";
 		$models->[$i]->patch_model();
@@ -8254,27 +8249,27 @@ sub patch_models {
 Definition:
    FIGMODEL->call_model_function(string:function,[string]:model list)
 Description:
-    Runs the specified function on all specified models.
+	Runs the specified function on all specified models.
 =cut
 sub call_model_function {
-    my ($self,$function,$list) = @_;
-    my $models;
-    my $start = 0;
-    if (!defined($list->[0])) {
-    	$models = $self->get_models();
-    } elsif ($list->[0] =~ m/^\d+$/) {
-    	$start = $list->[0];
-    	$models = $self->get_models();
-    } else {
-    	for (my $i=0; $i < @{$list}; $i++) {
-    		push(@{$models},$self->get_model($list->[$i]));
-    	}
-    }
-    my @arguments;
-    if ($function =~ m/(.+)\((.+)\)/) {
-    	$function = $1;
-    	@arguments = split(/,/,$2);
-    }
+	my ($self,$function,$list) = @_;
+	my $models;
+	my $start = 0;
+	if (!defined($list->[0])) {
+		$models = $self->get_models();
+	} elsif ($list->[0] =~ m/^\d+$/) {
+		$start = $list->[0];
+		$models = $self->get_models();
+	} else {
+		for (my $i=0; $i < @{$list}; $i++) {
+			push(@{$models},$self->get_model($list->[$i]));
+		}
+	}
+	my @arguments;
+	if ($function =~ m/(.+)\((.+)\)/) {
+		$function = $1;
+		@arguments = split(/,/,$2);
+	}
 	for (my $i=$start; $i < @{$models}; $i++) {
 		print "Calling ".$function." on model ".$i." ".$models->[$i]->id()."...";
 		if (@arguments > 0) {
@@ -8290,26 +8285,26 @@ sub call_model_function {
 Definition:
    FIGMODEL->process_models()
 Description:
-    Looks for incomplete models and ungapfilled models and automatically runs preliminary reconstruction and autocompletion
+	Looks for incomplete models and ungapfilled models and automatically runs preliminary reconstruction and autocompletion
 =cut
 sub process_models {
-    my ($self,$startNumber,$owner) = @_;
-    my $objs = $self->database()->get_objects("model");
-    if (!defined($startNumber)) {
-    	$startNumber = 0;
-    }
-    for (my $i=$startNumber; $i < @{$objs}; $i++) {
-    	print $i."\n";
-    	if (!defined($owner) || $objs->[$i]->owner() eq $owner) {
-	    	if ($objs->[$i]->id() =~ m/^Seed/ && $objs->[$i]->status() < 0) {
-	    		print "Building model"."\n";
-	    		$self->add_job_to_queue({command => "preliminaryreconstruction?".$objs->[$i]->id()."?1?",user => $objs->[$i]->owner(),queue => "short"});
-	    	} elsif ((!defined($objs->[$i]->growth()) || $objs->[$i]->growth() == 0) && $objs->[$i]->owner() ne "mdejongh" && $objs->[$i]->owner() ne "AaronB") {
-	    		print "Gapfilling model"."\n";
-	    		$self->add_job_to_queue({command => "gapfillmodel?".$objs->[$i]->id(),user => $objs->[$i]->owner(),queue => "cplex"});
-	    	}
-    	}
-    }
+	my ($self,$startNumber,$owner) = @_;
+	my $objs = $self->database()->get_objects("model");
+	if (!defined($startNumber)) {
+		$startNumber = 0;
+	}
+	for (my $i=$startNumber; $i < @{$objs}; $i++) {
+		print $i."\n";
+		if (!defined($owner) || $objs->[$i]->owner() eq $owner) {
+			if ($objs->[$i]->id() =~ m/^Seed/ && $objs->[$i]->status() < 0) {
+				print "Building model"."\n";
+				$self->add_job_to_queue({command => "preliminaryreconstruction?".$objs->[$i]->id()."?1?",user => $objs->[$i]->owner(),queue => "short"});
+			} elsif ((!defined($objs->[$i]->growth()) || $objs->[$i]->growth() == 0) && $objs->[$i]->owner() ne "mdejongh" && $objs->[$i]->owner() ne "AaronB") {
+				print "Gapfilling model"."\n";
+				$self->add_job_to_queue({command => "gapfillmodel?".$objs->[$i]->id(),user => $objs->[$i]->owner(),queue => "cplex"});
+			}
+		}
+	}
 }
 
 =head3 process_strain_data
@@ -8586,7 +8581,7 @@ Definition:
 	[string]:lines of output = FIGMODEL->runexecutable(string:command);
 =cut
 sub runexecutable {
-    my ($self,$Command) = @_;
+	my ($self,$Command) = @_;
 	my $OutputArray;
 	push(@{$OutputArray},`$Command`);
 	return $OutputArray;
@@ -8599,7 +8594,7 @@ Description:
 	Switches the values into keys and the keys into values.
 =cut
 sub invert_hash {
-    my ($self,$inputhash) = @_;
+	my ($self,$inputhash) = @_;
 	my $outputhash;
 	foreach my $key (keys(%{$inputhash})) {
 		foreach my $value (@{$inputhash->{$key}}) {

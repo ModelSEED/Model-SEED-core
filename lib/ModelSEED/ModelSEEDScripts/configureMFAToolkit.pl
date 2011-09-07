@@ -15,31 +15,29 @@ use Cwd qw(abs_path);
 my $args = {};
 my $result = GetOptions(
     "p|installation_directory=s" => \$args->{"-p"},
-    "d|data_directory=s" => \$args->{"-d"},
+#    "d|data_directory=s" => \$args->{"-d"},
     "glpk|glpk_location=s" => \$args->{"-glpk"},
     "cplex|cplex_location=s" => \$args->{"-cplex"},
     "os|operating_system=s" => \$args->{"-os"},
     "h|help" => \$args->{"help"},
     "man" => \$args->{"man"},
-) || pod2usage(2);
+);
 
 pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
-pod2usage(1) unless(defined($args->{"-p"}) && defined($args->{"-d"}));
+pod2usage(1) if (!defined($args->{"-p"}));
 
 my $extension = ".sh";
 if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
-    $extension = ".bat";
+    $extension = ".cmd";
 }
 # Setting paths to absolute, otherwise a path like ../../foo/bar would cause massive issues...
 $args->{"-p"} = abs_path($args->{"-p"}).'/';
-$args->{"-d"} = abs_path($args->{"-d"}).'/';
+#$args->{"-d"} = abs_path($args->{"-d"}).'/';
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
 $args->{"-glpk"} = abs_path($args->{"-cplex"}) if(defined($args->{"-glpk"}));
 
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
-
-warn $args->{"-p"}."\n";
 
 #If the OS is windows, we copy the precompiled binaries into the bin directory
 if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {

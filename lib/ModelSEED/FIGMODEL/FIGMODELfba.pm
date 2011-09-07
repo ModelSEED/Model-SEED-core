@@ -331,7 +331,7 @@ sub printStringDBFile {
 		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
 		"reaction\tid\tSINGLEFILE\t".$self->figmodel()->config("reaction directory")->[0]."\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
 		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
-		"cue\tNAME\tSINGLEFILE\t".$self->figmodel()->config("cue directory")->[0]."\t".$self->dataFilename({type => "cues"})."\tTAB\t|\tNAME",
+		"cue\tNAME\tSINGLEFILE\t\t".$self->dataFilename({type => "cues"})."\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$self->figmodel()->config("Media directory")->[0]."\t".$self->dataFilename({type => "media"})."\tTAB\t|\tID;NAMES"
 	];
 	$self->figmodel()->database()->print_array_to_file($self->directory()."/StringDBFile.txt",$output);
@@ -887,7 +887,7 @@ sub runFBA {
 	$self->createProblemDirectory({parameterFile => $args->{parameterFile},printToScratch => $args->{printToScratch}});
 	my $ParameterFileList = $self->parameter_files();
 	for (my $i=0; $i < @{$ParameterFileList}; $i++) {
-		if ($ParameterFileList->[$i] =~ m/^\//) {
+		if ($ParameterFileList->[$i] =~ m/^\// || $ParameterFileList->[$i] =~ m/^[A-Z]:/) {
 			$commandLine->{files} .= " parameterfile \"".$ParameterFileList->[$i]."\"";
 		} else {
 			$commandLine->{files} .= " parameterfile \"../Parameters/".$ParameterFileList->[$i].".txt\"";
@@ -900,6 +900,7 @@ sub runFBA {
 		message => $command,
 		args => $args
 	});
+	print $command."\n";
 	system($command) if ($args->{runSimulation} == 1);
 	return {success => 1};	
 }

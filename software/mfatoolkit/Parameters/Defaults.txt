@@ -1,4 +1,7 @@
 database spec file|../../Input/Singlefile.txt|
+structural cue database file|FinalGroups.dat|
+user constraints filename|UserConstraints.txt|
+MFA problem report filename|ProblemReport.txt|
 input directory|../Input/|Directory where input files are stored|MFA files
 scripts directory|../../../bin/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
 output folder|Test/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up

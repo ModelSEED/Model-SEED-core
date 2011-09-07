@@ -118,7 +118,7 @@ sub roles_of_function {
 	});
 	return $self->error_message({function => "roles_of_function",args=>$args}) if (defined($args->{error}));
 	my %RoleHash;
-	my @Roles = split(/\s*;\s+|\s+[\@\/]\s+/g,$args->{function});
+	my @Roles = split(/\s*;\s+|\s+[\@\/]\s+/,$args->{function});
 	foreach my $Role (@Roles) {
 		$Role =~ s/\s*\#.*$//;
 		if ($args->{output} eq "search" || $args->{output} eq "id") {
