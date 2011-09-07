@@ -58,7 +58,7 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
             $data->[$i] = $data->[$i].".exe";
         }
     }
-	&printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
+	printFile($args->{"-p"}."config/FIGMODELConfig.txt",$data);
 }
 #Creating config/ModelSEEDbootstrap.pm
 {
@@ -96,7 +96,7 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 	push(@{$data},'	if ($@) { die "Failure running $prog: $@\n"; }');
 	push(@{$data},'}');
 	push(@{$data},'1;');
-    &printFile($args->{"-p"}."config/ModelSEEDbootstrap.pm",$data);
+    printFile($args->{"-p"}."config/ModelSEEDbootstrap.pm",$data);
 }
 #Creating shell scripts for individual perl scripts
 {
@@ -154,7 +154,7 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 	$args->{"-dbhost"} = "" unless(defined($args->{"-dbhost"}));
 	$args->{"-dbusr"} = "" unless(defined($args->{"-dbusr"}));
 	$args->{"-dbpwd"} = "" unless(defined($args->{"-dbpwd"}));
-	my $data = loadFile($args->{"-p"}."lib/ModelSEED/FIGMODELConfig.txt");
+	my $data = loadFile($args->{"-p"}."config/FIGMODELConfig.txt");
 	my $dbList = ["ModelDB","SchedulerDB"];
 	for (my $j=0; $j < @{$dbList}; $j++) {
 		for (my $i=0; $i < @{$data}; $i++) {
