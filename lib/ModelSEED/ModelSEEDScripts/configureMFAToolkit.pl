@@ -46,7 +46,7 @@ if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
 	chmod 0775,$args->{"-p"}."software/mfatoolkit/bin/mfatoolkit.exe";
 } else {
 	#Running make
-	my $makeCommand = $args->{"-p"}."software/mfatoolkit/Linux/make.sh";
+	my $makeCommand = $args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh";
 	if (defined($args->{"-cplex"})) {
 		File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/makefilecplex",$args->{"-p"}."software/mfatoolkit/Linux/makefile");
 	} else {

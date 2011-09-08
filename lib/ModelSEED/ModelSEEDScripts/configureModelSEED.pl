@@ -203,8 +203,8 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		if (defined($args->{"-cplex"})) {
 			push(@{$data},'export CPLEXDIRECTORY="'.$args->{"-cplex"}.'"');
 		}
-		push(@{$data},'if [ $1 == "clean" ] then');
-		push(@{$data},'    make clean');
+		push(@{$data},'if [ "$1" == "clean" ]');
+		push(@{$data},'    then make clean');
 		push(@{$data},'fi');
 		push(@{$data},'make');
 		printFile($args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
