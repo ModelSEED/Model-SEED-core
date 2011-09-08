@@ -117,13 +117,14 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 }
 #Creating shell scripts for individual perl scripts
 {
-	my $mfatoolkitScript = "lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl -p ".$args->{"-p"};
+	my $mfatoolkitScript = "lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$args->{"-p"};
 	if (defined($args->{"-cplex"})) {
-		$mfatoolkitScript .= " --cplex ".$args->{"-cplex"};	
+		$mfatoolkitScript .= "\" --cplex \"".$args->{"-cplex"};	
 	}
 	if (defined($args->{"-os"})) {
-		$mfatoolkitScript .= " --os ".$args->{"-os"};	
+		$mfatoolkitScript .= "\" --os \"".$args->{"-os"};	
 	}
+	$mfatoolkitScript .= '"';
 	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{-p}."lib/ModelSEED/ModelDB/ModelDB.xml ".
 		"-backend MySQL ".
 		"-database ModelDB2 ".
