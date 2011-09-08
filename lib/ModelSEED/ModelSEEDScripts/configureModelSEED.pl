@@ -124,7 +124,6 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 	if (defined($args->{"-os"})) {
 		$mfatoolkitScript .= "\" --os \"".$args->{"-os"};	
 	}
-	$mfatoolkitScript .= '"';
 	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{-p}."lib/ModelSEED/ModelDB/ModelDB.xml ".
 		"-backend MySQL ".
 		"-database ModelDB2 ".
