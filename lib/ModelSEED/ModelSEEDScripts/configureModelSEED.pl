@@ -124,8 +124,8 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 #Creating shell scripts for individual perl scripts
 {
 	my $mfatoolkitScript = "lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$args->{"-p"};
-	if (defined($args->{"-cplex"})) {
-		$mfatoolkitScript .= "\" --cplex \"".$args->{"-cplex"};	
+	if (defined($args->{"-cplexinc"})) {
+		$mfatoolkitScript .= "\" --cplex \"".$args->{"-cplexinc"};	
 	}
 	if (defined($args->{"-os"})) {
 		$mfatoolkitScript .= "\" --os \"".$args->{"-os"};	
