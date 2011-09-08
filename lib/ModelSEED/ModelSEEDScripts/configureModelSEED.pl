@@ -18,7 +18,8 @@ my $result = GetOptions(
     "d|data_directory=s" => \$args->{"-d"},
     "g|glpk=s" => \$args->{"-glpk"},
     "cl|cplex_licence=s" => \$args->{"-licence"},
-    "c|cplex=s" => \$args->{"-cplex"},
+    "cinc|cplexinc=s" => \$args->{"-cplexinc"},
+    "clib|cplexlib=s" => \$args->{"-cplexlib"},
     "os|operating_system=s" => \$args->{"-os"},
     "usr|username=s" => \$args->{"-usr"},
     "pwd|password=s" => \$args->{"-pwd"},
@@ -85,8 +86,13 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
     	"use lib '".$args->{-p}."lib/FigKernelPackages';",
     	"use lib '".$args->{-p}."lib';"
 	];
-	if (defined($args->{"-licence"})) {
+	if (defined($args->{"-cplexinc"})) {
+		push(@{$data},'$ENV{CPLEXINCLUDE}=\''.$args->{"-cplexinc"}.'\';');
+		push(@{$data},'$ENV{CPLEXLIB}=\''.$args->{"-cplexlib"}.'\';');
 		push(@{$data},'$ENV{ILOG_LICENSE_FILE}=\''.$args->{"-licence"}.'\';');
+	}
+	if (defined($args->{"-glpk"})) {
+		push(@{$data},'$ENV{GLPKDIRECTORY}=\''.$args->{"-glpk"}.'\';');
 	}
 	push(@{$data},'$ENV{PATH}=\''.$args->{-p}.'bin/'.$delim.$args->{-p}.'lib/ModelSEED/ModelSEEDScripts/'.$delim.$ENV{PATH}.'\';');
 	if (defined($args->{"-usr"}) && defined($args->{"-pwd"})) {
@@ -197,12 +203,12 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 {	
 	if ($args->{-os} ne "windows") {
 		my $data = [
-			'cd "'.$args->{"-p"}.'software/mfatoolkit/Linux/"',
-			'export GLPKDIRECTORY="'.$args->{"-glpk"}.'"'
+			'cd "'.$args->{"-p"}.'software/mfatoolkit/Linux/"'#,
+			#'export GLPKDIRECTORY="'.$args->{"-glpk"}.'"'
 		];
-		if (defined($args->{"-cplex"})) {
-			push(@{$data},'export CPLEXDIRECTORY="'.$args->{"-cplex"}.'"');
-		}
+		#if (defined($args->{"-cplex"})) {
+		#	push(@{$data},'export CPLEXDIRECTORY="'.$args->{"-cplex"}.'"');
+		#}
 		push(@{$data},'if [ "$1" == "clean" ]');
 		push(@{$data},'    then make clean');
 		push(@{$data},'fi');
