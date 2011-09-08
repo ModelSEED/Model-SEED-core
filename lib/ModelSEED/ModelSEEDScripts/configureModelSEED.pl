@@ -202,13 +202,7 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 #Configuring MFAToolkit
 {	
 	if ($args->{-os} ne "windows") {
-		my $data = [
-			'cd "'.$args->{"-p"}.'software/mfatoolkit/Linux/"'#,
-			#'export GLPKDIRECTORY="'.$args->{"-glpk"}.'"'
-		];
-		#if (defined($args->{"-cplex"})) {
-		#	push(@{$data},'export CPLEXDIRECTORY="'.$args->{"-cplex"}.'"');
-		#}
+		my $data = ['cd "'.$args->{"-p"}.'software/mfatoolkit/Linux/"'];
 		push(@{$data},'if [ "$1" == "clean" ]');
 		push(@{$data},'    then make clean');
 		push(@{$data},'fi');
