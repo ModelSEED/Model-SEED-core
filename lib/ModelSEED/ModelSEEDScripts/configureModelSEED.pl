@@ -142,7 +142,10 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		if (-e $args->{"-p"}."bin/".$plFileList->{$file}.$extension) {
 			unlink $args->{"-p"}."bin/".$plFileList->{$file}.$extension;	
 		}
-		my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.$file.'" %*',"pause"];
+		my $data = ['perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.$file.'" %*'];
+		if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
+			my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.$file.'" %*',"pause"];	
+		}
 		printFile($args->{"-p"}."bin/".$plFileList->{$file}.$extension,$data);
 		chmod 0775,$args->{"-p"}."bin/".$plFileList->{$file}.$extension;
 	}
