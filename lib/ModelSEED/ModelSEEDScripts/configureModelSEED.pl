@@ -10,6 +10,7 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 use Cwd qw(abs_path);
+use File::Path;
 
 my $args = {};
 my $result = GetOptions(
@@ -45,7 +46,23 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 	$extension = ".cmd";
 	$delim = ";";
 }
-
+#Creating missing directories
+{
+	my $directories = [
+		"bin",
+		"config",
+		"data",
+		"lib",
+		"logs",
+		"software"	
+	];
+	for (my $i=0; $i < @{$directories}; $i++) {
+		if (!-d $args->{-p}.$directories->[$i]) {
+			File::Path::mkpath $args->{-p}.$directories->[$i];
+		}
+	}
+	
+}
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($args->{"-p"}."lib/ModelSEED/FIGMODELConfig.txt");
@@ -122,20 +139,25 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		"lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
 	};
 	foreach my $file (keys(%{$plFileList})) {
+		if (-e $args->{"-p"}."bin/".$plFileList->{$file}.$extension) {
+			unlink $args->{"-p"}."bin/".$plFileList->{$file}.$extension;	
+		}
 		my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.$file.'" %*',"pause"];
 		printFile($args->{"-p"}."bin/".$plFileList->{$file}.$extension,$data);
-		chmod 0775,$args->{"-p"}."bin/".$plFileList->{$file};
+		chmod 0775,$args->{"-p"}."bin/".$plFileList->{$file}.$extension;
 	}
 }
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
 		"adduser",
-		"configuredatabase",
 		"testmodelgrowth",
 		"importmodel"
 	];
 	foreach my $function (@{$functionList}) {
+		if (-e $args->{"-p"}."bin/".$function.$extension) {
+			unlink $args->{"-p"}."bin/".$function.$extension;
+		}
 		my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" %*',"pause"];
 		printFile($args->{"-p"}."bin/".$function.$extension,$data);
 		chmod 0775,$args->{"-p"}."bin/".$function.$extension;

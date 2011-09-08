@@ -1,4 +1,8 @@
 1.) Clone the git repository for the Model SEED
+	a.) Install git on whatever system you want to install the Model SEED onto
+	b.) On the command line, go to the root directory where you want to put the Model SEED installation
+	c.) Clone the repository from git with this command:
+	"git clone git://github.com/cshenry/Model-SEED-core"
 2.) Download and install the flatfile data
 	a.) Download the default flat file datafiles from here:
 	http://bioseed.mcs.anl.gov/~chenry/data.tgz
@@ -15,10 +19,10 @@
 		-c "cplex installation directory" (delete these if you don't have cplex)
 		-cl "cplex license file location" (delete these if you don't have cplex)
 		-os "windows/linus/osx" 
-		-usr "Model SEED username"
-		-pwd "Model SEED password"
-		-dbhost "database hostname"
-		-dbuser "database username"
+		-usr "Model SEED username" (your SEED/RAST username is a wise choice here)
+		-pwd "Model SEED password" (your SEED/RAST password is a wise choice here)
+		-dbhost "database hostname" (could be "localhost")
+		-dbuser "database username" (you'll need to make sure this user has appropriate privelages on your server)
 		-dbpwd "database password"
 	c.) Run the configuration script. You should see no errors.
 4.) Install needed non-default perl libraries, all readily available through CPAN or perl package manager:
@@ -36,3 +40,8 @@
 	b.) Extract the SQL file, and import it into the "ModelDB" scheme created in step 4
 7.) Test environment by running Model Driver with no arguments:
 	a.) Run this script: Model-SEED-core/bin/ModelDriver.(sh/cmd)
+8.) Update the model SEED
+	a.) Run this command in the Model-SEED-core directory:
+	"git pull"
+	b.) Sometimes you may need to rerun the configuration script
+	c.) Soon there will be an "update" script in the "bin" directory that does all of this for you.
