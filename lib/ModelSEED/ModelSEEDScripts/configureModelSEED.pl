@@ -100,6 +100,13 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 }
 #Creating shell scripts for individual perl scripts
 {
+	my $mfatoolkitScript = "lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl -p ".$args->{"-p"};
+	if (defined($args->{"-cplex"})) {
+		$mfatoolkitScript .= " --cplex ".$args->{"-cplex"};	
+	}
+	if (defined($args->{"-os"})) {
+		$mfatoolkitScript .= " --os ".$args->{"-os"};	
+	}
 	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{-p}."lib/ModelSEED/ModelDB/ModelDB.xml ".
 		"-backend MySQL ".
 		"-database ModelDB2 ".
@@ -111,11 +118,12 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 		"lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
 		"lib/ModelSEED/ModelDriver.pl" => "ModelDriver",
 		$ppoScript => "CreateDBScheme",
+		$mfatoolkitScript => "makeMFAToolkit",
 		"lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
 	};
 	foreach my $file (keys(%{$plFileList})) {
 		my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.$file.'" %*',"pause"];
-		&printFile($args->{"-p"}."bin/".$plFileList->{$file}.$extension,$data);
+		printFile($args->{"-p"}."bin/".$plFileList->{$file}.$extension,$data);
 		chmod 0775,$args->{"-p"}."bin/".$plFileList->{$file};
 	}
 }
@@ -129,7 +137,7 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 	];
 	foreach my $function (@{$functionList}) {
 		my $data = ['@echo off','perl "'.$args->{-p}.'config/ModelSEEDbootstrap.pm" "'.$args->{-p}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" %*',"pause"];
-		&printFile($args->{"-p"}."bin/".$function.$extension,$data);
+		printFile($args->{"-p"}."bin/".$function.$extension,$data);
 		chmod 0775,$args->{"-p"}."bin/".$function.$extension;
 	}
 }
@@ -162,23 +170,25 @@ if (defined($args->{-os}) && $args->{-os} eq "windows") {
 }
 #Configuring MFAToolkit
 {	
-	my $cplex = "";
-	if (defined($args->{"-cplex"})) {
-		$cplex = " --cplex ".$args->{"-cplex"};	
+	if ($args->{-os} ne "windows") {
+		my $data = [
+			'cd "'.$args->{"-p"}.'software/mfatoolkit/Linux/"',
+			'export GLPKDIRECTORY="'.$args->{"-glpk"}.'"'
+		];
+		if (defined($args->{"-cplex"})) {
+			push(@{$data},'export CPLEXDIRECTORY="'.$args->{"-cplex"}.'"');
+		}
+		push(@{$data},'if [ $1 == "clean" ] then');
+		push(@{$data},'    make clean');
+		push(@{$data},'fi');
+		push(@{$data},'make');
+		printFile($args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
+		chmod 0775,$args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh";
 	}
-	my $os = "";
-	if (defined($args->{"-os"})) {
-		$os = " --os ".$args->{"-os"};	
-	}
-	system("perl configureMFAToolkit.pl"
-		." -p ".$args->{"-p"}
-		." --glpk ".$args->{"-glpk"}
-		.$cplex.$os
-	);
+	system($args->{"-p"}."bin/makeMFAToolkit".$extension);
 }
-
 1;
-
+#Utility functions used by the configuration script
 sub printFile {
     my ($filename,$arrayRef) = @_;
     open (OUTPUT, ">$filename");

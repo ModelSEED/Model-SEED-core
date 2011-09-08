@@ -1,7 +1,7 @@
 1.) Clone the git repository for the Model SEED
 2.) Download and install the flatfile data
 	a.) Download the default flat file datafiles from here:
-	http://bioseed.mcs.anl.gov/~chenry/data.rar
+	http://bioseed.mcs.anl.gov/~chenry/data.tgz
 	b.) Extract to this directory:
 	Model-SEED-core/data/
 3.) Configure the Model SEED by running the configuration scripts
@@ -32,7 +32,7 @@
 	c.) Should run with no errors.
 6.) Load the database scheme
 	a.) Download the default database content from here:
-	http://bioseed.mcs.anl.gov/~chenry/sql.rar
+	http://bioseed.mcs.anl.gov/~chenry/sql.tgz
 	b.) Extract the SQL file, and import it into the "ModelDB" scheme created in step 4
 7.) Test environment by running Model Driver with no arguments:
 	a.) Run this script: Model-SEED-core/bin/ModelDriver.(sh/cmd)

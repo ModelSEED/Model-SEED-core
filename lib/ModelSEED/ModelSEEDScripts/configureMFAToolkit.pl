@@ -16,7 +16,6 @@ my $args = {};
 my $result = GetOptions(
     "p|installation_directory=s" => \$args->{"-p"},
 #    "d|data_directory=s" => \$args->{"-d"},
-    "glpk|glpk_location=s" => \$args->{"-glpk"},
     "cplex|cplex_location=s" => \$args->{"-cplex"},
     "os|operating_system=s" => \$args->{"-os"},
     "h|help" => \$args->{"help"},
@@ -35,9 +34,6 @@ if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
 $args->{"-p"} = abs_path($args->{"-p"}).'/';
 #$args->{"-d"} = abs_path($args->{"-d"}).'/';
 $args->{"-cplex"} = abs_path($args->{"-cplex"}) if(defined($args->{"-cplex"}));
-$args->{"-glpk"} = abs_path($args->{"-cplex"}) if(defined($args->{"-glpk"}));
-
-$args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
 
 #If the OS is windows, we copy the precompiled binaries into the bin directory
 if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
@@ -47,28 +43,26 @@ if (defined($args->{"-os"}) && $args->{"-os"} eq "windows") {
 	} else {
 		File::Copy::copy($args->{"-p"}."software/mfatoolkit/Windows/MFAToolkitNoCPLEX.exe",$args->{"-p"}."software/mfatoolkit/bin/mfatoolkit.exe");
 	}
+	chmod 0775,$args->{"-p"}."software/mfatoolkit/bin/mfatoolkit.exe";
 } else {
 	#Running make
-	my $makeCommand = $args->{"-p"}."software/mfatoolkit/Linux/make.sh \"".$args->{"-p"}."software/mfatoolkit/Linux/\" \"".$args->{"-glpk"}."\"";
+	my $makeCommand = $args->{"-p"}."software/mfatoolkit/Linux/make.sh";
 	if (defined($args->{"-cplex"})) {
-		$makeCommand .= " \"".$args->{"-cplex"}."\"";
 		File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/makefilecplex",$args->{"-p"}."software/mfatoolkit/Linux/makefile");
 	} else {
-		$makeCommand .= " nocplex";
 		File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/makefilenocplex",$args->{"-p"}."software/mfatoolkit/Linux/makefile");
 	}
 	if (defined($args->{"-clean"})) {
 		$makeCommand .= " clean"; 
-	} else {
-		$makeCommand .= " noclean";
 	}
 	system($makeCommand);
 	#Copying executable and parameter files
 	File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/mfatoolkit",$args->{"-p"}."software/mfatoolkit/bin/mfatoolkit");
 	File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/SystemParameters.txt",$args->{"-p"}."software/mfatoolkit/bin/SystemParameters.txt");
+	chmod 0775,$args->{"-p"}."software/mfatoolkit/bin/mfatoolkit";
 }
 
-$|=1; # ??
+1;
 
 __DATA__
 

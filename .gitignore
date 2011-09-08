@@ -6,9 +6,10 @@ data/*
 .includepath
 .project
 .metadata/*
-bin/ModelDriver.sh
-bin/QueueDriver.sh
-bin/StartScheduler.sh
-bin/UpdateModelSEED.sh
-config/FIGMODELConfig.txt
+bin/*.sh
+bin/*.cmd
+config/*
 logs/*
+*.ilk
+*.pdb
+software/mfatoolkit/bin/*
