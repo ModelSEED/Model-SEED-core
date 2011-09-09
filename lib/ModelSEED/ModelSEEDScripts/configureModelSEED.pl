@@ -27,6 +27,7 @@ if (!defined($args->{"-settings"})) {
 }
 print $args->{"-settings"}."\n";
 $args->{"-settings"} = abs_path($args->{"-settings"});
+print $args->{"-settings"}."\n";
 #Loading settings file
 if (!-e $args->{"-settings"}) {
 	print STDERR "Cannot find settings file:".$args->{"-settings"}."\n";
