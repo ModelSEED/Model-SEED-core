@@ -197,7 +197,7 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 			if ($data->[$i] =~ m/^%PPO_tbl_(\w+)\|.*name;(\w+)\|.*table;(\w+)\|/) {
 				if ($2 eq $dbList->[$j]) {
 					my $password = "";
-					if (defined($args->{"Database password"})) {
+					if (defined($args->{"Database password"}) && $args->{"Database password"} ne "") {
 						$password = "password;".$args->{"Database password"}."|";
 					}
 					$data->[$i] = "%PPO_tbl_".$1."|"
