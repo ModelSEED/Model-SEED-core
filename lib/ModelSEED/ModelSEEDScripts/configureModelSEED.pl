@@ -49,7 +49,9 @@ $args->{"GLPK directory"} = abs_path($args->{"GLPK directory"}).'/' if(defined($
 $args->{"CPLEX include directory"} = abs_path($args->{"CPLEX include directory"}).'/' if(defined($args->{"CPLEX include directory"}));
 $args->{"CPLEX library directory"} = abs_path($args->{"CPLEX library directory"}).'/' if(defined($args->{"CPLEX library directory"}));
 $args->{"CPLEX license directory"} = abs_path($args->{"CPLEX license directory"}).'/' if(defined($args->{"CPLEX license directory"}));
+print $args->{"-figconfig"}."\n";
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
+print $args->{"-figconfig"}."\n";
 my $extension = ".sh";
 my $delim = ":";
 if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
