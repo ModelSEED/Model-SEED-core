@@ -8,7 +8,9 @@ data/*
 .metadata/*
 bin/*.sh
 bin/*.cmd
-config/*
+config/Settings.txt
+config/FIGMODELConfig.txt
+config/ModelSEEDbootstrap.pm
 logs/*
 *.ilk
 *.pdb

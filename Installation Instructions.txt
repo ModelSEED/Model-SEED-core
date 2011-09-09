@@ -8,8 +8,12 @@
 	http://bioseed.mcs.anl.gov/~chenry/data.tgz
 	b.) Extract to this directory:
 	Model-SEED-core/data/
-3.) Configure the Model SEED by running the configuration script
-	a.) Copy "Model-SEED-core/SettingsTemplate.txt" to "Model-SEED-core/config/Settings.txt"
+3.) Set up SQL server
+	a.) Set up an SQL server on your computer or identify a server with SQL that you have access to
+	b.) On this SQL server, create a new empty database scheme called "ModelDB"
+	c.) Create or identify a user account in the SQL server that Model SEED can use to interact with the server, and give this user account privelages to the ModelDB scheme
+4.) Configure the Model SEED by running the configuration script
+	a.) Copy "Model-SEED-core/config/SettingsTemplate.txt" to "Model-SEED-core/config/Settings.txt"
 	b.) Edit "Model-SEED-core/config/Settings.txt" with settings for your installation environment:
 		Operating system:			(OS where ModelSEED is installed:windows/osx/linux - an essential parameter)
 		SEED username:				(username of SEED account used for interactions with SEED - an essential parameter)
@@ -26,23 +30,23 @@
 	c.) Run the configuration script:
 		Model-SEED-core/bin/configureModelSEED.cmd (for windows)
 		Model-SEED-core/bin/configureModelSEED.sh (for linux and OSX)
-		You should see no errors.
-4.) Install needed non-default perl libraries, all readily available through CPAN or perl package manager:
+		You may see some warnings when the MFAToolkit builds, but these are okay.
+5.) Install needed non-default perl libraries, all readily available through CPAN or perl package manager:
 	a.) File/Copy/Recursive
 	b.) Spreadsheet/WriteExcel
 	c.) XML/DOM
 	d.) YAML
-5.) Create the empty database scheme
-	a.) Set up an SQL server on your computer or identify a server you have access to
-	b.) Run this script: Model-SEED-core/bin/CreateDBScheme.(sh/cmd) (Extension depends on OS)
-	c.) Should run with no errors.
-6.) Load the database scheme
+	e.) DBD/mysql
+6.) Create the empty database tables in SQL
+	a.) Run this script: Model-SEED-core/bin/CreateDBScheme.(sh/cmd) (Extension depends on OS)
+	b.) Should run with no errors.
+7.) Load the database scheme
 	a.) Download the default database content from here:
 	http://bioseed.mcs.anl.gov/~chenry/sql.tgz
 	b.) Extract the SQL file, and import it into the "ModelDB" scheme created in step 4
-7.) Test environment by running Model Driver with no arguments:
+8.) Test environment by running Model Driver with no arguments:
 	a.) Run this script: Model-SEED-core/bin/ModelDriver.(sh/cmd)
-8.) Update the model SEED
+9.) Update the model SEED
 	a.) Run this command in the Model-SEED-core directory:
 	"git pull"
 	b.) Sometimes you may need to rerun the configuration script
