@@ -145,7 +145,7 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 	}
 	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{"Installation path"}."lib/ModelSEED/ModelDB/ModelDB.xml ".
 		"-backend MySQL ".
-		"-database ModelDB2 ".
+		"-database ModelDB ".
 		"-host ".$args->{"Database host"}." ".
 		"-user ".$args->{"Database username"}." ".
 		$password.

@@ -10,8 +10,7 @@
 	Model-SEED-core/data/
 3.) Set up SQL server
 	a.) Set up an SQL server on your computer or identify a server with SQL that you have access to
-	b.) On this SQL server, create a new empty database scheme called "ModelDB"
-	c.) Create or identify a user account in the SQL server that Model SEED can use to interact with the server, and give this user account privelages to the ModelDB scheme
+	b.) Create or identify a user account in the SQL server that Model SEED can use to interact with the server, and give this user account privileges to make schemes.
 4.) Configure the Model SEED by running the configuration script
 	a.) Copy "Model-SEED-core/config/SettingsTemplate.txt" to "Model-SEED-core/config/Settings.txt"
 	b.) Edit "Model-SEED-core/config/Settings.txt" with settings for your installation environment:
@@ -39,7 +38,9 @@
 	e.) DBD/mysql
 6.) Create the empty database tables in SQL
 	a.) Run this script: Model-SEED-core/bin/CreateDBScheme.(sh/cmd) (Extension depends on OS)
-	b.) Should run with no errors.
+	b.) If you're having trouble getting this script to run, remember you need to install the MySQL development headers/libraries as well as the standard installation.
+	c.) Make sure your user account has privileges to view and modify the ModelDB scheme.
+	d.) Should run with no errors.
 7.) Load the database scheme
 	a.) Download the default database content from here:
 	http://bioseed.mcs.anl.gov/~chenry/sql.tgz
