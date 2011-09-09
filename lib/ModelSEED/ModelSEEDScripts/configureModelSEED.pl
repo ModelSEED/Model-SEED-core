@@ -139,12 +139,16 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 	if (defined($args->{"Operating system"})) {
 		$mfatoolkitScript .= "\" --os \"".$args->{"Operating system"};	
 	}
+	my $password = "";
+	if (defined($args->{"Database password"})) {
+		$password = "-password ".$args->{"Database password"}." ";
+	}
 	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{"Installation path"}."lib/ModelSEED/ModelDB/ModelDB.xml ".
 		"-backend MySQL ".
 		"-database ModelDB2 ".
 		"-host ".$args->{"Database host"}." ".
 		"-user ".$args->{"Database username"}." ".
-		"-password ".$args->{"Database password"}." ".
+		$password.
 		'-port "3306';
 	my $plFileList = {
 		"lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
