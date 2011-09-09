@@ -1,1 +1,1 @@
-perl ../lib/ModelSEED/ModelSEEDScripts/configureModelSEED.pl
+perl ../lib/ModelSEED/ModelSEEDScripts/configureModelSEED.pl $*

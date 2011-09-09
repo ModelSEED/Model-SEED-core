@@ -49,12 +49,12 @@ $args->{"GLPK directory"} = abs_path($args->{"GLPK directory"}).'/' if(defined($
 $args->{"CPLEX include directory"} = abs_path($args->{"CPLEX include directory"}).'/' if(defined($args->{"CPLEX include directory"}));
 $args->{"CPLEX library directory"} = abs_path($args->{"CPLEX library directory"}).'/' if(defined($args->{"CPLEX library directory"}));
 $args->{"CPLEX license directory"} = abs_path($args->{"CPLEX license directory"}).'/' if(defined($args->{"CPLEX license directory"}));
-print $args->{"-figconfig"}."\n";
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
-print $args->{"-figconfig"}."\n";
 my $extension = ".sh";
+my $arguments = "\$*";
 my $delim = ":";
 if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
+	$arguments = "%*";
 	$extension = ".cmd";
 	$delim = ";";
 }
@@ -112,7 +112,7 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 	}
 	my $configFiles = $args->{"Installation path"}."config/FIGMODELConfig.txt";
 	if (defined($args->{"-figconfig"})) {
-	    $configFiles .= ";".join(";",@{$args->{"-figconfig"}});
+	    $configFiles .= ";".$args->{"-figconfig"};
 	}
 	push(@{$data},'$ENV{FIGMODEL_CONFIG}=\''.$configFiles.'\';');
 	push(@{$data},'$ENV{ARGONNEDB}=\''.$args->{"Data directory"}.'ReactionDB/\';');
@@ -163,9 +163,9 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 		if (-e $args->{"Installation path"}."bin/".$plFileList->{$file}.$extension) {
 			unlink $args->{"Installation path"}."bin/".$plFileList->{$file}.$extension;	
 		}
-		my $data = ['perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" %*'];
+		my $data = ['perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" '.$arguments];
 		if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
-			my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" %*',"pause"];	
+			my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" '.$arguments,"pause"];	
 		}
 		printFile($args->{"Installation path"}."bin/".$plFileList->{$file}.$extension,$data);
 		chmod 0775,$args->{"Installation path"}."bin/".$plFileList->{$file}.$extension;
@@ -182,7 +182,7 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 		if (-e $args->{"Installation path"}."bin/".$function.$extension) {
 			unlink $args->{"Installation path"}."bin/".$function.$extension;
 		}
-		my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" %*',"pause"];
+		my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" '.$arguments,"pause"];
 		printFile($args->{"Installation path"}."bin/".$function.$extension,$data);
 		chmod 0775,$args->{"Installation path"}."bin/".$function.$extension;
 	}
