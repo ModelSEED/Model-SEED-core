@@ -25,9 +25,7 @@ pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 if (!defined($args->{"-settings"})) {
 	$args->{"-settings"} = "../../../config/Settings.txt";
 }
-print $args->{"-settings"}."\n";
-$args->{"-settings"} = abs_path($args->{"-settings"});
-print $args->{"-settings"}."\n";
+#$args->{"-settings"} = abs_path($args->{"-settings"});
 #Loading settings file
 if (!-e $args->{"-settings"}) {
 	print STDERR "Cannot find settings file:".$args->{"-settings"}."\n";
