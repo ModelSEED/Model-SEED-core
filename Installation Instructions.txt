@@ -8,23 +8,25 @@
 	http://bioseed.mcs.anl.gov/~chenry/data.tgz
 	b.) Extract to this directory:
 	Model-SEED-core/data/
-3.) Configure the Model SEED by running the configuration scripts
-	a.) Select the appropriate script depending on your operating system:
+3.) Configure the Model SEED by running the configuration script
+	a.) Copy "Model-SEED-core/SettingsTemplate.txt" to "Model-SEED-core/config/Settings.txt"
+	b.) Edit "Model-SEED-core/config/Settings.txt" with settings for your installation environment:
+		Operating system:			(OS where ModelSEED is installed:windows/osx/linux - an essential parameter)
+		SEED username:				(username of SEED account used for interactions with SEED - an essential parameter)
+		SEED password:				(password of SEED account used for interactions with SEED - an essential parameter)
+		Installation path:			(path to directory where Model SEED is installed - an essential parameter)
+		Data directory:				(path to directory where Model SEED flat files are stored - an essential parameter)
+		Database username:			(username used to access ModelDB scheme in SQL database - an essential parameter)
+		Database password:			(password used to access ModelDB scheme in SQL database - use "NONE" if there is no password)
+		Database host:				(hostname where SQL database is installed - an essential parameter) 
+		GLPK directory:				(path to directory where GLPK has been installed - an essential parameter)
+		CPLEX include directory:	(path to directory with cplex header files - use "NONE" if CPLEX is not available)
+		CPLEX library directory:	(path to directory with cplex library files - use "NONE" if CPLEX is not available)
+		CPLEX license directory:	(name and location of CPLEX license file - use "NONE" if CPLEX is not available)
+	c.) Run the configuration script:
 		Model-SEED-core/bin/configureModelSEED.cmd (for windows)
 		Model-SEED-core/bin/configureModelSEED.sh (for linux and OSX)
-	b.) Edit the configuration script arguments based on your installation and database properties:
-		-p "installation directory"
-		-d "data directory"
-		-g "glpk installation directory"
-		-c "cplex installation directory" (delete these if you don't have cplex)
-		-cl "cplex license file location" (delete these if you don't have cplex)
-		-os "windows/linus/osx" 
-		-usr "Model SEED username" (your SEED/RAST username is a wise choice here)
-		-pwd "Model SEED password" (your SEED/RAST password is a wise choice here)
-		-dbhost "database hostname" (could be "localhost")
-		-dbuser "database username" (you'll need to make sure this user has appropriate privelages on your server)
-		-dbpwd "database password"
-	c.) Run the configuration script. You should see no errors.
+		You should see no errors.
 4.) Install needed non-default perl libraries, all readily available through CPAN or perl package manager:
 	a.) File/Copy/Recursive
 	b.) Spreadsheet/WriteExcel
