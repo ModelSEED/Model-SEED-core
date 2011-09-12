@@ -11,8 +11,14 @@ use Getopt::Long;
 use Pod::Usage;
 use Cwd qw(abs_path);
 use File::Path;
+# Get the Installation path using what we know about the location
+# of this script ( abs_path($0) is absolute path to this script )
+my $root = abs_path($0);
+$root =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
 #Processing arguments
-my $args = {};
+my $args = {
+    "-settings" => "$root/config/Settings.txt",
+};
 my $result = GetOptions(
     "s|settings=s" => \$args->{"-settings"},
     "f|figconfig=s" => \$args->{"-figconfig"},
@@ -22,14 +28,7 @@ my $result = GetOptions(
 pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 #Setting default values for settings
-if (!defined($args->{"-settings"})) {
-	$args->{"-settings"} = "../config/Settings.txt";
-}
 $args->{"-settings"} = abs_path($args->{"-settings"});
-#Loading settings file
-if (!-e $args->{"-settings"}) {
-	print STDERR "Cannot find settings file:".$args->{"-settings"}."\n";
-}
 my $data = loadFile($args->{"-settings"});
 for (my $i=0; $i < @{$data}; $i++) {
 	if ($data->[$i] =~ m/^([^:]+):\t*([^\t]+)/) {
@@ -183,8 +182,8 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 			unlink $args->{"Installation path"}."bin/".$function.$extension;
 		}
 		my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" '.$arguments,"pause"];
-		printFile($args->{"Installation path"}."bin/".$function.$extension,$data);
-		chmod 0775,$args->{"Installation path"}."bin/".$function.$extension;
+		printFile($args->{"Installation path"}."bin/".$function,$data);
+		chmod 0775,$args->{"Installation path"}."bin/".$function;
 	}
 }
 #Configuring database
@@ -235,7 +234,7 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 #Utility functions used by the configuration script
 sub printFile {
     my ($filename,$arrayRef) = @_;
-    open (OUTPUT, ">$filename");
+    open (OUTPUT, ">$filename") || die("Couldn't open $filename: $!");
     foreach my $Item (@{$arrayRef}) {
         if (length($Item) > 0) {
             print OUTPUT $Item."\n";
@@ -245,15 +244,14 @@ sub printFile {
 }
 
 sub loadFile {
-    my ($Filename) = @_;
+    my ($filename) = @_;
     my $DataArrayRef = [];
-    if (open (INPUT, "<", $Filename)) {
-        while (my $Line = <INPUT>) {
-            chomp($Line);
-            push(@{$DataArrayRef},$Line);
-        }
-        close(INPUT);
+    open (INPUT, "<", $filename) || die("Couldn't open $filename: $!");
+    while (my $Line = <INPUT>) {
+        chomp($Line);
+        push(@{$DataArrayRef},$Line);
     }
+    close(INPUT);
     return $DataArrayRef;
 }
 
