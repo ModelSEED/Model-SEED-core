@@ -41,3 +41,19 @@ sub check_password {
     return 0;
   }
 }
+
+=pod
+
+=item * B<encrypt> (I<password>)
+
+Encrypt I<password> and return the result. This is a static method that
+does not require instantiating a user object in order to run.
+
+=cut
+
+sub encrypt {
+  my ($password) = @_;
+
+  my $seed = join '', ('.', '/', 0..9, 'A'..'Z', 'a'..'z')[rand 64, rand 64];
+  return crypt($password, $seed);
+}

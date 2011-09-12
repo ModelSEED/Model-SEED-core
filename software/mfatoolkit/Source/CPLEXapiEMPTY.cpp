@@ -35,3 +35,7 @@ int CPLEXLoadObjective(LinEquation* InEquation, bool Max) {
 int CPLEXAddConstraint(LinEquation* InEquation) {
 	return FAIL;
 }
+
+int CPLEXDelConstraint(LinEquation* InEquation) {
+	return FAIL;
+}

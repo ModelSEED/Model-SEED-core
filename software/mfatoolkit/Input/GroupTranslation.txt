@@ -1,0 +1,97 @@
+BBTCdblW;two fused aromatic rings >C=
+BenzBr;aromatic -Br
+BenzF;aromatic -F
+BenzI;aromatic -I
+BTWWCdblW;two fused rings >C=
+BWCHdblW;aromatic ring =CH-
+BWdOW;aromatic ring -O=
+BWWCdblW;aromatic ring =C<
+CH4;methane
+E;electron
+HeteroAromatic;heteroaromatic
+Itriphos;itriphosphate
+MeOH;methanol
+mid_phos;-OPO2-
+NH4plus;NH4
+nitricacid;nitric acid
+NitrousOx;nitrous oxide
+NoGroup;unlabeled atoms
+PO3;phosphonate
+prim_phos;-OPO3
+PrimOH;-OH
+pyrophos;pyrophosphate
+RdblWCWW;ring >C=
+RWCdblWW;ring =C<
+RWCH2W;ring -CH2-
+RWCHdblW;ring =CH-
+RWCHWW;ring -CH<
+RWdblNHpW;ring =NH-
+RWdblNW;ring =N-
+RWNHW;ring -NH-
+RWOCOW;ring -O-CO-
+RWOPO2W;ring -OPO2-
+RWOW;ring -O-
+RWSW;ring -S-
+RWWCdblO;ring >C=O
+RWWCWW;ring >C<
+RWWdblNdblO;ring -NO=
+RWWNW;ring -N<
+RWWSdblO;ring >S=O
+smide;thioester
+thiopyrophos;thiopyrophosphate
+triS;S3O6
+TWdNpWW;two fused rings =N<
+TWNWW;two fused rings -N<
+TWWCdblW;two fused rings >C=
+TWWCHW;two fused rings >CH-
+TWWCWW;two fused rings >C<
+WCCl2W;-CCl2-
+WCH2W;-CH2-
+WCH3;-CH3
+WCHdblO;-CH=O
+WCHdblW;=CH-
+WCl2Prim;primary Cl2
+WCl2Sec;secondary Cl2
+WCl3;primary Cl3
+WClPrim;primary -Cl
+WClSec;secondary -Cl
+WClTert;tertiary -Cl
+WCOOn;-COO
+WCOOPO2;-CO-OPO2
+WCOOPO2H;-CO-OPO2H
+WCOOPO3;-CO-OPO3-
+WdblCH2;=CH2
+WdblCWW;=C<
+WdblNH;=NH
+WdblNH2;=NH2
+WketoneW;>C=O
+WNdblOdblO;-NO2
+WNdblW;=N-
+WNH2;-NH2
+WNH2W;-NH2-
+WNH3;-NH3
+WNHW;-NH-
+WNHWW;-NH<
+WOCOW;-O-CO-
+WOneg;-Oneg
+WOW;-O-
+WPO3;-OPO2
+WPO3H;-OPO2H
+WPO4nW;-OPO3-
+WRdNWRW;dbl sgl ring =N<
+WSH;-SH
+WSNeg;-Sneg
+WSO3;-SO3
+WSO4;-SO4
+WSOH;-S-OH
+WSSW;-S-S-
+WSW;-S-
+WSWW;-S<
+WtrpCH;?CH
+WtrpCW;?C-
+WtrpN;?N
+WWCHW;>CH-
+WWCWW;>C<
+WWNpWW;>N<
+WWNW;-N<
+WWSdblO;>S=O
