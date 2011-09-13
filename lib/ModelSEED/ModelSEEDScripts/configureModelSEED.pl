@@ -16,6 +16,9 @@ use File::Path;
 # of this script ( abs_path($0) is absolute path to this script )
 my $directoryRoot = abs_path($0);
 $directoryRoot =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
+$directoryRoot = abs_path($directoryRoot);
+warn $directoryRoot;
+
 my $args = {};
 my $result = GetOptions(
     "figconfig|f=s@" => \$args->{"-figconfig"},
