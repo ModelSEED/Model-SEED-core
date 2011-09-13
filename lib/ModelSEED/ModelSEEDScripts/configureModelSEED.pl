@@ -16,22 +16,34 @@ use File::Path;
 # of this script ( abs_path($0) is absolute path to this script )
 my $directoryRoot = abs_path($0);
 $directoryRoot =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
-# By default use config/Settings.config
-my $args = {
-    "-settings" => "$directoryRoot/config/Settings.config",
-};
+my $args = {};
 my $result = GetOptions(
-    "s|settings=s" => \$args->{"-settings"},
-    "f|figconfig=s" => \$args->{"-figconfig"},
+    "figconfig|f=s@" => \$args->{"-figconfig"},
     "h|help" => \$args->{"help"},
     "man" => \$args->{"man"},
 );
 pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 # Reading the settings file
-$args->{"-settings"} = abs_path($args->{"-settings"});
+my $command = shift @ARGV;
+unless($command eq "unload" || $command eq "load" || $command eq "reload") {
+    pod2usage(2);
+}
+
+if($command eq "unload") {
+    unload();
+    exit();
+} elsif($command eq "reload") {
+    unload();
+}
+# By default use config/Settings.config
+my $configFile = shift @ARGV || "$directoryRoot/config/Settings.config";
+unless(-f $configFile) {
+    die("Could not find configuration file at $configFile!");
+}
+$configFile = abs_path($configFile);
 my $Config = Config::Tiny->new();
-$Config = Config::Tiny->read($args->{"-settings"});
+$Config = Config::Tiny->read($configFile);
 # Setting defaults for dataDirectory,
 # database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
 unless(defined($Config->{Optional}->{dataDirectory})) {
@@ -59,7 +71,7 @@ foreach my $path (
         $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
     }
 }
-$args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
+$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ] if(defined($args->{"-figconfig"}));
 my $extension = "";
 my $arguments = "\$*";
 my $delim = ":";
@@ -119,8 +131,8 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$Config->{Optional}->{password}.'\';');
 	}
 	my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
-	if (defined($args->{"-figconfig"})) {
-	    $configFiles .= ";".$args->{"-figconfig"};
+	if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
+	    $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
 	}
 	push(@{$data},'$ENV{FIGMODEL_CONFIG}=\''.$configFiles.'\';');
 	push(@{$data},'$ENV{ARGONNEDB}=\''.$Config->{Optional}->{dataDirectory}.'/ReactionDB/\';');
@@ -264,6 +276,37 @@ sub loadFile {
     }
     close(INPUT);
     return $DataArrayRef;
+}
+
+# remove everything that gets added in a "load" step...
+sub unload {
+    # don't remove directories bin config data lib logs software
+    unlink $directoryRoot."/config/FIGMODELConfig.txt"; 
+    unlink $directoryRoot."/config/ModelSEEDbootstrap.pm";
+    my $ext = "";
+    my $os = "linux";
+    if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
+        $ext = ".cmd";
+        $os = "windows";
+    }
+    # remove files from bin/ that are made w/ each load
+    my $files = [ "QueueDriver".$ext,
+                  "ModelDriver".$ext,
+                  "CreateDBScheme".$ext,
+                  "makeMFAToolkit".$ext,
+                  "adduser".$ext,
+                  "testmodelgrowth".$ext,
+                  "importmodel".$ext,
+                ];
+    foreach my $filename (@$files) {
+        unlink $directoryRoot."/bin/".$filename;  
+    } 
+    if($os eq "windows") {
+        # ??? FIXME
+    } else {
+        chdir "$directoryRoot/software/mfatoolkit/Linux";
+        system("make clean");
+    }
 }
 
 __DATA__
