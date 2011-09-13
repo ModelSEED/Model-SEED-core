@@ -9,15 +9,16 @@
 use strict;
 use Getopt::Long;
 use Pod::Usage;
+use Config::Tiny;
 use Cwd qw(abs_path);
 use File::Path;
 # Get the Installation path using what we know about the location
 # of this script ( abs_path($0) is absolute path to this script )
-my $root = abs_path($0);
-$root =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
-#Processing arguments
+my $directoryRoot = abs_path($0);
+$directoryRoot =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
+# By default use config/Settings.config
 my $args = {
-    "-settings" => "$root/config/Settings.txt",
+    "-settings" => "$directoryRoot/config/Settings.config",
 };
 my $result = GetOptions(
     "s|settings=s" => \$args->{"-settings"},
@@ -27,94 +28,102 @@ my $result = GetOptions(
 );
 pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
-#Setting default values for settings
+# Reading the settings file
 $args->{"-settings"} = abs_path($args->{"-settings"});
-my $data = loadFile($args->{"-settings"});
-for (my $i=0; $i < @{$data}; $i++) {
-	if ($data->[$i] =~ m/^([^:]+):\t*([^\t]+)/) {
-		$args->{$1} = $2;
-	}
+my $Config = Config::Tiny->new();
+$Config = Config::Tiny->read($args->{"-settings"});
+# Setting defaults for dataDirectory,
+# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
+unless(defined($Config->{Optional}->{dataDirectory})) {
+    $Config->{Optional}->{dataDirectory} = "$directoryRoot/data";
 }
-# Setting paths to absolute, otherwise a path like ../../foo/bar would cause massive issues...
-$args->{"Installation path"} = abs_path($args->{"Installation path"}).'/';
-$args->{"Data directory"} = abs_path($args->{"Data directory"}).'/';
-my $optionalVariables = ["GLPK directory","CPLEX include directory","CPLEX library directory","CPLEX license directory","Database password"];
-for (my $i=0; $i < @{$optionalVariables}; $i++) {
-	if (defined($args->{$optionalVariables->[$i]}) && (uc($args->{$optionalVariables->[$i]}) eq "NONE" || $args->{$optionalVariables->[$i]} eq "")) {
-		delete $args->{$optionalVariables->[$i]};
-	}
+unless(defined($Config->{Database}->{type})) {
+    $Config->{Database}->{type} = "sqlite";
 }
-$args->{"GLPK directory"} = abs_path($args->{"GLPK directory"}).'/' if(defined($args->{"GLPK directory"}));
-$args->{"CPLEX include directory"} = abs_path($args->{"CPLEX include directory"}).'/' if(defined($args->{"CPLEX include directory"}));
-$args->{"CPLEX library directory"} = abs_path($args->{"CPLEX library directory"}).'/' if(defined($args->{"CPLEX library directory"}));
-$args->{"CPLEX license directory"} = abs_path($args->{"CPLEX license directory"}).'/' if(defined($args->{"CPLEX license directory"}));
+unless(defined($Config->{Database}->{filename}) ||
+        lc($Config->{Database}->{type}) ne 'sqlite') {
+    $Config->{Database}->{filename} =
+        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
+}
+unless(lc($Config->{Database}->{type}) eq 'mysql' &&
+    !defined($Config->{Database}->{port})) {
+    $Config->{Database}->{port} = "3306";
+} 
+# Setting paths to absolute for different configuration parameters
+foreach my $path ( 
+    qw( Optional=dataDirectory Optimizers=directoryGLPK
+        Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
+        Optimizers=licenseDirectoryCPLEX )) {
+    my ($section, $name) = split(/=/, $path);
+    if(defined($Config->{$section}->{$name})) {
+        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
+    }
+}
 $args->{"-figconfig"} = abs_path($args->{"-figconfig"}) if(defined($args->{"-figconfig"}));
-my $extension = ".sh";
+my $extension = "";
 my $arguments = "\$*";
 my $delim = ":";
-if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
-	$arguments = "%*";
-	$extension = ".cmd";
-	$delim = ";";
+my $os = 'linux';
+# figure out OS from $^O variable for extension, arguments and delim:
+if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
+    $arguments = "%*";
+    $delim = ";";
+    $extension = ".cmd";
+    $os = 'windows';
+} elsif($^O =~ /darwin/) {
+    $os = 'osx';
 }
+
 #Creating missing directories
 {
-	my $directories = [
-		"bin",
-		"config",
-		"data",
-		"lib",
-		"logs",
-		"software"	
-	];
-	for (my $i=0; $i < @{$directories}; $i++) {
-		if (!-d $args->{"Installation path"}.$directories->[$i]) {
-			File::Path::mkpath $args->{"Installation path"}.$directories->[$i];
+	my $directories = [qw( bin config data lib logs software )];
+    foreach my $dir (@$directories) {
+		if (!-d "$directoryRoot/".$dir) {
+			File::Path::mkpath "$directoryRoot/".$dir;
 		}
 	}
-	
 }
 #Creating config/FIGMODELConfig.txt
 {
-    my $data = loadFile($args->{"Installation path"}."lib/ModelSEED/FIGMODELConfig.txt");
+    my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
     for (my $i=0; $i < @{$data}; $i++) { 
         if ($data->[$i] =~ m/^database\sroot\sdirectory/) {
-            $data->[$i] = "database root directory|".$args->{"Data directory"};
+            $data->[$i] = "database root directory|".$Config->{Optional}->{dataDirectory};
         } elsif ($data->[$i] =~ m/^software\sroot\sdirectory/) {
-            $data->[$i] = "software root directory|".$args->{"Installation path"};
-        } elsif ($data->[$i] =~ m/mfatoolkit\/bin\/mfatoolkit/ && defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
+            $data->[$i] = "software root directory|".$directoryRoot;
+        } elsif ($data->[$i] =~ m/mfatoolkit\/bin\/mfatoolkit/ && $os eq "windows") {
             $data->[$i] = $data->[$i].".exe";
         }
     }
-	printFile($args->{"Installation path"}."config/FIGMODELConfig.txt",$data);
+	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
 }
 #Creating config/ModelSEEDbootstrap.pm
 {
     my $data = [
-    	"use lib '".$args->{"Installation path"}."lib/PPO';",
-    	"use lib '".$args->{"Installation path"}."lib/myRAST';",
-    	"use lib '".$args->{"Installation path"}."lib/FigKernelPackages';",
-    	"use lib '".$args->{"Installation path"}."lib';"
+    	"use lib '$directoryRoot/lib/PPO';",
+    	"use lib '$directoryRoot/lib/myRAST';",
+    	"use lib '$directoryRoot/lib/FigKernelPackages';",
+    	"use lib '$directoryRoot/lib';"
 	];
-	if (defined($args->{"CPLEX include directory"})) {
-		push(@{$data},'$ENV{CPLEXINCLUDE}=\''.$args->{"CPLEX include directory"}.'\';');
-		push(@{$data},'$ENV{CPLEXLIB}=\''.$args->{"CPLEX library directory"}.'\';');
-		push(@{$data},'$ENV{ILOG_LICENSE_FILE}=\''.$args->{"CPLEX license directory"}.'\';');
+	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
+		push(@{$data},'$ENV{CPLEXINCLUDE}=\''.$Config->{Optimizers}->{includeDirectoryCPLEX}.'\';');
+		push(@{$data},'$ENV{CPLEXLIB}=\''.$Config->{Optimizers}->{libraryDirectoryCPLEX}.'\';');
+		push(@{$data},'$ENV{ILOG_LICENSE_FILE}=\''.$Config->{Optimizers}->{licenceDirectoryCPLEX}.'\';');
 	}
-	if (defined($args->{"GLPK directory"})) {
-		push(@{$data},'$ENV{GLPKDIRECTORY}=\''.$args->{"GLPK directory"}.'\';');
+	if (defined($Config->{Optimizers}->{directoryGLPK})) {
+		push(@{$data},'$ENV{GLPKDIRECTORY}=\''.$Config->{Optimizers}->{directoryGLPK}.'\';');
 	}
-	push(@{$data},'$ENV{PATH}=\''.$args->{"Installation path"}.'bin/'.$delim.$args->{"Installation path"}.'lib/ModelSEED/ModelSEEDScripts/'.$delim.$ENV{PATH}.'\';');
-	if (defined($args->{"SEED username"}) && defined($args->{"SEED password"})) {
-	    push(@{$data},'$ENV{FIGMODEL_USER}=\''.$args->{"SEED username"}.'\';');
-	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$args->{"SEED password"}.'\';');
+	push(@{$data},'$ENV{PATH}=\''.$directoryRoot.'/bin/'.$delim.$directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/'.$delim.$ENV{PATH}.'\';');
+	if (defined($Config->{Optional}->{username}) && defined($Config->{Optional}->{password})) {
+	    push(@{$data},'$ENV{FIGMODEL_USER}=\''.$Config->{Optional}->{username}.'\';');
+	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$Config->{Optional}->{password}.'\';');
 	}
-	my $configFiles = $args->{"Installation path"}."config/FIGMODELConfig.txt";
+	my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
 	if (defined($args->{"-figconfig"})) {
 	    $configFiles .= ";".$args->{"-figconfig"};
 	}
 	push(@{$data},'$ENV{FIGMODEL_CONFIG}=\''.$configFiles.'\';');
-	push(@{$data},'$ENV{ARGONNEDB}=\''.$args->{"Data directory"}.'ReactionDB/\';');
+	push(@{$data},'$ENV{ARGONNEDB}=\''.$Config->{Optional}->{dataDirectory}.'/ReactionDB/\';');
 	push(@{$data},'if (defined($ARGV[0])) {');
 	push(@{$data},'	my $prog = shift(@ARGV);');
 	push(@{$data},'	if ($prog =~ /ModelDriver\.pl/ && $ARGV[0] =~ m/FUNCTION:(.+)/) {');
@@ -129,45 +138,49 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 	push(@{$data},'	if ($@) { die "Failure running $prog: $@\n"; }');
 	push(@{$data},'}');
 	push(@{$data},'1;');
-    printFile($args->{"Installation path"}."config/ModelSEEDbootstrap.pm",$data);
+    printFile($directoryRoot."/config/ModelSEEDbootstrap.pm",$data);
 }
 #Creating shell scripts for individual perl scripts
 {
-	my $mfatoolkitScript = "lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$args->{"Installation path"};
-	if (defined($args->{"CPLEX include directory"})) {
-		$mfatoolkitScript .= "\" --cplex \"".$args->{"CPLEX include directory"};	
+	my $mfatoolkitScript = "/lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$directoryRoot;
+	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
+		$mfatoolkitScript .= "\" --cplex \"".$Config->{Optimizers}->{includeDirectoryCPLEX};	
 	}
-	if (defined($args->{"Operating system"})) {
-		$mfatoolkitScript .= "\" --os \"".$args->{"Operating system"};	
+	if (defined($os)) {
+		$mfatoolkitScript .= "\" --os \"".$os;	
 	}
 	my $password = "";
-	if (defined($args->{"Database password"})) {
-		$password = "-password ".$args->{"Database password"}." ";
+	if (defined($Config->{Database}->{password})) {
+		$password = "-password ".$Config->{Database}->{password}." ";
 	}
-	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$args->{"Installation path"}."lib/ModelSEED/ModelDB/ModelDB.xml ".
-		"-backend MySQL ".
-		"-database ModelDB ".
-		"-host ".$args->{"Database host"}." ".
-		"-user ".$args->{"Database username"}." ".
-		$password.
-		'-port "3306';
+	my $ppoScript = 'lib/PPO/ppo_generate.pl" -xml '.$directoryRoot.
+        "/lib/ModelSEED/ModelDB/ModelDB.xml -backend ".
+        $Config->{Database}->{type}." ";
+    if(lc($Config->{Database}->{type}) eq 'sqlite') {
+        $ppoScript .= "-database ".$Config->{Database}->{filename}; 
+    } else {
+        $ppoScript .= "-database ModelDB ".
+		"-host ".$Config->{Database}->{host}." ".
+		"-user ".$Config->{Database}->{username}." ".
+		$password . '-port '.$Config->{Database}->{port};
+    }
 	my $plFileList = {
-		"lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
-		"lib/ModelSEED/ModelDriver.pl" => "ModelDriver",
+		"/lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
+		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver",
 		$ppoScript => "CreateDBScheme",
 		$mfatoolkitScript => "makeMFAToolkit",
-		"lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
+		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
 	};
-	foreach my $file (keys(%{$plFileList})) {
-		if (-e $args->{"Installation path"}."bin/".$plFileList->{$file}.$extension) {
-			unlink $args->{"Installation path"}."bin/".$plFileList->{$file}.$extension;	
+	foreach my $file (keys(%$plFileList)) {
+		if (-e $directoryRoot."/bin/".$plFileList->{$file}.$extension) {
+			unlink $directoryRoot."/bin/".$plFileList->{$file}.$extension;	
 		}
-		my $data = ['perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" '.$arguments];
-		if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "windows") {
-			my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.$file.'" '.$arguments,"pause"];	
+		my $data = ['perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.$directoryRoot.$file.'" '.$arguments];
+		if ($os eq "windows") {
+			my $data = ['@echo off','perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.$directoryRoot.$file.'" '.$arguments,"pause"];	
 		}
-		printFile($args->{"Installation path"}."bin/".$plFileList->{$file}.$extension,$data);
-		chmod 0775,$args->{"Installation path"}."bin/".$plFileList->{$file}.$extension;
+		printFile($directoryRoot."/bin/".$plFileList->{$file}.$extension,$data);
+		chmod 0775,$directoryRoot."/bin/".$plFileList->{$file}.$extension;
 	}
 }
 #Creating shell scripts for select model driver functions
@@ -178,57 +191,55 @@ if (defined($args->{"Operating system"}) && lc($args->{"Operating system"}) eq "
 		"importmodel"
 	];
 	foreach my $function (@{$functionList}) {
-		if (-e $args->{"Installation path"}."bin/".$function.$extension) {
-			unlink $args->{"Installation path"}."bin/".$function.$extension;
+		if (-e $directoryRoot."/bin/".$function.$extension) {
+			unlink $directoryRoot."/bin/".$function.$extension;
 		}
-		my $data = ['@echo off','perl "'.$args->{"Installation path"}.'config/ModelSEEDbootstrap.pm" "'.$args->{"Installation path"}.'lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" '.$arguments,"pause"];
-		printFile($args->{"Installation path"}."bin/".$function,$data);
-		chmod 0775,$args->{"Installation path"}."bin/".$function;
+		my $data = ['@echo off',
+            'perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.
+                $directoryRoot.'/lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" '.$arguments,
+            "pause"];
+		printFile($directoryRoot."/bin/".$function,$data);
+		chmod 0775,$directoryRoot."/bin/".$function;
 	}
 }
 #Configuring database
 {
-	$args->{"Database host"} = "" unless(defined($args->{"Database host"}));
-	$args->{"Database username"} = "" unless(defined($args->{"Database username"}));
-	$args->{"Database password"} = "" unless(defined($args->{"Database password"}));
-	my $data = loadFile($args->{"Installation path"}."config/FIGMODELConfig.txt");
+	my $data = loadFile($directoryRoot."/config/FIGMODELConfig.txt");
 	my $dbList = ["ModelDB","SchedulerDB"];
-	for (my $j=0; $j < @{$dbList}; $j++) {
+    my $configLine;
+    if(lc($Config->{Database}->{type}) eq 'sqlite') {
+        $configLine = "|host;".$Config->{Database}->{filename}."|type;PPO|status;1";
+    } else {
+        $configLine =  "|host;".$Config->{Database}->{host};
+        $configLine .= "|user;".$Config->{Database}->{user};
+        $configLine .= "|password;".$Config->{Database}->{password} if(defined($Config->{Database}->{password}));
+        $configLine .= "|port;".$Config->{Database}->{port};
+        $configLine .= "|socket;".$Config->{Database}->{socket};
+        $configLine .= "|status;1|type;PPO";
+    }
+    foreach my $db (@$dbList) {
 		for (my $i=0; $i < @{$data}; $i++) {
 			if ($data->[$i] =~ m/^%PPO_tbl_(\w+)\|.*name;(\w+)\|.*table;(\w+)\|/) {
-				if ($2 eq $dbList->[$j]) {
-					my $password = "";
-					if (defined($args->{"Database password"}) && $args->{"Database password"} ne "") {
-						$password = "password;".$args->{"Database password"}."|";
-					}
-					$data->[$i] = "%PPO_tbl_".$1."|"
-						."name;".$dbList->[$j]."|"
-						."table;".$3."|"
-						."host;".$args->{"Database host"}."|"
-						."user;".$args->{"Database username"}."|"
-						.$password
-						."port;3306|"
-						."socket;/var/lib/mysql/mysql.sock|"
-						."status;1|"
-						."type;PPO";
+				if ($2 eq $db) {
+					$data->[$i] = "%PPO_tbl_".$1."|name;".$db."|table;".$3.$configLine;
 				}
 			}
 		}
 	}
-	printFile($args->{"Installation path"}."config/FIGMODELConfig.txt",$data);
+	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
 }
 #Configuring MFAToolkit
 {	
-	if (lc($args->{"Operating system"}) ne "windows") {
-		my $data = ['cd "'.$args->{"Installation path"}.'software/mfatoolkit/Linux/"'];
+	if ($os ne "windows") {
+		my $data = ['cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"'];
 		push(@{$data},'if [ "$1" == "clean" ]');
 		push(@{$data},'    then make clean');
 		push(@{$data},'fi');
 		push(@{$data},'make');
-		printFile($args->{"Installation path"}."software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
-		chmod 0775,$args->{"Installation path"}."software/mfatoolkit/bin/makeMFAToolkit.sh";
+		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
+		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
 	}
-	system($args->{"Installation path"}."bin/makeMFAToolkit".$extension);
+	system($directoryRoot."/bin/makeMFAToolkit".$extension);
 }
 1;
 #Utility functions used by the configuration script
