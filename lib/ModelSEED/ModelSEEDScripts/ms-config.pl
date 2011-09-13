@@ -17,7 +17,6 @@ use File::Path;
 my $directoryRoot = abs_path($0);
 $directoryRoot =~ s?(.*)/lib/ModelSEED/ModelSEEDScripts/.*?$1?;
 $directoryRoot = abs_path($directoryRoot);
-warn $directoryRoot;
 
 my $args = {};
 my $result = GetOptions(
@@ -29,7 +28,7 @@ pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 # Reading the settings file
 my $command = shift @ARGV;
-unless($command eq "unload" || $command eq "load" || $command eq "reload") {
+unless(defined($command) && ($command eq "unload" || $command eq "load" || $command eq "reload")) {
     pod2usage(2);
 }
 
@@ -316,19 +315,22 @@ __DATA__
 
 =head1 NAME
 
-configureModelSEED - configures the Model SEED installation
+ms-config - configures the Model SEED installation
 
 =head1 SYNOPSIS
 
-configureModelSEED [options]
+ms-config [options] [command] [args...]
+
+Commands:
+    
+    load config-file                Load a configuration file.
+    unload                          Removes all existing configurations.
+    reload config-file              Unloads all configurations and loads specified config file.
 
 Options:
 
     --help [-h]                     brief help message
     --man                           returns this documentation
-    
-    --username [--usr]               
     --figconfig [-f]                name of additional figconfig to be loaded
-    --settings [-s]                 name of file with Model SEED settings (../config/Settings.txt)
     
 =cut
