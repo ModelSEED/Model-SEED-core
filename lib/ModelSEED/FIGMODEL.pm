@@ -11,7 +11,7 @@ use Class::ISA;
 use File::Temp qw(tempfile);
 use Carp qw(cluck);
 use Data::Dumper;
-use LWP::Simple;
+use LWP::Simple ();
 use File::Path;
 use File::Copy::Recursive;
 use Spreadsheet::WriteExcel;
