@@ -113,12 +113,13 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 }
 #Creating config/ModelSEEDbootstrap.pm
 {
-    my $data = [
-    	"use lib '$directoryRoot/lib/PPO';",
-    	"use lib '$directoryRoot/lib/myRAST';",
-    	"use lib '$directoryRoot/lib/FigKernelPackages';",
-    	"use lib '$directoryRoot/lib';"
-	];
+    my $bootstrap = <<BOOTSTRAP;
+use lib '$directoryRoot/lib/PPO';
+use lib '$directoryRoot/lib/myRAST';
+use lib '$directoryRoot/lib/FigKernelPackages';
+use lib '$directoryRoot/lib';
+BOOTSTRAP
+    my $data = [];
 	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
 		push(@{$data},'$ENV{CPLEXINCLUDE}=\''.$Config->{Optimizers}->{includeDirectoryCPLEX}.'\';');
 		push(@{$data},'$ENV{CPLEXLIB}=\''.$Config->{Optimizers}->{libraryDirectoryCPLEX}.'\';');
@@ -138,21 +139,28 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 	}
 	push(@{$data},'$ENV{FIGMODEL_CONFIG}=\''.$configFiles.'\';');
 	push(@{$data},'$ENV{ARGONNEDB}=\''.$Config->{Optional}->{dataDirectory}.'/ReactionDB/\';');
-	push(@{$data},'if (defined($ARGV[0])) {');
-	push(@{$data},'	my $prog = shift(@ARGV);');
-	push(@{$data},'	if ($prog =~ /ModelDriver\.pl/ && $ARGV[0] =~ m/FUNCTION:(.+)/) {');
-	push(@{$data},'		my $function = $1;');
-	push(@{$data},'		if (defined($ARGV[1]) && ($ARGV[1] eq "-usage" || $ARGV[1] eq "-h" || $ARGV[1] eq "-help")) {');
-	push(@{$data},'			@ARGV = ("usage?".$function);');
-	push(@{$data},'		} else {');
-	push(@{$data},'			$ARGV[0] = $function;');
-	push(@{$data},'		}');
-	push(@{$data},'	}');
-	push(@{$data},'	do $prog;');
-	push(@{$data},'	if ($@) { die "Failure running $prog: $@\n"; }');
-	push(@{$data},'}');
-	push(@{$data},'1;');
-    printFile($directoryRoot."/config/ModelSEEDbootstrap.pm",$data);
+    $bootstrap .= join("\n", @$data);
+    $bootstrap .= <<'BOOTSTRAP';
+sub run {
+    if (defined($ARGV[0])) {
+    	my $prog = shift(@ARGV);
+    	if ($prog =~ /ModelDriver\.pl/ && $ARGV[0] =~ m/FUNCTION:(.+)/) {
+    		my $function = $1;
+    		if (defined($ARGV[1]) && ($ARGV[1] eq "-usage" || $ARGV[1] eq "-h" || $ARGV[1] eq "-help")) {
+    			@ARGV = ("usage?".$function);
+    		} else {
+    			$ARGV[0] = $function;
+    		}
+    	}
+    	do $prog;
+    	if ($@) { die "Failure running $prog: $@\n"; }
+    }
+}
+1;
+BOOTSTRAP
+    open(my $fh, ">", $directoryRoot."/config/ModelSEEDbootstrap.pm") || die($!);
+    print $fh $bootstrap;
+    close($fh);
 }
 #Creating shell scripts for individual perl scripts
 {
@@ -189,11 +197,15 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 		if (-e $directoryRoot."/bin/".$plFileList->{$file}.$extension) {
 			unlink $directoryRoot."/bin/".$plFileList->{$file}.$extension;	
 		}
-		my $data = ['perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.$directoryRoot.$file.'" '.$arguments];
+		my $script = <<SCRIPT;
+perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot$file" $arguments
+SCRIPT
 		if ($os eq "windows") {
-			my $data = ['@echo off','perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.$directoryRoot.$file.'" '.$arguments,"pause"];	
-		}
-		printFile($directoryRoot."/bin/".$plFileList->{$file}.$extension,$data);
+            $script = "\@echo off\n" . $script . "pause\n";
+        }
+        open(my $fh, ">", $directoryRoot."/bin/".$plFileList->{$file}.$extension) || die($!);
+        print $fh $script;
+        close($fh);
 		chmod 0775,$directoryRoot."/bin/".$plFileList->{$file}.$extension;
 	}
 }
@@ -208,11 +220,15 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
 			unlink $directoryRoot."/bin/".$function.$extension;
 		}
-		my $data = ['@echo off',
-            'perl "'.$directoryRoot.'/config/ModelSEEDbootstrap.pm" "'.
-                $directoryRoot.'/lib/ModelSEED/ModelDriver.pl" "FUNCTION:'.$function.'" '.$arguments,
-            "pause"];
-		printFile($directoryRoot."/bin/".$function,$data);
+		my $script = <<SCRIPT;
+perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "FUNCTION:$function" $arguments
+SCRIPT
+		if ($os eq "windows") {
+            $script = "\@echo off\n" . $script . "pause\n";
+        }
+        open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
+        print $fh $script;
+        close($fh);
 		chmod 0775,$directoryRoot."/bin/".$function;
 	}
 }
