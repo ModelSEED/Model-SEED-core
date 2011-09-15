@@ -148,10 +148,8 @@ sub get_object_manager {
                 prefix => $config->{prefix}->[0] || undef,
             };
             if(-e $config->{name}->[0]) {
-                print "test1\t".$config->{name}->[0]."\n";
                 $self->{_dbhandles}->{$config->{name}->[0]} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($params);
             } else {
-            	print "test2\t".$config->{name}->[0]."\n";
                 $self->{_dbhandles}->{$config->{name}->[0]} = ModelSEED::FIGMODEL::FIGMODELTable->new($params);
             }
         } else {

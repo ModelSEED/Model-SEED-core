@@ -466,10 +466,10 @@ sub makeOutputDirectory {
 	});
 	return $self->error_message({function => "makeOutputDirectory",args=>$args}) if (defined($args->{error}));
 	if (-d $self->directory() && $args->{deleteExisting} == 1) {
-		system("rm -rf ".$self->directory());
-		system("mkdir ".$self->directory());
-	} elsif (!-d $self->directory()) {	
-		system("mkdir ".$self->directory());	
+		File::Path::rmtree($self->directory());
+		File::Path::mkpath($self->directory());
+	} elsif (!-d $self->directory()) {
+		File::Path::mkpath($self->directory());	
 	}
 	return undef;
 }
@@ -830,7 +830,7 @@ sub runFBA {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 		filename => $self->filename(),
-		printToScratch => 1,
+		printToScratch => 0,
 		modelDirectory => undef,
 		runSimulation => 1,
 		nohup => 0,
