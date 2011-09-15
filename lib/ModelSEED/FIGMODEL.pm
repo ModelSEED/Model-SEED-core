@@ -11,7 +11,7 @@ use Class::ISA;
 use File::Temp qw(tempfile);
 use Carp qw(cluck);
 use Data::Dumper;
-use LWP::Simple;
+use LWP::Simple ();
 use File::Path;
 use File::Copy::Recursive;
 use Spreadsheet::WriteExcel;
@@ -2529,7 +2529,7 @@ sub import_model {
 		}
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
-			print "Found:".$cpd->id()."\n";
+			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";;
 			if (defined($row->{"CHARGE"}->[0])) {
 				if ($cpd->charge() == 10000000) {
 					$cpd->charge($row->{"CHARGE"}->[0]);
@@ -2561,7 +2561,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-			print "New:".$newid."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
 			if (!defined($row->{"MASS"}->[0])) {
 				$row->{"MASS"}->[0] = 10000000;	
 			}
@@ -2632,7 +2632,7 @@ sub import_model {
 		my $codeResults = $self->get_reaction()->createReactionCode({equation => $row->{"EQUATION"}->[0],translations => $translation});
 		if (defined($codeResults->{error})) {
 			delete $args->{error};
-			$self->new_error_message({message=> "Error mapping reaction ".$row->{"ID"}->[0].":".$codeResults->{fullEquation},function => "import_model",args => $args});
+			$self->new_error_message({message=> "Error mapping reaction for ".$row->{"ID"}->[0].":".$row->{"EQUATION"}->[0]."\tResulting Equation: ".$codeResults->{fullEquation}."\tResulting Error: ".$codeResults->{error},function => "import_model",args => $args});
 			next;
 		}
 		#Checking if this is a biomass reaction
@@ -2681,7 +2681,7 @@ sub import_model {
 			}
 		}
 		if (defined($rxn)) {
-			print "Found:".$rxn->id()."\n";
+			print "Found:".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
@@ -2707,7 +2707,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New:".$newid."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],

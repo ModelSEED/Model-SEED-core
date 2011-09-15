@@ -2,12 +2,14 @@
 *~
 *.swp
 *.#*
+*.o
 data/*
 .includepath
 .project
 .metadata/*
 bin/*.sh
 bin/*.cmd
+bin/*
 config/Settings.txt
 config/FIGMODELConfig.txt
 config/ModelSEEDbootstrap.pm
