@@ -21,8 +21,8 @@ then
     exit;
 fi
 # Checkout the code repository
-echo "Cloning repository git://github.com/cshenry/Model-SEED-core";
-git clone git://github.com/cshenry/Model-SEED-core $INSTALL_DIR;
+echo "Cloning repository git://github.com/ModelSEED/Model-SEED-core";
+git clone git://github.com/ModelSEED/Model-SEED-core $INSTALL_DIR;
 # Make the default data dir
 DATA_DIR=$INSTALL_DIR/data;
 if [ ! -d $DATA_DIR ];
