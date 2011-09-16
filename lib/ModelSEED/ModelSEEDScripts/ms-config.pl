@@ -127,6 +127,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
     my $envSettings = {
+        MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
                                  $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/'
                                )),
