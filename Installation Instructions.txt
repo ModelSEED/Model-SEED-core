@@ -36,6 +36,7 @@
 	c.) XML/DOM
 	d.) YAML
 	e.) DBD/mysql
+	f.) POD/usage
 6.) Create the empty database tables in SQL
 	a.) Run this script: Model-SEED-core/bin/CreateDBScheme.(sh/cmd) (Extension depends on OS)
 	b.) If you're having trouble getting this script to run, remember you need to install the MySQL development headers/libraries as well as the standard installation.
