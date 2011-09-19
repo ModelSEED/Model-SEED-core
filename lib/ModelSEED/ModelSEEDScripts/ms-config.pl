@@ -113,35 +113,52 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
     }
 	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
 }
-#Creating config/ModelSEEDbootstrap.pm
-{
-    my $bootstrap = <<BOOTSTRAP;
-use lib '$directoryRoot/lib/PPO';
-use lib '$directoryRoot/lib/myRAST';
-use lib '$directoryRoot/lib/FigKernelPackages';
-use lib '$directoryRoot/lib';
-BOOTSTRAP
-    my $data = [];
-	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-		push(@{$data},'$ENV{CPLEXINCLUDE}=\''.$Config->{Optimizers}->{includeDirectoryCPLEX}.'\';');
-		push(@{$data},'$ENV{CPLEXLIB}=\''.$Config->{Optimizers}->{libraryDirectoryCPLEX}.'\';');
-		push(@{$data},'$ENV{ILOG_LICENSE_FILE}=\''.$Config->{Optimizers}->{licenceDirectoryCPLEX}.'\';');
-	}
-	if (defined($Config->{Optimizers}->{directoryGLPK})) {
-		push(@{$data},'$ENV{GLPKDIRECTORY}=\''.$Config->{Optimizers}->{directoryGLPK}.'\';');
-	}
-	push(@{$data},'$ENV{PATH}=\''.$directoryRoot.'/bin/'.$delim.$directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/'.$delim.$ENV{PATH}.'\';');
-	if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
-	    push(@{$data},'$ENV{FIGMODEL_USER}=\''.$Config->{Optional}->{SeedUsername}.'\';');
-	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$Config->{Optional}->{SeedPassword}.'\';');
-	}
-	my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
-	if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-	    $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
-	}
-	push(@{$data},'$ENV{FIGMODEL_CONFIG}=\''.$configFiles.'\';');
-	push(@{$data},'$ENV{ARGONNEDB}=\''.$Config->{Optional}->{dataDirectory}.'/ReactionDB/\';');
-    $bootstrap .= join("\n", @$data);
+{ 
+    # Creating config/ModelSEEDbootstrap.pm
+    # and bin/source-me.sh
+    my $perl5Libs = [
+        "$directoryRoot/lib/PPO",
+        "$directoryRoot/lib/myRAST",
+        "$directoryRoot/lib/FigKernelPackages",
+        "$directoryRoot/lib"
+        ];
+
+    my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
+    if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
+        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
+    }
+    my $envSettings = {
+        MODEL_SEED_CORE => $directoryRoot,
+        PATH => join("$delim", ( $directoryRoot.'/bin/',
+                                 $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/',
+                                 $ENV{PATH}
+                               )),
+        FIGMODEL_CONFIG => $configFiles,
+        ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
+    };
+    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
+        $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
+        $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};
+        $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
+    }
+    if(defined($Config->{Optimizers}->{directoryGLPK})) {
+        $envSettings->{GLPKDIRECTORY} = $Config->{Optimizers}->{directoryGLPK}
+    }
+    if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
+        $envSettings->{FIGMODEL_USER} = $Config->{Optional}->{SeedUsername};
+        $envSettings->{FIGMODEL_PASSWORD} = $Config->{Optional}->{SeedPassword};
+    }
+    my $bootstrap = "";
+    foreach my $lib (@$perl5Libs) {
+        $bootstrap .= "use lib '$lib';\n";
+    }
+    foreach my $key (keys %$envSettings) {
+        if($key eq "PATH") {
+            $bootstrap .= '$ENV{'.$key.'} .= "'.$delim.$envSettings->{$key}."\";\n";
+            next;
+        }
+         $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
+    }
     $bootstrap .= <<'BOOTSTRAP';
 sub run {
     if (defined($ARGV[0])) {
@@ -163,7 +180,24 @@ BOOTSTRAP
     open(my $fh, ">", $directoryRoot."/config/ModelSEEDbootstrap.pm") || die($!);
     print $fh $bootstrap;
     close($fh);
+    my $source_script = "#!/usr/bin/sh\n";
+    foreach my $lib (@$perl5Libs) {
+        $source_script .= 'PERL5LIB=${PERL5LIB}'.$delim."$lib;\n";
+    }
+    $source_script .= "export PERL5LIB;\n";
+    foreach my $key (keys %$envSettings) {
+        if($key eq "PATH") {
+            $source_script .= "$key=\${$key}$delim".$envSettings->{$key}.";\n";
+        } else {
+            $source_script .= "$key=".$envSettings->{$key}.";\n";
+        }
+    }
+    open($fh, ">", $directoryRoot."/bin/source-me.sh") || die($!);
+    print $fh $source_script;
+    close($fh);
+    chmod 0775, $directoryRoot."/bin/source-me.sh";
 }
+
 #Creating shell scripts for individual perl scripts
 {
 	my $mfatoolkitScript = "/lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$directoryRoot;
