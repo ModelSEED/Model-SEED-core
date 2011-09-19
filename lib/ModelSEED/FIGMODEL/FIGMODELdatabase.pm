@@ -2773,7 +2773,6 @@ sub parseMetagenomeDataTable {
 		my @array = split(/\t/,$data->[$i]);
 		push(@{$metagenomeData->{$array[0]}},[@array]);
 	}
-	print "test";
 	foreach my $genome (keys(%{$metagenomeData})) {
 		my $currentPeg = 1;
 		my $output = ["ID\tGENOME\tROLES\tSOURCE\tABUNDANCE\tAVG EVALUE\tAVG IDENTITY\tAVG ALIGNMENT\tPROTEIN COUNT"];

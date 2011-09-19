@@ -13,6 +13,9 @@ bin/*
 config/Settings.txt
 config/FIGMODELConfig.txt
 config/ModelSEEDbootstrap.pm
+MFAToolkit/*
+Model-SEED-core.*
+Model-SEED-setup/*
 logs/*
 *.ilk
 *.pdb

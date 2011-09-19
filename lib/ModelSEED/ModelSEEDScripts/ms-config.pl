@@ -59,7 +59,7 @@ unless(defined($Config->{Database}->{filename}) ||
     $Config->{Database}->{filename} =
         $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 }
-unless(lc($Config->{Database}->{type}) eq 'mysql' &&
+if(lc($Config->{Database}->{type}) eq 'mysql' &&
     !defined($Config->{Database}->{port})) {
     $Config->{Database}->{port} = "3306";
 } 
@@ -80,14 +80,10 @@ my $delim = ":";
 my $os = 'linux';
 # figure out OS from $^O variable for extension, arguments and delim:
 if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
-    $arguments = "%*";
-    $delim = ";";
-    $extension = ".cmd";
     $os = 'windows';
 } elsif($^O =~ /darwin/) {
     $os = 'osx';
 }
-
 #Creating missing directories
 {
 	my $directories = [qw( bin config data lib logs software )];
@@ -103,8 +99,14 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
     for (my $i=0; $i < @{$data}; $i++) { 
         if ($data->[$i] =~ m/^database\sroot\sdirectory/) {
             $data->[$i] = "database root directory|".$Config->{Optional}->{dataDirectory};
+            if ($data->[$i] !~ m/\/$/) {
+            	$data->[$i] .= "/";
+            }
         } elsif ($data->[$i] =~ m/^software\sroot\sdirectory/) {
             $data->[$i] = "software root directory|".$directoryRoot;
+            if ($data->[$i] !~ m/\/$/) {
+            	$data->[$i] .= "/";
+            }
         } elsif ($data->[$i] =~ m/mfatoolkit\/bin\/mfatoolkit/ && $os eq "windows") {
             $data->[$i] = $data->[$i].".exe";
         }
@@ -129,9 +131,9 @@ BOOTSTRAP
 		push(@{$data},'$ENV{GLPKDIRECTORY}=\''.$Config->{Optimizers}->{directoryGLPK}.'\';');
 	}
 	push(@{$data},'$ENV{PATH}=\''.$directoryRoot.'/bin/'.$delim.$directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/'.$delim.$ENV{PATH}.'\';');
-	if (defined($Config->{Optional}->{username}) && defined($Config->{Optional}->{password})) {
-	    push(@{$data},'$ENV{FIGMODEL_USER}=\''.$Config->{Optional}->{username}.'\';');
-	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$Config->{Optional}->{password}.'\';');
+	if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
+	    push(@{$data},'$ENV{FIGMODEL_USER}=\''.$Config->{Optional}->{SeedUsername}.'\';');
+	    push(@{$data},'$ENV{FIGMODEL_PASSWORD}=\''.$Config->{Optional}->{SeedPassword}.'\';');
 	}
 	my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
 	if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
@@ -200,9 +202,9 @@ BOOTSTRAP
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot$file" $arguments
 SCRIPT
-		if ($os eq "windows") {
-            $script = "\@echo off\n" . $script . "pause\n";
-        }
+		#if ($os eq "windows") {
+        #    $script = "\@echo off\n" . $script . "pause\n";
+        #}
         open(my $fh, ">", $directoryRoot."/bin/".$plFileList->{$file}.$extension) || die($!);
         print $fh $script;
         close($fh);
@@ -223,9 +225,9 @@ SCRIPT
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "FUNCTION:$function" $arguments
 SCRIPT
-		if ($os eq "windows") {
-            $script = "\@echo off\n" . $script . "pause\n";
-        }
+		#if ($os eq "windows") {
+        #    $script = "\@echo off\n" . $script . "pause\n";
+        #}
         open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
         print $fh $script;
         close($fh);
@@ -241,7 +243,7 @@ SCRIPT
         $configLine = "|host;".$Config->{Database}->{filename}."|type;PPO|status;1";
     } else {
         $configLine =  "|host;".$Config->{Database}->{host};
-        $configLine .= "|user;".$Config->{Database}->{user};
+        $configLine .= "|user;".$Config->{Database}->{username};
         $configLine .= "|password;".$Config->{Database}->{password} if(defined($Config->{Database}->{password}));
         $configLine .= "|port;".$Config->{Database}->{port};
         $configLine .= "|socket;".$Config->{Database}->{socket};
@@ -268,8 +270,8 @@ SCRIPT
 		push(@{$data},'make');
 		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
 		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
+		system($directoryRoot."/bin/makeMFAToolkit".$extension);
 	}
-	system($directoryRoot."/bin/makeMFAToolkit".$extension);
 }
 1;
 #Utility functions used by the configuration script
@@ -304,7 +306,6 @@ sub unload {
     my $ext = "";
     my $os = "linux";
     if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
-        $ext = ".cmd";
         $os = "windows";
     }
     # remove files from bin/ that are made w/ each load

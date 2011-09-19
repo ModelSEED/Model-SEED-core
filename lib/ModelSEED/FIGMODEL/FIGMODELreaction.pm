@@ -764,57 +764,57 @@ sub createReactionCode {
 		$EquationCompartment = $Compartments[0];
 	}
 	#Checking if some reactants cancel out, since reactants will be canceled out by the MFAToolkit
-	my @Reactants = keys(%ReactantHash);
-	for (my $i=0; $i < @Reactants; $i++) {
-		my @ReactantData = split(/\s/,$ReactantHash{$Reactants[$i]});
-		my $ReactantCoeff = 1;
-		if ($ReactantData[0] =~ m/^\(([\d\.]+)\)$/) {
-		   $ReactantCoeff = $1;
-		}
-		my $ReactantCompartment = pop(@ReactantData);
-		if ($ReactantCompartment =~ m/(\[\D\])$/) {
-			$ReactantCompartment = $1;
-		} else {
-			$ReactantCompartment = "[c]";
-		}
-		if (defined($ProductHash{$Reactants[$i]})) {
-			my @ProductData = split(/\s/,$ProductHash{$Reactants[$i]});
-			my $ProductCoeff = 1;
-			if ($ProductData[0] =~ m/^\(([\d\.]+)\)$/) {
-			   $ProductCoeff = $1;
-			}
-			my $ProductCompartment = pop(@ProductData);
-			if ($ProductCompartment =~ m/(\[\D\])$/) {
-				$ProductCompartment = $1;
-			} else {
-				$ProductCompartment = "[c]";
-			}
-			if ($ReactantCompartment eq $ProductCompartment) {
-				#print "Exactly matching product and reactant pair found: ".$OriginalEquation."\n";
-				if ($ReactantCompartment eq "[c]") {
-					$ReactantCompartment = "";
-				}
-				if ($ReactantCoeff == $ProductCoeff) {
-					delete $ReactantHash{$Reactants[$i]};
-					delete $ProductHash{$Reactants[$i]};
-				} elsif ($ReactantCoeff > $ProductCoeff) {
-					delete $ProductHash{$Reactants[$i]};
-					$ReactantHash{$Reactants[$i]} = "(".($ReactantCoeff - $ProductCoeff).") ".$Reactants[$i].$ReactantCompartment;
-					if (($ReactantCoeff - $ProductCoeff) == 1) {
-						$ReactantHash{$Reactants[$i]} = $Reactants[$i].$ReactantCompartment;
-					}
-				} elsif ($ReactantCoeff < $ProductCoeff) {
-					delete $ReactantHash{$Reactants[$i]};
-					$ProductHash{$Reactants[$i]} = "(".($ProductCoeff - $ReactantCoeff).") ".$Reactants[$i].$ReactantCompartment;
-					if (($ProductCoeff - $ReactantCoeff) == 1) {
-						$ProductHash{$Reactants[$i]} = $Reactants[$i].$ReactantCompartment;
-					}
-				}
-			}
-		}
-	}
+#	my @Reactants = keys(%ReactantHash);
+#	for (my $i=0; $i < @Reactants; $i++) {
+#		my @ReactantData = split(/\s/,$ReactantHash{$Reactants[$i]});
+#		my $ReactantCoeff = 1;
+#		if ($ReactantData[0] =~ m/^\(([\d\.]+)\)$/) {
+#		   $ReactantCoeff = $1;
+#		}
+#		my $ReactantCompartment = pop(@ReactantData);
+#		if ($ReactantCompartment =~ m/(\[\D\])$/) {
+#			$ReactantCompartment = $1;
+#		} else {
+#			$ReactantCompartment = "[c]";
+#		}
+#		if (defined($ProductHash{$Reactants[$i]})) {
+#			my @ProductData = split(/\s/,$ProductHash{$Reactants[$i]});
+#			my $ProductCoeff = 1;
+#			if ($ProductData[0] =~ m/^\(([\d\.]+)\)$/) {
+#			   $ProductCoeff = $1;
+#			}
+#			my $ProductCompartment = pop(@ProductData);
+#			if ($ProductCompartment =~ m/(\[\D\])$/) {
+#				$ProductCompartment = $1;
+#			} else {
+#				$ProductCompartment = "[c]";
+#			}
+#			if ($ReactantCompartment eq $ProductCompartment) {
+#				#print "Exactly matching product and reactant pair found: ".$OriginalEquation."\n";
+#				if ($ReactantCompartment eq "[c]") {
+#					$ReactantCompartment = "";
+#				}
+#				if ($ReactantCoeff == $ProductCoeff) {
+#					#delete $ReactantHash{$Reactants[$i]};
+#					#delete $ProductHash{$Reactants[$i]};
+#				} elsif ($ReactantCoeff > $ProductCoeff) {
+#					#delete $ProductHash{$Reactants[$i]};
+#					#$ReactantHash{$Reactants[$i]} = "(".($ReactantCoeff - $ProductCoeff).") ".$Reactants[$i].$ReactantCompartment;
+#					#if (($ReactantCoeff - $ProductCoeff) == 1) {
+#					#	$ReactantHash{$Reactants[$i]} = $Reactants[$i].$ReactantCompartment;
+#					#}
+#				} elsif ($ReactantCoeff < $ProductCoeff) {
+#					#delete $ReactantHash{$Reactants[$i]};
+#					#$ProductHash{$Reactants[$i]} = "(".($ProductCoeff - $ReactantCoeff).") ".$Reactants[$i].$ReactantCompartment;
+#					#if (($ProductCoeff - $ReactantCoeff) == 1) {
+#					#	$ProductHash{$Reactants[$i]} = $Reactants[$i].$ReactantCompartment;
+#					#}
+#				}
+#			}
+#		}
+#	}
 	#Sorting the reactants and products by the cpd ID
-	@Reactants = sort(keys(%ReactantHash));
+	my @Reactants = sort(keys(%ReactantHash));
 	my $ReactantString = "";
 	for (my $i=0; $i < @Reactants; $i++) {
 		if ($ReactantHash{$Reactants[$i]} eq "") {
