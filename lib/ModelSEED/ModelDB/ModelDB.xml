@@ -591,4 +591,25 @@
 		<index><attribute label="lastname" /></index>
 		<index><attribute label="firstname" /></index>
 	</object>
+    <object label="UserSession">
+      <scalar label="session_id" type="CHAR(32)" mandatory="1" />
+      <object_ref label="user" type="USERS" />
+      <scalar label="timestamp" type="TIMESTAMP" mandatory="1"/>
+      <scalar label="current_page" type="CHAR(255)" />
+      <scalar label="current_parameters" type="TEXT" />    
+      <scalar label="previous_page" type="CHAR(255)" />
+      <scalar label="previous_parameters" type="TEXT" />    
+      <scalar label="error_page" type="CHAR(255)" />
+      <scalar label="error_parameters" type="TEXT" />
+      <unique_index>
+        <attribute label="session_id" />    
+      </unique_index>
+      <unique_index>
+        <attribute label="session_id" />    
+        <attribute label="user" />
+      </unique_index>
+      <index>
+        <attribute label="user" />
+      </index>
+    </object>
 </project>
