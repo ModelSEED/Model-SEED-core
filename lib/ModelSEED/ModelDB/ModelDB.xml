@@ -71,28 +71,6 @@
 		<index><attribute label="user"/></index>
 		<index><attribute label="modificationDate"/></index>
 	</object>
-	<object label="MODEL_HISTORY_TRANSACTION" >
-		<scalar label="cause" type="CHAR(32)" mandatory="1" />
-		<scalar label="user" type="CHAR(32)" mandatory="1" />
-		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
-		<scalar label="version" type="CHAR(32)" mandatory="1" />
-		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
-		<index><attribute label="cause"/></index>
-		<index><attribute label="user"/></index>
-		<index><attribute label="modificationDate"/></index>
-		<index><attribute label="version"/></index>
-	</object>
-	<object label="MODEL_HISTORY" >
-		<scalar label="TRANSACTION" type="INTEGER" mandatory="1" />
-		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
-		<scalar label="directionality" type="CHAR(7)" mandatory="1" />
-		<scalar label="compartment" type="CHAR(3)" mandatory="1" />
-		<scalar label="pegs" type="TEXT" mandatory="1" />
-		<scalar label="action" type="CHAR(32)" mandatory="1" />
-		<index><attribute label="TRANSACTION"/></index>
-		<index><attribute label="REACTION"/></index>
-		<index><attribute label="action"/></index>
-	</object>
 	<object label="OUTPUTID" >
 		<scalar label="creationDate" type="INTEGER" default="0" />
 		<scalar label="finishedDate" type="INTEGER" default="0" />
