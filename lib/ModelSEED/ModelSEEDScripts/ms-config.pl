@@ -33,7 +33,7 @@ unless(defined($command) && ($command eq "unload" || $command eq "load" || $comm
     pod2usage(2);
 }
 
-if($command eq "unload") {
+if($command eq "unload" || $command eq "clean") {
     unload($args);
     exit();
 } elsif($command eq "reload") {
@@ -384,11 +384,13 @@ Commands:
     load config-file                Load a configuration file.
     unload                          Removes all existing configurations.
     reload config-file              Unloads all configurations and loads specified config file.
+    clean                           Identical to unload
 
 Options:
 
     --help [-h]                     brief help message
     --man                           returns this documentation
     --figconfig [-f]                name of additional figconfig to be loaded
+    --fast [ --nomake ]             omit MFAToolkit make / make clean steps
     
 =cut
