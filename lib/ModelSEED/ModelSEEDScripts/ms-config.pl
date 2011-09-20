@@ -125,7 +125,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 
     my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
+        $configFiles .= $delim.join("$delim", @{$args->{"-figconfig"}});
     }
     my $envSettings = {
         MODEL_SEED_CORE => $directoryRoot,
@@ -187,9 +187,9 @@ BOOTSTRAP
     $source_script .= "export PERL5LIB;\n";
     foreach my $key (keys %$envSettings) {
         if($key eq "PATH") {
-            $source_script .= "$key=\${$key}$delim".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=\${$key}$delim".$envSettings->{$key}.";\n";
         } else {
-            $source_script .= "$key=".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=".$envSettings->{$key}.";\n";
         }
     }
     open($fh, ">", $directoryRoot."/bin/source-me.sh") || die($!);
