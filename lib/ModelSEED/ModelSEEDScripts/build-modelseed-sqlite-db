@@ -1,0 +1,99 @@
+#!/usr/bin/env perl 
+#===============================================================================
+#
+#         FILE:  build-modelseed-sqlite-db.pl
+#
+#        USAGE:  ./build-modelseed-sqlite-db.pl output.db
+#
+#  DESCRIPTION:  Construct a limited release of the ModelDB
+#                database without most of the model and expression data.
+#                The sqlite file produced by this script is used
+#                by bootstrapping Model-SEED-core's that are running
+#                on a local client (sqlite)
+#
+#       AUTHOR:  Scott Devoid (sdevoid@gmail.com)
+#===============================================================================
+
+use strict;
+use warnings;
+use File::Temp;
+use File::Path qw( make_path );
+use DBMaster;
+use POSIX;
+
+# Steps
+# 1. Use ppo_generate on current ModelDB schema
+# 2. Dump ONLY DATA from model db ...
+#    ... convert data into sqlite syntax with mysql2sqlite.sh
+#    ... grep -v (inverse) for inserts into tables that we don't want data from
+#    ... load up reduced dump into ppo_generate'ed SQLite db
+#    ... dump SQLite db to .sqlite file
+#    ... tar up that file and put it where it belongs
+sub removeInserts {
+    my ($table) = @_;
+    return " grep -v 'INSERT INTO \"$table\" VALUES' ";
+}
+
+my ($destination) = shift @ARGV;
+
+my $fh;
+# Build directory structure
+# ramdom-tmp-dir/
+#   ModelDB/
+#       ModelDB.sqlite    
+my $root = $ENV{MODEL_SEED_CORE};
+my $SQLiteSuperDir = File::Temp::tempdir();
+make_path($SQLiteSuperDir . '/' . "ModelDB");
+chdir $SQLiteSuperDir;
+my $SQLiteFilePath = $SQLiteSuperDir . '/' . "ModelDB/ModelDB.sqlite";
+my $SQLiteTmpDB = $SQLiteSuperDir . '/' . "ModelDB/ModelDB.db";
+my $SQLiteInserts = [];
+# Generate entire schema
+system("$root/lib/PPO/ppo_generate.pl -xml $root/lib/ModelSEED/ModelDB/ModelDB.xml -backend SQLite -database $SQLiteTmpDB");
+{
+    my $sourceDB = DBMaster->new( -database => "ModelDB",
+                                  -host => "bio-app-authdb.mcs.anl.gov",
+                                  -port => 3306, -user => "webappuser");
+    my $targetDB = DBMaster->new( -database => $SQLiteTmpDB, -backend => "SQLite" );
+    my $included_tables = [qw( MESSAGE MEDIA_COMPOUND MEDIA
+    COMPOUND COMPOUND_ALIAS COMPOUND_GROUPING REACTION COMPOUND_REACTION
+    REACTION_ALIAS REACTION_GROUPING ROLE SUBSYSTEM_ROLE SUBSYSTEM 
+    COMPLEX COMPLEX_ROLE REACTION_COMPLEX CURRENTID 
+    COMPARTMENTS USERS UserSession )];
+    my $supportedTables = [ keys %{$sourceDB->{classes}} ];
+    foreach my $table (@$included_tables) {
+        next unless(grep(/^$table$/, @$supportedTables) > 0);
+        my $objects = $sourceDB->$table->get_objects();
+        my $counter = 0;
+        my $dbh = $targetDB->backend()->dbh(); 
+        my $keys;
+        my $size = scalar(@$objects);
+        my $step = floor($size/10);
+        foreach my $obj (@$objects) {
+            next unless(defined($obj));
+            if($counter % $step == 0) {
+                warn "Populating $table [$counter/$size]\n";
+            }
+            if(!defined($keys) && defined($obj->attributes())) {
+                $keys = [ keys %{$objects->[0]->attributes()} ];
+            }
+            my $data = { map { $_ => $obj->{$_} } @$keys };
+            delete $data->{_id};
+            my $statement = sprintf ("INSERT INTO %s (%s) VALUES (%s);",
+               $table,
+               (keys(%$data)) ? join (",", keys(%$data)) : '',
+               (keys(%$data)) ? join (",", map { $dbh->quote($_) } values(%$data)) : '',
+              );
+            push(@$SQLiteInserts, $statement);
+            $counter += 1;
+        }
+    }
+}
+system("echo '.dump' | sqlite3 $SQLiteTmpDB > $SQLiteFilePath");
+open($fh, ">>", $SQLiteFilePath);
+unshift(@$SQLiteInserts, "BEGIN TRANSACTION;");
+push(@$SQLiteInserts, "COMMIT;");
+print $fh join("\n", @$SQLiteInserts);
+close($fh);
+unlink $SQLiteTmpDB;
+system("tar -czf $destination ModelDB")
