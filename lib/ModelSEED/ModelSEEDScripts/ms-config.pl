@@ -12,6 +12,7 @@ use Pod::Usage;
 use Config::Tiny;
 use Cwd qw(abs_path);
 use File::Path;
+use Data::Dumper;
 # Get the Installation path using what we know about the location
 # of this script ( abs_path($0) is absolute path to this script )
 my $directoryRoot = abs_path($0);
@@ -124,15 +125,15 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib"
         ];
 
-    my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
+    my $configFiles = "\"$directoryRoot/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-        $configFiles .= $delim.join("$delim", @{$args->{"-figconfig"}});
+        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
+    $configFiles .= "\"";
     my $envSettings = {
         MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
                                  $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/',
-                                 $ENV{PATH}
                                )),
         FIGMODEL_CONFIG => $configFiles,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
