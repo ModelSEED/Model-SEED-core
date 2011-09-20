@@ -4397,7 +4397,6 @@ sub printgapfilledreactions {
 		input => $args->{"models"}
 	});
 	print "Number of models: ".@{$results}."\n";
-	return;
 	my $gapRxnHash;
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/(\d+\.\d+)/) {
