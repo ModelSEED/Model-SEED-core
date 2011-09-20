@@ -799,7 +799,7 @@ sub authenticate {
 		   }
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		if (defined($self->config("model administrators")->{$args->{username}}) 
-			&& $args->{password} eq $self->config("model administrators")->{$args->{username}}) {
+			&& $args->{password} eq $self->config("model administrators")->{$args->{username}}->[0]) {
 			$self->{_user_acount}->[0] = $self->database()->get_object("user",{login=>$args->{username}});
 		} else {
 			my $usrObj = $self->database()->get_object("user",{login=>$args->{username}});
