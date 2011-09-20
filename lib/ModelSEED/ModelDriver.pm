@@ -4399,6 +4399,7 @@ sub printgapfilledreactions {
 	my $gapRxnHash;
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/(\d+\.\d+)/) {
+			print "Processing model ".$results->[$i]."\n";
 			my $genome = $1;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
 			for (my $j=0; $j < @{$rxns}; $j++) {
@@ -4412,6 +4413,7 @@ sub printgapfilledreactions {
 	foreach my $genome (keys(%{$gapRxnHash})) {
 		push(@{$output},$genome."\t".join(",",@{$gapRxnHash->{$genome}}));
 	}
+	print "Printing results in ".$self->outputdirectory().$args->{"filename"}."\n";
 	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
     return "SUCCESS";
 }
