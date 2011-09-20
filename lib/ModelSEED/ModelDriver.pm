@@ -4405,9 +4405,7 @@ sub printgapfilledreactions {
 			my $genome = $1;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
 			for (my $j=0; $j < @{$rxns}; $j++) {
-				print $rxns->[$j]->REACTION()."\t".$rxns->[$j]->pegs()."\n";
 				if (lc($rxns->[$j]->pegs()) eq "unknown" || lc($rxns->[$j]->pegs()) eq "none" || lc($rxns->[$j]->pegs()) =~ m/auto/ || lc($rxns->[$j]->pegs()) =~ m/gap/) {
-					print $genome."\t".$rxns->[$j]->REACTION()."\n";
 					push(@{$gapRxnHash->{$genome}},$rxns->[$j]->REACTION());
 				}
 			}
