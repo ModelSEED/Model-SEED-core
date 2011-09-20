@@ -4382,4 +4382,38 @@ sub adduser {
     return "SUCCESS";
 }
 
+#Adds a new user to the ModelSEED user table
+sub printgapfilledreactions {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["models",1],
+		["filename",1]
+	],[@Data]);
+	my $results = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {id => "%.796"},
+		input => $args->{"models"}
+	});
+	my $gapRxnHash;
+	for (my $i=0; $i < @{$results}; $i++) {
+		if ($results->[$i] =~ m/(\d+\.\d+)/) {
+			my $genome = $1;
+			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
+			for (my $j=0; $j < @{$rxns}; $j++) {
+				if (lc($rxns->[$j]->pegs()) eq "unknown" || lc($rxns->[$j]->pegs()) eq "none" || lc($rxns->[$j]->pegs()) eq "autocomplete" || lc($rxns->[$j]->pegs()) =~ m/gap/) {
+					push(@{$gapRxnHash->{$genome}},$rxns->[$j]->REACTION());
+				}
+			}
+		}
+	}
+	my $output = ["Genome\tGapfilled reactions"];
+	foreach my $genome (keys(%{$gapRxnHash})) {
+		push(@{$output},$genome."\t".join(",",@{$gapRxnHash->{$genome}}));
+	}
+	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+    return "SUCCESS";
+}
+
 1;
