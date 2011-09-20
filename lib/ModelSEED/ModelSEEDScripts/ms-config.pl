@@ -22,6 +22,7 @@ my $args = {};
 my $result = GetOptions(
     "figconfig|f=s@" => \$args->{"-figconfig"},
     "h|help" => \$args->{"help"},
+    "fast|nomake" => \$args->{"fast"},
     "man" => \$args->{"man"},
 );
 pod2usage(1) if $args->{"help"};
@@ -33,10 +34,10 @@ unless(defined($command) && ($command eq "unload" || $command eq "load" || $comm
 }
 
 if($command eq "unload") {
-    unload();
+    unload($args);
     exit();
 } elsif($command eq "reload") {
-    unload();
+    unload($args);
 }
 # By default use config/Settings.config
 my $configFile = shift @ARGV || "$directoryRoot/config/Settings.config";
@@ -304,7 +305,9 @@ SCRIPT
 		push(@{$data},'make');
 		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
 		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
-		system($directoryRoot."/bin/makeMFAToolkit".$extension);
+        unless($args->{fast}) {
+            system($directoryRoot."/bin/makeMFAToolkit".$extension);
+        }
 	}
 }
 1;
@@ -334,6 +337,7 @@ sub loadFile {
 
 # remove everything that gets added in a "load" step...
 sub unload {
+    my ($args) = @_;
     # don't remove directories bin config data lib logs software
     unlink $directoryRoot."/config/FIGMODELConfig.txt"; 
     unlink $directoryRoot."/config/ModelSEEDbootstrap.pm";
@@ -354,11 +358,14 @@ sub unload {
     foreach my $filename (@$files) {
         unlink $directoryRoot."/bin/".$filename;  
     } 
-    if($os eq "windows") {
-        # ??? FIXME
-    } else {
-        chdir "$directoryRoot/software/mfatoolkit/Linux";
-        system("make clean");
+    # do make unless $args->{fast} is set
+    unless($args->{fast}) {
+        if($os eq "windows") {
+            # ??? FIXME
+        } else {
+            chdir "$directoryRoot/software/mfatoolkit/Linux";
+            system("make clean");
+        }
     }
 }
 
