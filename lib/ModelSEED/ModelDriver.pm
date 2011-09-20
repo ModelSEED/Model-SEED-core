@@ -4398,13 +4398,16 @@ sub printgapfilledreactions {
 	});
 	print "Number of models: ".@{$results}."\n";
 	my $gapRxnHash;
-	for (my $i=0; $i < @{$results}; $i++) {
-		if ($results->[$i] =~ m/(\d+\.\d+)/) {
+	#for (my $i=0; $i < @{$results}; $i++) {
+	for (my $i=0; $i < 10; $i++) {
+		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
 			my $genome = $1;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
 			for (my $j=0; $j < @{$rxns}; $j++) {
+				print $rxns->[$j]->REACTION()."\t".$rxns->[$j]->pegs()."\n";
 				if (lc($rxns->[$j]->pegs()) eq "unknown" || lc($rxns->[$j]->pegs()) eq "none" || lc($rxns->[$j]->pegs()) eq "autocomplete" || lc($rxns->[$j]->pegs()) =~ m/gap/) {
+					print $genome."\t".$rxns->[$j]->REACTION()."\n";
 					push(@{$gapRxnHash->{$genome}},$rxns->[$j]->REACTION());
 				}
 			}
