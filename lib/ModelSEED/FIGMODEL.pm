@@ -85,7 +85,7 @@ sub new {
 		# 3. FIGMODELConfig.txt in FIGdisk/config/ directory
 		# 4. Global default
 		if (defined($ENV{"FIGMODEL_CONFIG"})) {
-			@figmodelConfigFiles = split(/;/,$ENV{"FIGMODEL_CONFIG"});
+			@figmodelConfigFiles = split(/[:;]/,$ENV{"FIGMODEL_CONFIG"});
 		} else {
 			@figmodelConfigFiles = ("../config/FIGMODELConfig.txt");
 		}
