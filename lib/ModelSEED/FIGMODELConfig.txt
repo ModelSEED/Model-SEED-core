@@ -118,7 +118,6 @@ Database version|ModelDB
 %PPO_tbl_history|name;ModelDB|table;HISTORY|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_entity|name;ModelDB|table;DBENTITY|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_mdlhist|name;ModelDB|table;MODEL_HISTORY|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
-%PPO_tbl_mdlhisttrans|name;ModelDB|table;MODEL_HISTORY_TRANSACTION|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_reference|name;ModelDB|table;REFERENCE|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_esssets|name;ModelDB|table;ESSENTIALITYSET|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO
 %PPO_tbl_essgenes|name;ModelDB|table;GENE_ESSENTIALITY|host;localhost|user;modelseed|port;3306|socket;/var/lib/mysql/mysql.sock|status;1|type;PPO

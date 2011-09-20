@@ -71,28 +71,6 @@
 		<index><attribute label="user"/></index>
 		<index><attribute label="modificationDate"/></index>
 	</object>
-	<object label="MODEL_HISTORY_TRANSACTION" >
-		<scalar label="cause" type="CHAR(32)" mandatory="1" />
-		<scalar label="user" type="CHAR(32)" mandatory="1" />
-		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
-		<scalar label="version" type="CHAR(32)" mandatory="1" />
-		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
-		<index><attribute label="cause"/></index>
-		<index><attribute label="user"/></index>
-		<index><attribute label="modificationDate"/></index>
-		<index><attribute label="version"/></index>
-	</object>
-	<object label="MODEL_HISTORY" >
-		<scalar label="TRANSACTION" type="INTEGER" mandatory="1" />
-		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
-		<scalar label="directionality" type="CHAR(7)" mandatory="1" />
-		<scalar label="compartment" type="CHAR(3)" mandatory="1" />
-		<scalar label="pegs" type="TEXT" mandatory="1" />
-		<scalar label="action" type="CHAR(32)" mandatory="1" />
-		<index><attribute label="TRANSACTION"/></index>
-		<index><attribute label="REACTION"/></index>
-		<index><attribute label="action"/></index>
-	</object>
 	<object label="OUTPUTID" >
 		<scalar label="creationDate" type="INTEGER" default="0" />
 		<scalar label="finishedDate" type="INTEGER" default="0" />
@@ -613,4 +591,25 @@
 		<index><attribute label="lastname" /></index>
 		<index><attribute label="firstname" /></index>
 	</object>
+    <object label="UserSession">
+      <scalar label="session_id" type="CHAR(32)" mandatory="1" />
+      <object_ref label="user" type="USERS" />
+      <scalar label="timestamp" type="TIMESTAMP" mandatory="1"/>
+      <scalar label="current_page" type="CHAR(255)" />
+      <scalar label="current_parameters" type="TEXT" />    
+      <scalar label="previous_page" type="CHAR(255)" />
+      <scalar label="previous_parameters" type="TEXT" />    
+      <scalar label="error_page" type="CHAR(255)" />
+      <scalar label="error_parameters" type="TEXT" />
+      <unique_index>
+        <attribute label="session_id" />    
+      </unique_index>
+      <unique_index>
+        <attribute label="session_id" />    
+        <attribute label="user" />
+      </unique_index>
+      <index>
+        <attribute label="user" />
+      </index>
+    </object>
 </project>

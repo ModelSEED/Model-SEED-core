@@ -22,6 +22,7 @@ my $args = {};
 my $result = GetOptions(
     "figconfig|f=s@" => \$args->{"-figconfig"},
     "h|help" => \$args->{"help"},
+    "fast|nomake" => \$args->{"fast"},
     "man" => \$args->{"man"},
 );
 pod2usage(1) if $args->{"help"};
@@ -32,11 +33,11 @@ unless(defined($command) && ($command eq "unload" || $command eq "load" || $comm
     pod2usage(2);
 }
 
-if($command eq "unload") {
-    unload();
+if($command eq "unload" || $command eq "clean") {
+    unload($args);
     exit();
 } elsif($command eq "reload") {
-    unload();
+    unload($args);
 }
 # By default use config/Settings.config
 my $configFile = shift @ARGV || "$directoryRoot/config/Settings.config";
@@ -125,7 +126,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 
     my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
+        $configFiles .= $delim.join("$delim", @{$args->{"-figconfig"}});
     }
     my $envSettings = {
         MODEL_SEED_CORE => $directoryRoot,
@@ -187,9 +188,9 @@ BOOTSTRAP
     $source_script .= "export PERL5LIB;\n";
     foreach my $key (keys %$envSettings) {
         if($key eq "PATH") {
-            $source_script .= "$key=\${$key}$delim".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=\${$key}$delim".$envSettings->{$key}.";\n";
         } else {
-            $source_script .= "$key=".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=".$envSettings->{$key}.";\n";
         }
     }
     open($fh, ">", $directoryRoot."/bin/source-me.sh") || die($!);
@@ -304,7 +305,9 @@ SCRIPT
 		push(@{$data},'make');
 		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
 		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
-		system($directoryRoot."/bin/makeMFAToolkit".$extension);
+        unless($args->{fast}) {
+            system($directoryRoot."/bin/makeMFAToolkit".$extension);
+        }
 	}
 }
 1;
@@ -334,6 +337,7 @@ sub loadFile {
 
 # remove everything that gets added in a "load" step...
 sub unload {
+    my ($args) = @_;
     # don't remove directories bin config data lib logs software
     unlink $directoryRoot."/config/FIGMODELConfig.txt"; 
     unlink $directoryRoot."/config/ModelSEEDbootstrap.pm";
@@ -354,11 +358,14 @@ sub unload {
     foreach my $filename (@$files) {
         unlink $directoryRoot."/bin/".$filename;  
     } 
-    if($os eq "windows") {
-        # ??? FIXME
-    } else {
-        chdir "$directoryRoot/software/mfatoolkit/Linux";
-        system("make clean");
+    # do make unless $args->{fast} is set
+    unless($args->{fast}) {
+        if($os eq "windows") {
+            # ??? FIXME
+        } else {
+            chdir "$directoryRoot/software/mfatoolkit/Linux";
+            system("make clean");
+        }
     }
 }
 
@@ -377,11 +384,13 @@ Commands:
     load config-file                Load a configuration file.
     unload                          Removes all existing configurations.
     reload config-file              Unloads all configurations and loads specified config file.
+    clean                           Identical to unload
 
 Options:
 
     --help [-h]                     brief help message
     --man                           returns this documentation
     --figconfig [-f]                name of additional figconfig to be loaded
+    --fast [ --nomake ]             omit MFAToolkit make / make clean steps
     
 =cut

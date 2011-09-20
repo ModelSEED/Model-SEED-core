@@ -1,4 +1,4 @@
-package ModelSEED::ModelDB::MODEL_HISTORY;
+package ModelSEED::ModelDB::UserSession;
 
 use strict;
 use warnings;

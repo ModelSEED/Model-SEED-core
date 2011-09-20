@@ -2513,8 +2513,6 @@ sub calculate_model_changes {
 		$originalReactions = $self->figmodel()->database()->load_table($self->directory()."OriginalModel-".$self->id()."-".$filename.".txt",";","|",1,["LOAD","ASSOCIATED PEG"]);
 	}
 	my $user = $self->figmodel()->user();
-	#Creating model history transaction
-	my $mdlHistTransObj = $self->figmodel()->database()->create_object("mdlhisttrans",{version=>$version,cause=>$cause,user=>$user,modificationDate=>$modTime,MODEL=>$self->id()});
 	#Getting the current reaction table if not provided at input
 	if (!defined($tbl)) {
 		$tbl = $self->reaction_table();
@@ -2523,11 +2521,6 @@ sub calculate_model_changes {
 		my $row = $tbl->get_row($i);
 		my $orgRow = $originalReactions->get_row_by_key($row->{LOAD}->[0],"LOAD");
 		if (!defined($orgRow)) {
-			if (defined($row->{"ASSOCIATED PEG"}->[0])) {
-				$self->figmodel()->database()->create_object("mdlhist",{TRANSACTION=>$mdlHistTransObj->_id(),REACTION=>$row->{LOAD}->[0],directionality=>$row->{DIRECTIONALITY}->[0],compartment=>$row->{COMPARTMENT}->[0],pegs=>join("|",@{$row->{"ASSOCIATED PEG"}}),action=>"ADDED"});
-			} else {
-				$self->figmodel()->database()->create_object("mdlhist",{TRANSACTION=>$mdlHistTransObj->_id(),REACTION=>$row->{LOAD}->[0],directionality=>$row->{DIRECTIONALITY}->[0],compartment=>$row->{COMPARTMENT}->[0],pegs=>"NONE",action=>"ADDED"});
-			}
 		} else {
 			my $geneChanges;
 			my $directionChange = $row->{"DIRECTIONALITY"}->[0];
@@ -2561,26 +2554,6 @@ sub calculate_model_changes {
 						push(@{$geneChanges},"Removed ".$orgRow->{"ASSOCIATED PEG"}->[$k]);
 					}
 				}
-			}
-			if ((defined($directionChange) && length($directionChange) > 0) || defined($geneChanges) && @{$geneChanges} > 0) {
-				if (!defined($geneChanges)) {
-					$geneChanges = "NONE";
-				} else {
-					$geneChanges = join("|",@{$geneChanges});
-				}
-				$self->figmodel()->database()->create_object("mdlhist",{TRANSACTION=>$mdlHistTransObj->_id(),REACTION=>$row->{LOAD}->[0],directionality=>$directionChange,compartment=>$row->{COMPARTMENT}->[0],pegs=>$geneChanges,action=>"CHANGE"});
-			}
-		}
-	}
-	#Looking for removed reactions
-	for (my $i=0; $i < $originalReactions->size(); $i++) {
-		my $row = $originalReactions->get_row($i);
-		my $orgRow = $tbl->get_row_by_key($row->{LOAD}->[0],"LOAD");
-		if (!defined($orgRow)) {
-			if (defined($row->{"ASSOCIATED PEG"}->[0])) {
-				$self->figmodel()->database()->create_object("mdlhist",{TRANSACTION=>$mdlHistTransObj->_id(),REACTION=>$row->{LOAD}->[0],directionality=>$row->{DIRECTIONALITY}->[0],compartment=>$row->{COMPARTMENT}->[0],pegs=>join("|",@{$row->{"ASSOCIATED PEG"}}),action=>"REMOVED"});
-			} else {
-				$self->figmodel()->database()->create_object("mdlhist",{TRANSACTION=>$mdlHistTransObj->_id(),REACTION=>$row->{LOAD}->[0],directionality=>$row->{DIRECTIONALITY}->[0],compartment=>$row->{COMPARTMENT}->[0],pegs=>"NONE",action=>"REMOVED"});
 			}
 		}
 	}
@@ -3751,7 +3724,6 @@ Definition:
 		reason => "NONE",
 		user => $self->figmodel()->user(),
 		adjustmentOnly => 1,
-		transaction => undef
 	})
 Description:
 	Adds a reaction to the model and updates model statistics
@@ -3769,10 +3741,8 @@ sub add_reactions {
 		reason => "NONE",
 		user => $self->figmodel()->user(),
 		adjustmentOnly => 1,
-		transaction => undef
 	});	
 	if (defined($args->{error})) {return $self->error_message({function => "add_reactions",args => $args});}
-	my $transaction;
 	$self->aquireModelLock();
 	my $rxnTable = $self->reaction_table(1);
 	for (my $i=0; $i < @{$args->{ids}}; $i++) {
@@ -3860,23 +3830,6 @@ sub add_reactions {
 			pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
 			confidence => $row->{CONFIDENCE}->[0]
 		});
-		if (!defined($args->{transaction})) {
-			$args->{transaction} = $self->figmodel()->database()->create_object('mdlhisttrans',{
-				cause => $args->{reason},
-				user => $args->{user},
-				modificationDate => time(),
-				version => $self->version(),
-				MODEL => $self->id()
-			});
-		}
-		my $historyObj = $self->figmodel()->database()->create_object('mdlhist',{
-			TRANSACTION => $args->{transaction}->_id(),
-			REACTION => $row->{LOAD}->[0],
-			directionality => $row->{DIRECTIONALITY}->[0],
-			compartment => $row->{COMPARTMENT}->[0],
-			pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-			action => $action
-		});
 		if (defined($rxnObj) && defined($row->{REFERENCE}->[0]) && $row->{REFERENCE}->[0] ne "NONE") {
 			for (my $i=0; $i < @{$row->{REFERENCE}}; $i++) {
 				my $refID = "NONE";
@@ -3906,7 +3859,6 @@ Definition:
 		compartments=>[string]:compartment, (defaults to c)
 		reason=>string:reason for deletion, (defaults to NONE)
 		user=>string:login of the user calling for the changes (defaults to model owner)
-		trackChanges=>0/1:indicates if the transactions should be tracked (defaults to 1)
 	});
 	Output = {error=>string:error message} ({} returned on success)
 Description:
@@ -3928,29 +3880,8 @@ sub removeReactions {
 			0..(scalar(@{$args->{ids}})-1) }; 
 	my $db = $self->figmodel()->database();
 	my $rxn_mdls = $db->get_objects('rxnmdl', { MODEL => $self->id() });
-	my $transaction;
 	foreach my $rxnmdl (@$rxn_mdls) { 
 		next unless(defined($id_compartment_hash->{$rxnmdl->REACTION().$rxnmdl->compartment()}));
-		#Saving transaction to transaction table
-		if ($args->{trackChanges} == 1) {
-			if (!defined($transaction)) {
-				$transaction = $self->figmodel()->database()->create_object('mdlhisttrans',{
-					cause=>$args->{reason},
-					user=>$args->{user},
-					MODEL=>$self->id(),
-					version=>$self->version(),
-					modificationDate=>time()
-				});
-			}
-			$self->figmodel()->database()->create_object('mdlhist',{
-				TRANSACTION=>$transaction->_id(),
-				REACTION=>$rxnmdl->REACTION(),
-				directionality=>$rxnmdl->directionality(),
-				compartment=>$rxnmdl->compartment(),
-				pegs=>$rxnmdl->pegs(),
-				action=>"deleted"
-			});
-		}
 		$rxnmdl->delete();
 	}
 	$self->reaction_table(1); # update reaction table
@@ -6621,7 +6552,6 @@ sub patch_model {
 			reason => "replacing rxn10821 with equivalent reaction rxn05513",
 			user => "chenry",
 			adjustmentOnly => 0,
-			transaction => undef
 		});
 	}
 }

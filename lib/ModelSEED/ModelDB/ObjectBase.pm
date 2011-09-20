@@ -616,39 +616,6 @@ sub indices {
 
 1;
 
-package ModelSEED::ModelDB::MODEL_HISTORY;
-
-use DBObject;
-use base qw(DBObject);
-
-sub attributes {
-     return {
-		TRANSACTION => [ DB_SCALAR, undef, 1, undef ],
-		compartment => [ DB_SCALAR, undef, 1, undef ],
-		directionality => [ DB_SCALAR, undef, 1, undef ],
-		REACTION => [ DB_SCALAR, undef, 1, undef ],
-		action => [ DB_SCALAR, undef, 1, undef ],
-		pegs => [ DB_SCALAR, undef, 1, undef ],
-	};
-}
-
-sub unique_indices {
-     return 
-		[
-		];
-}
-
-sub indices {
-     return 
-		[
-			[ "TRANSACTION" ],
-			[ "REACTION" ],
-			[ "action" ],
-		];
-}
-
-1;
-
 package ModelSEED::ModelDB::PERMISSIONS;
 
 use DBObject;
@@ -741,39 +708,6 @@ sub indices {
 			[ "source" ],
 			[ "cellwalltype" ],
 			[ "name" ],
-		];
-}
-
-1;
-
-package ModelSEED::ModelDB::MODEL_HISTORY_TRANSACTION;
-
-use DBObject;
-use base qw(DBObject);
-
-sub attributes {
-     return {
-		modificationDate => [ DB_SCALAR, undef, 1, undef ],
-		version => [ DB_SCALAR, undef, 1, undef ],
-		MODEL => [ DB_SCALAR, undef, 1, undef ],
-		user => [ DB_SCALAR, undef, 1, undef ],
-		cause => [ DB_SCALAR, undef, 1, undef ],
-	};
-}
-
-sub unique_indices {
-     return 
-		[
-		];
-}
-
-sub indices {
-     return 
-		[
-			[ "cause" ],
-			[ "user" ],
-			[ "modificationDate" ],
-			[ "version" ],
 		];
 }
 
@@ -1293,6 +1227,42 @@ sub indices {
 			[ "source" ],
 			[ "cellwalltype" ],
 			[ "name" ],
+		];
+}
+
+1;
+
+package ModelSEED::ModelDB::UserSession;
+
+use DBObject;
+use base qw(DBObject);
+
+sub attributes {
+     return {
+		error_page => [ DB_SCALAR, undef, 0, undef ],
+		session_id => [ DB_SCALAR, undef, 1, undef ],
+		error_parameters => [ DB_SCALAR, undef, 0, undef ],
+		current_page => [ DB_SCALAR, undef, 0, undef ],
+		timestamp => [ DB_SCALAR, undef, 1, undef ],
+		previous_page => [ DB_SCALAR, undef, 0, undef ],
+		user => [ DB_OBJECT, "ModelSEED::ModelDB::USERS", 0, undef ],
+		current_parameters => [ DB_SCALAR, undef, 0, undef ],
+		previous_parameters => [ DB_SCALAR, undef, 0, undef ],
+	};
+}
+
+sub unique_indices {
+     return 
+		[
+			[ "session_id" ],
+			[ "session_id", "user" ],
+		];
+}
+
+sub indices {
+     return 
+		[
+			[ "user" ],
 		];
 }
 
