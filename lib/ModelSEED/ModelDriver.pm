@@ -4398,8 +4398,7 @@ sub printgapfilledreactions {
 	});
 	print "Number of models: ".@{$results}."\n";
 	my $gapRxnHash;
-	#for (my $i=0; $i < @{$results}; $i++) {
-	for (my $i=0; $i < 10; $i++) {
+	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
 			my $genome = $1;
