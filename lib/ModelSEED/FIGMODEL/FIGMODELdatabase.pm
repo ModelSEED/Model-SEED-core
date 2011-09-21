@@ -142,7 +142,7 @@ sub get_object_manager {
                     -socket   => $config->{"socket"}->[0]);
                 $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
             } elsif( defined($config->{host}->[0]) && -f $config->{host}->[0] ) {
-                my $temp = DBMaster->new(-database => $config->{host}->[0]);
+                my $temp = DBMaster->new(-database => $config->{host}->[0], -backend => 'SQLite');
                 $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
             }
         } elsif ($db_type eq 'FIGMODELTable') {
