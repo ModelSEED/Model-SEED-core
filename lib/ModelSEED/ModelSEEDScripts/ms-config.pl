@@ -125,11 +125,10 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib"
         ];
 
-    my $configFiles = "\"$directoryRoot/config/FIGMODELConfig.txt";
+    my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
         $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
-    $configFiles .= "\"";
     my $envSettings = {
         MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
