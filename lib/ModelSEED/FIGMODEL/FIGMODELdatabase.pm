@@ -6,6 +6,7 @@ package ModelSEED::FIGMODEL::FIGMODELdatabase;
 use Fcntl qw/:DEFAULT :seek :flock/;
 use Scalar::Util qw(weaken);
 use Carp qw(cluck);
+use Data::Dumper;
 
 =head1
 
@@ -144,6 +145,8 @@ sub get_object_manager {
             } elsif( defined($config->{host}->[0]) && -f $config->{host}->[0] ) {
                 my $temp = DBMaster->new(-database => $config->{host}->[0], -backend => 'SQLite');
                 $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
+            } else {
+                ModelSEED::FIGMODEL::FIGMODELERROR("Unable to find database configuration for " . $config->{name}->[0] . " " . $config->{table}->[0]);
             }
         } elsif ($db_type eq 'FIGMODELTable') {
             my $params = {

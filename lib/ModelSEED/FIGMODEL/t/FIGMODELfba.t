@@ -22,8 +22,6 @@ use Test::More qw(no_plan);
 
 my $helper = ModelSEED::TestingHelpers->new();
 my $fm = $helper->getDebugFIGMODEL();
-$helper->copyProdModelState("Seed83333.1");
-
 # test general access routines
 {
     my $public_model = $fm->get_model('Seed83333.1'); 

@@ -116,15 +116,15 @@ sub new {
 	my $id_parts = $self->parseId($self->fullId());  
 	# if the model isn't the current version, the ppo is in model_version
 	if (!defined($modelObj)) {
-		 $modelObj = $self->db()->get_object("model", {id => $args->{id}});
-		 if (!defined($modelObj)) {
-		 	$modelObj = $self->db()->get_object("model_version", { id => $id_parts->{full} });
+        $modelObj = $self->db()->get_object("model", {id => $args->{id}});
+		if (!defined($modelObj)) {
+		    $modelObj = $self->db()->get_object("model_version", { id => $id_parts->{full} });
 		 	if (!defined($modelObj)) {
 		 		$modelObj = $self->db()->get_object("model", {id => $id_parts->{canonical}});
 		 	}
-		 }
-		 ModelSEED::FIGMODEL::FIGMODELERROR("Model not found!") if (!defined($modelObj));
-		 $self->ppo($modelObj);
+		}
+        ModelSEED::FIGMODEL::FIGMODELERROR("Model not found!") if (!defined($modelObj));
+		$self->ppo($modelObj);
 	}
 	# need to make a copy of this, otherwise we're actually MODIFYING parent FIGMODEL which is BAD
 	my $configurationFiles = [@{$self->{_figmodel}->{_configSettings}}];
@@ -1310,13 +1310,14 @@ sub directory {
 		$path .= $parts->{canonical}."/".$parts->{version}."/";
 		my $model_dirs = $self->figmodel()->config('model directory');
 		foreach my $model_dir (@$model_dirs) {
-			if(-d $model_dir.$path) {
-				$self->{_directory} = $model_dir.$path;
+            $model_dir =~ s/\/$//;
+			if(-d "$model_dir/$path") {
+				$self->{_directory} = "$model_dir/$path";
 				last;
 			}
 		}
 		if(!defined($self->{_directory}) && defined($self->ppo())) {
-			$self->{_directory} = $model_dirs->[0].$path;
+			$self->{_directory} = "$model_dirs->[0]/$path";
 		}
 	#}
 	return $self->{_directory};
