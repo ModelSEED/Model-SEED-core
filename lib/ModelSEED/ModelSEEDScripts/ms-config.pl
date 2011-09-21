@@ -125,7 +125,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib"
         ];
 
-    my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
+    my $configFiles = "$directoryRoot/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
         $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
@@ -158,7 +158,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
     }
     foreach my $key (keys %$envSettings) {
         if($key eq "PATH") {
-            $bootstrap .= '$ENV{'.$key.'} .= "'.$delim.$envSettings->{$key}."\";\n";
+            $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
             next;
         }
          $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
@@ -184,7 +184,7 @@ BOOTSTRAP
     open(my $fh, ">", $directoryRoot."/config/ModelSEEDbootstrap.pm") || die($!);
     print $fh $bootstrap;
     close($fh);
-    my $source_script = "#!/usr/bin/sh\n";
+    my $source_script = "#!/bin/sh\n";
     foreach my $lib (@$perl5Libs) {
         $source_script .= 'PERL5LIB=${PERL5LIB}'.$delim."$lib;\n";
     }
@@ -193,7 +193,7 @@ BOOTSTRAP
         if($key eq "PATH") {
             $source_script .= "export $key=\${$key}$delim".$envSettings->{$key}.";\n";
         } else {
-            $source_script .= "export $key=".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=\"".$envSettings->{$key}."\";\n";
         }
     }
     open($fh, ">", $directoryRoot."/bin/source-me.sh") || die($!);
