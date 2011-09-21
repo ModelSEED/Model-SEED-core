@@ -1,0 +1,95 @@
+#!/usr/bin/env perl 
+#===============================================================================
+#
+#         FILE:  build-test-db.pl
+#
+#        USAGE:  ./build-test-db.pl input.tgz output.tgz
+#
+#  DESCRIPTION:  Build a test directory containing a small database
+#                for use in unit / regression testing.
+#               
+#                output.tgz
+#                data/
+#                   ModelDB/
+#                       ModelDB.sqlite
+#                   model/
+#                       (..probably two..)
+#
+#       AUTHOR:  Scott Devoid
+#      COMPANY:  University of Chicago / Argonne National Lab
+#      VERSION:  1.0
+#      CREATED:  09/16/11 
+#===============================================================================
+
+use strict;
+use warnings;
+use ModelSEED::FIGMODEL;
+use File::Temp;
+use File::Copy::Recursive;
+use DBMaster;
+
+my $inputFile  = shift @ARGV;
+my $outputFile = shift @ARGV; 
+my $figmodel = ModelSEED::FIGMODEL->new();
+my $tmpdir = File::Temp::tempdir();
+$tmpdir =~ s/\/$//;
+mkdir $tmpdir .'/data/';
+# Copy over the model directories
+mkdir $tmpdir .'/data/model/alice';
+mkdir $tmpdir .'/data/model/master';
+my $model = $figmodel->get_model("Seed83333.1");
+my $main_model_dir = $model->directory();
+$main_model_dir =~ s/\/$//;
+$main_model_dir =~ s/\/\d$//;
+File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/master/');
+File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/alice/');
+# Copy sqlite database from build-modelseed-sqlite-db 
+system("tar -xzf $inputFile -C $tmpdir/data/");
+system("sqlite3 $tmpdir/data/ModelDB/ModelDB.db < $tmpdir/data/ModelDB/ModelDB.sqlite");
+# Start db object
+my $db = DBMaster->new(-database => "$tmpdir/data/ModelDB/ModelDB.db",
+                       -backend => "SQLite"); 
+# Create users alice, bob
+my ($alice, $bob);
+
+$alice = $db->USERS->create({ firstname => 'alice',
+                                    lastname  => 'foo',
+                                    login => 'alice',
+                                    email => 'alice@example.com',
+                                    password => 'alice',
+                                  });
+$bob = $db->USERS->create({ firstname => 'bob',
+                                    lastname  => 'foo',
+                                    login => 'bob',
+                                    email => 'bob@example.com',
+                                    password => 'bob',
+                                  });
+# Do model permissions
+my $permissions = $figmodel->database()->get_object("permission", { model => "Seed83333.1" });
+foreach my $perm (@$permissions) {
+    my $hash = { map { $_ => $perm->$_() } keys %{$perm->attributes()} };   
+    delete $hash->{_id};
+    $db->PERMISSIONS->create($hash);
+    $hash->{user} = "alice";
+    $db->PERMISSIONS->create($hash);
+}
+# and the model ppo row 
+my $hash = { map { $_ => $model->ppo()->$_() } keys %{$model->ppo()->attributes()} };
+delete $hash->{_id};
+$db->MODEL->create($hash);
+$hash->{owner} = 'alice';
+$hash->{id} = "Seed83333.1." . $alice->_id();
+$db->MODEL->create($hash);
+# and the rxnmdl rows
+my $rxnmdls = $figmodel->database()->get_objects("rxnmdl", { MODEL => "Seed83333.1"});
+foreach my $rxnmdl (@$rxnmdls) {
+    my $hash = { map { $_ => $rxnmdl->$_() } keys %{$rxnmdl->attributes()} };   
+    delete $hash->{_id};
+    $db->REACTION_MODEL->create($hash);
+    $hash->{MODEL} = "Seed83333.1." . $alice->_id();
+    $db->REACTION_MODEL->create($hash);
+}
+system("echo '.dump' | sqlite3 $tmpdir/data/ModelDB/ModelDB.db > $tmpdir/data/ModelDB/ModelDB.sqlite");
+unlink "$tmpdir/data/ModelDB/ModelDB.db";
+chdir $tmpdir;
+system("tar -czf $outputFile data");

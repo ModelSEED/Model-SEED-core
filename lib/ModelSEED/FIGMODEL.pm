@@ -1527,7 +1527,7 @@ sub parseSBMLtoTabTable {
 	my $doc = $parser->parsefile($args->{SBMLFile});
 	my $objectLists = {species=>[],reaction=>[],compartment=>[]};
 
-	my $compartmentHeadings = ["id","name"];
+	my $compartmentAttrs = ["id","name"];
 	my @cmpts = $doc->getElementsByTagName("compartment");
 	my $cmpt_searchstring = "";
 	foreach my $cmpt (@cmpts) {
@@ -1542,7 +1542,7 @@ sub parseSBMLtoTabTable {
 		push(@{$objectLists->{compartment}},$data);
 	}
 
-	my $compoundHeadings = ["id","name","charge"];
+	my $compoundAttrs = ["id","name","charge"];
 	my @cpds = $doc->getElementsByTagName("species");
 	foreach my $cpd (@cpds) {
 		my @attributes = $cpd->getAttributes()->getValues();
@@ -1550,9 +1550,9 @@ sub parseSBMLtoTabTable {
 		for (my $i=0; $i < @attributes; $i++) {
 		if ($attributes[$i]->getName() eq "id") {
 			if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
-			$attributes[$i]->getValue()=substr($attributes[$i]->getValue(),0,-2);
+			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-2));
 			}elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
-			$attributes[$i]->getValue()=substr($attributes[$i]->getValue(),0,-3);
+			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-3));
 			}
 		}
 		$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
@@ -1560,7 +1560,7 @@ sub parseSBMLtoTabTable {
 		push(@{$objectLists->{species}},$data);
 	}
 
-	my $reactionHeadings = ["id","name","reversible","equation"];
+	my $reactionAttrs = ["id","name","reversible","equation"];
 	my @rxns = $doc->getElementsByTagName("reaction");
 	foreach my $rxn (@rxns) {
 		my @attributes = $rxn->getAttributes()->getValues();
@@ -1573,43 +1573,43 @@ sub parseSBMLtoTabTable {
 		$data->{equation} = join(" ",@$eq);
 	}
 
-	my $compartmentData = [join("\t",@{$compartmentHeadings})];
+	my $compartmentData = [join("\t",@{$compartmentAttrs})];
 	for (my $i=0; $i < @{$objectLists->{compartment}}; $i++) {
 		my $line = "";
-		for (my $j=0; $j < @{$compartmentHeadings}; $j++) {
+		for (my $j=0; $j < @{$compartmentAttrs}; $j++) {
 			if ($j > 0) {
 				$line .= "\t";
 			}
-			if (defined($objectLists->{compartment}->[$i]->{$compartmentHeadings->[$j]})) {
-				$line .= $objectLists->{compartment}->[$i]->{$compartmentHeadings->[$j]};
+			if (defined($objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]})) {
+				$line .= $objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]};
 			}
 		}
 		push(@{$compartmentData},$line);
 	}
 
-	my $compoundData = [join("\t",@{$compoundHeadings})];
+	my $compoundData = [join("\t",("ID","NAMES","CHARGE"))];
 	for (my $i=0; $i < @{$objectLists->{species}}; $i++) {
 		my $line = "";
-		for (my $j=0; $j < @{$compoundHeadings}; $j++) {
+		for (my $j=0; $j < @{$compoundAttrs}; $j++) {
 			if ($j > 0) {
 				$line .= "\t";
 			}
-			if (defined($objectLists->{species}->[$i]->{$compoundHeadings->[$j]})) {
-				$line .= $objectLists->{species}->[$i]->{$compoundHeadings->[$j]};
+			if (defined($objectLists->{species}->[$i]->{$compoundAttrs->[$j]})) {
+				$line .= $objectLists->{species}->[$i]->{$compoundAttrs->[$j]};
 			}
 		}
 		push(@{$compoundData},$line);
 	}
 
-	my $reactionData = [join("\t",@{$reactionHeadings})];
+	my $reactionData = [join("\t",("ID","NAMES","REVERSIBLE","EQUATION"))];
 	for (my $i=0; $i < @{$objectLists->{reaction}}; $i++) {
 		my $line = "";
-		for (my $j=0; $j < @{$reactionHeadings}; $j++) {
+		for (my $j=0; $j < @{$reactionAttrs}; $j++) {
 			if ($j > 0) {
 				$line .= "\t";
 			}
-			if (defined($objectLists->{reaction}->[$i]->{$reactionHeadings->[$j]})) {
-				$line .= $objectLists->{reaction}->[$i]->{$reactionHeadings->[$j]};
+			if (defined($objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]})) {
+				$line .= $objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]};
 			}
 		}
 		push(@{$reactionData},$line);
