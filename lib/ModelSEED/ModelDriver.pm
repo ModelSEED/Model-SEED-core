@@ -1063,7 +1063,7 @@ sub adjustlpfiles {
     }
     my $fba = $self->figmodel()->fba();
     if ($Data[1] eq "ALL") {
-    	my $genomeHash = $self->figmodel()->sapSvr("PSEED")->all_genomes(-complete => "TRUE",-prokaryotic => "TRUE");
+    	my $genomeHash = $self->figmodel()->sapSvr("PUBSEED")->all_genomes(-complete => "TRUE",-prokaryotic => "TRUE");
     	my $array;
 		push(@{$array},keys(%{$genomeHash}));
 		for (my $i=0; $i < @{$array}; $i++) {
@@ -1120,7 +1120,7 @@ sub printinactiverxns {
     #Getting model list
     my $list;
     if ($Data[1] eq "ALL") {
-    	my $genomeHash = $self->figmodel()->sapSvr("PSEED")->all_genomes(-complete => "TRUE",-prokaryotic => "TRUE");
+    	my $genomeHash = $self->figmodel()->sapSvr("PUBSEED")->all_genomes(-complete => "TRUE",-prokaryotic => "TRUE");
     	my $array;
 		push(@{$array},keys(%{$genomeHash}));
 		for (my $i=0; $i < @{$array}; $i++) {
@@ -2322,6 +2322,9 @@ sub runmodelcheck {
 
 sub test {
     my($self,@Data) = @_;
+    my $mdl = $self->figmodel()->get_model("iJR904.2");
+    my $gnm = $mdl->genomeObj();
+    return "SUCCESS";
     my $filenames = [glob("/vol/model-dev/MODEL_DEV_DB/Models2/master/Seed*")];
     for (my $i=0; $i < @{$filenames}; $i++) {
     	if ($filenames->[$i] =~ m/Seed\d+\.\d+\.\d+/) {
@@ -3273,7 +3276,7 @@ sub updatecpdnames {
 sub dumpannotations {
 	my($self,@Data) = @_;
 	return "ARGUMENT SYNTAX FAIL" if ($self->check([],@Data) == 0);
-    my $sapObject = $self->figmodel()->sapSvr("PSEED");
+    my $sapObject = $self->figmodel()->sapSvr("PUBSEED");
     my $genomeHash = $sapObject->all_genomes(-complete => "TRUE",-prokaryotic => "TRUE");
     my $array;
 	push(@{$array},keys(%{$genomeHash}));
@@ -3853,7 +3856,7 @@ sub clustermodels {
 	return "ARGUMENT SYNTAX FAIL" if ($self->check(["directory","maxDistance"],@Data) == 0);
 	print "Getting model data from the database...\n";
 	my $mdls = $self->figmodel()->database()->get_objects("model", {owner => "chenry",source => "SEED"});
-	push(@{$mdls},@{$self->figmodel()->database()->get_objects("model", {owner => "chenry",source => "PSEED"});});
+	push(@{$mdls},@{$self->figmodel()->database()->get_objects("model", {owner => "chenry",source => "PUBSEED"});});
 	my $modelList;
 	#for (my $i=0; $i < 10; $i++) {
 	for (my $i=0; $i < @{$mdls}; $i++) {
@@ -3899,7 +3902,7 @@ sub printsbmlfiles {
 		objectType => "model",
 		delimiter => ",",
 		column => "id",
-		parameters => {owner => "chenry",source => "PSEED"},
+		parameters => {owner => "chenry",source => "PUBSEED"},
 		input => $args->{"model IDs"}
 	});
     if (@{$output} == 1) {
@@ -4243,7 +4246,7 @@ sub completegapfillmodel {
 	],[@Data]);
     #Getting model list
     if ($args->{model} eq "ALL") {
-    	my $mdls = $self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "PSEED"});
+    	my $mdls = $self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "PUBSEED"});
     	push(@{$mdls},@{$self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "SEED"})});
 		for (my $i=0; $i < @{$mdls}; $i++) {
 	    	$self->figmodel()->add_job_to_queue({

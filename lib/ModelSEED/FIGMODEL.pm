@@ -93,6 +93,7 @@ sub new {
 	$self->{_configSettings} = \@figmodelConfigFiles;
 	#Loading the FIGMODELConfig files
 	for (my $k=0;$k < @figmodelConfigFiles; $k++) {
+		$figmodelConfigFiles[$k] =~ s/^\/c\//C:\//;
 		if (ref($figmodelConfigFiles[$k]) eq 'HASH') {
 			my $hash_config = $figmodelConfigFiles[$k];
 			for my $key (keys %$hash_config) {
@@ -681,7 +682,7 @@ Description:
 sub sapSvr {
 	my($self,$target) = @_;
 	if (!defined($target)) {
-		$target = 'SEED';
+		$target = 'PUBSEED';
 	}
 	$ENV{'SAS_SERVER'} = $target;
 	return SAPserver->new();

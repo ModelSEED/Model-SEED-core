@@ -183,9 +183,15 @@ sub feature_table {
 		getSequences => 0,
 		getEssentiality => 1,
 		models => undef,
-		source => $self->source(),
-		owner => $self->owner()
-	});	
+		source => undef,
+		owner => undef
+	});
+	if (!defined($args->{source}) && defined($self->ppo())) {
+		$args->{source} = $self->ppo()->source();
+	}
+	if (!defined($args->{owner}) && defined($self->ppo())) {
+		$args->{owner} = $self->ppo()->owner();
+	}
 	if (!defined($self->{_features})) {
 		if ($args->{source} =~ m/RAST/) {
 			my $output = $self->getRastGenomeData();
@@ -343,7 +349,7 @@ sub update_genome_stats {
 	my $genomeStats = {
 		GENOME => $self->genome(),
 		class => "Unknown",
-		source => "PSEED",
+		source => "PUBSEED",
 		owner => "master",
 		name => undef,
 		taxonomy => undef,
@@ -358,7 +364,7 @@ sub update_genome_stats {
 	};
 	#Determining the source, name, size, taxonomy of the genome
 	my $GenomeData;
-	my $sap = $self->figmodel()->sapSvr("PSEED");
+	my $sap = $self->figmodel()->sapSvr("PUBSEED");
 	my $result = $sap->exists({-type => 'Genome',-ids => [$self->genome()]});
 	if ($result->{$self->genome()} eq "0") {
 		my $output = $self->getRastGenomeData();
@@ -381,29 +387,16 @@ sub update_genome_stats {
 		}
 		$GenomeData = $self->{_features};
 	} else {
-		$genomeStats->{source} = "PSEED";
-		my $genomeHash = $self->figmodel()->sapSvr("PSEED")->genome_data({
+		$genomeStats->{source} = "PUBSEED";
+		my $genomeHash = $self->figmodel()->sapSvr("PUBSEED")->genome_data({
 			-ids => [$self->genome()],
-			-data => ["dna-size","name","taxonomy"]
+			-data => ["gc-content", "dna-size","name","taxonomy"]
 		});
 		if (defined($genomeHash->{$self->genome()})) {
-			$genomeStats->{name} = $genomeHash->{$self->genome()}->{name};
-			$genomeStats->{size} = $genomeHash->{$self->genome()}->{"dna-size"};
-			$genomeStats->{taxonomy} = $genomeHash->{$self->genome()}->{taxonomy};
-		}
-		my $numgc = 0;
-		my $totalLength = 0;
-		my $sequences = $self->get_genome_sequence();
-		for (my $i=0; $i < @{$sequences}; $i++) {
-			$totalLength += length($sequences->[$i]);
-			while ($sequences->[$i] =~ m{([gc])}g) {
-				$numgc++;
-			}
-		}
-		if ($totalLength == 0) {
-			$genomeStats->{gcContent} = 0.5;
-		} else {
-			$genomeStats->{gcContent} = $numgc/$totalLength;
+			$genomeStats->{name} = $genomeHash->{$self->genome()}->[2];
+			$genomeStats->{size} = $genomeHash->{$self->genome()}->[1];
+			$genomeStats->{taxonomy} = $genomeHash->{$self->genome()}->[3];
+			$genomeStats->{gcContent} = $genomeHash->{$self->genome()}->[0];
 		}
 		$GenomeData = $self->feature_table({
 			getSequences => 0,
@@ -468,7 +461,7 @@ sub update_genome_stats {
 		} else {
 			for (my $i=0; $i < @{$self->figmodel()->config($ClassSetting." families")}; $i++) {
 				my $family = $self->figmodel()->config($ClassSetting." families")->[$i];
-				if ($self->name() =~ m/$family/) {
+				if ($genomeStats->{name} =~ m/$family/) {
 					$genomeStats->{class} = $ClassSetting;
 					last;
 				}
@@ -558,7 +551,7 @@ Description:
 sub get_genome_sequence {
 	my ($self) = @_;
 	if ($self->source() =~ m/SEED/) {
-		my $sap = $self->figmodel()->sapSvr("PSEED");
+		my $sap = $self->figmodel()->sapSvr("PUBSEED");
 		my $genomeHash = $sap->genome_contigs({-ids => [$self->genome()]});
 		my $contigHash = $sap->contig_sequences({-ids => $genomeHash->{$self->genome()}});
 		return [values(%{$contigHash})];
