@@ -2322,8 +2322,7 @@ sub runmodelcheck {
 
 sub test {
     my($self,@Data) = @_;
-    my $mdl = $self->figmodel()->get_model("iJR904.2");
-    my $gnm = $mdl->genomeObj();
+    my $gnm = $self->figmodel()->get_genome("3702.7");
     return "SUCCESS";
     my $filenames = [glob("/vol/model-dev/MODEL_DEV_DB/Models2/master/Seed*")];
     for (my $i=0; $i < @{$filenames}; $i++) {
