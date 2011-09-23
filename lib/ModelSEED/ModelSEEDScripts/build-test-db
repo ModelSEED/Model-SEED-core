@@ -25,6 +25,7 @@ use strict;
 use warnings;
 use ModelSEED::FIGMODEL;
 use File::Temp;
+use File::Path qw(make_path);
 use File::Copy::Recursive;
 use DBMaster;
 
@@ -35,14 +36,14 @@ my $tmpdir = File::Temp::tempdir();
 $tmpdir =~ s/\/$//;
 mkdir $tmpdir .'/data/';
 # Copy over the model directories
-mkdir $tmpdir .'/data/model/alice';
-mkdir $tmpdir .'/data/model/master';
+make_path $tmpdir .'/data/model/alice/Seed83333.1';
+make_path $tmpdir .'/data/model/master/Seed83333.1';
 my $model = $figmodel->get_model("Seed83333.1");
 my $main_model_dir = $model->directory();
 $main_model_dir =~ s/\/$//;
-$main_model_dir =~ s/\/\d$//;
-File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/master/');
-File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/alice/');
+$main_model_dir =~ s/\/\d+$//;
+File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/master/Seed83333.1/');
+File::Copy::Recursive::dircopy($main_model_dir, $tmpdir.'/data/model/alice/Seed83333.1.1/');
 # Copy sqlite database from build-modelseed-sqlite-db 
 system("tar -xzf $inputFile -C $tmpdir/data/");
 system("sqlite3 $tmpdir/data/ModelDB/ModelDB.db < $tmpdir/data/ModelDB/ModelDB.sqlite");
@@ -64,14 +65,27 @@ $bob = $db->USERS->create({ firstname => 'bob',
                                     email => 'bob@example.com',
                                     password => 'bob',
                                   });
-# Do model permissions
-my $permissions = $figmodel->database()->get_object("permission", { model => "Seed83333.1" });
-foreach my $perm (@$permissions) {
-    my $hash = { map { $_ => $perm->$_() } keys %{$perm->attributes()} };   
-    delete $hash->{_id};
-    $db->PERMISSIONS->create($hash);
-    $hash->{user} = "alice";
-    $db->PERMISSIONS->create($hash);
+# Do model and model bof permissions
+my $bof = { id => "bio00179", type => "bof" };
+my $mdl = { id => "Seed83333.1.".$alice->_id(), type => "model"};
+foreach my $user ('alice', 'bob') {
+    $bof->{user} = $user;
+    $mdl->{user} = $user;
+    $bof->{permission} = ($user eq 'alice') ? 'admin' : 'view';
+    $mdl->{permission} = ($user eq 'alice') ? 'admin' : 'view';
+    $db->PERMISSIONS->create($bof);
+    $db->PERMISSIONS->create($mdl);
+}
+# and the model history rows
+my $model_histories = $figmodel->database()->get_objects("model_version", {canonicalID => "Seed83333.1"});
+foreach my $model_history (@$model_histories) { 
+    my $hist = { map { $_ => $model_history->$_() } keys %{$model_history->attributes()} };
+    delete $hist->{_id};
+    $db->MODELVERSIONS->create($hist); 
+    $hist->{owner} = 'alice';
+    $hist->{id} = "Seed83333.1." . $alice->_id();
+    $hist->{public} = 0;
+    $db->MODELVERSIONS->create($hist);
 }
 # and the model ppo row 
 my $hash = { map { $_ => $model->ppo()->$_() } keys %{$model->ppo()->attributes()} };
@@ -79,7 +93,9 @@ delete $hash->{_id};
 $db->MODEL->create($hash);
 $hash->{owner} = 'alice';
 $hash->{id} = "Seed83333.1." . $alice->_id();
+$hash->{public} = 0;
 $db->MODEL->create($hash);
+
 # and the rxnmdl rows
 my $rxnmdls = $figmodel->database()->get_objects("rxnmdl", { MODEL => "Seed83333.1"});
 foreach my $rxnmdl (@$rxnmdls) {
