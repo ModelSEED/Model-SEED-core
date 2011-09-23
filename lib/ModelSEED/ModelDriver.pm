@@ -2320,6 +2320,7 @@ sub runmodelcheck {
     }
 }
 
+
 sub test {
     my($self,@Data) = @_;
     my $gnm = $self->figmodel()->get_genome("3702.7");
