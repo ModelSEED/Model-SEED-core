@@ -67,7 +67,7 @@ if(lc($Config->{Database}->{type}) eq 'mysql' &&
 } 
 # Setting paths to absolute for different configuration parameters
 foreach my $path ( 
-    qw( Optional=dataDirectory Optimizers=directoryGLPK
+    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
         Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
         Optimizers=licenseDirectoryCPLEX )) {
     my ($section, $name) = split(/=/, $path);
