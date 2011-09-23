@@ -4,8 +4,6 @@
 SRCDIR = ../Source
 OBJDIR = ../Source
 INCDIR = ../Include
-GLPKINC = $(GLPKDIRECTORY)/include
-GLPKLIB = $(GLPKDIRECTORY)/src/.libs/
 EXEC = mfatoolkit
 # ---------------------------------------------------------------------
 # Compiler section 
@@ -16,9 +14,9 @@ CCC = g++
 # ---------------------------------------------------------------------
 CCOPT = -O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX
 
-CCLNFLAGS = -L$(GLPKLIB) -lglpk
+CCLNFLAGS = -L$(GLPKLIBDIRECTORY) -lglpk
 
-CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(GLPKINC) -I$(INCDIR) -DNOSAFEMEM -DNOBLOCKMEM
+CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(GLPKINCDIRECTORY) -I$(INCDIR) -DNOSAFEMEM -DNOBLOCKMEM
 
 SRCFILES = $(SRCDIR)/driver.cpp $(SRCDIR)/MFAProblem.cpp $(SRCDIR)/CPLEXapiEMPTY.cpp $(SRCDIR)/SCIPapi.cpp $(SRCDIR)/GLPKapi.cpp $(SRCDIR)/LINDOapiEMPTY.cpp $(SRCDIR)/SolverInterface.cpp $(SRCDIR)/Species.cpp $(SRCDIR)/Data.cpp $(SRCDIR)/InterfaceFunctions.cpp $(SRCDIR)/Identity.cpp $(SRCDIR)/Reaction.cpp $(SRCDIR)/GlobalFunctions.cpp $(SRCDIR)/AtomCPP.cpp $(SRCDIR)/UtilityFunctions.cpp $(SRCDIR)/AtomType.cpp $(SRCDIR)/Gene.cpp $(SRCDIR)/GeneInterval.cpp $(SRCDIR)/stringDB.cpp
 

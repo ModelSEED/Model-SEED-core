@@ -142,8 +142,9 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};
         $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
     }
-    if(defined($Config->{Optimizers}->{directoryGLPK})) {
-        $envSettings->{GLPKDIRECTORY} = $Config->{Optimizers}->{directoryGLPK}
+    if(defined($Config->{Optimizers}->{includeDirectoryGLPK})) {
+        $envSettings->{GLPKINCDIRECTORY} = $Config->{Optimizers}->{includeDirectoryGLPK};
+        $envSettings->{GLPKLIBDIRECTORY} = $Config->{Optimizers}->{libraryDirectoryGLPK};
     }
     if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
         $envSettings->{FIGMODEL_USER} = $Config->{Optional}->{SeedUsername};
