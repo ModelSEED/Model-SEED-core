@@ -136,6 +136,8 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
                                )),
         FIGMODEL_CONFIG => $configFiles,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
+        GLPKINCDIRECTORY => $Config->{Optimizers}->{includeDirectoryGLPK},
+        GLPKLIBDIRECTORY => $Config->{Optimizers}->{libraryDirectoryGLPK}
     };
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
         $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
