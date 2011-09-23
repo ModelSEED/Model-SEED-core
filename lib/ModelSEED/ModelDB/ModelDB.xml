@@ -175,6 +175,7 @@
 		<scalar label="growth" type="FLOAT" default="0" />
 		<scalar label="noGrowthCompounds" type="TEXT" default="NONE" />
 		<scalar label="name" type="CHAR(255)" default="unknown" />
+		<scalar label="defaultStudyMedia" type="TEXT" default="Complete" />
 		<unique_index><attribute label="id"/></unique_index>
 		<index><attribute label="owner"/></index>
 		<index><attribute label="canonicalID"/></index>

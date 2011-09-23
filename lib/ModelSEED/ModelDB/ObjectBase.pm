@@ -685,6 +685,7 @@ sub attributes {
 		message => [ DB_SCALAR, undef, 0, "None" ],
 		associatedSubsystemGenes => [ DB_SCALAR, undef, 0, "-1" ],
 		autocompletionDualityGap => [ DB_SCALAR, undef, 0, "-1" ],
+		defaultStudyMedia => [ DB_SCALAR, undef, 0, "Complete" ],
 	};
 }
 
