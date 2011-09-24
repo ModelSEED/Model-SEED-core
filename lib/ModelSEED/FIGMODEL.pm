@@ -1476,148 +1476,157 @@ Description:
 	Translates SBML file to tab delimited table
 =cut
 sub parseSBMLtoTabTable {
-	my ($self,$args) = @_;
-	#Seaver 07/07/11
-	#Processing file or directory
-	if(defined($args->{directory})){
-		if(substr($args->{directory},-1) ne "/"){
-		$args->{directory}.="/";
-		}
-
-		if(!defined($args->{error}) && !-d $args->{directory}){
-		$args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
-		}
-
-
-		my $dir = $args->{directory};
-		my $name = $args->{model_name};
-		$name.="-";
-
-		$args = $self->process_arguments($args,["directory"],{
-		SBMLFile => $dir."ModelData.xml",
-		compartmentFiles => $dir.$name."compartments.tbl",
-		compoundFiles => $dir.$name."compounds.tbl",
-		reactionFiles => $dir.$name."reactions.tbl"
-		});
-
-		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-			$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-		}
-
-	}elsif(defined($args->{file})){
-		my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
-		my $name = $args->{model_name};
-		$name.="-";
-
-		$args = $self->process_arguments($args,["file"],{
-		SBMLFile => $args->{file},
-		compartmentFiles => $dir.$name."compartments.tbl",
-		compoundFiles => $dir.$name."compounds.tbl",
-		reactionFiles => $dir.$name."reactions.tbl"
-		});
-
-		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-		$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-		}
-
+    my ($self,$args) = @_;
+    #Seaver 07/07/11
+    #Processing file or directory
+    if(defined($args->{directory})){
+	if(substr($args->{directory},-1) ne "/"){
+	    $args->{directory}.="/";
 	}
-
-	return $self->new_error_message({function => "parseSBMLtoTabTable",args=>$args}) if (defined($args->{error}));
-
-	my $parser = XML::DOM::Parser->new();
-	my $doc = $parser->parsefile($args->{SBMLFile});
-	my $objectLists = {species=>[],reaction=>[],compartment=>[]};
-
-	my $compartmentAttrs = ["id","name"];
-	my @cmpts = $doc->getElementsByTagName("compartment");
-	my $cmpt_searchstring = "";
-	foreach my $cmpt (@cmpts) {
-		my @attributes = $cmpt->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-			if ($attributes[$i]->getName() eq "id") {
-				$cmpt_searchstring .= $attributes[$i]->getValue();
-			}
-			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		push(@{$objectLists->{compartment}},$data);
+	
+	if(!defined($args->{error}) && !-d $args->{directory}){
+	    $args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
 	}
-
-	my $compoundAttrs = ["id","name","charge"];
-	my @cpds = $doc->getElementsByTagName("species");
-	foreach my $cpd (@cpds) {
-		my @attributes = $cpd->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-		if ($attributes[$i]->getName() eq "id") {
-			if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
-			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-2));
-			}elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
-			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-3));
-			}
-		}
-		$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		push(@{$objectLists->{species}},$data);
+	
+	
+	my $dir = $args->{directory};
+	my $name = $args->{model_name};
+	$name.="-";
+	
+	$args = $self->process_arguments($args,["directory"],{
+	    SBMLFile => $dir."ModelData.xml",
+	    compartmentFiles => $dir.$name."compartments.tbl",
+	    compoundFiles => $dir.$name."compounds.tbl",
+	    reactionFiles => $dir.$name."reactions.tbl"
+					 });
+	
+	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
 	}
-
-	my $reactionAttrs = ["id","name","reversible","equation"];
-	my @rxns = $doc->getElementsByTagName("reaction");
-	foreach my $rxn (@rxns) {
-		my @attributes = $rxn->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		my $eq = $self->get_reaction_equation_sbml($rxn,$cmpt_searchstring);
-		push(@{$objectLists->{reaction}},$data);
-		$data->{equation} = join(" ",@$eq);
+	
+    }elsif(defined($args->{file})){
+	my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
+	my $name = $args->{model_name};
+	$name.="-";
+	
+	$args = $self->process_arguments($args,["file"],{
+	    SBMLFile => $args->{file},
+	    compartmentFiles => $dir.$name."compartments.tbl",
+	    compoundFiles => $dir.$name."compounds.tbl",
+	    reactionFiles => $dir.$name."reactions.tbl"
+					 });
+	
+	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
 	}
-
-	my $compartmentData = [join("\t",@{$compartmentAttrs})];
-	for (my $i=0; $i < @{$objectLists->{compartment}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$compartmentAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]})) {
-				$line .= $objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]};
-			}
-		}
-		push(@{$compartmentData},$line);
+	
+    }
+    
+    return $self->new_error_message({function => "parseSBMLtoTabTable",args=>$args}) if (defined($args->{error}));
+    
+    my $parser = XML::DOM::Parser->new();
+    my $doc = $parser->parsefile($args->{SBMLFile});
+    my $objectLists = {species=>[],reaction=>[],compartment=>[]};
+    
+    my $compartmentAttrs = ["id","name"];
+    my @cmpts = $doc->getElementsByTagName("compartment");
+    my $cmpt_searchstring = "";
+    foreach my $cmpt (@cmpts) {
+	my @attributes = $cmpt->getAttributes()->getValues();
+	my $data;
+	for (my $i=0; $i < @attributes; $i++) {
+	    if ($attributes[$i]->getName() eq "id") {
+		$cmpt_searchstring .= $attributes[$i]->getValue();
+	    }
+	    $data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
 	}
-
-	my $compoundData = [join("\t",("ID","NAMES","CHARGE"))];
-	for (my $i=0; $i < @{$objectLists->{species}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$compoundAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{species}->[$i]->{$compoundAttrs->[$j]})) {
-				$line .= $objectLists->{species}->[$i]->{$compoundAttrs->[$j]};
-			}
+	push(@{$objectLists->{compartment}},$data);
+    }
+    
+    my $compoundAttrs = ["id","name","charge"];
+    my @cpds = $doc->getElementsByTagName("species");
+    my %Compound_Duplicates=();
+    foreach my $cpd (@cpds) {
+	my @attributes = $cpd->getAttributes()->getValues();
+	my $data;
+	my $skip=0;
+	for (my $i=0; $i < @attributes; $i++) {
+	    if ($attributes[$i]->getName() eq "id") {
+		if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
+		    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-2));
+		}elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
+		    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-3));
 		}
-		push(@{$compoundData},$line);
-	}
-
-	my $reactionData = [join("\t",("ID","NAMES","REVERSIBLE","EQUATION"))];
-	for (my $i=0; $i < @{$objectLists->{reaction}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$reactionAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]})) {
-				$line .= $objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]};
-			}
+		#test to see if compound already found
+		#can happen because of multiple compartments
+		if(exists($Compound_Duplicates{$attributes[$i]->getValue()})){
+		    $skip=1;
+		}else{
+		    $Compound_Duplicates{$attributes[$i]->getValue()}=1;
 		}
-		push(@{$reactionData},$line);
+	    }
+	    $data->{$attributes[$i]->getName()} = $attributes[$i]->getValue() if !$skip;
 	}
-	$self->database()->print_array_to_file($args->{compartmentFiles},$compartmentData);
-	$self->database()->print_array_to_file($args->{compoundFiles},$compoundData);
-	$self->database()->print_array_to_file($args->{reactionFiles},$reactionData);
+	push(@{$objectLists->{species}},$data);
+    }
+    
+    my $reactionAttrs = ["id","name","reversible","equation"];
+    my @rxns = $doc->getElementsByTagName("reaction");
+    foreach my $rxn (@rxns) {
+	my @attributes = $rxn->getAttributes()->getValues();
+	my $data;
+	for (my $i=0; $i < @attributes; $i++) {
+	    $data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
+	}
+	my $eq = $self->get_reaction_equation_sbml($rxn,$cmpt_searchstring);
+	push(@{$objectLists->{reaction}},$data);
+	$data->{equation} = join(" ",@$eq);
+    }
+    
+    my $compartmentData = [join("\t",@{$compartmentAttrs})];
+    for (my $i=0; $i < @{$objectLists->{compartment}}; $i++) {
+	my $line = "";
+	for (my $j=0; $j < @{$compartmentAttrs}; $j++) {
+	    if ($j > 0) {
+		$line .= "\t";
+	    }
+	    if (defined($objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]})) {
+		$line .= $objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]};
+	    }
+	}
+	push(@{$compartmentData},$line);
+    }
+    
+    my $compoundData = [join("\t",("ID","NAMES","CHARGE"))];
+    for (my $i=0; $i < @{$objectLists->{species}}; $i++) {
+	my $line = "";
+	for (my $j=0; $j < @{$compoundAttrs}; $j++) {
+	    if ($j > 0) {
+		$line .= "\t";
+	    }
+	    if (defined($objectLists->{species}->[$i]->{$compoundAttrs->[$j]})) {
+		$line .= $objectLists->{species}->[$i]->{$compoundAttrs->[$j]};
+	    }
+	}
+	push(@{$compoundData},$line);
+    }
+    
+    my $reactionData = [join("\t",("ID","NAMES","REVERSIBLE","EQUATION"))];
+    for (my $i=0; $i < @{$objectLists->{reaction}}; $i++) {
+	my $line = "";
+	for (my $j=0; $j < @{$reactionAttrs}; $j++) {
+	    if ($j > 0) {
+		$line .= "\t";
+	    }
+	    if (defined($objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]})) {
+		$line .= $objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]};
+	    }
+	}
+	push(@{$reactionData},$line);
+    }
+    $self->database()->print_array_to_file($args->{compartmentFiles},$compartmentData);
+    $self->database()->print_array_to_file($args->{compoundFiles},$compoundData);
+    $self->database()->print_array_to_file($args->{reactionFiles},$reactionData);
 }
 
 
