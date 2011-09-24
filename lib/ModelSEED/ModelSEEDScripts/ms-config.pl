@@ -67,7 +67,7 @@ if(lc($Config->{Database}->{type}) eq 'mysql' &&
 } 
 # Setting paths to absolute for different configuration parameters
 foreach my $path ( 
-    qw( Optional=dataDirectory Optimizers=directoryGLPK
+    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
         Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
         Optimizers=licenseDirectoryCPLEX )) {
     my ($section, $name) = split(/=/, $path);
@@ -125,7 +125,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib"
         ];
 
-    my $configFiles = $directoryRoot."/config/FIGMODELConfig.txt";
+    my $configFiles = "$directoryRoot/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
         $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
@@ -136,14 +136,17 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
                                )),
         FIGMODEL_CONFIG => $configFiles,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
+        GLPKINCDIRECTORY => $Config->{Optimizers}->{includeDirectoryGLPK},
+        GLPKLIBDIRECTORY => $Config->{Optimizers}->{libraryDirectoryGLPK}
     };
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
         $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
         $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};
         $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
     }
-    if(defined($Config->{Optimizers}->{directoryGLPK})) {
-        $envSettings->{GLPKDIRECTORY} = $Config->{Optimizers}->{directoryGLPK}
+    if(defined($Config->{Optimizers}->{includeDirectoryGLPK})) {
+        $envSettings->{GLPKINCDIRECTORY} = $Config->{Optimizers}->{includeDirectoryGLPK};
+        $envSettings->{GLPKLIBDIRECTORY} = $Config->{Optimizers}->{libraryDirectoryGLPK};
     }
     if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
         $envSettings->{FIGMODEL_USER} = $Config->{Optional}->{SeedUsername};
@@ -155,7 +158,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
     }
     foreach my $key (keys %$envSettings) {
         if($key eq "PATH") {
-            $bootstrap .= '$ENV{'.$key.'} .= "'.$delim.$envSettings->{$key}."\";\n";
+            $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
             next;
         }
          $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
@@ -181,7 +184,7 @@ BOOTSTRAP
     open(my $fh, ">", $directoryRoot."/config/ModelSEEDbootstrap.pm") || die($!);
     print $fh $bootstrap;
     close($fh);
-    my $source_script = "#!/usr/bin/sh\n";
+    my $source_script = "#!/bin/sh\n";
     foreach my $lib (@$perl5Libs) {
         $source_script .= 'PERL5LIB=${PERL5LIB}'.$delim."$lib;\n";
     }
@@ -190,7 +193,7 @@ BOOTSTRAP
         if($key eq "PATH") {
             $source_script .= "export $key=\${$key}$delim".$envSettings->{$key}.";\n";
         } else {
-            $source_script .= "export $key=".$envSettings->{$key}.";\n";
+            $source_script .= "export $key=\"".$envSettings->{$key}."\";\n";
         }
     }
     open($fh, ">", $directoryRoot."/bin/source-me.sh") || die($!);

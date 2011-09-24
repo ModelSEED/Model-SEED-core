@@ -19,7 +19,9 @@ use strict;
 use warnings;
 use File::Copy::Recursive qw(dircopy);
 use File::Path qw(make_path remove_tree);
+use File::Temp;
 use ModelSEED::FIGMODEL;
+use Data::Dumper;
 
 package ModelSEED::TestingHelpers;
 
@@ -43,10 +45,7 @@ call getDebugFIGMODELConfig()
 sub getDebugFIGMODEL {
     my ($self, $args) = @_;
     if(not defined($self->{_figmodel})) {
-        unless(defined($args)) {
-            $args = $self->getDebugFIGMODELConfig();
-        }
-        $self->{_figmodel} = ModelSEED::FIGMODEL->new($args);
+        $self->{_figmodel} = $self->newDebugFIGMODEL();
     }
     return $self->{_figmodel};
 }
@@ -61,13 +60,12 @@ sub newDebugFIGMODEL {
 
 sub getDebugFIGMODELConfig {
     my ($self) = @_;
-    my $args = {
-        configFiles => ["/vol/model-dev/MODEL_DEV_DB/ReactionDB/masterfiles/FIGMODELConfig.txt",
-                        "/vol/model-dev/MODEL_DEV_DB/ReactionDB/masterfiles/DevFIGMODELConfig.txt",
-      #                  {"warn_level" => 0}, # disable warnings
-                       ],
-    };
-    return $args;
+    my $prodFM = $self->getProductionFIGMODEL();
+    my $testConfig = $self->getTestConfig();
+    my $configs = [];
+    push(@$configs, @{$prodFM->{_configSettings}});
+    push(@$configs, $testConfig);
+    return { configFiles => $configs }; 
 }
 
 sub copyProdModelState {
@@ -142,5 +140,83 @@ sub getProductionFIGMODEL {
     }
     return $self->{_prodFIGMODEL};
 }
-    
+
+=head2 getTestConfig
+
+Produces a clean test configuration containing data for
+running test scripts. If the test configuration data doesn't
+already exist (at ${"database root directory"}/TestData/
+this function automatically downloads the data from the server.
+
+This test data is then copied to temporary directories and
+the configuration files are generated pointing to that temporary
+location. In this way each call to getTestConfig will produce
+a clean dataset.
+
+Returns a hash of configuration data to be passed to a FIGMODEL
+using the FIGMODEL->new({ configFiles => [hash] }); argument.
+
+=head3 Data in Test Database
+
+Currently we produce:
+- A ModelDB database with default data plus
+- Two users "alice" and "bob"
+- Two copies of the "Seed83333.1" model owned by
+  master and "alice"
+
+=cut
+sub getTestConfig {
+    my ($self, $args) = @_;
+    my $rtv = {};
+    my $prod = $self->getProductionFIGMODEL();
+    my $TestDbURL = "http://bioseed.mcs.anl.gov/~devoid/TestDB.tgz";
+    my $dataDir = $prod->config('database root directory')->[0]; 
+    if ( !-d $dataDir ) {
+        ModelSEED::FIGMODEL::FIGMODELERROR("database root directory not found at $dataDir\n");
+    }
+    $dataDir =~ s/\/$//;
+    # Ideally we have a copy of all of the test data already
+    # extracted from TestDB.tgz, but if not build it now
+
+    my $TestDataDir = "$dataDir/TestData";
+    if ( !-d $TestDataDir ) {
+        # If we don't have the database try to download it
+        # Fail if we are still unable to get the database.
+        if ( !-f "$dataDir/TestDB.tgz") {
+            system("curl $TestDbURL 2> /dev/null > $dataDir/TestDB.tgz");
+            if (!-f "$dataDir/TestDB.tgz") {
+                ModelSEED::FIGMODEL::FIGMODELERROR("Unable to copy TestDB.tgz from $TestDbURL");
+            }
+        }
+        mkdir $TestDataDir;
+        system("tar -xzf $dataDir/TestDB.tgz -C $TestDataDir");
+        if( !-d "$TestDataDir/data/ModelDB" || !-f "$TestDataDir/data/ModelDB/ModelDB.sqlite") {
+            ModelSEED::FIGMODEL::FIGMODELERROR("TestDB.tgz does not look like I expected!");
+        }
+        system("sqlite3 $TestDataDir/data/ModelDB/ModelDB.db < $TestDataDir/data/ModelDB/ModelDB.sqlite");
+    } 
+    # Now copy over $TestDataDir to a tempfile
+    my $tmpDir = File::Temp::tempdir();
+    $tmpDir =~ s/\/$//;
+    File::Copy::Recursive::dircopy($TestDataDir, $tmpDir);
+    # Upload $tmpDir/data/ModelDB/ModelDB.sqlite into $tmpDir/data/ModelDB/ModelDB.db
+    if( -d "$tmpDir/data/model") {
+        $rtv->{'model directory'} = ["$tmpDir/data/model"];
+    }
+    foreach my $key (keys %{$prod}) {
+        if($key =~ /^PPO_tbl_/) {
+            if(defined($prod->{$key}->{name}) && $prod->{$key}->{name}->[0] =~ /ModelDB/) {
+                my $newConfig = {
+                    name => $prod->{$key}->{name},
+                    type => $prod->{$key}->{type},
+                    status => $prod->{$key}->{status},
+                    table => $prod->{$key}->{table},
+                    host => ["$tmpDir/data/ModelDB/ModelDB.db"],
+                };
+                $rtv->{$key} = $newConfig;
+            }
+        }
+    }
+    return $rtv;
+} 
 1;

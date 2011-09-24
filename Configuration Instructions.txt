@@ -28,7 +28,7 @@ Once the Model SEED has been successfully installed, you must configure it to yo
 		username=(set to username for Model SEED account in MySQL database)
 		password=(set to password for Model SEED account in MySQL database, leave commented if no password)
 		host=(set to host location of computer where database is hosted, "localhost" if on local machine)
-		socket=(points to location of MySQL ".sock" file)
+		socket=(points to location of MySQL ".sock" file) (on OSX it is usually /tmp/mysql.sock)
 		port=(set to port for MySQL database, defaults to 3306 if left commented)
 	d.) Run this command: Model-SEED-core/bin/ms-config load "Name of your config file that you filled out in steps 2.b and 3.c"
 	e.) Run this script: Model-SEED-core/bin/CreateDBScheme

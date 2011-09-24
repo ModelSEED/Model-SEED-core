@@ -20,7 +20,6 @@ use Encode;
 use XML::DOM;
 use SAPserver;
 use FBAMODELserver;
-
 package ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
@@ -955,11 +954,17 @@ sub get_model {
 	my $cached = $self->getCache({key => $id});
 	return $cached if defined($cached);
 	# if cache miss:
-	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
-	if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
-		$self->setCache({key => $mdl->fullId(), data => $mdl});
-	}
-	return $mdl;
+    my $mdl = undef;
+    eval {
+	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
+        if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
+            $self->setCache({key => $mdl->fullId(), data => $mdl});
+        }
+    };
+    if($@) {
+    
+    }
+    return $mdl;
 }
 
 =head3 get_models
