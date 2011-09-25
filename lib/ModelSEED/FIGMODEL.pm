@@ -2642,9 +2642,21 @@ sub import_model {
 			if (defined($mdl->biomassReaction()) && length($mdl->biomassReaction()) > 0 && lc($mdl->biomassReaction()) ne "none") {
 				$newid = $mdl->biomassReaction();
 			}
-			my $bofobj = $self->database()->add_biomass_reaction_from_equation($codeResults->{fullEquation},$newid);
-			$bofobj->owner($mdl->owner());
-			$bofobj->public($mdl->public());
+			my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
+				equation => $codeResults->{fullEquation},
+				biomassID => $newid
+			});
+			$newid = $bofobj->id();
+			if ($mdl->ppo()->public() == 0 && $mdl->ppo()->owner() ne "master") {
+				$self->change_permissions({
+					objectID => $newid,
+					permission => "admin",
+					user => $mdl->ppo()->owner(),
+					type => "bof"
+				});
+				$bofobj->public(0);
+				$bofobj->owner($mdl->ppo()->owner());
+			}
 			$mdl->biomassReaction($bofobj->id());			
 			$mdl->transfer_rights_to_biomass();
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();

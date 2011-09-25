@@ -646,7 +646,36 @@ sub create_model_rights {
 		$self->changeRight($self->owner(), "admin","force");
 	}
 }
-
+=head3 transfer_genome_rights_to_model
+Definition:
+	string:error = FIGMODELmodel->transfer_genome_rights_to_model();
+Description:
+	Transfers the rights associated with the modeled genome to the model itself
+=cut
+sub transfer_genome_rights_to_model {
+	my ($self) = @_;
+	my $svr = $self->figmodel()->server("MSSeedSupportClient");
+	my $output = $svr->users_for_genome({
+		genome => $self->genome(),
+		username => $self->figmodel()->userObj()->login(),
+		password => $self->figmodel()->userObj()->password()
+	});
+	ModelSEED::FIGMODEL::FIGMODELERROR("Could not load user list for model!") if (!defined($output->{$self->genome()}));
+	foreach my $user (keys(%{$output->{$self->genome()}})) {
+		$self->db()->change_permissions({
+			objectID => $self->id(),
+			permission => $output->{$self->genome()}->{$user},
+			user => $user,
+			type => "model"
+		});
+		$self->db()->change_permissions({
+			objectID => $self->biomassReaction(),
+			permission => $output->{$self->genome()}->{$user},
+			user => $user,
+			type => "bof"
+		});
+	}
+}
 =head3 transfer_rights_to_biomass
 Definition:
 	string = FIGMODELmodel->transfer_rights_to_biomass();
@@ -654,7 +683,7 @@ Description:
 	Transfers the rights for the model to the biomass reaction
 =cut
 sub transfer_rights_to_biomass {
-	my ($self) = @_;
+	my ($self,$biomass) = @_;
 	my $bofObj = $self->biomassObject();
 	$bofObj->public($self->ppo()->public());
 	$bofObj->owner($self->ppo()->owner());

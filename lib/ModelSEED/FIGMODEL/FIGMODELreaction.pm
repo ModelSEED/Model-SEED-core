@@ -35,7 +35,6 @@ sub new {
 	}
 	return $self;
 }
-
 =head3 figmodel
 Definition:
 	FIGMODEL = FIGMODELreaction->figmodel();
@@ -46,7 +45,16 @@ sub figmodel {
 	my ($self) = @_;
 	return $self->{_figmodel};
 }
-
+=head3 db
+Definition:
+	FIGMODEL = FIGMODELreaction->db();
+Description:
+	Returns the database object
+=cut
+sub db {
+	my ($self) = @_;
+	return $self->figmodel()->database();
+}
 =head3 id
 Definition:
 	string:reaction ID = FIGMODELreaction->id();
@@ -1137,6 +1145,149 @@ sub printDatabaseTable {
 	};
 	my $rxntbl = $self->figmodel()->database()->ppo_rows_to_table($rxn_config,$self->figmodel()->database()->get_objects('reaction'));
 	$rxntbl->save();
+}
+=head3 add_biomass_reaction_from_equation
+Definition:
+	void FIGMODELdatabase>add_biomass_reaction_from_equation({
+		equation => string,
+		biomassID => string
+	});
+Description:
+	This function adds a biomass reaction to the database based on its equation. If an ID is specified, that ID is used. Otherwise, a new ID is checked out from the database.
+=cut
+sub add_biomass_reaction_from_equation {
+	my($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["equation"],{
+		biomassID => $self->db()->check_out_new_id("bof")
+	});
+	#Deleting elements in cpdbof table associated with this ID
+	my $objs = $self->db()->get_objects("cpdbof",{BIOMASS=>$args->{biomassID}});
+	for (my $i=0; $i < @{$objs}; $i++) {
+		$objs->[$i]->delete();
+	}	
+	#Parsing equation
+	my ($reactants,$products) = $self->substrates_from_equation({equation => $args->{equation}});
+	#Populating the compound biomass table
+	my $energy = 0;
+	my $compounds;
+	$compounds->{RNA} = {cpd00002=>0,cpd00012=>0,cpd00038=>0,cpd00052=>0,cpd00062=>0};
+	$compounds->{protein} = {cpd00001=>0,cpd00023=>0,cpd00033=>0,cpd00035=>0,cpd00039=>0,cpd00041=>0,cpd00051=>0,cpd00053=>0,cpd00054=>0,cpd00060=>0,cpd00065=>0,cpd00066=>0,cpd00069=>0,cpd00084=>0,cpd00107=>0,cpd00119=>0,cpd00129=>0,cpd00132=>0,cpd00156=>0,cpd00161=>0,cpd00322=>0};
+	$compounds->{DNA} = {cpd00012=>0,cpd00115=>0,cpd00241=>0,cpd00356=>0,cpd00357=>0};
+	for (my $j=0; $j < @{$reactants}; $j++) {
+		my $category = "U";
+		if ($reactants->[$j]->{DATABASE}->[0] eq "cpd00002" || $reactants->[$j]->{DATABASE}->[0] eq "cpd00001") {
+			$category = "E";
+			if ($energy < $reactants->[$j]->{COEFFICIENT}->[0]) {
+				$energy = $reactants->[$j]->{COEFFICIENT}->[0];
+			}
+		}
+		if (defined($compounds->{protein}->{$reactants->[$j]->{DATABASE}->[0]})) {
+			$compounds->{protein}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+			$category = "P";
+		} elsif (defined($compounds->{RNA}->{$reactants->[$j]->{DATABASE}->[0]})) {
+			$compounds->{RNA}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+			$category = "R";
+		} elsif (defined($compounds->{DNA}->{$reactants->[$j]->{DATABASE}->[0]})) {
+			$compounds->{DNA}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+			$category = "D";
+		} else {
+			my $obj = $self->db()->get_object("cpdgrp",{type=>"CofactorPackage",COMPOUND=>$reactants->[$j]->{DATABASE}->[0]});
+			if (defined($obj)) {
+				$compounds->{Cofactor}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+				$category = "C";
+			} else { 
+				$obj = $self->db()->get_object("cpdgrp",{type=>"LipidPackage",COMPOUND=>$reactants->[$j]->{DATABASE}->[0]});
+				if (defined($obj)) {
+					$compounds->{Lipid}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+					$category = "L";
+				} else {
+					$obj = $self->db()->get_object("cpdgrp",{type=>"CellWallPackage",COMPOUND=>$reactants->[$j]->{DATABASE}->[0]});
+					if (defined($obj)) {
+						$compounds->{CellWall}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+						$category = "W";
+					} else {
+						$compounds->{Unknown}->{$reactants->[$j]->{DATABASE}->[0]} = -1*$reactants->[$j]->{COEFFICIENT}->[0];
+						$category = "U";
+					}
+				}
+			}
+		}
+		$self->db()->create_object("cpdbof",{COMPOUND=>$reactants->[$j]->{DATABASE}->[0],BIOMASS=>$args->{biomassID},coefficient=>-1*$reactants->[$j]->{COEFFICIENT}->[0],compartment=>$reactants->[$j]->{COMPARTMENT}->[0],category=>$category});
+	}
+	for (my $j=0; $j < @{$products}; $j++) {
+		my $category = "U";
+		if ($products->[$j]->{DATABASE}->[0] eq "cpd00008" || $products->[$j]->{DATABASE}->[0] eq "cpd00009" || $products->[$j]->{DATABASE}->[0] eq "cpd00067") {
+			$category = "E";
+			if ($energy < $products->[$j]->{COEFFICIENT}->[0]) {
+				$energy = $products->[$j]->{COEFFICIENT}->[0];
+			}
+		} elsif ($products->[$j]->{DATABASE}->[0] eq "cpd11416") {
+			$category = "M";
+		}
+		$self->db()->create_object("cpdbof",{COMPOUND=>$products->[$j]->{DATABASE}->[0],BIOMASS=>$args->{biomassID},coefficient=>$products->[$j]->{COEFFICIENT}->[0],compartment=>$products->[$j]->{COMPARTMENT}->[0],category=>$category});
+	}
+	my $package = {Lipid=>"NONE",CellWall=>"NONE",Cofactor=>"NONE",Unknown=>"NONE"};
+	my $coef = {protein=>"NONE",DNA=>"NONE",RNA=>"NONE",Lipid=>"NONE",CellWall=>"NONE",Cofactor=>"NONE",Unknown=>"NONE"};
+	my $types = ["protein","DNA","RNA","Lipid","CellWall","Cofactor","Unknown"];
+	my $packages;
+	my $packageHash;
+	for (my $i=0; $i < @{$types}; $i++) {
+		my @entities = sort(keys(%{$compounds->{$types->[$i]}}));
+		if (@entities > 0) {
+			$coef->{$types->[$i]} = "";
+		}
+		if (@entities > 0 && ($types->[$i] eq "Lipid" || $types->[$i] eq "CellWall" || $types->[$i] eq "Cofactor" || $types->[$i] eq "Unknown")) {
+			my $cpdgrpObs = $self->db()->get_objects("cpdgrp",{type=>$types->[$i]."Package"});
+			for (my $j=0; $j < @{$cpdgrpObs}; $j++) {
+				$packages->{$types->[$i]}->{$cpdgrpObs->[$j]->grouping()}->{$cpdgrpObs->[$j]->COMPOUND()} = 1;
+			}
+			my @packageList = keys(%{$packages->{$types->[$i]}});
+			for (my $j=0; $j < @packageList; $j++) {
+				$packageHash->{join("|",sort(keys(%{$packages->{$types->[$i]}->{$packageList[$j]}})))} = $packageList[$j];
+			}
+			if (defined($packageHash->{join("|",@entities)})) {
+				$package->{$types->[$i]} = $packageHash->{join("|",@entities)};
+			} else {
+				$package->{$types->[$i]} = $self->db()->check_out_new_id($types->[$i]."Package");
+				my @cpdList = keys(%{$compounds->{$types->[$i]}});
+				for (my $j=0; $j < @cpdList; $j++) {
+					$self->db()->create_object("cpdgrp",{COMPOUND=>$cpdList[$j],grouping=>$package->{$types->[$i]},type=>$types->[$i]."Package"});
+				}
+			}
+		}
+		for (my $j=0; $j < @entities; $j++) {
+			if ($j > 0) {
+				$coef->{$types->[$i]} .= "|";
+			}
+			$coef->{$types->[$i]} .= $compounds->{$types->[$i]}->{$entities[$j]};
+		}
+	}
+    my $data = { essentialRxn => "NONE", owner => "master", name => "Biomass", public => 1,
+                 equation => $args->{equation}, modificationDate => time(), creationDate => time(),
+                 id => $args->{biomassID}, cofactorPackage => $package->{Cofactor}, lipidPackage => $package->{Lipid},
+                 cellWallPackage => $package->{CellWall}, unknownCoef => $coef->{Unknown},
+                 unknownPackage => $package->{Unknown}, protein => "0", DNA => "0", RNA => "0",
+                 lipid => "0", cellWall => "0", cofactor => "0", proteinCoef => $coef->{protein},
+                 DNACoef => $coef->{DNA}, RNACoef => $coef->{RNA}, lipidCoef => $coef->{Lipid},
+                 cellWallCoef => $coef->{CellWall}, cofactorCoef => $coef->{Cofactor}, energy => $energy };
+	my $bofobj = $self->db()->sudo_get_object("bof",{id=>$args->{biomassID}});
+	if (!defined($bofobj)) {
+		$bofobj = $self->db()->create_object("bof",$data);
+	} else {
+		foreach my $key (keys(%{$data})) {
+			$bofobj->$key($data->{$key});
+		}
+	}
+    return $bofobj;
+}
+=head3 add_biomass_reaction_from_file
+definition:
+	(success/fail) = figmodeldatabase>add_biomass_reaction_from_file(string:biomass id);
+=cut
+sub add_biomass_reaction_from_file {
+	my($self,$biomassid) = @_;
+	my $object = $self->figmodel()->loadobject($biomassid);
+	$self->add_biomass_reaction_from_equation($object->{equation}->[0],$biomassid);
 }
 
 1;
