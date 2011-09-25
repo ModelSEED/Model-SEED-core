@@ -26,8 +26,8 @@ my $fm = $helper->getDebugFIGMODEL();
 # test authenticate / unathenticate
 {
     ok $fm->user() eq "PUBLIC", "should return PUBLIC when not logged in";
-    $fm->authenticate({ username => "reviewer", password => "reviewer"});
-    ok $fm->user() eq "reviewer", "should correctly login as reviewer with authenticate()";
+    $fm->authenticate({ username => "alice", password => "alice"});
+    ok $fm->user() eq "alice", "should correctly login as reviewer with authenticate()";
     $fm->logout();
     ok $fm->user() eq "PUBLIC", "should correctly log out with logout() and return PUBLIC as user"; 
 }

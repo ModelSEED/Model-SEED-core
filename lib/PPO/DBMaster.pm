@@ -78,14 +78,18 @@ sub new {
 
   # init params
   $params{-backend} = ($params{-backend}) ? $params{-backend} : 'MySQL';
-  $params{-host} = ($ENV{'DBHOST'}) ? $ENV{'DBHOST'} : 'localhost'
-    unless ($params{-host});
-  $params{-port} = ($ENV{'DBPORT'}) ? $ENV{'DBPORT'} : undef
-    unless ($params{-port});
-  $params{-user} = ($ENV{'DBUSER'}) ? $ENV{'DBUSER'} : 'root'
-    unless ($params{-user});
-  $params{-password} = ($ENV{'DBPWD'}) ? $ENV{'DBPWD'} : ''
-    unless ($params{-password});
+  if(!defined($params{-host}) && defined($ENV{'DBHOST'})) {
+    $params{-host} = $ENV{'DBHOST'};
+  }
+  if(!defined($params{-port}) && defined($ENV{'DBPORT'})) {
+    $params{-port} = $ENV{'DBPORT'};
+  }
+  if(!defined($params{-user}) && defined($ENV{'DBUSER'})) {
+    $params{-user} = $ENV{'DBUSER'};
+  }
+  if(!defined($params{-password}) && defined($ENV{'DBPWD'})) {
+    $params{-password} = $ENV{'DBPWD'};
+  }
   Trace("Opening database $params{-backend} on host $params{-host}.") if T(WebApplication => 3);
   # try to fetch from object cache
 
