@@ -4422,4 +4422,17 @@ sub printgapfilledreactions {
     return "SUCCESS";
 }
 
+sub dumpmodelfile {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["filename",0,""]
+	],[@Data]);
+	my $mdl = $self->get_model($args->{model});
+	if (!defined($args->{filename}) || length($args->{filename}) == 0) {
+		$args->{filename} = $mdl->directory().$mdl->id().".tbl";
+	}
+	$mdl->flatten($args->{filename});
+}
+
 1;

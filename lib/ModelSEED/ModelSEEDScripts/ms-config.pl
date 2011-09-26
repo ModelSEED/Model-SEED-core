@@ -41,11 +41,18 @@ if($command eq "unload" || $command eq "clean") {
     unload($args);
 }
 # By default use config/Settings.config
-my $configFile = shift @ARGV || "$directoryRoot/config/Settings.config";
+if (-e $directoryRoot."/config/ModelSEEDbootstrap.pm") {
+	do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
+}
+my $configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
 unless(-f $configFile) {
     die("Could not find configuration file at $configFile!");
 }
 $configFile = abs_path($configFile);
+#Here we are adjusting the users config file to include changes made to the standard config
+if ($configFile ne "$directoryRoot/config/Settings.config") {
+	patchconfig("$directoryRoot/config/Settings.config",$configFile);
+}
 my $Config = Config::Tiny->new();
 $Config = Config::Tiny->read($configFile);
 # Setting defaults for dataDirectory,
@@ -64,7 +71,24 @@ unless(defined($Config->{Database}->{filename}) ||
 if(lc($Config->{Database}->{type}) eq 'mysql' &&
     !defined($Config->{Database}->{port})) {
     $Config->{Database}->{port} = "3306";
-} 
+}
+if (length($Config->{SeedAccount}->{SeedUsername}) == 0) {
+	delete $Config->{SeedAccount}->{SeedUsername};
+}
+if (length($Config->{SeedAccount}->{SeedPassword}) == 0) {
+	delete $Config->{SeedAccount}->{SeedPassword};
+}
+if (!defined($Config->{SeedAccount}->{SeedUsername}) && defined($ENV{FIGMODEL_USER})) {
+	$Config->{SeedAccount}->{SeedUsername} = $ENV{FIGMODEL_USER};
+}
+if (!defined($Config->{SeedAccount}->{SeedUsername})) {
+	die("Username for SEED account must be provided!");
+}
+if (!defined($Config->{SeedAccount}->{SeedPassword}) && defined($ENV{FIGMODEL_PASSWORD}) 
+	&& defined($ENV{FIGMODEL_USER}) && $ENV{FIGMODEL_USER} eq $Config->{SeedAccount}->{SeedUsername}) {
+	$Config->{SeedAccount}->{SeedPassword} = $ENV{FIGMODEL_PASSWORD};
+}
+
 # Setting paths to absolute for different configuration parameters
 foreach my $path ( 
     qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
@@ -122,6 +146,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib/PPO",
         "$directoryRoot/lib/myRAST",
         "$directoryRoot/lib/FigKernelPackages",
+        "$directoryRoot/lib/ModelSEED/ModelSEEDClients/",
         "$directoryRoot/lib"
         ];
 
@@ -130,14 +155,15 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
     }
     my $envSettings = {
+        MODELSEED_CONFIG => $configFile,
         MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
                                  $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/',
                                )),
         FIGMODEL_CONFIG => $configFiles,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
-        GLPKINCDIRECTORY => $Config->{Optimizers}->{includeDirectoryGLPK},
-        GLPKLIBDIRECTORY => $Config->{Optimizers}->{libraryDirectoryGLPK}
+        FIGMODEL_USER => $Config->{SeedAccount}->{SeedUsername},
+        FIGMODEL_PASSWORD => $Config->{SeedAccount}->{SeedPassword} || "TEMPORARYNOPASSWORD"
     };
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
         $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
@@ -148,10 +174,6 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         $envSettings->{GLPKINCDIRECTORY} = $Config->{Optimizers}->{includeDirectoryGLPK};
         $envSettings->{GLPKLIBDIRECTORY} = $Config->{Optimizers}->{libraryDirectoryGLPK};
     }
-    if (defined($Config->{Optional}->{SeedUsername}) && defined($Config->{Optional}->{SeedPassword})) {
-        $envSettings->{FIGMODEL_USER} = $Config->{Optional}->{SeedUsername};
-        $envSettings->{FIGMODEL_PASSWORD} = $Config->{Optional}->{SeedPassword};
-    }
     my $bootstrap = "";
     foreach my $lib (@$perl5Libs) {
         $bootstrap .= "use lib '$lib';\n";
@@ -161,7 +183,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
             $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
             next;
         }
-         $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
+        $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
     }
     $bootstrap .= <<'BOOTSTRAP';
 sub run {
@@ -313,15 +335,44 @@ SCRIPT
         }
 	}
 }
+#Importing SEED useraccount
+{
+	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
+	require $directoryRoot."/lib/ModelSEED/FIGMODEL.pm";
+	my $figmodel = ModelSEED::FIGMODEL->new();
+	my $encrptedPassword;
+	if (defined($Config->{SeedAccount}->{SeedUsername})) {
+		if (!defined($Config->{SeedAccount}->{SeedPassword}) && defined($ENV{FIGMODEL_PASSWORD}) && $ENV{FIGMODEL_PASSWORD} ne "TEMPORARYNOPASSWORD") {
+			$Config->{SeedAccount}->{SeedPassword} = $ENV{FIGMODEL_PASSWORD};
+		}
+		if ($figmodel->config("PPO_tbl_user")->{host}->[0] ne "bio-app-authdb.mcs.anl.gov") {
+			my $usrObj = $figmodel->database()->get_object("user",{login => $Config->{SeedAccount}->{SeedUsername}});
+			if (!defined($usrObj)) {
+				$usrObj = $figmodel->import_seed_account({
+					username => $Config->{SeedAccount}->{SeedUsername},
+					password => $Config->{SeedAccount}->{SeedPassword}
+				});
+			}
+			$encrptedPassword = $usrObj->password();
+		}
+	}
+	if (defined($encrptedPassword)) {
+		my $data = loadFile($directoryRoot."/config/ModelSEEDbootstrap.pm");
+		for (my $i=0; $i < @{$data};$i++) {
+			if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
+				$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "'.$encrptedPassword.'";';
+			}
+		}
+		printFile($directoryRoot."/config/ModelSEEDbootstrap.pm",$data);
+	}	
+}
 1;
 #Utility functions used by the configuration script
 sub printFile {
     my ($filename,$arrayRef) = @_;
     open ( my $fh, ">", $filename) || die("Failure to open file: $filename, $!");
     foreach my $Item (@{$arrayRef}) {
-        if (length($Item) > 0) {
-            print $fh $Item."\n";
-        }
+    	print $fh $Item."\n";
     }
     close($fh);
 }
@@ -336,6 +387,88 @@ sub loadFile {
     }
     close(INPUT);
     return $DataArrayRef;
+}
+
+sub patchconfig {
+    my ($template,$filename) = @_;
+    #Loading the template config file
+    my $change = 0;
+    my $tempdata;
+    my $templateFile = loadFile($template);
+    my $heading;
+    my $headingChecklist;
+    for (my $i=0; $i < @{$templateFile}; $i++) {
+    	if ($templateFile->[$i] =~ m/^\[(.+)\]/) {
+    		$heading = $1;
+    		$headingChecklist->{$heading} = 0;
+    	} elsif ($templateFile->[$i] =~ m/^(#*\s*)(\w+)=(.*)$/) {
+    		my ($prefix,$subheading,$suffix) = ($1,$2,$3);
+    		if (defined($heading)) {
+    			$tempdata->{$heading}->{$subheading}->{prefix} = $prefix || "";
+    			$tempdata->{$heading}->{$subheading}->{suffix} = $suffix || "";
+    		}
+    	}
+    }
+    #Loading and adjusting the users config file:
+    #Commenting out content that is no longer relevant
+    #Adding content that should be there but isn't
+    my $targetFile = loadFile($filename);
+    undef $heading;
+    for (my $i=0; $i < @{$targetFile}; $i++) {
+    	if ($targetFile->[$i] =~ m/^\[(.+)\]/) {
+    		my $newHeading = $1;
+    		if (defined($heading) && defined($tempdata->{$heading})) {
+    			foreach my $subheading (keys(%{$tempdata->{$heading}})) {
+    				if (!defined($tempdata->{$heading}->{$subheading}->{found})) {
+    					#Inserting missing subheading
+    					splice(@{$targetFile}, $i+1, 0,$tempdata->{$heading}->{$subheading}->{prefix}.$subheading.$tempdata->{$heading}->{$2}->{suffix}."=");
+    					$change = 1;
+    				}	
+    			}
+    		}
+    		$heading = $newHeading;
+    		if (defined($tempdata->{$heading})) {
+    			$headingChecklist->{$heading} = 1;
+    		} else {
+    			$targetFile->[$i] = "# ".$targetFile->[$i].": this configuration is no longer in use and can be deleted";
+    			$change = 1;
+    		}
+    	} elsif ($targetFile->[$i] =~ m/^(#*\s*)(\w+)=(.*)$/) {
+    		my ($prefix,$subheading,$suffix) = ($1,$2,$3);
+    		if (!defined($tempdata->{$heading}->{$subheading}) && $targetFile->[$i] !~ m/this\sconfiguration\sis\sno\slonger\sin\suse\sand\scan\sbe\sdeleted/) {
+    			$targetFile->[$i] = "# ".$targetFile->[$i].": this configuration is no longer in use and can be deleted";
+    			$change = 1;
+    		} elsif (defined($tempdata->{$heading}->{$subheading})) {
+    			$tempdata->{$heading}->{$subheading}->{found} = 1;
+    		}
+    	}
+    }
+    if (defined($heading) && defined($tempdata->{$heading})) {
+    	foreach my $subheading (keys(%{$tempdata->{$heading}})) {
+    		if (!defined($tempdata->{$heading}->{$subheading}->{found})) {
+    			#Inserting missing subheading
+    			push(@{$targetFile},$tempdata->{$heading}->{$subheading}->{prefix}.$subheading."=".$tempdata->{$heading}->{$subheading}->{suffix});
+    			$change = 1;
+    		}	
+    	}
+    }
+    #Adding any missing headings
+    foreach my $current (keys(%{$headingChecklist})) {
+    	if ($headingChecklist->{$current} == 0) {
+    		$change = 1;
+    		push(@{$targetFile},"");
+    		push(@{$targetFile},"# Adding new heading missing from current settings file");
+    		push(@{$targetFile},"[".$current."]");
+    		foreach my $subheading (keys(%{$tempdata->{$current}})) {
+    			push(@{$targetFile},$tempdata->{$heading}->{$subheading}->{prefix}.$subheading."=".$tempdata->{$heading}->{$subheading}->{suffix});
+    		}
+    		$headingChecklist->{$current} = 1;
+    	}
+    }
+    printFile($filename,$targetFile);
+    if ($change == 1) {
+    	print "\n\nYour configuration file was adjusted based on changes made to the installation process. Please check the file!\n\n"
+    }
 }
 
 # remove everything that gets added in a "load" step...

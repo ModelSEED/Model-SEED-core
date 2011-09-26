@@ -492,7 +492,7 @@ sub get_objects {
 			if ($key eq '_id' or $self->attributes->{$key}->[0] == DB_SCALAR) {
 				if (ref($values->{$key}) eq 'ARRAY') {
 					push(@filter_by, $key . " " . $values->{$key}->[1] . " " . $self->_master->backend->quote($values->{$key}->[0]));
-				} elsif ($values->{$key} =~ m/%/) {
+				} elsif (defined($values->{$key}) && $values->{$key} =~ m/%/) {
 					push(@filter_by, $key . " like " . $self->_master->backend->quote($values->{$key}));
 				} else {
 					push(@filter_by, $key . "=" . $self->_master->backend->quote($values->{$key}));
@@ -665,6 +665,23 @@ sub _knows_attribute {
   }
 }
 
+
+=pod
+
+=item * B<_change_id> ()
+
+Changes the _id of an object
+
+=cut
+
+sub _change_id {
+  my ($self, $newid) = @_;
+  unless (ref $self) {
+    Confess("Not called as an object method.");
+  }
+  $self->_master->backend->update_row( $self->_table, {'_id' => $newid}, '_id='.$self->_id );
+  $self->{'_id'} = $newid;
+}
 
 =pod
 
