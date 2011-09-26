@@ -297,7 +297,7 @@ sub get_objects {
 	if ($cacheBehavior == 3) {
 		return undef;	
 	}
-	my $objs = sudo_get_objects($type,$query);
+	my $objs = $self->sudo_get_objects($type,$query);
 	if (defined($objs->[0]) && defined($self->figmodel()->config("objects with rights")->{$type})) {
 		my $finalObjs;
 		for (my $i=0; $i < @{$objs}; $i++) {

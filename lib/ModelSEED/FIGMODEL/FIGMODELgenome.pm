@@ -297,8 +297,8 @@ sub getRastGenomeData {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{});
 	#Getting RAST feature data from the FBAMODEL server for now
-	my $fbaserv = FBAMODELserver->new();
-	my $output = $fbaserv->getRastGenomeData({genome => $self->genome(),username => $self->figmodel()->userObj()->login(),password => $self->figmodel()->userObj()->password()});
+	my $svr = $self->figmodel()->server("MSSeedSupportClient");
+	my $output = $svr->getRastGenomeData({genome => $self->genome(),username => $self->figmodel()->userObj()->login(),password => $self->figmodel()->userObj()->password()});
 	if (!defined($output->{features})) {
 		$self->error_message("Could not load feature table for rast genome:".$output->{error});
 		return undef;

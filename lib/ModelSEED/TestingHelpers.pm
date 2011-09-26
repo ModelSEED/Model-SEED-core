@@ -46,6 +46,13 @@ sub getDebugFIGMODEL {
     my ($self, $args) = @_;
     if(not defined($self->{_figmodel})) {
         $self->{_figmodel} = $self->newDebugFIGMODEL();
+        $self->{_figmodel}->database()->create_object("user",{
+			login => "chenry",
+			password => "figmodel4all",
+			firstname => "NONE",
+			lastname => "NONE",
+			email => "NONE",
+		});
     }
     return $self->{_figmodel};
 }
@@ -177,19 +184,18 @@ sub getTestConfig {
     $dataDir =~ s/\/$//;
     # Ideally we have a copy of all of the test data already
     # extracted from TestDB.tgz, but if not build it now
-
     my $TestDataDir = "$dataDir/TestData";
     if ( !-d $TestDataDir ) {
         # If we don't have the database try to download it
         # Fail if we are still unable to get the database.
         if ( !-f "$dataDir/TestDB.tgz") {
-            system("curl $TestDbURL 2> /dev/null > $dataDir/TestDB.tgz");
+            system("curl $TestDbURL 2> /dev/null > $dataDir/TestDB.tgz");#Note, this does not work in windows...
             if (!-f "$dataDir/TestDB.tgz") {
                 ModelSEED::FIGMODEL::FIGMODELERROR("Unable to copy TestDB.tgz from $TestDbURL");
             }
         }
         mkdir $TestDataDir;
-        system("tar -xzf $dataDir/TestDB.tgz -C $TestDataDir");
+        system("tar -xzf $dataDir/TestDB.tgz -C $TestDataDir");#Note, this does not work in windows...
         if( !-d "$TestDataDir/data/ModelDB" || !-f "$TestDataDir/data/ModelDB/ModelDB.sqlite") {
             ModelSEED::FIGMODEL::FIGMODELERROR("TestDB.tgz does not look like I expected!");
         }

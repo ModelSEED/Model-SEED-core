@@ -1,7 +1,11 @@
 use strict;
 use warnings;
-use Test::More qw(no_plan);
 use Data::Dumper;
+use lib $ENV{MODEL_SEED_CORE}."/config/";
+use ModelSEEDbootstrap;
+use ModelSEED::FIGMODEL;
+use ModelSEED::TestingHelpers;
+use Test::More qw(no_plan);
 use MSSeedSupportClient;
 
 my $mss = MSSeedSupportClient->new();

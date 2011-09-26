@@ -594,7 +594,7 @@ sub attributes {
 		email => [ DB_SCALAR, undef, 1, undef ],
 		password => [ DB_SCALAR, undef, 0, undef ],
 		lastname => [ DB_SCALAR, undef, 0, undef ],
-		login => [ DB_SCALAR, undef, 1, undef ],
+		login => [ DB_SCALAR, undef, 1, undef ]
 	};
 }
 

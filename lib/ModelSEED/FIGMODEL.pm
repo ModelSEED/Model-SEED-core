@@ -19,7 +19,6 @@ use DBI;
 use Encode;
 use XML::DOM;
 use SAPserver;
-use FBAMODELserver;
 package ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
@@ -84,6 +83,8 @@ sub new {
 		# 3. FIGMODELConfig.txt in FIGdisk/config/ directory
 		# 4. Global default
 		if (defined($ENV{"FIGMODEL_CONFIG"})) {
+			$ENV{"FIGMODEL_CONFIG"} =~ s/^[A-Za-z]:/\/c/;
+			$ENV{"FIGMODEL_CONFIG"} =~ s/[;:][A-Za-z]:/;\/c/g;
 			@figmodelConfigFiles = split(/[:;]/,$ENV{"FIGMODEL_CONFIG"});
 		} else {
 			@figmodelConfigFiles = ("../config/FIGMODELConfig.txt");
@@ -677,7 +678,6 @@ Definition:
 	SAP:sapling object = FIGMODEL->sapSvr(string:target database);
 Description:
 =cut
-
 sub sapSvr {
 	my($self,$target) = @_;
 	if (!defined($target)) {
@@ -685,6 +685,17 @@ sub sapSvr {
 	}
 	$ENV{'SAS_SERVER'} = $target;
 	return SAPserver->new();
+}
+
+=head3 server
+Definition:
+	server object = FIGMODEL->server(string:server name);
+Description:
+=cut
+sub server {
+	my($self,$server) = @_;
+	require $server.".pm";
+	return $server->new();
 }
 
 =head3 database
@@ -798,22 +809,59 @@ sub authenticate {
 		   		return $self->user()." logged in";
 		   }
 	} elsif (defined($args->{username}) && defined($args->{password})) {
-		if (defined($self->config("model administrators")->{$args->{username}}) 
-			&& $args->{password} eq $self->config("model administrators")->{$args->{username}}->[0]) {
-			$self->{_user_acount}->[0] = $self->database()->get_object("user",{login=>$args->{username}});
+		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
+		if (!defined($usrObj)) {
+			return $self->error_message("No user account found with name: ".$args->{username}."!");
+		}
+		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
+			$self->{_user_acount}->[0] = $usrObj;
 		} else {
-			my $usrObj = $self->database()->get_object("user",{login=>$args->{username}});
-			if (!defined($usrObj)) {
-				return $self->error_message("No user account found with name: ".$args->{username}."!");
-			}
-			if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
-				$self->{_user_acount}->[0] = $usrObj;
-			} else {
-				return $self->error_message("Input password does not match user account!");	
-			}
+			return $self->error_message("Input password does not match user account!");	
 		}
 	}
 	return undef;
+}
+
+=head3 import_seed_account
+Definition:
+	PPOuser::newly created user object = FIGMODEL->import_seed_account({
+		username => string:username,
+		password => string:password
+	});
+Description:
+	Imports the account data for the specified user from the SEED database
+=cut
+sub import_seed_account {
+	my($self,$args) = @_;
+	$args = $self->process_arguments($args,["username"],{password => undef});
+	#Checking that you are not already in the SEED environment
+	ModelSEED::FIGMODEL::FIGMODELERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
+	#Checking if user account already exists with specified name
+	my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
+	ModelSEED::FIGMODEL::FIGMODELERROR("A user account already exists locally with the specified username. This account must be deleted!") if (defined($usrObj));
+	#Getting password from user if not provided
+	if (!defined($args->{password})) {
+		print "Enter password for SEED account:";
+		$args->{password} = <>;
+	}
+	#Getting user data
+	my $svr = $self->server("MSSeedSupportClient");
+	my $output = $svr->get_user_info({username => $args->{username},password => $args->{password}});
+	if (!defined($output->{username})) {
+		$self->error_message("Could not load user data from SEED server:".$output->{error});
+		return undef;
+	}
+	#Creating the new useraccount
+	$usrObj = $self->database()->create_object("user",{
+		login => $output->{username},
+		password => $output->{password},
+		firstname => $output->{firstname},
+		lastname => $output->{lastname},
+		email => $output->{email},
+	});
+	$usrObj->_change_id($output->{id});
+	#$usrObj->set_password($args->{password});
+	return $usrObj;
 }
 
 =head3 logout

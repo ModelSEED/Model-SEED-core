@@ -14,7 +14,7 @@ use strict;
 use ANNOserver;
 use ClientThing;
 use ErrorMessage;
-use ModelSEED::FBAMODELserver;
+use MSSeedSupportClient;
 use RASTserver;
 use SAPserver;
 use ScriptThing;
