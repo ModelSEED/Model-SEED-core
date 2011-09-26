@@ -4358,34 +4358,6 @@ sub configuredatabase {
 }
 
 #Adds a new user to the ModelSEED user table
-sub adduser {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["login",1],
-		["password",1],
-		["firstname",1],
-		["lastname",1],
-		["email",1]
-	],[@Data]);
-	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot use this function to add user to any database except ModelDB");
-	}
-	my $usr = $self->figmodel()->database()->get_object("user",{login => $args->{login}});
-	if (defined($usr)) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("User with login ".$args->{login}." already exists!");	
-	}
-	$usr = $self->figmodel()->database()->create_object("user",{
-		login => $args->{login},
-		password => "NONE",
-		firstname => $args->{"first name"},
-		lastname => $args->{"last name"},
-		email => $args->{email}
-	});
-	$usr->set_password($args->{password});
-    return "SUCCESS";
-}
-
-#Adds a new user to the ModelSEED user table
 sub printgapfilledreactions {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -4422,6 +4394,110 @@ sub printgapfilledreactions {
     return "SUCCESS";
 }
 
+#Creates a new local user account in the ModelSEED user table
+sub createlocaluser {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["login",1],
+		["password",1],
+		["firstname",1],
+		["lastname",1],
+		["email",1]
+	],[@Data]);
+	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot use this function to add user to any database except ModelDB");
+	}
+	my $usr = $self->figmodel()->database()->get_object("user",{login => $args->{login}});
+	if (defined($usr)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("User with login ".$args->{login}." already exists!");	
+	}
+	$usr = $self->figmodel()->database()->create_object("user",{
+		login => $args->{login},
+		password => "NONE",
+		firstname => $args->{"first name"},
+		lastname => $args->{"last name"},
+		email => $args->{email}
+	});
+	$usr->set_password($args->{password});
+    return "SUCCESS";
+}
+
+#Deletes an account from the local database
+sub deleteaccount {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["username",0,$ENV{FIGMODEL_USER}],
+		["password",0,$ENV{FIGMODEL_PASSWORD}],
+	],[@Data]);
+	$self->figmodel()->authenticate($args);
+	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("No account found that matches the input credentials!");
+	}
+	$self->figmodel()->userObj()->delete();
+	print "Account successfully deleted!\n";
+	return "SUCCESS";
+}
+
+#Function for logging into the Model Driver
+sub login {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["username",1],
+		["password",1],
+		["noimport",0,0]
+	],[@Data]);
+	#Checking for existing account in local database
+	my $usrObj = $self->figmodel()->database()->get_object("user",{login => $args->{username}});
+	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account. Try new \"username\" or register an account on the SEED website!");
+	}
+	#If local account was not found, attempting to import account from the SEED
+	if (!defined($usrObj) && $args->{noimport} == 0) {
+		$usrObj = $self->figmodel()->import_seed_account({
+			username => $args->{username},
+			password => $args->{password}
+		});
+		if (!defined($usrObj)) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
+		}
+	}
+	#Authenticating
+	$self->figmodel()->authenticate($args);
+	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Authentication failed! Try new password!");
+	}
+	print "Authentication Successful! You will now remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n";
+	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
+	for (my $i=0; $i < @{$data};$i++) {
+		if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
+			$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "'.$self->figmodel()->userObj()->password().'";';
+		}
+		if ($data->[$i] =~ m/FIGMODEL_USER/) {
+			$data->[$i] = '$ENV{FIGMODEL_USER} = "'.$args->{username}.'";';
+		}
+	}
+	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
+	return "SUCCESS";
+}
+
+#Removes user account data from Model SEED environment.
+sub logout {
+    my($self,@Data) = @_;
+	my $args = $self->check([],[@Data]);
+	print "Logout Successful! You will not be able to access user-associated data anywhere unless you log in again.\n";
+	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
+	for (my $i=0; $i < @{$data};$i++) {
+		if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
+			$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "public";';
+		}
+		if ($data->[$i] =~ m/FIGMODEL_USER/) {
+			$data->[$i] = '$ENV{FIGMODEL_USER} = "public";';
+		}
+	}
+	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
+	return "SUCCESS";
+}
+
 sub dumpmodelfile {
 	my($self,@Data) = @_;
 	my $args = $self->check([
@@ -4433,6 +4509,58 @@ sub dumpmodelfile {
 		$args->{filename} = $mdl->directory().$mdl->id().".tbl";
 	}
 	$mdl->flatten($args->{filename});
+}
+
+#Blasts specified sequences against the specified genomes
+sub blastgenomesequences {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["sequences",1],
+		["genomes",1],
+		["filename",1]
+	],[@Data]);
+	my $genomes = $self->figmodel()->processIDList({
+		objectType => "genome",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{"genomes"}
+	});
+	my $sequences = $self->figmodel()->processIDList({
+		objectType => "sequence",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{"sequences"}
+	});
+	my $svr = $self->figmodel()->server("MSSeedSupportClient");
+	my $results = $svr->blast_sequence({
+    	sequences => $sequences,
+    	genomes => $genomes
+    });
+    my $headings = [
+    	"sequence",
+    	"genome",
+    	"qstart",
+    	"length",
+    	"evalue",
+    	"identity",
+    	"tstart",
+    	"tend",
+    	"qend",
+    	"bitscore"
+    ];
+    my $output = [join("\t",@{$headings})];
+    foreach my $sequence (keys(%{$results})) {
+    	foreach my $genome (keys(%{$results->{$sequence}})) {
+    		my $line = $sequence."\t".$genome;
+    		for (my $i=0; $i < @{$headings}; $i++) {
+    			$line .= "\t".$results->{$sequence}->{$genome}->{$headings->[$i]};
+    		}
+    		push(@{$output},$line);
+    	}
+    }
+	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
 }
 
 1;

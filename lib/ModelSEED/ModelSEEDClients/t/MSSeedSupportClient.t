@@ -30,16 +30,16 @@ my $mss = MSSeedSupportClient->new();
     #print STDERR Data::Dumper->Dump([$usrdata]);
     ok defined($usrdata->{"Thr operon leader peptide"}), "Expected role not found!";
     $usrdata = $mss->getRastGenomeData({
-    	genome => "573064.5",
-    	username => "chenry",
-    	password => "hello824"
+    	genome => "315750.3",
+    	username => "reviewer",
+    	password => "reviewer"
     });
     ok defined($usrdata->{features}->size() > 1000), "Genome not retrieved!";
     $usrdata = $mss->users_for_genome({
-    	genome => "573064.5",
-    	username => "chenry",
-    	password => "hello824"
+    	genome => "315750.3",
+    	username => "reviewer",
+    	password => "reviewer"
     });
     #print STDERR Data::Dumper->Dump([$usrdata]);
-    ok defined($usrdata->{"573064.5"}->{"chenry"}), "Users for genome not retrieved!";
+    ok defined($usrdata->{"315750.3"}->{"chenry"}), "Users for genome not retrieved!";
 }

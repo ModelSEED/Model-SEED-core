@@ -59,6 +59,12 @@ $alice = $db->USERS->create({ firstname => 'alice',
                                     email => 'alice@example.com',
                                     password => 'alice',
                                   });
+$db->USERS->create({ firstname => 'Journal',
+								    lastname  => 'Reviewer',
+								    login => 'reviewer',
+								    email => 'chenry@mcs.anl.gov',
+								    password => 'reviewer',
+});
 $bob = $db->USERS->create({ firstname => 'bob',
                                     lastname  => 'foo',
                                     login => 'bob',

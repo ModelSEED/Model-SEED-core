@@ -64,8 +64,7 @@ universal reactions|rxn05651|rxn10473|rxn10571|rxn05195|rxn05555
 preserve all log files|yes
 minimum genome size for modeling|200
 %default parameters|exchange species;Biomass[c]:-100:0
-%super users|chenry
-%model administrators|chenry;figmodel4all
+%model administrators|admin
 #Biomass template specifications
 %universalBiomass_fractions|energy;40|protein;0.3|DNA;0.05|RNA;0.05|lipid;0.1|cellWall;0.2|cofactor;0.3
 %universalBiomass_RNA|cpd00002;-0.262|cpd00038;-0.323|cpd00052;-0.199|cpd00062;-0.215|cpd00012;-cpd00002,cpd00038,cpd00052,cpd00062
