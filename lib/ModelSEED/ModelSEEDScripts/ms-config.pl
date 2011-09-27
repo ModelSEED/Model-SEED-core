@@ -33,82 +33,74 @@ my $command = shift @ARGV;
 unless(defined($command) && ($command eq "unload" || $command eq "load" || $command eq "reload")) {
     pod2usage(2);
 }
-
 if($command eq "unload" || $command eq "clean") {
     unload($args);
     exit();
 } elsif($command eq "reload") {
     unload($args);
 }
-# By default use config/Settings.config
-if (-e $directoryRoot."/config/ModelSEEDbootstrap.pm") {
-	do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
-}
-my $configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
-unless(-f $configFile) {
-    die("Could not find configuration file at $configFile!");
-}
-$configFile = abs_path($configFile);
-#Here we are adjusting the users config file to include changes made to the standard config
-if ($configFile ne "$directoryRoot/config/Settings.config") {
-	patchconfig("$directoryRoot/config/Settings.config",$configFile);
-}
-my $Config = Config::Tiny->new();
-$Config = Config::Tiny->read($configFile);
-# Setting defaults for dataDirectory,
-# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
-unless(defined($Config->{Optional}->{dataDirectory})) {
-    $Config->{Optional}->{dataDirectory} = "$directoryRoot/data";
-}
-unless(defined($Config->{Database}->{type})) {
-    $Config->{Database}->{type} = "sqlite";
-}
-unless(defined($Config->{Database}->{filename}) ||
-        lc($Config->{Database}->{type}) ne 'sqlite') {
-    $Config->{Database}->{filename} =
-        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
-}
-if(lc($Config->{Database}->{type}) eq 'mysql' &&
-    !defined($Config->{Database}->{port})) {
-    $Config->{Database}->{port} = "3306";
-}
-if (length($Config->{SeedAccount}->{SeedUsername}) == 0) {
-	delete $Config->{SeedAccount}->{SeedUsername};
-}
-if (length($Config->{SeedAccount}->{SeedPassword}) == 0) {
-	delete $Config->{SeedAccount}->{SeedPassword};
-}
-if (!defined($Config->{SeedAccount}->{SeedUsername}) && defined($ENV{FIGMODEL_USER})) {
-	$Config->{SeedAccount}->{SeedUsername} = $ENV{FIGMODEL_USER};
-}
-if (!defined($Config->{SeedAccount}->{SeedUsername})) {
-	die("Username for SEED account must be provided!");
-}
-if (!defined($Config->{SeedAccount}->{SeedPassword}) && defined($ENV{FIGMODEL_PASSWORD}) 
-	&& defined($ENV{FIGMODEL_USER}) && $ENV{FIGMODEL_USER} eq $Config->{SeedAccount}->{SeedUsername}) {
-	$Config->{SeedAccount}->{SeedPassword} = $ENV{FIGMODEL_PASSWORD};
-}
+my ($Config,$extension,$arguments,$delim,$os,$configFile);
 
-# Setting paths to absolute for different configuration parameters
-foreach my $path ( 
-    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
-        Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
-        Optimizers=licenseDirectoryCPLEX )) {
-    my ($section, $name) = split(/=/, $path);
-    if(defined($Config->{$section}->{$name})) {
-        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
-    }
+#Identifying and parsing the conf file
+{
+	# By default use config/Settings.config
+	if (-e $directoryRoot."/config/ModelSEEDbootstrap.pm") {
+		do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
+	}
+	$configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
+	unless(-f $configFile) {
+	    die("Could not find configuration file at $configFile!");
+	}
+	$configFile = abs_path($configFile);
+	#Here we are adjusting the users config file to include changes made to the standard config
+	if ($configFile ne "$directoryRoot/config/Settings.config") {
+		patchconfig("$directoryRoot/config/Settings.config",$configFile);
+	}
+	$Config = Config::Tiny->read($configFile);
+	# Setting defaults for dataDirectory,
+	# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
+	unless(defined($Config->{Optional}->{dataDirectory})) {
+	    $Config->{Optional}->{dataDirectory} = "$directoryRoot/data";
+	}
+	unless(defined($Config->{Database}->{type})) {
+	    $Config->{Database}->{type} = "sqlite";
+	}
+	unless(defined($Config->{Optional}->{admin_user})) {
+	    $Config->{Optional}->{admin_users} = "admin";
+	}
+	unless(defined($Config->{Database}->{filename}) ||
+	        lc($Config->{Database}->{type}) ne 'sqlite') {
+	    $Config->{Database}->{filename} =
+	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
+	}
+	if(lc($Config->{Database}->{type}) eq 'mysql' &&
+	    !defined($Config->{Database}->{port})) {
+	    $Config->{Database}->{port} = "3306";
+	}
+	# Setting paths to absolute for different configuration parameters
+	foreach my $path ( 
+	    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
+	        Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
+	        Optimizers=licenseDirectoryCPLEX )) {
+	    my ($section, $name) = split(/=/, $path);
+	    if(defined($Config->{$section}->{$name})) {
+	        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
+	    }
+	}
+	$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ] if(defined($args->{"-figconfig"}));
 }
-$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ] if(defined($args->{"-figconfig"}));
-my $extension = "";
-my $arguments = "\$*";
-my $delim = ":";
-my $os = 'linux';
-# figure out OS from $^O variable for extension, arguments and delim:
-if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
-    $os = 'windows';
-} elsif($^O =~ /darwin/) {
-    $os = 'osx';
+#Setting operating system related parameters
+{
+	$extension = "";
+	$arguments = "\$*";
+	$delim = ":";
+	$os = 'linux';
+	# figure out OS from $^O variable for extension, arguments and delim:
+	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
+	    $os = 'windows';
+	} elsif($^O =~ /darwin/) {
+	    $os = 'osx';
+	}
 }
 #Creating missing directories
 {
@@ -122,7 +114,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
-    for (my $i=0; $i < @{$data}; $i++) { 
+    for (my $i=0; $i < @{$data}; $i++) {
         if ($data->[$i] =~ m/^database\sroot\sdirectory/) {
             $data->[$i] = "database root directory|".$Config->{Optional}->{dataDirectory};
             if ($data->[$i] !~ m/\/$/) {
@@ -135,6 +127,8 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
             }
         } elsif ($data->[$i] =~ m/mfatoolkit\/bin\/mfatoolkit/ && $os eq "windows") {
             $data->[$i] = $data->[$i].".exe";
+        } elsif ($data->[$i] =~ m/model\sadministrators\|/) {
+            $data->[$i] = "%model administrators|".join("|",split(/,/,$Config->{Optional}->{admin_users}));
         }
     }
 	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
@@ -148,7 +142,7 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
         "$directoryRoot/lib/FigKernelPackages",
         "$directoryRoot/lib/ModelSEED/ModelSEEDClients/",
         "$directoryRoot/lib"
-        ];
+    ];
 
     my $configFiles = "$directoryRoot/config/FIGMODELConfig.txt";
     if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
@@ -162,8 +156,8 @@ if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
                                )),
         FIGMODEL_CONFIG => $configFiles,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
-        FIGMODEL_USER => $Config->{SeedAccount}->{SeedUsername},
-        FIGMODEL_PASSWORD => $Config->{SeedAccount}->{SeedPassword} || "TEMPORARYNOPASSWORD"
+        FIGMODEL_USER => $ENV{FIGMODEL_USER} || "public",
+        FIGMODEL_PASSWORD => $ENV{FIGMODEL_PASSWORD} || "public"
     };
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
         $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
@@ -274,9 +268,14 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
-		"adduser",
+		"blastgenomesequences",
+		"dumpmodelfile",
+		"logout",
+		"login",
+		"deleteaccount",
 		"testmodelgrowth",
-		"importmodel"
+		"importmodel",
+		"createlocaluser"
 	];
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
@@ -335,37 +334,26 @@ SCRIPT
         }
 	}
 }
-#Importing SEED useraccount
-{
+#Creating public useraccount
+{	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
-	require $directoryRoot."/lib/ModelSEED/FIGMODEL.pm";
+	require ModelSEED::FIGMODEL;
 	my $figmodel = ModelSEED::FIGMODEL->new();
-	my $encrptedPassword;
-	if (defined($Config->{SeedAccount}->{SeedUsername})) {
-		if (!defined($Config->{SeedAccount}->{SeedPassword}) && defined($ENV{FIGMODEL_PASSWORD}) && $ENV{FIGMODEL_PASSWORD} ne "TEMPORARYNOPASSWORD") {
-			$Config->{SeedAccount}->{SeedPassword} = $ENV{FIGMODEL_PASSWORD};
-		}
-		if ($figmodel->config("PPO_tbl_user")->{host}->[0] ne "bio-app-authdb.mcs.anl.gov") {
-			my $usrObj = $figmodel->database()->get_object("user",{login => $Config->{SeedAccount}->{SeedUsername}});
-			if (!defined($usrObj)) {
-				$usrObj = $figmodel->import_seed_account({
-					username => $Config->{SeedAccount}->{SeedUsername},
-					password => $Config->{SeedAccount}->{SeedPassword}
-				});
-			}
-			$encrptedPassword = $usrObj->password();
+	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
+		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});
+		if (!defined($usrObj)) {
+			$usrObj = $figmodel->database()->create_object("user",{
+				login => "public",
+				password => "public",
+				firstname => "public",
+				lastname => "public",
+				email => "public",
+			});
+			$usrObj->set_password("public");
 		}
 	}
-	if (defined($encrptedPassword)) {
-		my $data = loadFile($directoryRoot."/config/ModelSEEDbootstrap.pm");
-		for (my $i=0; $i < @{$data};$i++) {
-			if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
-				$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "'.$encrptedPassword.'";';
-			}
-		}
-		printFile($directoryRoot."/config/ModelSEEDbootstrap.pm",$data);
-	}	
 }
+
 1;
 #Utility functions used by the configuration script
 sub printFile {
@@ -421,7 +409,7 @@ sub patchconfig {
     			foreach my $subheading (keys(%{$tempdata->{$heading}})) {
     				if (!defined($tempdata->{$heading}->{$subheading}->{found})) {
     					#Inserting missing subheading
-    					splice(@{$targetFile}, $i+1, 0,$tempdata->{$heading}->{$subheading}->{prefix}.$subheading.$tempdata->{$heading}->{$2}->{suffix}."=");
+    					splice(@{$targetFile}, $i+1, 0,$tempdata->{$heading}->{$subheading}->{prefix}.$subheading."=".$tempdata->{$heading}->{$subheading}->{suffix});
     					$change = 1;
     				}	
     			}

@@ -46,13 +46,6 @@ sub getDebugFIGMODEL {
     my ($self, $args) = @_;
     if(not defined($self->{_figmodel})) {
         $self->{_figmodel} = $self->newDebugFIGMODEL();
-        $self->{_figmodel}->database()->create_object("user",{
-			login => "chenry",
-			password => "figmodel4all",
-			firstname => "NONE",
-			lastname => "NONE",
-			email => "NONE",
-		});
     }
     return $self->{_figmodel};
 }

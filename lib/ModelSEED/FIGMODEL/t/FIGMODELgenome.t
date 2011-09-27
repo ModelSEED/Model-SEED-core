@@ -29,11 +29,11 @@ my $fm = $helper->getDebugFIGMODEL();
 #Testing ability to remotely access RAST genomes
 {
     $fm->authenticate({
-    	username => "chenry",
-    	password => "figmodel4all"
+    	username => "reviewer",
+    	password => "reviewer"
     });
-    my $genome = $fm->get_genome("573064.5");
-    ok defined($genome), "Could not obtain RAST genome 573064.5!";
+    my $genome = $fm->get_genome("315750.3");
+    ok defined($genome), "Could not obtain RAST genome 315750.3!";
     my $ftrTbl = $genome->feature_table();
-    ok defined($ftrTbl) && $ftrTbl->size() > 1000, "Could not obtain features for RAST genome 573064.5!";
+    ok defined($ftrTbl) && $ftrTbl->size() > 1000, "Could not obtain features for RAST genome 315750.3!";
 }
