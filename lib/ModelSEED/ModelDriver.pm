@@ -4225,7 +4225,7 @@ sub testmodelgrowth {
 	        saveLPfile => $args->{"save lp file"}
 	    });
  		print "Growth:".$fbaresult->{growth};
- 		if (defined($fbaresult->{noGrowthCompounds})) {
+ 		if (defined($fbaresult->{noGrowthCompounds}) && $fbaresult->{noGrowthCompounds} ne "NONE") {
  			print " No growth compound:".$fbaresult->{noGrowthCompounds};
  			push(@{$noGrowthModels},$results->[$i]);
  		} else {
