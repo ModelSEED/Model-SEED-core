@@ -347,7 +347,6 @@ sub loadProblemDirectory {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
 	$self->filename($args->{filename});
-	return $self->error_message({function => "loadProblemDirectory",args=>$args}) if (defined($args->{error}));
 	$self->{_problemObject} = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$self->directory()."/FBAJobData.txt",delimiter=>"\t",-load => 1});
 	return $self->error_message({function => "loadProblemDirectory",message=>"could not load file ".$self->filename(),args=>$args}) if (!defined($self->{_problemObject}));
 	my $headings = $self->{_problemObject}->headings();
@@ -921,10 +920,9 @@ sub clearOutput {
 sub loadProblemReport {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
-	if (defined($args->{error})) {return $self->error_message({function => "loadProblemReport",args => $args});}
 	$self->filename($args->{filename});
-	if (-e $self->directory()."/MFAOutput/ProblemReports.txt") {
-		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/ProblemReports.txt",";","",0,undef);
+	if (-e $self->directory()."/ProblemReports.txt") {
+		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/ProblemReports.txt",";","",0,undef);
 	}
 	return $self->error_message({message=>"Could not find problem report file",function => "loadProblemReport",args => $args});;
 }
