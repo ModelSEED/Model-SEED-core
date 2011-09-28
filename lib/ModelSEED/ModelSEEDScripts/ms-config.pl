@@ -65,7 +65,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	unless(defined($Config->{Database}->{type})) {
 	    $Config->{Database}->{type} = "sqlite";
 	}
-	unless(defined($Config->{Optional}->{admin_user})) {
+	unless(defined($Config->{Optional}->{admin_users})) {
 	    $Config->{Optional}->{admin_users} = "admin";
 	}
 	unless(defined($Config->{Database}->{filename}) ||
@@ -87,7 +87,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
 	    }
 	}
-	$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ] if(defined($args->{"-figconfig"}));
+	
 }
 #Setting operating system related parameters
 {
@@ -114,6 +114,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
+    print "Admin users:".$Config->{Optional}->{admin_users}."\n";
     for (my $i=0; $i < @{$data}; $i++) {
         if ($data->[$i] =~ m/^database\sroot\sdirectory/) {
             $data->[$i] = "database root directory|".$Config->{Optional}->{dataDirectory};
@@ -143,18 +144,20 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         "$directoryRoot/lib/ModelSEED/ModelSEEDClients/",
         "$directoryRoot/lib"
     ];
-
-    my $configFiles = "$directoryRoot/config/FIGMODELConfig.txt";
-    if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
-    }
+	my $figmodelConfigs = $directoryRoot."/config/FIGMODELConfig.txt";
+	if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
+		$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ];
+		$figmodelConfigs .= ";".join(";",@{$args->{"-figconfig"}})
+	} elsif (defined($ENV{FIGMODEL_CONFIG})) {
+		$figmodelConfigs = $ENV{FIGMODEL_CONFIG};
+	}
     my $envSettings = {
         MODELSEED_CONFIG => $configFile,
         MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
                                  $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/',
                                )),
-        FIGMODEL_CONFIG => $configFiles,
+        FIGMODEL_CONFIG => $figmodelConfigs,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
         FIGMODEL_USER => $ENV{FIGMODEL_USER} || "public",
         FIGMODEL_PASSWORD => $ENV{FIGMODEL_PASSWORD} || "public"

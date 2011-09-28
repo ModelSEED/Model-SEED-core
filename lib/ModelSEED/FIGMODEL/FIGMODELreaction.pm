@@ -1154,7 +1154,7 @@ sub printDatabaseTable {
 		delimiter => "\t",
 		item_delimiter => "|",
 	};
-	my $rxntbl = $self->figmodel()->database()->ppo_rows_to_table($rxn_config,$self->figmodel()->database()->get_objects('bof'));
+	$rxntbl = $self->figmodel()->database()->ppo_rows_to_table($rxn_config,$self->figmodel()->database()->get_objects('bof'));
 	$rxntbl->save();
 }
 =head3 add_biomass_reaction_from_equation
