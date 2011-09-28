@@ -114,7 +114,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
-    print "Admin users:".$Config->{Optional}->{admin_users}."\n";
     for (my $i=0; $i < @{$data}; $i++) {
         if ($data->[$i] =~ m/^database\sroot\sdirectory/) {
             $data->[$i] = "database root directory|".$Config->{Optional}->{dataDirectory};

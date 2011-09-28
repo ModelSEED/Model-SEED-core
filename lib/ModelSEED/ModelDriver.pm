@@ -4450,7 +4450,7 @@ sub login {
 	],[@Data]);
 	#Checking for existing account in local database
 	my $usrObj = $self->figmodel()->database()->get_object("user",{login => $args->{username}});
-	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
+	if (!defined($usrObj) && $self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account. Try new \"username\" or register an account on the SEED website!");
 	}
 	#If local account was not found, attempting to import account from the SEED
