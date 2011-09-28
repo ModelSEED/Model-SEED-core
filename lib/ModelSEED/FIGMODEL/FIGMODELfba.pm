@@ -921,8 +921,8 @@ sub loadProblemReport {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
 	$self->filename($args->{filename});
-	if (-e $self->directory()."/ProblemReports.txt") {
-		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/ProblemReports.txt",";","",0,undef);
+	if (-e $self->directory()."/ProblemReport.txt") {
+		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/ProblemReport.txt",";","",0,undef);
 	}
 	return $self->error_message({message=>"Could not find problem report file",function => "loadProblemReport",args => $args});;
 }
