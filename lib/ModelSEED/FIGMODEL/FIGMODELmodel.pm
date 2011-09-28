@@ -88,7 +88,6 @@ sub new {
 			growth => 0,
 			name => $args->{name}
 		});
-		print "test6\n";
 		$self->ppo($modelObj);
 		$self->create_model_rights();
 		$self->GenerateModelProvenance({

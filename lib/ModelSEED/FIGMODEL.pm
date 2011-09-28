@@ -2819,7 +2819,7 @@ sub import_model {
 			});
 			$newid = $bofobj->id();
 			if ($mdl->ppo()->public() == 0 && $mdl->ppo()->owner() ne "master") {
-				$self->change_permissions({
+				$self->database()->change_permissions({
 					objectID => $newid,
 					permission => "admin",
 					user => $mdl->ppo()->owner(),
@@ -2829,7 +2829,6 @@ sub import_model {
 				$bofobj->owner($mdl->ppo()->owner());
 			}
 			$mdl->biomassReaction($bofobj->id());			
-			$mdl->transfer_rights_to_biomass();
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
 			$mdl->figmodel()->database()->create_object("rxnmdl",{
 				MODEL => $id,
@@ -2921,10 +2920,12 @@ sub import_model {
 		my $rxnmdl = $mdl->figmodel()->database()->get_object("rxnmdl",{
 			MODEL => $id,
 			REACTION => $rxn->id(),
-			compartment => $row->{"COMPARTMENT"}->[0],
-			directionality => $row->{"DIRECTIONALITY"}->[0]
+			compartment => $row->{"COMPARTMENT"}->[0]
 		});
 		if (defined($rxnmdl)) {
+			if ($rxnmdl->directionality() ne $row->{"DIRECTIONALITY"}->[0]) {
+				$rxnmdl->directionality("<=>");
+			}
 			if ($row->{"PEGS"}->[0] ne "UNKNOWN") {
 				my $newPegs = join("|",@{$row->{"PEGS"}});
 				if ($rxnmdl->pegs() ne "UNKNOWN") {
