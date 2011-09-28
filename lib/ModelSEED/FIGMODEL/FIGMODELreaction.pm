@@ -177,7 +177,9 @@ Description:
 =cut
 sub print_file_from_ppo {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{
+		filename => $self->filename()
+	});
 	ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction") if (!defined($self->ppo()));
 	my $data = {
 		DATABASE => [$self->ppo()->id()],
@@ -193,7 +195,7 @@ sub print_file_from_ppo {
 		$data->{"THERMODYNAMIC REVERSIBILITY"} = [$self->ppo()->thermoReversibility()];
 	}
 	$self->{_file} = ModelSEED::FIGMODEL::FIGMODELObject->new({
-		filename=> $self->filename(),
+		filename=> $args->{filename},
 		delimiter=>"\t",
 		-load => 0,
 		data => $data
@@ -1135,7 +1137,8 @@ Description:
 sub printDatabaseTable {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		filename => $self->figmodel()->config("reactions data filename")->[0]
+		filename => $self->figmodel()->config("bof data filename")->[0],
+		biomassFilename => $self->figmodel()->config("reactions data filename")->[0]
 	});
 	my $rxn_config = {
 		filename => $args->{filename},
@@ -1144,6 +1147,14 @@ sub printDatabaseTable {
 		item_delimiter => "|",
 	};
 	my $rxntbl = $self->figmodel()->database()->ppo_rows_to_table($rxn_config,$self->figmodel()->database()->get_objects('reaction'));
+	$rxntbl->save();
+	$rxn_config = {
+		filename => $args->{biomassFilename},
+		hash_headings => ['id', 'code'],
+		delimiter => "\t",
+		item_delimiter => "|",
+	};
+	my $rxntbl = $self->figmodel()->database()->ppo_rows_to_table($rxn_config,$self->figmodel()->database()->get_objects('bof'));
 	$rxntbl->save();
 }
 =head3 add_biomass_reaction_from_equation
@@ -1270,6 +1281,9 @@ sub add_biomass_reaction_from_equation {
                  lipid => "0", cellWall => "0", cofactor => "0", proteinCoef => $coef->{protein},
                  DNACoef => $coef->{DNA}, RNACoef => $coef->{RNA}, lipidCoef => $coef->{Lipid},
                  cellWallCoef => $coef->{CellWall}, cofactorCoef => $coef->{Cofactor}, energy => $energy };
+	if (length($data->{unknownCoef}) >= 255) {
+		$data->{unknownCoef} = substr($data->{unknownCoef},0,254);
+	}
 	my $bofobj = $self->db()->sudo_get_object("bof",{id=>$args->{biomassID}});
 	if (!defined($bofobj)) {
 		$bofobj = $self->db()->create_object("bof",$data);

@@ -37,7 +37,7 @@ public:
 	void print_error(string message,string function);
 	StringDBObject* get_object(string table,string attribute,string value);
 	list<StringDBObject*>* get_objects(string table,string attribute,string value);
-	int loadDatabaseTable(string name,string type,string idColumn,string filename,string path,string delimiter,string itemDelimiter,vector<string>* indexedAttributes);
+	int loadDatabaseTable(string name,string type,string idColumn,string filename,string path,string delimiter,string itemDelimiter,vector<string>* indexedAttributes,bool unique = false);
 	int loadDatabaseTable(StringDBObject* tableObject);
 	int number_of_tables();
 	StringDBTable* get_table(string table);
@@ -65,10 +65,10 @@ private:
 	string idColumn;
 	vector<string>* indexed_attributes;
 public:
-	StringDBTable(StringDB* INparentDB,string INname,string INtype,string INidColumn,string INfilename = "",string INpath = "",string INdelimiter = "",string INitemDelimiter = "",vector<string>* INindexedAttributes = NULL);
+	StringDBTable(StringDB* INparentDB,string INname,string INtype,string INidColumn,string INfilename = "",string INpath = "",string INdelimiter = "",string INitemDelimiter = "",vector<string>* INindexedAttributes = NULL,bool unique = false);
 	~StringDBTable();
 	void print_error(string message,string function);
-	int loadFromFile(string INfilename = "",string INpath = "",string INdelimiter = "",string INitemDelimiter = "",vector<string>* INindexedAttributes = NULL);
+	int loadFromFile(string INfilename = "",string INpath = "",string INdelimiter = "",string INitemDelimiter = "",vector<string>* INindexedAttributes = NULL,bool unique = false);
 	int resetIterator();
 
 	string get_name();

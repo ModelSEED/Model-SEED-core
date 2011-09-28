@@ -491,6 +491,9 @@ sub get_object_rights {
     if(not defined($self->figmodel()->config("objects with rights")->{$type})) {
         return { view => 1};
     }
+    if ($object->owner() eq $login) {
+    	return { admin => 1};
+    }
     if (defined($object->attributes()->{public}) && $object->public() eq 1) {
         $rights->{view} = 1;
     }

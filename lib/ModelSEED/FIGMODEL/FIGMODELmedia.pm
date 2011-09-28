@@ -39,6 +39,60 @@ sub new {
 	}
 	return $self;
 }
+=head3 create
+Definition:
+	FIGMODELmedia = FIGMODELmedia->create({
+		filename => 
+	});
+Description:
+	Creates a media formulation from a file or from a compound list
+=cut
+sub create {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["id"],{
+		filename => undef,
+		compounds => undef,
+		public => 1,
+		owner => $self->figmodel()->user(),
+		overwrite => 0
+	});
+	my $mediaObj = $self->figmodel()->database()->sudo_get_object("media",{id => $args->{id}});
+	if (defined($mediaObj)) {
+		if ($args->{overwrite} == 0) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("Media already exists, and overwrite flag was not set!");
+		}
+		my $rights = $self->figmodel()->database()->get_object_rights($mediaObj,"media");
+		if (!defined($rights->{admin})) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter media object");
+		}
+	} else {
+		$mediaObj = $self->figmodel()->database()->create_object("media",{
+	    	public => $args->{public},
+	    	id => $args->{id},
+	    	aerobic => 1,
+	    	owner => $args->{owner},
+	    	creationDate => time(),
+	    	modificationDate => time()
+	    });
+	}
+	$self->{_ppo} = $mediaObj;
+	$self->{_id} = $args->{id};
+	if (defined($args->{filename})) {
+		$self->loadPPOFromFile({filename => $args->{filename}});
+	} elsif (defined($args->{compounds})) {
+		$self->loadCompoundListToPPO({
+			compounds => $args->{compounds},
+			addUniversal => 0
+		});
+	} else {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot create media without either filename or compound list");
+	}
+	#Determining if media is aerobic
+	if (defined($self->{_entities}->{cpd00007}) && $self->{_entities}->{cpd00007}->{maxFlux} > 0) {
+		$self->{_ppo}->aerobic(1);
+	}
+	return $self;
+}
 
 =head3 figmodel
 Definition:
@@ -116,7 +170,9 @@ Description:
 =cut
 sub loadCompoundsFromFile {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{
+		filename => $self->filename()
+	});
 	delete $self->{_entities};
 	my $list = $self->figmodel()->database()->load_single_column_file($self->filename(),"");
 	ModelSEED::FIGMODEL::FIGMODELERROR("Could not load file for media:".$args->{id}) if (!defined($list));
@@ -193,8 +249,10 @@ Description:
 =cut
 sub loadPPOFromFile {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
-	my $data = $self->loadCompoundsFromFile();
+	$args = $self->figmodel()->process_arguments($args,[],{
+		filename => $self->filename()
+	});
+	my $data = $self->loadCompoundsFromFile({filename => $args->{filename}});
 	foreach my $obj (keys(%{$data})) {
 		my $newObj = $self->figmodel()->database()->get_object("mediacpd",{
 			MEDIA => $self->id(),
@@ -207,6 +265,68 @@ sub loadPPOFromFile {
 			$newObj->minFlux($data->{$obj}->{minFlux});
 		} else {
 			$self->figmodel()->database()->create_object("mediacpd",$data->{$obj});
+		}
+	}
+}
+=head3 loadCompoundListToPPO
+Definition:
+	{} = FIGMODELcompound->loadCompoundListToPPO({
+		compounds => [string]
+	});
+Description:
+	Given a list of compounds, either find the media formulation with these compounds or create a new formulation
+=cut
+sub loadCompoundListToPPO {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["compounds"],{
+		id => $self->{_id},
+		addUniversal => 0
+	});
+	my $cpdHash;
+	if ($args->{addUniversal} == 1) {
+		my $universalList = $self->figmodel()->config("Universal media compounds");
+		for (my $i=0; $i < @{$universalList}; $i++) {
+			$cpdHash->{$universalList->[$i]} = 1;	
+		}
+	}
+	my $alsHash;
+	for (my $i=0; $i < @{$args->{compounds}}; $i++) {
+		if ($args->{compounds}->[$i] =~ m/cpd\d+$/) {
+			$cpdHash->{$args->{compounds}->[$i]} = 1;
+		} else {
+			if (!defined($alsHash)) {
+				my $cpdalss = $self->figmodel()->database()->get_objects("cpdals");
+				for (my $i=0; $i < @{$cpdalss}; $i++) {
+					$alsHash->{lc($cpdalss->[$i]->alias())}->{$cpdalss->[$i]->COMPOUND()} = 1;
+				}
+			}
+			if (!defined($alsHash->{lc($args->{compounds}->[$i])})) {
+				ModelSEED::FIGMODEL::FIGMODELWARNING("Compound ".$args->{compounds}->[$i]." not found in database");
+			} else {
+				my $hitList = [keys(%{$alsHash->{lc($args->{compounds}->[$i])}})];
+				if (@{$hitList} > 1) {
+					ModelSEED::FIGMODEL::FIGMODELWARNING("Multiple matches for ".$args->{compounds}->[$i].":".join(",",@{$hitList}));
+				}
+				$cpdHash->{$hitList->[0]} = 1;
+			}
+		}
+	}
+	foreach my $cpd (keys(%{$cpdHash})) {
+		$self->figmodel()->database()->create_object("mediacpd",{
+			MEDIA => $args->{id},
+			concentration => 0.001,
+			maxFlux => 100,
+			minFlux => -100,
+			type => "COMPOUND",
+			entity => $cpd
+		});
+		$self->{_entities}->{$cpd} = {
+			MEDIA => $args->{id},
+			entity => $cpd,
+			type => "COMPOUND",
+			concentration => 0.001,
+			maxFlux => 100,
+			minFlux => -100	
 		}
 	}
 }
@@ -429,7 +549,7 @@ sub printDatabaseTable {
 					$types .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->type();
 					$maxes .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->maxFlux();
 					$mins .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->minFlux();
-					$comps .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->minFlux();
+					$comps .= "e";
 				}
 			}
 			push(@{$output},$line."\t".$types."\t".$maxes."\t".$mins."\t".$comps);

@@ -4080,16 +4080,18 @@ int MFAProblem::OptimizeSingleObjective(Data* InData, OptimizationParameter* InP
 	if (ObjectiveValue > MFA_ZERO_TOLERANCE && !SubProblem && GetParameter("Combinatorial reaction deletions").compare("none") != 0) {
 		CombinatorialKO(atoi(GetParameter("Combinatorial reaction deletions").data()),InData,true);
 	}
-	if (ObjectiveValue > MFA_ZERO_TOLERANCE && !SubProblem && InParameters->KOSets.size() > 0) {
+	if (!SubProblem && InParameters->KOSets.size() > 0) {
 		RunDeletionExperiments(InData,InParameters);
 	}
 	//Checking where the tightbounds are invalid
 	for (int i=0; i < FNumVariables(); i++) {
-		if (NewSolution->SolutionData[GetVariable(i)->Index] < GetVariable(i)->Min && GetVariable(i)->Min != FLAG) {
-			//FLogFile() << "Violation for variable " << i << ", min: " << GetVariable(i)->Min << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
-		}
-		if (NewSolution->SolutionData[GetVariable(i)->Index] > GetVariable(i)->Max && GetVariable(i)->Max != FLAG) {
-			//FLogFile() << "Violation for variable " << i << ", max: " << GetVariable(i)->Max << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+		if (i < int(NewSolution->SolutionData.size())) {
+			if (NewSolution->SolutionData[GetVariable(i)->Index] < GetVariable(i)->Min && GetVariable(i)->Min != FLAG) {
+				//FLogFile() << "Violation for variable " << i << ", min: " << GetVariable(i)->Min << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+			}
+			if (NewSolution->SolutionData[GetVariable(i)->Index] > GetVariable(i)->Max && GetVariable(i)->Max != FLAG) {
+				//FLogFile() << "Violation for variable " << i << ", max: " << GetVariable(i)->Max << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+			}
 		}
 	}
 	//If growth was observed, we determine what media could be removed to lose growth

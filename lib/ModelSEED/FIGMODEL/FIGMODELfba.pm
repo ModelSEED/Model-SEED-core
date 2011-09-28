@@ -329,7 +329,7 @@ sub printStringDBFile {
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
 		"compound\tid\tSINGLEFILE\t".$self->figmodel()->config("compound directory")->[0]."\t".$self->dataFilename({type => "compounds"})."\tTAB\tSC\tid",
 		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
-		"reaction\tid\tSINGLEFILE\t".$self->figmodel()->config("reaction directory")->[0]."\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
+		"reaction\tid\tSINGLEFILE\t".$self->directory()."/reaction/\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
 		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
 		"cue\tNAME\tSINGLEFILE\t\t".$self->dataFilename({type => "cues"})."\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$self->figmodel()->config("Media directory")->[0]."\t".$self->dataFilename({type => "media"})."\tTAB\t|\tID;NAMES"
@@ -895,12 +895,7 @@ sub runFBA {
 	}
 	my $command = $commandLine->{excutable}.$commandLine->{files}.$commandLine->{model}.$commandLine->{logfile};
 	$command = "nohup ".$command." &" if ($args->{nohup} == 1);	
-	$self->debug_message({
-		function => "runFBA",
-		message => $command,
-		args => $args
-	});
-	print $command."\n";
+	$self->figmodel()->database()->print_array_to_file($self->directory()."/runMFAToolkit.sh",[$command]);
 	system($command) if ($args->{runSimulation} == 1);
 	return {success => 1};	
 }
@@ -1688,10 +1683,12 @@ sub setMultiPhenotypeStudy {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["mediaList","labels","KOlist"],{filename=>$self->filename()});
 	if (defined($args->{error})) {return $self->error_message({function => "setMultiPhenotypeStudy",args => $args});}
+	$self->media("Carbon-D-Glucose");
 	$self->parameter_files(["ProductionMFA"]);
 	$self->filename($args->{filename});
 	$self->makeOutputDirectory();
 	my $jobData = ["Label\tKO\tMedia"];
+	my $mediaHash;
 	for (my $i=0; $i < @{$args->{labels}}; $i++) {
 		my $KO = "none";
 		if (defined($args->{KOlist}->[$i])) {
@@ -1701,6 +1698,7 @@ sub setMultiPhenotypeStudy {
 				$KO = join(";",@{$args->{KOlist}->[$i]});
 			}
 		}
+		$mediaHash->{$args->{mediaList}->[$i]} = 1;
 		push(@{$jobData},$args->{labels}->[$i]."\t".$KO."\t".$args->{mediaList}->[$i]);
 	}
 	$self->figmodel()->database()->print_array_to_file($self->directory()."/FBAExperiment.txt",$jobData);
@@ -1709,6 +1707,8 @@ sub setMultiPhenotypeStudy {
 	});
 	$self->studyArguments($args);
 	$self->parsingFunction("parseMultiPhenotypeStudy");
+	$self->{_mediaPrintList} = ["Carbon-D-Glucose"];
+	push(@{$self->{_mediaPrintList}},keys(%{$mediaHash}));
 	return {};
 }
 =head3 parseMultiPhenotypeStudy

@@ -7133,6 +7133,8 @@ sub runFBAStudy {
 		File::Copy::copy($self->directory()."biochemistry/compound.txt",$fbaObj->directory()."/compoundDataFile.tbl");
 		$fbaObj->dataFilename({type=>"compounds",filename=>$fbaObj->directory()."/compoundDataFile.tbl"});
 	}
+	File::Path::mkpath($fbaObj->directory()."/reaction/");
+	$self->figmodel()->get_reaction($self->biomassReaction())->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$self->biomassReaction()});
 	$fbaObj->createProblemDirectory({
 		parameterFile => $args->{parameterFile},
 		printToScratch => $args->{printToScratch}
@@ -7535,7 +7537,7 @@ Description:
 =cut
 sub fbaMultiplePhenotypeStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["labels","media"],{
+	$args = $self->figmodel()->process_arguments($args,["labels","mediaList"],{
 		koList => undef,
 		problemDirectory => undef,
 		fbaStartParameters => {},
@@ -7562,7 +7564,7 @@ sub fbaMultiplePhenotypeStudy {
 		setupParameters => {
 			function => "setMultiPhenotypeStudy",
 			arguments => {
-				mediaList=>$args->{media},
+				mediaList=>$args->{mediaList},
 				labels=>$args->{labels},
 				KOlist=>$args->{koList},
 			} 
@@ -7570,7 +7572,7 @@ sub fbaMultiplePhenotypeStudy {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "MultiPhenotypeStudy.txt",
 		startFresh => 1,
-		printToScratch => 1,
+		printToScratch => $self->figmodel()->config("print to scratch")->[0],
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem => 1,

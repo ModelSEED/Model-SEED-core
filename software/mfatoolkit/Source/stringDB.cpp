@@ -129,7 +129,7 @@ string StringDB::checkFilename(string INfilename) {
 //DONE
 int StringDB::loadDatabase(string INfilename) {
 	filename = INfilename;
-	int status = this->loadDatabaseTable("DATABASESPECS","SINGLEFILE","Name",filename,"","\t",";",STRINGDB::StringToStrings("Table name","|",false));
+	int status = this->loadDatabaseTable("DATABASESPECS","SINGLEFILE","Name",filename,"","\t",";",STRINGDB::StringToStrings("Table name","|",false),true);
 	if (status == FAIL) {
 		this->print_error("failed to load database specs","get_attribute");
 		return FAIL;
@@ -173,11 +173,11 @@ int StringDB::loadDatabaseTable(StringDBObject* tableObject) {
 	} else if (itemDelimiter.compare("SC") == 0) {
 		itemDelimiter.assign(";");
 	}
-	return this->loadDatabaseTable(tableObject->get("Name"),tableObject->get("Type"),tableObject->get("ID attribute"),this->checkFilename(tableObject->get("Filename")),this->checkFilename(tableObject->get("Path")),delimiter,itemDelimiter,tableObject->getAll("Indexed columns"));
+	return this->loadDatabaseTable(tableObject->get("Name"),tableObject->get("Type"),tableObject->get("ID attribute"),this->checkFilename(tableObject->get("Filename")),this->checkFilename(tableObject->get("Path")),delimiter,itemDelimiter,tableObject->getAll("Indexed columns"),false);
 };
 //DONE
-int StringDB::loadDatabaseTable(string name,string type,string idColumn,string filename,string path,string delimiter,string itemDelimiter,vector<string>* indexedAttributes) {
-	StringDBTable* newTable = new StringDBTable(this,name,type,idColumn,filename,path,delimiter,itemDelimiter,indexedAttributes);
+int StringDB::loadDatabaseTable(string name,string type,string idColumn,string filename,string path,string delimiter,string itemDelimiter,vector<string>* indexedAttributes,bool unique) {
+	StringDBTable* newTable = new StringDBTable(this,name,type,idColumn,filename,path,delimiter,itemDelimiter,indexedAttributes,unique);
 	tables.push_back(newTable);
 	tableMap[name] = int(tables.size()-1);
 	return SUCCESS;
@@ -206,14 +206,14 @@ int StringDB::set_programPath(string input) {
 };
 //***************************************************************************************
 //StringDBTable Objects
-StringDBTable::StringDBTable(StringDB* INparentDB,string INname,string INtype,string INidColumn,string INfilename,string INpath,string INdelimiter,string INitemDelimiter,vector<string>* INindexedAttributes) {
+StringDBTable::StringDBTable(StringDB* INparentDB,string INname,string INtype,string INidColumn,string INfilename,string INpath,string INdelimiter,string INitemDelimiter,vector<string>* INindexedAttributes,bool unique) {
 	this->parentDB = INparentDB;
 	this->resetIterator();
 	this->set_name(INname);
 	this->set_type(INtype);
 	this->set_id_column(INidColumn);
 	if (INfilename.length() > 0 && INtype.compare("SINGLEFILE") == 0) {
-		loadFromFile(INfilename,INpath,INdelimiter,INitemDelimiter,INindexedAttributes);
+		loadFromFile(INfilename,INpath,INdelimiter,INitemDelimiter,INindexedAttributes,unique);
 	} else {
 		this->set_filename(INfilename);
 		this->set_path(INpath);
@@ -243,7 +243,7 @@ void StringDBTable::print_error(string message,string function) {
 };
 
 //DONE
-int StringDBTable::loadFromFile(string INfilename,string INpath,string INdelimiter,string INitemDelimiter,vector<string>* INindexedAttributes) {
+int StringDBTable::loadFromFile(string INfilename,string INpath,string INdelimiter,string INitemDelimiter,vector<string>* INindexedAttributes,bool unique) {
 	if (INfilename.length() == 0) {
 		INfilename = this->get_filename();
 	}
@@ -296,9 +296,9 @@ int StringDBTable::loadFromFile(string INfilename,string INpath,string INdelimit
 				maxIndex = this->number_of_attributes();
 			}
 			for (int i=0; i < maxIndex; i++) {
-				vector<string>* stringsTwo = STRINGDB::StringToStrings((*strings)[i],itemDelimiter.data(),true);
+				vector<string>* stringsTwo = STRINGDB::StringToStrings((*strings)[i],itemDelimiter.data(),false);
 				for (int j=0; j < int(stringsTwo->size()); j++) {
-					newObject->set(i,(*stringsTwo)[j]);
+					newObject->set(i,(*stringsTwo)[j],-1,unique);
 				}
 				delete stringsTwo;
 			}

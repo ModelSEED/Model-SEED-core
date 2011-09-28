@@ -863,17 +863,6 @@ sub printmodellist {
     }
 }
 
-#Inspected: appears to be working
-sub printmedialist {
-    my($self,@Data) = @_;
-
-    my $MediaList = $self->figmodel()->GetListOfMedia();
-    print "Current media list for SEED:\n";
-    for (my $i=0; $i < @{$MediaList}; $i++) {
-        print $MediaList->[$i]."\n";
-    }
-}
-
 #Inspected: working as intended
 sub addnewcompoundcombination {
     my($self,@Data) = @_;
@@ -4129,34 +4118,47 @@ sub importmediaconditions {
 	}
 }
 
-sub simulatephenotypes {
+sub simulatekomedialist {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["filename",1],
+		["ko",1],
+		["media",1],
 		["model",1],
-		["outfile",0,$self->outputdirectory()."PhenotypeOutput.txt"]
+		["filename",0,"PhenotypeOutput.txt"]
 	],[@Data]);
-	if (!-e $args->{filename}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find phenotype file ".$args->{filename});	
-	}
+	my $medias = $self->figmodel()->processIDList({
+		objectType => "media",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{"media"}
+	});
+	my $kos = $self->figmodel()->processIDList({
+		objectType => "koset",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{"ko"}
+	});
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
 	}
 	my $input;
-	my $list = $self->figmodel()->database()->load_single_column_file($args->{filename},"");
-	my $growthRates;
-	for (my $i=1; $i < @{$list}; $i++) {
-		my $array = [split(/\t/,$list->[$i])];
-		push(@{$input->{mediaList}},$array->[0]);
-		$growthRates->{$array->[0]."_".$array->[1]} = $array->[2];
-		push(@{$input->{labels}},$array->[0]."_".$array->[1]);
-		if (length($array->[1]) > 0) {
-			push(@{$input->{KOlist}},[split(/\|/,$array->[1])]);
-		} else {
-			push(@{$input->{KOlist}},[]);
+	my $count = 0;
+	for (my $i=0; $i < @{$kos}; $i++) {
+		for (my $j=0; $j < @{$medias}; $j++) {
+			$count++;
+			push(@{$input->{labels}},$count);
+			push(@{$input->{mediaList}},$medias->[$j]);
+			push(@{$input->{koList}},[split(",",$kos->[$i])]);
 		}
 	}
+	$input->{fbaStartParameters} = {};
+	$input->{findTightBounds} = 0;
+	$input->{deleteNoncontributingRxn} = 0;
+	$input->{identifyCriticalBiomassCpd} = 1;
+	my $growthRates;
 	my $result = $mdl->fbaMultiplePhenotypeStudy($input);
 	my $output = ["Label\tMedia\tRxnKO\tGeneKO\tGrowth\tFraction\tObservedRate"];
 	foreach my $label (keys(%{$result})) {
@@ -4168,7 +4170,7 @@ sub simulatephenotypes {
 			."\t".$growthRates->{$label}
 		);
 	}
-	$self->figmodel()->database()->print_array_to_file($args->{outfile},$output);
+	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
 }
 
 sub printmfatoolkitdata {
@@ -4504,11 +4506,35 @@ sub dumpmodelfile {
 		["model",1],
 		["filename",0,""]
 	],[@Data]);
-	my $mdl = $self->get_model($args->{model});
+	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($args->{filename}) || length($args->{filename}) == 0) {
 		$args->{filename} = $mdl->directory().$mdl->id().".tbl";
 	}
 	$mdl->flatten($args->{filename});
+}
+
+sub loadmodelfromfile {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+    	["genome",1],
+    	["filename",1],
+    	["biomassFile",1],
+    	["owner",0,$self->figmodel()->user()],
+    	["provenance",0,undef],
+    	["overwrite",0,0],
+    	["public",0,0]
+	],[@Data]);
+	$self->figmodel()->import_model_file({
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
+		filename => $args->{"filename"},
+		biomassFile => $args->{"biomassFile"},
+		owner => $args->{"owner"},
+		public => $args->{"public"},
+		overwrite => $args->{"overwrite"},
+		provenance => $args->{"provenance"}
+	});
 }
 
 #Blasts specified sequences against the specified genomes
@@ -4561,6 +4587,77 @@ sub blastgenomesequences {
     	}
     }
 	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+}
+
+#Prints the specified media formulations in tabular form
+sub printmedia {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["media",1],
+		["filename",1]
+	],[@Data]);
+    my $mediaIDs = $self->figmodel()->processIDList({
+		objectType => "media",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{"media"}
+	});
+	my $mediaHash = $self->figmodel()->database()->get_object_hash({
+		type => "mediacpd",
+		attribute => "MEDIA",
+		parameters => {}
+	});
+	my $compoundHash;
+	for (my $i=0; $i < @{$mediaIDs}; $i++) {
+		if (defined($mediaHash->{$mediaIDs->[$i]})) {
+			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
+				if ($mediaHash->{$mediaIDs->[$i]}->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->type() eq "COMPOUND") {
+					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->maxFlux();
+				}
+			}
+		}
+	}
+	my $output = ["Compounds\t".join("\t",@{$mediaIDs})];
+	foreach my $compound (keys(%{$compoundHash})) {
+		my $line = $compound;
+		for (my $i=0; $i < @{$mediaIDs}; $i++) {
+			$line .= "\t".$compoundHash->{$compound}->{$mediaIDs->[$i]};
+		}
+		push(@{$output},$line);
+	}
+	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+}
+
+#Prints the specified media formulations in tabular form
+sub loadmedia {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+		["filename",0,undef],
+		["compounds",0,undef],
+		["public",0,1],
+		["owner",0,($self->figmodel()->user())],
+		["overwrite",0,0]
+	],[@Data]);
+    if (defined($args->{compounds})) {
+    	$args->{compounds} = $self->figmodel()->processIDList({
+			objectType => "compound",
+			delimiter => ";",
+			column => "id",
+			parameters => undef,
+			input => $args->{compounds}
+		});	
+    }
+    my $media = $self->figmodel()->get_media()->create({
+    	id => $args->{name},
+    	filename => $args->{filename},
+		compounds => $args->{compounds},
+		public => $args->{public},
+		owner => $args->{owner},
+		overwrite => $args->{overwrite}
+    });
+	print "Media successfully created!";
 }
 
 1;
