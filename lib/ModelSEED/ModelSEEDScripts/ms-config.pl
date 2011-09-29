@@ -334,6 +334,8 @@ SCRIPT
 }
 #Configuring and making the GLPK
 {	
+	print "IF:".$Config->{Optimizers}->{libraryDirectoryGLPK}."\n";
+	print "EQUALS:".$directoryRoot."/software/glpk/src/.lib/\n";
 	if ($Config->{Optimizers}->{libraryDirectoryGLPK} eq $directoryRoot."/software/glpk/src/.lib/") {
 		print "Making GLPK Optimization Solver Software\n";
 		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
