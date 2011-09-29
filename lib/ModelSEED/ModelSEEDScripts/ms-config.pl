@@ -73,6 +73,14 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $Config->{Database}->{filename} =
 	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 	}
+	if (!defined($Config->{Optimizers}->{includeDirectoryGLPK}) ||
+		!-d $Config->{Optimizers}->{includeDirectoryGLPK}) {
+		$Config->{Optimizers}->{includeDirectoryGLPK} = $directoryRoot."/software/glpk/include/";
+	}
+	if (!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) ||
+		!-d $Config->{Optimizers}->{libraryDirectoryGLPK}) {
+		$Config->{Optimizers}->{libraryDirectoryGLPK} = $directoryRoot."/software/glpk/src/.lib/";
+	}
 	if(lc($Config->{Database}->{type}) eq 'mysql' &&
 	    !defined($Config->{Database}->{port})) {
 	    $Config->{Database}->{port} = "3306";
@@ -320,6 +328,16 @@ SCRIPT
 		}
 	}
 	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
+}
+#Configuring and making the GLPK
+{	
+	if ($Config->{Optimizers}->{libraryDirectoryGLPK} eq $directoryRoot."/software/glpk/src/.lib/") {
+		print "Making GLPK Optimization Solver Software\n";
+		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
+			chmod 0775,$directoryRoot."/software/glpk/makeglpk.sh";
+			system($directoryRoot."/software/glpk/makeglpk.sh");
+		}
+	}
 }
 #Configuring MFAToolkit
 {	
