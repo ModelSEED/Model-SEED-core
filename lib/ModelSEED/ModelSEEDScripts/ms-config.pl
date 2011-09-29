@@ -40,61 +40,61 @@ if($command eq "unload" || $command eq "clean") {
     unload($args);
 }
 my ($Config,$extension,$arguments,$delim,$os,$configFile);
-
 #Identifying and parsing the conf file
-# By default use config/Settings.config
-if (-e $directoryRoot."/config/ModelSEEDbootstrap.pm") {
-	do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
-}
-$configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
-unless(-f $configFile) {
-    die("Could not find configuration file at $configFile!");
-}
-$configFile = abs_path($configFile);
-#Here we are adjusting the users config file to include changes made to the standard config
-if ($configFile ne "$directoryRoot/config/Settings.config") {
-	patchconfig("$directoryRoot/config/Settings.config",$configFile);
-}
-$Config = Config::Tiny->read($configFile);
-# Setting defaults for dataDirectory,
-# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
-unless(defined($Config->{Optional}->{dataDirectory})) {
-    $Config->{Optional}->{dataDirectory} = "$directoryRoot/data";
-}
-unless(defined($Config->{Database}->{type})) {
-    $Config->{Database}->{type} = "sqlite";
-}
-unless(defined($Config->{Optional}->{admin_users})) {
-    $Config->{Optional}->{admin_users} = "admin";
-}
-unless(defined($Config->{Database}->{filename}) ||
-        lc($Config->{Database}->{type}) ne 'sqlite') {
-    $Config->{Database}->{filename} =
-        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
-}
-if (!defined($Config->{Optimizers}->{includeDirectoryGLPK}) ||
-	!-d $Config->{Optimizers}->{includeDirectoryGLPK}) {
-	$Config->{Optimizers}->{includeDirectoryGLPK} = $directoryRoot."/software/glpk/include/";
-}
-if (!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) ||
-	!-d $Config->{Optimizers}->{libraryDirectoryGLPK}) {
-	$Config->{Optimizers}->{libraryDirectoryGLPK} = $directoryRoot."/software/glpk/src/.lib/";
-}
-if(lc($Config->{Database}->{type}) eq 'mysql' &&
-    !defined($Config->{Database}->{port})) {
-    $Config->{Database}->{port} = "3306";
-}
-# Setting paths to absolute for different configuration parameters
-foreach my $path ( 
-    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
-        Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
-        Optimizers=licenseDirectoryCPLEX )) {
-    my ($section, $name) = split(/=/, $path);
-    if(defined($Config->{$section}->{$name})) {
-        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
-    }
-}
-	
+{
+	# By default use config/Settings.config
+	if (-e $directoryRoot."/config/ModelSEEDbootstrap.pm") {
+		do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
+	}
+	$configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
+	unless(-f $configFile) {
+	    die("Could not find configuration file at $configFile!");
+	}
+	$configFile = abs_path($configFile);
+	#Here we are adjusting the users config file to include changes made to the standard config
+	if ($configFile ne "$directoryRoot/config/Settings.config") {
+		patchconfig("$directoryRoot/config/Settings.config",$configFile);
+	}
+	$Config = Config::Tiny->read($configFile);
+	# Setting defaults for dataDirectory,
+	# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
+	unless(defined($Config->{Optional}->{dataDirectory})) {
+	    $Config->{Optional}->{dataDirectory} = "$directoryRoot/data";
+	}
+	unless(defined($Config->{Database}->{type})) {
+	    $Config->{Database}->{type} = "sqlite";
+	}
+	unless(defined($Config->{Optional}->{admin_users})) {
+	    $Config->{Optional}->{admin_users} = "admin";
+	}
+	unless(defined($Config->{Database}->{filename}) ||
+	        lc($Config->{Database}->{type}) ne 'sqlite') {
+	    $Config->{Database}->{filename} =
+	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
+	}
+	if(lc($Config->{Database}->{type}) eq 'mysql' &&
+	    !defined($Config->{Database}->{port})) {
+	    $Config->{Database}->{port} = "3306";
+	}
+	# Setting paths to absolute for different configuration parameters
+	foreach my $path ( 
+	    qw( Optional=dataDirectory Optimizers=includeDirectoryGLPK Optimizers=libraryDirectoryGLPK
+	        Optimizers=libraryDirectoryCPLEX Optimizers=licenseDirectoryCPLEX
+	        Optimizers=licenseDirectoryCPLEX )) {
+	    my ($section, $name) = split(/=/, $path);
+	    if(defined($Config->{$section}->{$name})) {
+	        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
+	    }
+	}
+	if (!defined($Config->{Optimizers}->{includeDirectoryGLPK}) ||
+		!-d $Config->{Optimizers}->{includeDirectoryGLPK}) {
+		$Config->{Optimizers}->{includeDirectoryGLPK} = $directoryRoot."/software/glpk/include/";
+	}
+	if (!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) ||
+		!-d $Config->{Optimizers}->{libraryDirectoryGLPK}) {
+		$Config->{Optimizers}->{libraryDirectoryGLPK} = $directoryRoot."/software/glpk/src/.lib/";
+	}
+}	
 #Setting operating system related parameters
 {
 	$extension = "";
