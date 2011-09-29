@@ -4501,17 +4501,33 @@ sub logout {
 	return "SUCCESS";
 }
 
-sub dumpmodelfile {
+sub printmodelfiles {
 	my($self,@Data) = @_;
 	my $args = $self->check([
 		["model",1],
-		["filename",0,""]
+		["filename",0,undef],
+		["biomassFilename",0,undef]
 	],[@Data]);
 	my $mdl = $self->figmodel()->get_model($args->{model});
-	if (!defined($args->{filename}) || length($args->{filename}) == 0) {
-		$args->{filename} = $mdl->directory().$mdl->id().".tbl";
+	if (!defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
 	}
-	$mdl->flatten($args->{filename});
+	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
+		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
+	}
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
+	}
+	if (!defined($args->{biomassFilename})) {
+		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+	}
+	$mdl->printModelFileForMFAToolkit({
+		filename => $args->{filename}
+	});
+	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+		filename => $args->{biomassFilename}
+	});
+	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
 sub loadmodelfromfile {
@@ -4519,14 +4535,14 @@ sub loadmodelfromfile {
 	my $args = $self->check([
 		["name",1],
     	["genome",1],
-    	["filename",1],
-    	["biomassFile",1],
+    	["filename",0,undef],
+    	["biomassFile",0,undef],
     	["owner",0,$self->figmodel()->user()],
     	["provenance",0,undef],
     	["overwrite",0,0],
     	["public",0,0]
 	],[@Data]);
-	$self->figmodel()->import_model_file({
+	my $modelObj = $self->figmodel()->import_model_file({
 		baseid => $args->{"name"},
 		genome => $args->{"genome"},
 		filename => $args->{"filename"},
@@ -4536,6 +4552,7 @@ sub loadmodelfromfile {
 		overwrite => $args->{"overwrite"},
 		provenance => $args->{"provenance"}
 	});
+	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }
 
 #Blasts specified sequences against the specified genomes

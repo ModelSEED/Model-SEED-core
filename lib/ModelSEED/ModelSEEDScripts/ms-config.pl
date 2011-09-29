@@ -268,8 +268,9 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
+		"loadmodelfromfile",
 		"blastgenomesequences",
-		"dumpmodelfile",
+		"printmodelfiles",
 		"logout",
 		"login",
 		"deleteaccount",

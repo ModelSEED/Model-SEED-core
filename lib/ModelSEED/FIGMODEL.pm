@@ -2454,7 +2454,9 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["baseid","genome","filename","biomassFile"],{
+	$args = $self->process_arguments($args,["baseid","genome"],{
+		filename => undef,
+		biomassFile => undef,
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
@@ -2490,49 +2492,31 @@ sub import_model_file {
 			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter model object");
 		}
 	}
-	#Clearing current model data in the database
 	$mdl = $self->get_model($id);
-	my $importTables = ["reaction","compound","cpdals","rxnals"];
+	if (!-defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not load/create model ".$mdl."!");
+	}
+	#Clearing current model data in the database
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
-		for (my $i=0; $i < @{$importTables}; $i++) {
-			$mdl->figmodel()->database()->freezeFileSyncing($importTables->[$i]);
-		}
 		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("reaction",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("compound",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "name".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "searchname".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("rxnals",{type => $id});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
 	}
 	#Loading model rxnmdl table
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$mdl->id().".tbl";
+	}
 	if (!-e $args->{filename}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file!");
 	}
 	my $rxnmdl = $self->database()->load_table($args->{filename},";","|",1,["LOAD"]);
+	my $biomassID;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
+		if ($row->{LOAD}->[0] =~ m/(bio\d+)/) {
+			$biomassID = $1;
+		}
 		$self->database()->create_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
 			MODEL => $id,
@@ -2545,6 +2529,9 @@ sub import_model_file {
 		});
 	}
 	#Loading biomass reaction file
+	if (!defined($args->{biomassFile}) && defined($biomassID)) {
+		$args->{biomassFile} = $self->figmodel()->config("model file load directory")->[0].$biomassID.".txt";
+	}
 	if (!-e $args->{biomassFile}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file!");	
 	}
@@ -2554,6 +2541,7 @@ sub import_model_file {
 		biomassID => $obj->{DATABASE}->[0]
 	});
 	$modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	return $modelObj;
 }
 =head3 import_model
 Definition:

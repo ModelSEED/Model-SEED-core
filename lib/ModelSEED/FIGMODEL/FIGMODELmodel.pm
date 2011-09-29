@@ -3385,7 +3385,7 @@ Description:
 sub printModelFileForMFAToolkit {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		removeGapfilling => 1,
+		removeGapfilling => 0,
 		filename => $self->directory().$self->id().".tbl"
 	});
 	return $self->error_message({function => "printModelFileForMFAToolkit",args => $args}) if (defined($args->{error}));

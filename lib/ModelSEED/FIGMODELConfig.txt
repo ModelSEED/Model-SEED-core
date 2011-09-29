@@ -16,6 +16,7 @@ biolog raw data filename|${database root directory}ReactionDB/ExperimentalData/B
 Translation directory|${database root directory}ReactionDB/translation/
 Media directory|${database root directory}ReactionDB/Media/
 model import directory|${database root directory}ReactionDB/ImportFiles/
+model file load directory|${database root directory}MSModelFiles/
 Reaction database directory|${database root directory}ReactionDB/
 Model molfile directory|${database root directory}ReactionDB/mol/ModelMolfiles/
 locked table list filename|${database root directory}ReactionDB/LockedTables/

@@ -59,6 +59,7 @@ for (my $i=0; $i < @ARGV; $i++) {
 						delete $Data[$j];
 					}
 				}
+				$i++;
 			} else {
 				my $args = {};
 				while (defined($ARGV[$i+2]) && $ARGV[$i+1] =~ m/^\-(.+)/) {
