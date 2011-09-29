@@ -86,14 +86,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
 	    }
 	}
-	if (!defined($Config->{Optimizers}->{includeDirectoryGLPK}) ||
-		!-d $Config->{Optimizers}->{includeDirectoryGLPK}) {
-		$Config->{Optimizers}->{includeDirectoryGLPK} = $directoryRoot."/software/glpk/include/";
-	}
-	if (!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) ||
-		!-d $Config->{Optimizers}->{libraryDirectoryGLPK}) {
-		$Config->{Optimizers}->{libraryDirectoryGLPK} = $directoryRoot."/software/glpk/src/.lib/";
-	}
 }	
 #Setting operating system related parameters
 {
@@ -326,30 +318,6 @@ SCRIPT
 		}
 	}
 	printFile($directoryRoot."/config/FIGMODELConfig.txt",$data);
-}
-#Configuring and making the GLPK
-{	
-	if ($Config->{Optimizers}->{libraryDirectoryGLPK} eq $directoryRoot."/software/glpk/src/.lib/") {
-		print "Making GLPK Optimization Solver Software\n";
-		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
-			foreach my $script ( 
-	    qw( config.guess config.status config.sub ltman.sh
-	        configure depcomp install-sh libtool missing 
-	        m4/libtool.m4  m4/ltoptions.m4  m4/ltsugar.m4  
-	        m4/ltversion.m4  m4/lt~obsolete.m4
-	        )) {
-				chmod 0775,$directoryRoot."/software/glpk/".$script;
-	        }
-			printFile($directoryRoot."/software/glpk/makeglpk.sh",[
-				"cd ".$directoryRoot."/software/glpk/",
-				"./configure --disable-dl --disable-shared",
-				"make",
-				"cd ../../../"
-			]);
-			chmod 0775,$directoryRoot."/software/glpk/makeglpk.sh";
-			system($directoryRoot."/software/glpk/makeglpk.sh");
-		}
-	}
 }
 #Configuring MFAToolkit
 {	
