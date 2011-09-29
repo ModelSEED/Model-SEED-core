@@ -334,7 +334,10 @@ SCRIPT
 		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
 			foreach my $script ( 
 	    qw( config.guess config.status config.sub ltman.sh
-	        configure depcomp install-sh libtool missing )) {
+	        configure depcomp install-sh libtool missing 
+	        m4/libtool.m4  m4/ltoptions.m4  m4/ltsugar.m4  
+	        m4/ltversion.m4  m4/lt~obsolete.m4
+	        )) {
 				chmod 0775,$directoryRoot."/software/glpk/".$script;
 	        }
 			printFile($directoryRoot."/software/glpk/makeglpk.sh",[
