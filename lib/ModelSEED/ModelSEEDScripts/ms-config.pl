@@ -187,6 +187,9 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
             $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
             next;
         }
+        if (!defined($envSettings->{$key})) {
+        	print "UNDEFINED KEY:".$key."\n";
+        }
         $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
     }
     $bootstrap .= <<'BOOTSTRAP';
