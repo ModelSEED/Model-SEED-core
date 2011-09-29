@@ -342,6 +342,7 @@ SCRIPT
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});
 		if (!defined($usrObj)) {
+			print "Creating public account for initial installation!\n";
 			$usrObj = $figmodel->database()->create_object("user",{
 				login => "public",
 				password => "public",
