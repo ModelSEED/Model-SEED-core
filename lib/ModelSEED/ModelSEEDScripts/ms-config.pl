@@ -329,11 +329,15 @@ SCRIPT
 }
 #Configuring and making the GLPK
 {	
-	print "IF:".$Config->{Optimizers}->{libraryDirectoryGLPK}."\n";
-	print "EQUALS:".$directoryRoot."/software/glpk/src/.lib/\n";
 	if ($Config->{Optimizers}->{libraryDirectoryGLPK} eq $directoryRoot."/software/glpk/src/.lib/") {
 		print "Making GLPK Optimization Solver Software\n";
 		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
+			printFile($directoryRoot."/software/glpk/makeglpk.sh",[
+				"cd ".$directoryRoot."/software/glpk/",
+				"./configure --disable-dl --disable-shared",
+				"make",
+				"cd ../../../"
+			]);
 			chmod 0775,$directoryRoot."/software/glpk/makeglpk.sh";
 			system($directoryRoot."/software/glpk/makeglpk.sh");
 		}
