@@ -14,8 +14,17 @@ use ModelSEED::ModelDriver;
 $|=1;
 
 #First checking to see if at least one argument has been provided
+my $driv = ModelSEED::ModelDriver->new();
 if (!defined($ARGV[0]) || $ARGV[0] eq "help") {
-    print "Function name must be specified as input arguments!\n";;
+    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->figmodel()->user().".\n";
+    print "ModelDriver is the primary executable for the Model SEED.\n\n";
+    print "Possible usage:\n\n";
+    print "1.) ModelDriver usage \"name of function\"\n";
+    print "Prints the arguments list expected by the function\n\n";
+    print "2.) ModelDriver \"name of function\" \"-argument name\" \"argument value\" \"-argument name\" \"argument value\"\n";
+    print "This is the standard notation, useful to know exactly what arguments you're submitting, but it's also alot of typing.\n\n";
+    print "3.) ModelDriver \"name of function?argument value?argument value\"\n";
+    print "This is the alternative notation. Argument values are input directly in the same order specified by the \"usage\" command.\n";
 	exit(0);
 }
 
@@ -23,7 +32,6 @@ if (!defined($ARGV[0]) || $ARGV[0] eq "help") {
 my $Status = "SUCCESS";
 
 #Searching for recognized arguments
-my $driv = ModelSEED::ModelDriver->new();
 for (my $i=0; $i < @ARGV; $i++) {
     $ARGV[$i] =~ s/___/ /g;
     $ARGV[$i] =~ s/\.\.\./(/g;
@@ -44,12 +52,21 @@ for (my $i=0; $i < @ARGV; $i++) {
         my @Data = split(/\?/,$ARGV[$i]);
         my $FunctionName = $Data[0];
 		if (@Data == 1) {
-			my $args = {};
-			while (defined($ARGV[$i+2]) && $ARGV[$i+1] =~ m/^\-(.+)/) {
-				$args->{$1} = $ARGV[$i+2];
-				$i = $i+2;
+			if (defined($ARGV[$i+1]) && $ARGV[$i+1] =~ m/\?/) {
+				push(@Data,split(/\?/,$ARGV[$i+1]));
+				for (my $j=0; $j < @Data; $j++) {
+					if (length($Data[$j]) == 0) {
+						delete $Data[$j];
+					}
+				}
+			} else {
+				my $args = {};
+				while (defined($ARGV[$i+2]) && $ARGV[$i+1] =~ m/^\-(.+)/) {
+					$args->{$1} = $ARGV[$i+2];
+					$i = $i+2;
+				}
+				@Data = ($FunctionName,$args);
 			}
-			@Data = ($FunctionName,$args);
 		} else {
 			for (my $j=0; $j < @Data; $j++) {
 				if (length($Data[$j]) == 0) {

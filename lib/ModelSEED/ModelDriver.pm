@@ -55,6 +55,7 @@ sub check {
 	my $args;
 	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
 		$args = $data->[1];
+		delete $data->[1];
 	}
 	for (my $i=0; $i < @{$array}; $i++) {
 		if (!defined($args->{$array->[$i]->[0]})) {
