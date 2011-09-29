@@ -1,13 +1,3 @@
-1.) Make sure that git is installed on your computer
-2.) Ensure that the following perl libraries are installed
-	a.) File/Copy/Recursive
-	b.) Spreadsheet/WriteExcel
-	c.) XML/DOM
-	d.) YAML
-	e.) DBD/mysql
-3.) Run the following commands in bash to download and install the Model SEED:
-curl https://raw.github.com/ModelSEED/Model-SEED-core/master/lib/ModelSEED/ModelSEEDScripts/bootstrap.sh > bootstrap.sh
-chmod +x bootstrap.sh 
-./bootstrap.sh "path to location where Model SEED should be installed"
-4.) Open the file, "Configuration Instructions" located in the ModelSEED installation directory, and follow these instructions
+See instructions at:
+http://bionet.mcs.anl.gov/index.php/Installing_the_Model_SEED_Distribution
 
