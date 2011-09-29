@@ -332,6 +332,11 @@ SCRIPT
 	if ($Config->{Optimizers}->{libraryDirectoryGLPK} eq $directoryRoot."/software/glpk/src/.lib/") {
 		print "Making GLPK Optimization Solver Software\n";
 		if (!-d $directoryRoot."/software/glpk/src/.lib/" || !-e $directoryRoot."/software/glpk/src/.lib/glpk.a") {
+			foreach my $script ( 
+	    qw( config.guess config.status config.sub ltman.sh
+	        configure depcomp install-sh libtool missing )) {
+				chmod 0775,$directoryRoot."/software/glpk/".$script;
+	        }
 			printFile($directoryRoot."/software/glpk/makeglpk.sh",[
 				"cd ".$directoryRoot."/software/glpk/",
 				"./configure --disable-dl --disable-shared",
