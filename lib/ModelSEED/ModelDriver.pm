@@ -3963,66 +3963,73 @@ sub printdatatables {
         print "Syntax for this command: printdatatables?(output directory)\n\n";
         return "ARGUMENT SYNTAX FAIL";
     }
+    # Glorious hack to get the data without touching PPO
+    my $get_dbh = sub {
+        my ($type) = @_;
+        my $handle = $self->figmodel()->database()->get_object_manager($type);
+        if(defined($handle)) {
+            return $handle->{_master}->db_handle;
+        } else {
+            return undef;
+        }
+    };
+    my $get_objs_array = sub {
+        my ($objs, $query) = @_;
+        my $dbh = $get_dbh->($objs);
+        my $sth = $dbh->prepare($query);
+        $sth->execute() || die($@." $query");
+        return $sth->fetchall_arrayref();
+    };
+    
     $Data[1] =~ s/\/$//; # remove trailing slash
     {
 	    my $output = ["ModelID\tName\tGenomeID\tGrowth\tGenes\tReactions\tGapfilled reactions"];
-	    my $objs = $self->figmodel()->database()->sudo_get_objects("model",{public => 1});
-        my $keys = [qw(id name genome growth associatedGenes reactions autoCompleteReactions)];
+        my $keys = join(", ", qw(id name genome growth associatedGenes reactions autoCompleteReactions ));
+        my $objs = $get_objs_array->("model", "SELECT $keys FROM MODEL");
         for(my $i=0; $i<@$objs; $i++) {
-            my @cpKeys = @$keys;
-            push(@$output, join("\t", map { $_ = $objs->[$i]->{$_} || '' } @cpKeys));
+            push(@$output, join("\t", @{$objs->[$i]}));
         }
 	    $self->figmodel()->database()->print_array_to_file($Data[1]."/ModelGenome.txt",$output);
         print "Done ModelGenome.txt\n"; 
     }
     {
 	    my $output = ["ModelID\tReactionID\tPegs"];
-        my $mdls = $self->figmodel()->database()->sudo_get_objects("model", {public => 1});
-        foreach my $mdl (@$mdls) {
-            my $objs = $self->figmodel()->database()->sudo_get_objects("rxnmdl",{MODEL => $mdl->id()});
-            my $keys = [qw(MODEL REACTION pegs)];
-            my $lines = [];
-            for(my $i=0; $i<@$objs; $i++) {
-                my @cpKeys = @$keys;
-                push(@$output, join("\t", map { $_ = $objs->[$i]->{$_} || '' } @cpKeys));
-            }
+        my $keys = join(", ", qw(MODEL REACTION pegs));
+        my $objs = $get_objs_array->("rxnmdl", "SELECT $keys FROM REACTION_MODEL");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
         }
         $self->figmodel()->database()->print_array_to_file($Data[1]."/ModelReaction.txt",$output);
         print "Done ModelReaction.txt\n"; 
     }
     {
 	    my $output = ["CompoundID\tName"];
-	    my $objs = $self->figmodel()->database()->sudo_get_objects("cpdals",{type => "name"});
-        my $keys = [qw(COMPOUND alias)];
+        my $keys = join(", ", qw(COMPOUND alias));
+        my $objs = $get_objs_array->("cpdals", "SELECT $keys FROM COMPOUND_ALIAS");
         for(my $i=0; $i<@$objs; $i++) {
-            my @cpKeys = @$keys;
-            push(@$output, join("\t", map { $_ = $objs->[$i]->{$_} || '' } @cpKeys));
+            push(@$output, join("\t", @{$objs->[$i]}));
         }
 	    $self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundName.txt",$output);
         print "Done CompoundName.txt\n"; 
     }
     {
 	    my $output = ["Reaction\tEquation\tName"];
-	    my $objs = $self->figmodel()->database()->sudo_get_objects("reaction");
-        my $keys = [qw(id equation name)];
+        my $keys = join(", ", qw(id equation name));
+        my $objs = $get_objs_array->("reaction", "SELECT $keys FROM REACTION");
         for(my $i=0; $i<@$objs; $i++) {
-            my @cpKeys = @$keys;
-            push(@$output, join("\t", map { $_ = $objs->[$i]->{$_} || '' } @cpKeys));
+            push(@$output, join("\t", @{$objs->[$i]}));
         }
 	    $self->figmodel()->database()->print_array_to_file($Data[1]."/Reactions.txt",$output);
 	}
 	{
         my $output = ["CompoundID\tReactionID\tStoichiometry\tCofactor"];
         my $transportedCompounds = {};
-	    my $objs = $self->figmodel()->database()->sudo_get_objects("cpdrxn");
-        my $keys = [qw(COMPOUND REACTION coefficient cofactor)];
-        foreach my $obj (@$objs) {
-            for(my $i=0; $i<@$objs; $i++) {
-                if ($objs->[$i]->{compartment} eq "e") {
-                    $transportedCompounds->{$objs->[$i]->{id}} = 1;	
-                }
-                my @cpKeys = @$keys;
-                push(@$output, join("\t", map { $_ = $objs->[$i]->{$_} || '' } @cpKeys));
+        my $keys = join(", ", qw(COMPOUND REACTION coefficient cofactor compartment));
+        my $objs = $get_objs_array->("cpdrxn", "SELECT $keys FROM COMPOUND_REACTION");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+            if($objs->[$i]->[4] eq "e") {
+                $transportedCompounds->{$objs->[$i]->[0]} = 1;	
             }
         }
 	    $self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundReaction.txt",$output);
