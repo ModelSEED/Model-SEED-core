@@ -1617,11 +1617,22 @@ sub biomassReaction {
 		return $self->ppo()->biomassReaction();
 	}
 	my $oldBiomass = $self->ppo()->biomassReaction();
-	my $rxnmdl = $self->rxnmdl();
-	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		if ($rxnmdl->[$i]->REACTION() eq $self->ppo()->biomassReaction()) {
-			$rxnmdl->[$i]->REACTION($newBiomass);
+	if ($oldBiomass =~ m/bio\d+/) {
+		my $rxnmdl = $self->rxnmdl();
+		for (my $i=0; $i < @{$rxnmdl}; $i++) {
+			if ($rxnmdl->[$i]->REACTION() eq $self->ppo()->biomassReaction()) {
+				$rxnmdl->[$i]->REACTION($newBiomass);
+			}
 		}
+	} else {
+		$self->db()->create_object("rxnmdl",{
+			MODEL=>$self->id(),
+			REACTION=>$newBiomass,
+			compartment=>"c",
+			confidence=>1,
+			pegs=>"SPONTANEOUS",
+			directionality=>"=>"
+		})
 	}
 	return $self->ppo()->biomassReaction($newBiomass);
 }
@@ -7194,7 +7205,7 @@ sub fbaDefaultStudies {
 				}
 				if ($args->{classification} == 1) {
 					$self->fbaFVA({
-						growth=>"forced",
+						options=>["forceGrowth"],
 						saveFVAResults=>1,		
 						problemDirectory => $args->{problemDirectory},
 						fbaStartParameters => $args->{fbaStartParameters}	
@@ -7205,14 +7216,14 @@ sub fbaDefaultStudies {
 	  	#Running FVA without growth to identify inactive reactions with no growth and with growth drains
 		if ($args->{mediaList}->[$i] eq "Complete" && $args->{classification} == 1) {
 			$results = $self->fbaFVA({
-				growth=>"none",
+				options=>["noGrowth"],
 				saveFVAResults=>1,		
 				problemDirectory => $args->{problemDirectory},
 				fbaStartParameters => $args->{fbaStartParameters}
 			});
 			$args->{fbaStartParameters}->{drnRxn} = ["bio00001"];
 			$results = $self->fbaFVA({
-				growth=>"none",
+				options=>["noGrowth"],
 				saveFVAResults=>1,		
 				problemDirectory => $args->{problemDirectory},
 				fbaStartParameters => 
@@ -7306,21 +7317,25 @@ Description:
 sub fbaFVA {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-	   	growth=>"forced",
-		saveFVAResults=>1,		
+	   	saveformat => "EXCEL",
+	   	filename => "FBAFVA_".$self->id().".xls",
+	   	saveFVAResults=>1,
+	   	variables => ["FLUX","UPTAKE"],
 		problemDirectory => undef,
 		fbaStartParameters => {
 			media => "Complete",
-			drnRxn => []	
+			drnRxn => [],
+			options => {forceGrowth => 1}
 		}
-	}); 
+	});
+	#Running FBA study with selected options
 	my $results = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
 			function => "setTightBounds",
 			arguments => {
-				growth=>$args->{growth},
-			} 
+				variables => $args->{variables}
+			}
 		},
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "FluxVariabilityAnalysis.txt",
@@ -7330,70 +7345,78 @@ sub fbaFVA {
 		runProblem => 1,
 		clearOuput => 1
 	});
-	if (defined($results->{tb})) {
-		my $rxnclasstable = $self->reaction_class_table();
-		my $cpdclasstable = $self->compound_class_table();
-		foreach my $obj (keys(%{$results->{tb}})) {
-			my $row;
-			if ($obj =~ m/(cpd\d\d\d\d\d)(.)/) {
-				$row = $cpdclasstable->get_row_by_key($obj,"COMPOUND",1);
-			} elsif ($obj =~ m/([rb][xi][no]\d\d\d\d\d)/) {
-				$row = $rxnclasstable->get_row_by_key($1,"REACTION",1);
-			}
-			#Setting row values
-			if (defined($row)) {
-				my $foundit = 0;
-				if (defined($row->{MEDIA})) {
-					for (my $i=0; $i < @{$row->{MEDIA}};$i++) {
-						if ($row->{MEDIA}->[$i] eq $args->{media}) {
-							$foundit = 1;
-							$row->{MIN}->[$i] = $results->{tb}->{$obj}->{min};
-							$row->{MAX}->[$i] = $results->{tb}->{$obj}->{max};
-							$row->{CLASS}->[$i] = $results->{tb}->{$obj}->{class};
-							$row->{MEDIA}->[$i] = $args->{media};
-							last;
-						}
+	#Checking that results were returned
+	ModelSEED::FIGMODEL::FIGMODELERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
+	my $rxnclasstable = $self->reaction_class_table();
+	my $cpdclasstable = $self->compound_class_table();
+	foreach my $obj (keys(%{$results->{tb}})) {
+		my $row;
+		if ($obj =~ m/(cpd\d\d\d\d\d)(.)/) {
+			$row = $cpdclasstable->get_row_by_key($obj,"COMPOUND",1);
+		} elsif ($obj =~ m/([rb][xi][no]\d\d\d\d\d)/) {
+			$row = $rxnclasstable->get_row_by_key($1,"REACTION",1);
+		}
+		#Setting row values
+		if (defined($row)) {
+			my $foundit = 0;
+			if (defined($row->{MEDIA})) {
+				for (my $i=0; $i < @{$row->{MEDIA}};$i++) {
+					if ($row->{MEDIA}->[$i] eq $args->{media}) {
+						$foundit = 1;
+						$row->{MIN}->[$i] = $results->{tb}->{$obj}->{min};
+						$row->{MAX}->[$i] = $results->{tb}->{$obj}->{max};
+						$row->{CLASS}->[$i] = $results->{tb}->{$obj}->{class};
+						$row->{MEDIA}->[$i] = $args->{media};
+						last;
 					}
 				}
-				if ($foundit == 0) {
-					push @{$row->{MEDIA}}, $args->{media};
-					push @{$row->{MIN}}, $results->{tb}->{$obj}->{min};
-					push @{$row->{MAX}}, $results->{tb}->{$obj}->{max};
-					push @{$row->{CLASS}}, $results->{tb}->{$obj}->{class};
-				}
+			}
+			if ($foundit == 0) {
+				push @{$row->{MEDIA}}, $args->{media};
+				push @{$row->{MIN}}, $results->{tb}->{$obj}->{min};
+				push @{$row->{MAX}}, $results->{tb}->{$obj}->{max};
+				push @{$row->{CLASS}}, $results->{tb}->{$obj}->{class};
 			}
 		}
-		if ($args->{saveFVAResults} == 1) {
-			my $parameters = "";
-			if ($args->{growth} eq "forced") {
-				$parameters .= "FG;";
-				$rxnclasstable->save();
-				$cpdclasstable->save();
-			} elsif ($args->{growth} eq "none") {
-				$parameters .= "NG;";
-			}
-			if (defined($args->{fbaStartParameters}->{drnRxn})) {
-				$parameters .= "DR:".join("|",@{$args->{drnRxn}}).";";
-			}
-			if (defined($args->{fbaStartParameters}->{rxnKO})) {
-				$parameters .= "RK:".join("|",@{$args->{rxnKO}}).";";
-			}
-			if (defined($args->{fbaStartParameters}->{geneKO})) {
-				$parameters .= "GK:".join("|",@{$args->{geneKO}}).";";
-			}
-			if (length($parameters) == 0) {
-				$parameters = "NONE";	
-			}
-			#Loading and updating the PPO FVA table, which will ultimately replace the flatfile tables
-			my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});
-			if (!defined($obj)) {
-				$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});	
-			}
-			my $headings = ["inactive","dead","positive","negative","variable","posvar","negvar","positiveBounds","negativeBounds","variableBounds","posvarBounds","negvarBounds"];
-			for (my $i=0; $i < @{$headings}; $i++) {
-				my $function = $headings->[$i];
-				$obj->$function($results->{$function});
-			}
+	}
+	#Saving data to file
+	if ($args->{saveformat} eq "EXCEL") {
+		$self->figmodel()->make_xls($args->{filename},["Compound Bounds","Reaction Bounds"],[$cpdclasstable,$rxnclasstable]);
+	} elsif ($args->{saveformat} eq "TEXT") {
+		$cpdclasstable->save("Compounds-".$args->{filename});
+		$rxnclasstable->save("Reactions-".$args->{filename});
+	}
+	#Loading data into database if requested
+	if ($args->{saveFVAResults} == 1) {
+		my $parameters = "";
+		if (defined($args->{fbaStartParameters}->{forceGrowth}) && $args->{fbaStartParameters}->{forceGrowth} == 1) {
+			$parameters .= "FG;";
+			$rxnclasstable->save();
+			$cpdclasstable->save();
+		} elsif (defined($args->{fbaStartParameters}->{noGrowth}) && $args->{fbaStartParameters}->{noGrowth} == 1) {
+			$parameters .= "NG;";
+		}
+		if (defined($args->{fbaStartParameters}->{drnRxn})) {
+			$parameters .= "DR:".join("|",@{$args->{drnRxn}}).";";
+		}
+		if (defined($args->{fbaStartParameters}->{rxnKO})) {
+			$parameters .= "RK:".join("|",@{$args->{rxnKO}}).";";
+		}
+		if (defined($args->{fbaStartParameters}->{geneKO})) {
+			$parameters .= "GK:".join("|",@{$args->{geneKO}}).";";
+		}
+		if (length($parameters) == 0) {
+			$parameters = "NONE";	
+		}
+		#Loading and updating the PPO FVA table, which will ultimately replace the flatfile tables
+		my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});
+		if (!defined($obj)) {
+			$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});	
+		}
+		my $headings = ["inactive","dead","positive","negative","variable","posvar","negvar","positiveBounds","negativeBounds","variableBounds","posvarBounds","negvarBounds"];
+		for (my $i=0; $i < @{$headings}; $i++) {
+			my $function = $headings->[$i];
+			$obj->$function($results->{$function});
 		}
 	}	
 	return $results;
@@ -7442,7 +7465,6 @@ sub fbaCalculateGrowth {
 	if ($args->{saveLPfile} == 1 && -e $result->{fbaObj}->directory()."/CurrentProblem.lp") {
 		system("cp ".$result->{fbaObj}->directory()."/CurrentProblem.lp ".$self->directory().$self->id().".lp");
 	}
-	print "Problem directory:".$result->{fbaObj}->directory."\n";
 	$result->{fbaObj}->clearOutput();
 	return $result;
 }
@@ -7889,15 +7911,6 @@ sub calculate_growth {
 		return "NOGROWTH:".$result->{noGrowthCompounds};
 	}
 	return "";
-}
-=head3 classify_model_reactions
-REPLACED BY fbaFVA:MARKED FOR DELETION
-=cut
-sub classify_model_reactions {
-	my ($self,$Media,$SaveChanges,$forcingGrowth) = @_;
-	my $result = $self->fbaFVA({media=>$Media,saveFVAResults=>$SaveChanges,forceGrowth=>$forcingGrowth});
-	if (defined($result->{error})) {return $self->error_message({message => $result->{error},function => "fbaDefaultStudies",args => {}});}
-	return ($self->reaction_class_table(),$self->compound_class_table());
 }
 =head3 IdentifyDependancyOfGapFillingReactions
 REPLACED BY fbaBiomassPrecursorDependancy:MARKED FOR DELETION

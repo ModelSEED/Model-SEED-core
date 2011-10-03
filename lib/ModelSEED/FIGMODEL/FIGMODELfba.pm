@@ -17,6 +17,7 @@ Definition:
 		rxnKO=>[string]:reaction ids,
 		model=>string:model id,
 		media=>string:media id,
+		optionas => [string],
 		parameter_files=>[string]:parameter files
 	});
 Description:
@@ -40,7 +41,8 @@ sub new {
 		drnRxn=>[],
 		model=>undef,
 		media=>undef,
-		parameter_files=>["ProductionMFA"]
+		parameter_files=>["ProductionMFA"],
+		options => {}
 	});
 	return $self->error_message({function => "new",args=>$args}) if (defined($args->{error}));
 	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files"];
@@ -52,6 +54,7 @@ sub new {
 	$self->{_parameter_files} = $args->{parameter_files};
 	$self->{_parameters} = $args->{parameters};
 	$self->{_filename} = $args->{filename};
+	$self->{_options} = $args->{options};
 	for (my $i=0; $i < @{$self->figmodel()->config("data filenames")}; $i++) {
 		my $type = $self->figmodel()->config("data filenames")->[$i];
 		$self->{_dataFilename}->{$type} = $self->figmodel()->config($type." data filename")->[0];	
@@ -328,9 +331,9 @@ sub printStringDBFile {
 	my $output = [
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
 		"compound\tid\tSINGLEFILE\t".$self->figmodel()->config("compound directory")->[0]."\t".$self->dataFilename({type => "compounds"})."\tTAB\tSC\tid",
-		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
+#		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
 		"reaction\tid\tSINGLEFILE\t".$self->directory()."/reaction/\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
-		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
+#		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
 		"cue\tNAME\tSINGLEFILE\t\t".$self->dataFilename({type => "cues"})."\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$self->figmodel()->config("Media directory")->[0]."\t".$self->dataFilename({type => "media"})."\tTAB\t|\tID;NAMES"
 	];
@@ -777,6 +780,23 @@ sub mediaObj {
 	return $self->{_mediaObj};
 }
 
+=head3 options
+Definition:
+	{string} = FIGMODELfba->options();
+Description:
+	Getter setter function for parameters
+=cut
+sub options {
+	my ($self,$options) = @_;
+	if (defined($options)) {
+		$self->{_options} = $options;
+	}
+	if (!defined($self->{_options})) {
+		$self->{_options} = {};
+	}
+	return $self->{_options};
+}
+
 =head3 parameters
 Definition:
 	{string:parameter type => string:value} = FIGMODELfba->parameters({string:parameter type => string:value});
@@ -894,7 +914,11 @@ sub runFBA {
 	}
 	my $command = $commandLine->{excutable}.$commandLine->{files}.$commandLine->{model}.$commandLine->{logfile};
 	$command = "nohup ".$command." &" if ($args->{nohup} == 1);	
-	$self->figmodel()->database()->print_array_to_file($self->directory()."/runMFAToolkit.sh",[$command]);
+	$self->figmodel()->database()->print_array_to_file($self->directory()."/runMFAToolkit.sh",[
+		"source ".$self->figmodel()->config("software root directory")->[0]."bin/source-me.sh",
+		$command
+	]);
+	chmod 0775,$self->directory()."/runMFAToolkit.sh";
 	system($command) if ($args->{runSimulation} == 1);
 	return {success => 1};	
 }
@@ -1171,17 +1195,18 @@ sub parseSingleGrowthStudy {
 sub setTightBounds {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		growth => "forced"
-	});	
+		variables => ["FLUX","UPTAKE"],
+	});
 	$self->parameter_files(["ProductionMFA"]);
 	$self->set_parameters({
 		"find tight bounds"=>1,
 		"MFASolver" => "GLPK",
 		"identify dead ends"=>1
 	});
-	if ($args->{growth} ne "forced") {
+	#Evaluating specific options meant for this function
+	if (defined($self->options()->{forcedGrowth})) {
 		$self->set_parameters({"maximize single objective"=>0});
-		if ($args->{growth} eq "none") {
+		if (defined($self->options()->{noGrowth})) {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
 			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model".$self->model()) if (!defined($mdl));
 			$self->add_reaction_ko([$mdl->biomassReaction()]);
@@ -1681,7 +1706,7 @@ sub setMultiPhenotypeStudy {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["mediaList","labels","KOlist"],{filename=>$self->filename()});
 	if (defined($args->{error})) {return $self->error_message({function => "setMultiPhenotypeStudy",args => $args});}
-	$self->media("Carbon-D-Glucose");
+	$self->media("Empty");
 	$self->parameter_files(["ProductionMFA"]);
 	$self->filename($args->{filename});
 	$self->makeOutputDirectory();
@@ -1705,7 +1730,7 @@ sub setMultiPhenotypeStudy {
 	});
 	$self->studyArguments($args);
 	$self->parsingFunction("parseMultiPhenotypeStudy");
-	$self->{_mediaPrintList} = ["Carbon-D-Glucose"];
+	$self->{_mediaPrintList} = ["Empty"];
 	push(@{$self->{_mediaPrintList}},keys(%{$mediaHash}));
 	return {};
 }

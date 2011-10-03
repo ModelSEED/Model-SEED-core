@@ -517,7 +517,7 @@ sub printDatabaseTable {
 	my $output = ["ID\tNAMES\tVARIABLES\tTYPES\tMAX\tMIN\tCOMPARTMENTS"];
 	my $parameters = {};
 	if (@{$args->{printList}} == 1) {
-		$parameters->{MEDIA} = $args->{printList}->[0];
+		$parameters->{MEDIA} = $args->{printList}->[0]->id();
 	}
 	my $mediacpds = $self->figmodel()->database()->get_object_hash({
 		type => "mediacpd",
@@ -546,7 +546,9 @@ sub printDatabaseTable {
 						$comps .= "|";
 					}
 					$line .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->entity();
-					$types .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->type();
+					if ($mediacpds->{$args->{printList}->[$i]->id()}->[$j]->type() eq "COMPOUND") {
+						$types .= "DRAIN_FLUX";
+					}
 					$maxes .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->maxFlux();
 					$mins .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->minFlux();
 					$comps .= "e";

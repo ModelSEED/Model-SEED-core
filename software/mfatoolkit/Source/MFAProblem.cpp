@@ -2096,12 +2096,23 @@ int MFAProblem::loadChangedBoundsIntoSolver(SavedBounds* inBounds) {
 	return SUCCESS;
 }
 
-int MFAProblem::loadMedia(string media, Data* inData) {
-	if (media.compare("Complete") == 0) {
-		for (int i=0; i < this->FNumVariables(); i++) {
+int MFAProblem::loadMedia(string media, Data* inData,bool loadIntoSolver) {
+	vector<MFAVariable*> mediaVariables;
+	vector<double> upperBounds;
+	vector<double> lowerBounds;
+	for (int i=0; i < this->FNumVariables(); i++) {
+		if (this->GetVariable(i)->Compartment == GetCompartment("e")->Index) {
 			if (this->GetVariable(i)->Type == DRAIN_FLUX || this->GetVariable(i)->Type == FORWARD_DRAIN_FLUX) {
-				this->GetVariable(i)->UpperBound = 100;
+				mediaVariables.push_back(this->GetVariable(i));
+				upperBounds.push_back(this->GetVariable(i)->UpperBound);
+				lowerBounds.push_back(this->GetVariable(i)->LowerBound);
+				this->GetVariable(i)->UpperBound = 0;
 			}
+		}
+	}
+	if (media.compare("Complete") == 0) {
+		for (int i=0; i < int(mediaVariables.size()); i++) {
+			mediaVariables[i]->UpperBound = 100;
 		}
 	} else {
 		FileBounds* mediaObj = ReadBounds((media+".txt").data());
@@ -2109,6 +2120,13 @@ int MFAProblem::loadMedia(string media, Data* inData) {
 			return FAIL;
 		}
 		ApplyInputBounds(mediaObj,inData);
+	}
+	if (loadIntoSolver) {
+		for (int i=0; i < int(mediaVariables.size()); i++) {
+			if (upperBounds[i] != mediaVariables[i]->UpperBound || lowerBounds[i] != mediaVariables[i]->LowerBound) {
+				LoadVariable(mediaVariables[i]->Index);
+			}
+		}
 	}
 	return SUCCESS;
 }
@@ -3403,7 +3421,7 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 		string newEssentialGenes;
 		//Loading media
 		if (InParameters->mediaConditions[i].compare("NONE") != 0) {
-			this->loadMedia(InParameters->mediaConditions[i],InData);
+			this->loadMedia(InParameters->mediaConditions[i],InData,true);
 		}
 		//Calculating WT growth
 		if (originalSense) {
@@ -3413,7 +3431,8 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 		}
 		ObjFunct = NULL;
 		this->AddObjective(originalObjective);
-		this->LoadSolver();
+		LoadObjective();
+		//this->LoadSolver();
 		NewSolution = RunSolver(false,true,false);
 		vector<Reaction*> KOReactions;
 		if (NewSolution != NULL && NewSolution->Status == SUCCESS) {
@@ -3622,7 +3641,7 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 				currentBounds->upperBounds[newVar->Index] = 0;
 			}
 		}
-		this->loadBounds(currentBounds,false);
+		this->loadBounds(currentBounds,true);
 	}
 	delete currentBounds;
 	//Reloading original bounds

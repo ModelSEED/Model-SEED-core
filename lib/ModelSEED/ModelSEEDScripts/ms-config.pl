@@ -269,6 +269,7 @@ SCRIPT
 {
 	my $functionList = [
 		"loadmodelfromfile",
+		"loadbiomassfromfile",
 		"blastgenomesequences",
 		"printmodelfiles",
 		"logout",
@@ -276,7 +277,8 @@ SCRIPT
 		"deleteaccount",
 		"testmodelgrowth",
 		"importmodel",
-		"createlocaluser"
+		"createlocaluser",
+		"createmedia"
 	];
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {

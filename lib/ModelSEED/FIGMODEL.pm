@@ -2505,10 +2505,10 @@ sub import_model_file {
 	}
 	#Loading model rxnmdl table
 	if (!defined($args->{filename})) {
-		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$mdl->id().".tbl";
+		$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".tbl";
 	}
 	if (!-e $args->{filename}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file!");
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
 	my $rxnmdl = $self->database()->load_table($args->{filename},";","|",1,["LOAD"]);
 	my $biomassID;
@@ -2530,10 +2530,10 @@ sub import_model_file {
 	}
 	#Loading biomass reaction file
 	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->figmodel()->config("model file load directory")->[0].$biomassID.".txt";
+		$args->{biomassFile} = $self->config("model file load directory")->[0].$biomassID.".txt";
 	}
 	if (!-e $args->{biomassFile}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file!");	
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
 	}
 	my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
 	my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
@@ -9001,6 +9001,22 @@ sub copyMergeHash {
 		}	
 	}
 	return $result;
+}
+
+=head3 make_xls
+Definition:
+	{} = FIGMODEL->make_xls();
+Description:
+=cut
+sub make_xls {
+    my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["filename","sheetnames","sheetdata"],{});
+    my $workbook;
+    for(my $i=0; $i<@{$args->{sheetdata}}; $i++) {
+        $workbook = $args->{sheetdata}->[$i]->add_as_sheet($args->{sheetnames}->[$i],$workbook);
+    }
+    $workbook->close();
+    return;
 }
 
 =head2 Pass-through functions that will soon be deleted entirely

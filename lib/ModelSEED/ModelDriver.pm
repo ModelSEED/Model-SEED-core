@@ -666,58 +666,6 @@ sub makehistogram {
     print "Histogram generation successful.\n\n";
 }
 
-sub classifyreactions {
-    my($self,@Data) = @_;
-    if (@Data < 2) {
-        print "Syntax for this command: classifyreactions?(Model name)?(Media)?(Preserve results in model database)?(Force growth).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-    if (!defined($Data[2])) {
-        $Data[2] = "Complete";
-    }
-    if (!defined($Data[3])) {
-        $Data[3] = "0";
-    }
-    if (!defined($Data[4])) {
-        $Data[4] = "1";
-    }
-    my $ModelList;
-	if ($Data[1] eq "ALL") {
-		for (my $i=0; $i < $self->figmodel()->number_of_models(); $i++) {
-			push(@{$ModelList},$self->figmodel()->get_model($i));
-		}
-	} else {
-		my @temparray = split(/;/,$Data[1]);
-		for (my $i=0; $i < @temparray; $i++) {
-			push(@{$ModelList},$self->figmodel()->get_model($temparray[$i]));
-		}
-	}
-	my $Success = "SUCCESS:";
-    my $Fail = "FAIL:";
-    foreach my $Model (@{$ModelList}) {
-        print "Now processing model: ".$Model->id()."\n";
-		my $results = $Model->fbaFVA({
-			media=>$Data[2],
-			growth=>"forced",
-			drnRxn=>["bio00001"],
-			saveFVAResults=>$Data[3],
-			outputDirectory=>$self->figmodel()->config("database message file directory")->[0]
-		});
-		if (defined($results->{tb})) {
-			my $output = ["ID\tMin\tMax\tClass"];
-			foreach my $key (keys(%{$results->{tb}})) {
-				push(@{$output},$key."\t".$results->{tb}->{$key}->{min}."\t".$results->{tb}->{$key}->{max}."\t".$results->{tb}->{$key}->{class});
-			}
-			$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$Model->id()."-FVAresults.txt",$output);
-			$Success .= $Model->id().";";
-		} else {
-			$Fail .= $Model->id().";";
-		}
-    }
-	print $Success."\n".$Fail."\n";
-	return "SUCCESS";
-}
-
 sub buildbiomass {
     my($self,@Data) = @_;
 
@@ -4122,9 +4070,10 @@ sub importmediaconditions {
 sub simulatekomedialist {
 	my($self,@Data) = @_;
 	my $args = $self->check([
+		["model",1],
 		["ko",1],
 		["media",1],
-		["model",1],
+		["kolabel",0,undef],
 		["filename",0,"PhenotypeOutput.txt"]
 	],[@Data]);
 	my $medias = $self->figmodel()->processIDList({
@@ -4141,16 +4090,28 @@ sub simulatekomedialist {
 		parameters => {},
 		input => $args->{"ko"}
 	});
+	my $labels;
+	if (defined( $args->{"kolabel"})) {
+		$labels = $self->figmodel()->processIDList({
+			objectType => "label",
+			delimiter => ";",
+			column => "id",
+			parameters => {},
+			input => $args->{"kolabel"}
+		});
+	} else {
+		for (my $i=0; $i < @{$kos}; $i++) {
+			push(@{$labels},"strain".$i);
+		}
+	}
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
 	}
 	my $input;
-	my $count = 0;
 	for (my $i=0; $i < @{$kos}; $i++) {
 		for (my $j=0; $j < @{$medias}; $j++) {
-			$count++;
-			push(@{$input->{labels}},$count);
+			push(@{$input->{labels}},$labels->[$i]."_".$medias->[$j]);
 			push(@{$input->{mediaList}},$medias->[$j]);
 			push(@{$input->{koList}},[split(",",$kos->[$i])]);
 		}
@@ -4158,18 +4119,38 @@ sub simulatekomedialist {
 	$input->{fbaStartParameters} = {};
 	$input->{findTightBounds} = 0;
 	$input->{deleteNoncontributingRxn} = 0;
-	$input->{identifyCriticalBiomassCpd} = 1;
+	$input->{identifyCriticalBiomassCpd} = 0;
 	my $growthRates;
 	my $result = $mdl->fbaMultiplePhenotypeStudy($input);
-	my $output = ["Label\tMedia\tRxnKO\tGeneKO\tGrowth\tFraction\tObservedRate"];
+	my $outputHash;
 	foreach my $label (keys(%{$result})) {
-		push(@{$output},$label."\t".$result->{$label}->{media}
-			."\t".join("|",@{$result->{$label}->{rxnKO}})
-			."\t".join("|",@{$result->{$label}->{geneKO}})
-			."\t".$result->{$label}->{growth}
-			."\t".$result->{$label}->{fraction}
-			."\t".$growthRates->{$label}
-		);
+		my $array = [split(/_/,$label)];
+		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction}];
+		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction}];
+		$outputHash->{$array->[0]}->{geneKO} = $result->{$label}->{geneKO};
+		$outputHash->{$array->[0]}->{rxnKO} = $result->{$label}->{rxnKO};
+	}
+	my $output = ["Label\tKO list\tGene KO\tReaction KO\t ".join(" growth\t",@{$medias})." growth\t".join(" fraction\t",@{$medias})." fraction"];
+	for (my $i=0; $i < @{$labels}; $i++) {
+		my $line = $labels->[$i]."\t".$kos->[$i]."\t";
+		if (!defined($outputHash->{$labels->[$i]})) {
+			$line .= "\t";
+		} else {
+			$line .= $outputHash->{$labels->[$i]}->{geneKO}."\t".$outputHash->{$labels->[$i]}->{rxnKO};
+		} 
+		for (my $j=0; $j < @{$medias}; $j++) {
+			$line .= "\t";
+			if (defined($outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]})) {
+				$line .= $outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]}->[0];
+			}
+		}
+		for (my $j=0; $j < @{$medias}; $j++) {
+			$line .= "\t";
+			if (defined($outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]})) {
+				$line .= $outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]}->[1];
+			}
+		}
+		push(@{$output},$line);
 	}
 	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
 }
@@ -4555,6 +4536,47 @@ sub loadmodelfromfile {
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }
 
+sub loadbiomassfromfile {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["biomass",1],
+    	["model",0,undef],
+    	["equation",0,undef],
+    	["overwrite",0,0]
+	],[@Data]);
+	#Load the file if no equation was specified
+	if (!defined($args->{equation})) {
+		#Setting the filename if only an ID was specified
+		if ($args->{biomass} =~ m/^bio\d+$/) {
+			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
+		}
+		#Loading the biomass reaction
+		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
+		#Loading biomass reaction file
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
+		$args->{equation} = $obj->{EQUATION}->[0];
+		$args->{biomass} = $obj->{DATABASE}->[0];
+	}
+	#Loading the biomass into the database
+	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
+	if (defined($bio) && $args->{overwrite} == 0) {
+		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
+	}
+	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
+		equation => $args->{equation},
+		biomassID => $args->{biomass}
+	});
+	print "Successfully loaded biomass reaction ".$args->{biomass}.".\n";
+	#Adjusting the model if a model was specified
+	if (defined($args->{model})) {
+		my $mdl = $self->figmodel()->get_model($args->{model});
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
+    	$mdl->biomassReaction($args->{biomass});
+    	print "Successfully changed biomass reaction in model ".$args->{model}.".\n";
+	}
+	return "SUCCESS";
+}
+
 #Blasts specified sequences against the specified genomes
 sub blastgenomesequences {
     my($self,@Data) = @_;
@@ -4648,7 +4670,7 @@ sub printmedia {
 }
 
 #Prints the specified media formulations in tabular form
-sub loadmedia {
+sub createmedia {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["name",1],
@@ -4676,6 +4698,56 @@ sub loadmedia {
 		overwrite => $args->{overwrite}
     });
 	print "Media successfully created!";
+}
+
+sub fbafva {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",1],
+		["media",0,"Complete"],
+		["variables",0,"FLUX;UPTAKE"],
+		["options",0,"forceGrowth"],
+		["savetodb",0,0],
+		["filename",0,"FBAFVA_model ID.xls"],
+		["saveformat",0,"EXCEL"],
+		["drainReactions",0,"NONE"],
+		["reactionKO",0,"NONE"],
+		["geneKO",0,"NONE"]
+	],[@Data]);
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+    }
+    if ($args->{filename} eq "FBAFVA_model ID.xls") {
+    	$args->{filename} = undef; 
+    }
+    my $options = [split(/[;,]/,$args->{options})];
+   	my $optionHash;
+   	for (my $i=0; $i < @{$options}; $i++) {
+   		$optionHash->{$options->[$i]} = 1;
+   	}
+   	if (!defined($optionHash->{forceGrowth}) && !defined($optionHash->{noGrowth}) && !defined($optionHash->{freeGrowth})) {
+   		$optionHash->{forceGrowth} = 1;
+   	}
+    my $results = $mdl->fbaFVA($args,[],{
+	   	variables => [split(/[;,]/,$args->{geneKO})],
+	   	fbaStartParameters => {
+	   		parameters=>{},
+			filename=>undef,
+			geneKO=>[split(/[;,]/,$args->{geneKO})],
+			rxnKO=>[split(/[;,]/,$args->{reactionKO})],
+			drnRxn=>[split(/[;,]/,$args->{drainReactions})],
+			media=>$args->{media},
+			options => $optionHash
+	   	},
+	   	saveformat => $args->{saveformat},
+	   	filename => $args->{filename},
+		saveFVAResults=>$args->{savetodb}
+	});
+	if (!defined($results) || defined($results->{error})) {
+		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
+	}
+	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->outputdirectory().$args->{filename}.".";
 }
 
 1;
