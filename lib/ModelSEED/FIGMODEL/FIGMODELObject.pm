@@ -10,6 +10,7 @@
 use strict;
 package ModelSEED::FIGMODEL::FIGMODELObject;
 use Carp qw(cluck);
+use ModelSEED::FIGMODEL qw(FIGMODELERROR);
 
 =head1 FIGMODELObject object
 =head2 Introduction
@@ -93,23 +94,21 @@ sub load {
 	$args = $self->process_arguments($args,[],{delimiter => $self->delimiter(),filename => $self->filename()});
     $self->filename($args->{filename});
 	$self->delimiter($args->{delimiter});
-    if (open (INPUT, "<".$self->filename())) {
-		my $headings;
-		while (my $Line = <INPUT>) {
-			chomp($Line);
-			my $Delimiter = $self->delimiter();
-			my @Data = split(/$Delimiter/,$Line);
-			my $Heading = shift(@Data);
-			my $Temp;
-			push(@{$Temp},@Data);
-			$self->add_data($Temp,$Heading);
-			push(@{$headings},$Heading);
-		}
-		$self->headings($headings);
-		close(INPUT);
-		return undef;
-    }
-	return $self->error_message("load: could not load ".$self->filename());
+    open (INPUT, "<".$self->filename()) || ModelSEED::FIGMODEL::FIGMODELERROR("Could not open: ".$self->filename()." ".$@);
+	my $headings;
+	while (my $Line = <INPUT>) {
+		chomp($Line);
+		my $Delimiter = $self->delimiter();
+		my @Data = split(/$Delimiter/,$Line);
+		my $Heading = shift(@Data);
+		my $Temp;
+		push(@{$Temp},@Data);
+		$self->add_data($Temp,$Heading);
+		push(@{$headings},$Heading);
+	}
+	$self->headings($headings);
+	close(INPUT);
+	return undef;
 }
 
 =head3 save

@@ -156,9 +156,11 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
                                )),
         FIGMODEL_CONFIG => $figmodelConfigs,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
-        FIGMODEL_USER => $ENV{FIGMODEL_USER} || "public",
-        FIGMODEL_PASSWORD => $ENV{FIGMODEL_PASSWORD} || "public"
     };
+    if(defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
+        $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
+        $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
+    }
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
         $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
         $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};

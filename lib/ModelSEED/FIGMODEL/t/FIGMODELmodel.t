@@ -19,6 +19,7 @@ use warnings;
 use Data::Dumper;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
+use Try::Tiny;
 use Test::More qw(no_plan);
 use File::Temp qw(tempfile);
 
@@ -96,11 +97,24 @@ my $fm = $helper->getDebugFIGMODEL();
     my $not_owned = $fm->get_model('Seed83333.1'); 
     my ($fh, $filename) = tempfile();
     close($fh);
-    ok defined($not_owned->flatten($filename)), "flatten() on public model when not logged in should fail";
+    my ($failOne, $failTwo, $failThree) = (0,0,0);
+    try {
+        $not_owned->flatten($filename);
+    } catch {
+        $failOne = 1;
+    };
+    ok $failOne == 1, "flatten() on public model when not logged in should fail";
     my $version = $not_owned->version();    
-    $not_owned->increment();
+    try { 
+        $not_owned->increment();
+    };
     ok $version == $not_owned->version(), "increment() on public model when not logged in should fail.";
-    ok defined($not_owned->restore(0,$not_owned->version())), "restore() on non-owned model should fail.";
+    try {
+        $not_owned->restore(0,$not_owned->version())
+    } catch {
+        $failThree = 1;
+    };
+    ok $failThree==1, "restore() on non-owned model should fail.";
 }
 # PRIVATE MODEL TESTS
 {
@@ -137,7 +151,7 @@ my $fm = $helper->getDebugFIGMODEL();
     $count =~ s/^\s+(\d+)\s.*/$1/;
     $count = $count - 1 if($count > 0);
     my $rxns_count = $mdl->figmodel()->database()->get_objects("rxnmdl", { MODEL => $mdl->id() });
-    # ok $count == scalar(@$rxns_count), "checkpoint should save a copy of the currnet rxnmdls, got: $count, expected: " . scalar(@$rxns_count);
+    #ok $count == scalar(@$rxns_count), "checkpoint should save a copy of the currnet rxnmdls, got: $count, expected: " . scalar(@$rxns_count);
     # FIXME TestData does not get rxnmdls because they're not in ModelDB
 
     # testing restore()
@@ -175,11 +189,9 @@ my $fm = $helper->getDebugFIGMODEL();
     my $count = `wc -l $filename`;
     $count =~ s/^\s+(\d+)\s.*/$1/;
     $count = $count - 1 if($count > 0);
-    #ok $count == scalar(@$rxns),
-    #    "flatten() should contain the right number of".
-    #    " rxnmdl entries: has $count, want " . scalar(@$rxns);
-    # FIXME TestData does not get rxnmdls because they're not in ModelDB
-
+    ok $count == scalar(@$rxns),
+        "flatten() should contain the right number of".
+        " rxnmdl entries: has $count, want " . scalar(@$rxns);
     # testing increment
     my $version = $private_model->version();
     my $dir =  $private_model->directory();
@@ -195,9 +207,8 @@ my $fm = $helper->getDebugFIGMODEL();
     }
     $rxns = $private_model_db->get_objects("rxnmdl", { MODEL => $private_model->id() });
     $private_model->restore("Seed83333.1.1.v0", 1);
-    #my $rxnmdls = $private_model_db->get_objects("rxnmdl", { MODEL => $private_model->id() }); 
-    #ok scalar(@$rxnmdls) == $count, "restore() should return model to original state, got: ".scalar(@$rxnmdls)." wanted: ".$count;
-    # FIXME TestData does not get rxnmdls because they're not in ModelDB
+    my $rxnmdls = $private_model_db->get_objects("rxnmdl", { MODEL => $private_model->id() }); 
+    ok scalar(@$rxnmdls) == $count, "restore() should return model to original state, got: ".scalar(@$rxnmdls)." wanted: ".$count;
     ok defined($private_model->ppo()), "restore() should provide ppo object";
     ok defined($private_model_db->get_object("model", { id => $private_model->id() })),
         "restore() should result in a model row existing in the database";
@@ -205,14 +216,11 @@ my $fm = $helper->getDebugFIGMODEL();
 
 #### Testing copyModel
 {
-    #my $fm = $helper->newDebugFIGMODEL();
-    $helper->copyProdModelState("Seed83333.1.1242");
-    $helper->copyProdModelState("Seed83333.1.1");
+    my $fm = $helper->newDebugFIGMODEL();
     $fm->authenticate({ username => "alice", password => "alice"});
     my $model_orig = $fm->get_model('Seed83333.1.1');
     ok defined($model_orig), "should be able to get model Seed83333.1.1 as alice";
-    my $model_copy = $model_orig->copyModel({ owner => "devoid" });
-    ok defined($model_copy), "should get model copy as alice, model successfully copied";
-    my $model_copy_id = $model_copy->id();
-    $helper->copyProdModelState($model_copy_id);
+#    my $model_copy = $model_orig->copyModel({ owner => "bob" });
+#    ok defined($model_copy), "should get model copy as alice, model successfully copied";
+#    my $model_copy_id = $model_copy->id();
 }
