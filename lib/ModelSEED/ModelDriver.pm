@@ -4452,14 +4452,23 @@ sub login {
 	}
 	print "Authentication Successful! You will now remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n";
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
+    my ($addedPWD, $addedUSR) = (0,0);
 	for (my $i=0; $i < @{$data};$i++) {
 		if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
 			$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "'.$self->figmodel()->userObj()->password().'";';
+            $addedPWD = 1;
 		}
 		if ($data->[$i] =~ m/FIGMODEL_USER/) {
 			$data->[$i] = '$ENV{FIGMODEL_USER} = "'.$args->{username}.'";';
+            $addedUSR = 1;
 		}
 	}
+    if(!$addedPWD) {
+        push(@$data, '$ENV{FIGMODEL_PASSWORD} = "'.$self->figmodel()->userObj()->password().'";');
+    } 
+    if(!$addedUSR) {
+        push(@$data, '$ENV{FIGMODEL_USER} = "'.$args->{username}.'";');
+    } 
 	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
 	return "SUCCESS";
 }
