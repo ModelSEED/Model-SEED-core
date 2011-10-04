@@ -4729,8 +4729,8 @@ sub fbafva {
    	if (!defined($optionHash->{forceGrowth}) && !defined($optionHash->{noGrowth}) && !defined($optionHash->{freeGrowth})) {
    		$optionHash->{forceGrowth} = 1;
    	}
-    my $results = $mdl->fbaFVA($args,[],{
-	   	variables => [split(/[;,]/,$args->{geneKO})],
+    my $results = $mdl->fbaFVA({
+	   	variables => [split(/\;/,$args->{variables})],
 	   	fbaStartParameters => {
 	   		parameters=>{},
 			filename=>undef,
@@ -4742,7 +4742,8 @@ sub fbafva {
 	   	},
 	   	saveformat => $args->{saveformat},
 	   	filename => $args->{filename},
-		saveFVAResults=>$args->{savetodb}
+		saveFVAResults=>$args->{savetodb},
+		directory => $self->outputdirectory()
 	});
 	if (!defined($results) || defined($results->{error})) {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";

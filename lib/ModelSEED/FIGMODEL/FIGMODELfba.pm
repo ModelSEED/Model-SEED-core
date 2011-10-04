@@ -1197,11 +1197,29 @@ sub setTightBounds {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		variables => ["FLUX","UPTAKE"],
 	});
+	#Setting MFAToolkit parameters
+	my $translation = {
+		FLUX => "FLUX;FORWARD_FLUX;REVERSE_FLUX",
+		DELTAG => "DELTAG",
+		SDELTAG => "REACTION_DELTAG_ERROR;REACTION_DELTAG_PERROR;REACTION_DELTAG_NERROR",
+		UPTAKE => "DRAIN_FLUX;FORWARD_DRAIN_FLUX;REVERSE_DRAIN_FLUX",
+		SDELTAGF => "DELTAGF_ERROR;DELTAGF_PERROR;DELTAGF_NERROR",
+		POTENTIAL => "POTENTIAL",
+		CONC => "CONC;LOG_CONC"
+	};
+	my $searchVariables;
+	for (my $i=0; $i < @{$args->{variables}}; $i++) {
+		if (length($searchVariables) > 0) {
+			$searchVariables .= ";";
+		}
+		$searchVariables .= $translation->{$args->{variables}->[$i]};
+	}
 	$self->parameter_files(["ProductionMFA"]);
 	$self->set_parameters({
 		"find tight bounds"=>1,
 		"MFASolver" => "GLPK",
-		"identify dead ends"=>1
+		"identify dead ends"=>1,
+		"tight bounds search variables" => $searchVariables
 	});
 	#Evaluating specific options meant for this function
 	if (defined($self->options()->{forcedGrowth})) {
@@ -1230,15 +1248,29 @@ sub parseTightBounds {
 	}
 	my $results = {inactive=>"",dead=>"",positive=>"",negative=>"",variable=>"",posvar=>"",negvar=>"",positiveBounds=>"",negativeBounds=>"",variableBounds=>"",posvarBounds=>"",negvarBounds=>""};
 	my $table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/TightBoundsReactionData.txt",";","|",1,["DATABASE ID"]);
+	my $variableTypes = ["FLUX","DELTAGG_ENERGY","REACTION_DELTAG_ERROR"];
+	my $varAssoc = {
+		FLUX => "",
+		DELTAGG_ENERGY => " DELTAG",
+		REACTION_DELTAG_ERROR => " SDELTAG",
+		DRAIN_FLUX => "",
+		DELTAGF_ERROR => " SDELTAGF",
+		POTENTIAL => " POTENTIAL",
+		LOG_CONC => " CONC"
+	};
 	for (my $i=0; $i < $table->size(); $i++) {
 		my $row = $table->get_row($i);
-		$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max} = $row->{"Max FLUX"}->[0];
-		$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min} = $row->{"Min FLUX"}->[0];
-		if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max}) < 0.0000001) {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max} = 0;
-		}
-		if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min}) < 0.0000001) {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min} = 0;
+		for (my $j=0; $j < @{$variableTypes}; $j++) {
+			if (defined($row->{"Max ".$variableTypes->[$j]})) {
+				$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
+				$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+			}
 		}
 	}
 	#Loading compound tight bounds
@@ -1246,16 +1278,19 @@ sub parseTightBounds {
 		return {error => $self->error_message({function => "parseTightBounds",message=>"could not find tight bound results file",args=>$args})};
 	}
 	$table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/TightBoundsCompoundData.txt",";","|",1,["DATABASE ID"]);
+	$variableTypes = ["DRAIN_FLUX","LOG_CONC","DELTAGF_ERROR","POTENTIAL"];
 	for (my $i=0; $i < $table->size(); $i++) {
 		my $row = $table->get_row($i);
-		if ($row->{"Max DRAIN_FLUX"}->[0] ne "1e+007") {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max} = $row->{"Max DRAIN_FLUX"}->[0];
-			$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min} = $row->{"Min DRAIN_FLUX"}->[0];
-			if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max}) < 0.0000001) {
-				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max} = 0;
-			}
-			if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min}) < 0.0000001) {
-				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min} = 0;
+		for (my $j=0; $j < @{$variableTypes}; $j++) {
+			if (defined($row->{"Max ".$variableTypes->[$j]}) && $row->{"Max ".$variableTypes->[$j]}->[0] ne "1e+007") {
+				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
+				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
 			}
 		}
 	}

@@ -14,7 +14,7 @@ CCC = g++
 # ---------------------------------------------------------------------
 CCOPT = -O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX
 
-CCLNFLAGS = -L$(GLPKLIBDIRECTORY) -lglpk -L$(CPLEXLIB) -lcplex -lm -lpthread -lz
+CCLNFLAGS = -L$(GLPKLIBDIRECTORY) -lglpk -L$(CPLEXLIB) -lcplex -lm -lpthread -lz -framework CoreFoundation -framework IOKit
 
 CCFLAGS = $(CCOPT) -I$(CPLEXINCLUDE) -I$(GLPKINCDIRECTORY) -I$(INCDIR) -DNOSAFEMEM -DNOBLOCKMEM
 

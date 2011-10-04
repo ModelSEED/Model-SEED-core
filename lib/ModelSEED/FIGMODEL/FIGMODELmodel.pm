@@ -7318,6 +7318,7 @@ sub fbaFVA {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 	   	saveformat => "EXCEL",
+	   	directory => $self->figmodel()->config("database message file directory")->[0],
 	   	filename => "FBAFVA_".$self->id().".xls",
 	   	saveFVAResults=>1,
 	   	variables => ["FLUX","UPTAKE"],
@@ -7347,52 +7348,83 @@ sub fbaFVA {
 	});
 	#Checking that results were returned
 	ModelSEED::FIGMODEL::FIGMODELERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
-	my $rxnclasstable = $self->reaction_class_table();
-	my $cpdclasstable = $self->compound_class_table();
-	foreach my $obj (keys(%{$results->{tb}})) {
-		my $row;
-		if ($obj =~ m/(cpd\d\d\d\d\d)(.)/) {
-			$row = $cpdclasstable->get_row_by_key($obj,"COMPOUND",1);
-		} elsif ($obj =~ m/([rb][xi][no]\d\d\d\d\d)/) {
-			$row = $rxnclasstable->get_row_by_key($1,"REACTION",1);
+	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$args->{directory}."Reactions-".$args->{filename},["Reaction"],";","|");
+	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$args->{directory}."Compounds-".$args->{filename},["Compound"],";","|");
+	my $varAssoc = {
+		FLUX => ["reaction",""],
+		DELTAG => ["reaction"," DELTAG"],
+		SDELTAG => ["reaction"," SDELTAG"],
+		UPTAKE => ["compound",""],
+		SDELTAGF => ["compound"," SDELTAGF"],
+		POTENTIAL => ["compound"," POTENTIAL"],
+		CONC => ["compound"," CONC"]
+	};
+	for (my $i=0; $i < @{$args->{variables}}; $i++) {
+		if (defined($varAssoc->{$args->{variables}->[$i]})) {
+			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+				if ($args->{variables}->[$i] eq "UPTAKE") {
+					$cpdtbl->add_headings(("Class"));
+				}
+			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+				if ($args->{variables}->[$i] eq "FLUX") {
+					$rxntbl->add_headings(("Class"));
+				}
+			}
 		}
-		#Setting row values
-		if (defined($row)) {
-			my $foundit = 0;
-			if (defined($row->{MEDIA})) {
-				for (my $i=0; $i < @{$row->{MEDIA}};$i++) {
-					if ($row->{MEDIA}->[$i] eq $args->{media}) {
-						$foundit = 1;
-						$row->{MIN}->[$i] = $results->{tb}->{$obj}->{min};
-						$row->{MAX}->[$i] = $results->{tb}->{$obj}->{max};
-						$row->{CLASS}->[$i] = $results->{tb}->{$obj}->{class};
-						$row->{MEDIA}->[$i] = $args->{media};
-						last;
+	}
+	foreach my $obj (keys(%{$results->{tb}})) {
+		my $newRow;
+		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Reaction"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
+			}
+			$newRow->{"Compartment"} = [$compartment];
+			#$newRow->{"Direction"} = [$rxnObj->directionality()];
+			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if (defined($results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]})) {
+					$newRow->{"Min ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]};
+					$newRow->{"Max ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"max".$varAssoc->{$args->{variables}->[$i]}->[1]};
+					if ($args->{variables}->[$i] eq "FLUX") {
+						$newRow->{Class}->[$i] = $results->{tb}->{$obj}->{class};
 					}
 				}
 			}
-			if ($foundit == 0) {
-				push @{$row->{MEDIA}}, $args->{media};
-				push @{$row->{MIN}}, $results->{tb}->{$obj}->{min};
-				push @{$row->{MAX}}, $results->{tb}->{$obj}->{max};
-				push @{$row->{CLASS}}, $results->{tb}->{$obj}->{class};
+			$rxntbl->add_row($newRow);
+		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Compound"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
 			}
+			$newRow->{"Compartment"} = [$compartment];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if (defined($results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]})) {
+					$newRow->{"Min ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]};
+					$newRow->{"Max ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"max".$varAssoc->{$args->{variables}->[$i]}->[1]};
+					if ($args->{variables}->[$i] eq "FLUX") {
+						$newRow->{Class}->[$i] = $results->{tb}->{$obj}->{class};
+					}
+				}
+			}
+			$cpdtbl->add_row($newRow);
 		}
 	}
 	#Saving data to file
 	if ($args->{saveformat} eq "EXCEL") {
-		$self->figmodel()->make_xls($args->{filename},["Compound Bounds","Reaction Bounds"],[$cpdclasstable,$rxnclasstable]);
+		$self->figmodel()->make_xls($args->{directory}.$args->{filename},["Compound Bounds","Reaction Bounds"],[$cpdtbl,$rxntbl]);
 	} elsif ($args->{saveformat} eq "TEXT") {
-		$cpdclasstable->save("Compounds-".$args->{filename});
-		$rxnclasstable->save("Reactions-".$args->{filename});
+		$cpdtbl->save();
+		$rxntbl->save();
 	}
 	#Loading data into database if requested
 	if ($args->{saveFVAResults} == 1) {
 		my $parameters = "";
 		if (defined($args->{fbaStartParameters}->{forceGrowth}) && $args->{fbaStartParameters}->{forceGrowth} == 1) {
 			$parameters .= "FG;";
-			$rxnclasstable->save();
-			$cpdclasstable->save();
 		} elsif (defined($args->{fbaStartParameters}->{noGrowth}) && $args->{fbaStartParameters}->{noGrowth} == 1) {
 			$parameters .= "NG;";
 		}
