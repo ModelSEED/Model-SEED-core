@@ -4697,7 +4697,7 @@ sub createmedia {
 		owner => $args->{owner},
 		overwrite => $args->{overwrite}
     });
-	print "Media successfully created!";
+	print "Media successfully created!\n";
 }
 
 sub fbafva {
