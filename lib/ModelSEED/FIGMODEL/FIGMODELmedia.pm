@@ -2,6 +2,7 @@ use strict;
 package ModelSEED::FIGMODEL::FIGMODELmedia;
 use Scalar::Util qw(weaken);
 use Carp qw(cluck);
+use Data::Dumper;
 
 =head1 FIGMODELmedia object
 =head2 Introduction
@@ -54,7 +55,8 @@ sub create {
 		compounds => undef,
 		public => 1,
 		owner => $self->figmodel()->user(),
-		overwrite => 0
+		overwrite => 0,
+        aerobic => 1,
 	});
 	my $mediaObj = $self->figmodel()->database()->sudo_get_object("media",{id => $args->{id}});
 	if (defined($mediaObj)) {
@@ -65,11 +67,15 @@ sub create {
 		if (!defined($rights->{admin})) {
 			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter media object");
 		}
+        $mediaObj->public($args->{public} || $mediaObj->public());
+        $mediaObj->aerobic($args->{aerobic} || $mediaObj->aerobic());
+        $mediaObj->owner($args->{owner} || $mediaObj->owner());
+        $mediaObj->modificationDate(time());
 	} else {
 		$mediaObj = $self->figmodel()->database()->create_object("media",{
 	    	public => $args->{public},
 	    	id => $args->{id},
-	    	aerobic => 1,
+	    	aerobic => $args->{aerobic},
 	    	owner => $args->{owner},
 	    	creationDate => time(),
 	    	modificationDate => time()
@@ -174,7 +180,7 @@ sub loadCompoundsFromFile {
 		filename => $self->filename()
 	});
 	delete $self->{_entities};
-	my $list = $self->figmodel()->database()->load_single_column_file($self->filename(),"");
+	my $list = $self->figmodel()->database()->load_single_column_file($args->{filename},"");
 	ModelSEED::FIGMODEL::FIGMODELERROR("Could not load file for media:".$args->{id}) if (!defined($list));
 	my $headings = [split(/;/,$list->[0])];
 	my $headingHash;

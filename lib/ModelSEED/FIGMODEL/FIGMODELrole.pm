@@ -33,7 +33,6 @@ sub new {
 				useCache => 1
 			});
 			if (!defined($roles->{$self->{_id}})) {
-				$self->error_message({message=>"Could not find role in database:".$args->{id}});
 				return undef;
 			}
 			$self->{_ppo} = $roles->{$self->{_id}}->[0];
@@ -45,7 +44,6 @@ sub new {
 			});
 			my $searchName = $self->convert_to_search_role({name => $self->{_id}});
 			if (!defined($roles->{$searchName})) {
-				$self->error_message({message=>"Could not find role in database:".$args->{id}});
 				return undef;
 			}
 			$self->{_ppo} = $roles->{$searchName}->[0];

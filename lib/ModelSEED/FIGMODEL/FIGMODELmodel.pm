@@ -3980,7 +3980,7 @@ revert(id, x)
 =cut
 sub checkpoint {
 	my ($self) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "checkpoint"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $dir = $self->directory();
 	$self->flatten($dir."rxnmdl.txt");
 	$self->increment();
@@ -3989,13 +3989,16 @@ sub checkpoint {
 
 sub revert { 
 	my ($self, $version) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "revert"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	$version = "v$version" if($version =~ /^\d+$/);
 	$version = $self->id().".".$version if ($version =~ /^v\d+$/);
 	my $test = $self->figmodel()->get_model($version);
 	unless(defined($test)) {
 		return $self->figmodel()->error_message({message => "Unable to find model version $version! Doing nothing."});
 	}
+    if(!-d $self->config("database root directory")->[0]."tmp/") {
+        mkdir $self->config("database root directory")->[0]."tmp/";
+    }
 	my ($fh, $tmpfile) = File::Temp::tempfile(
 		"rxnmdl-".$self->id()."-".$self->version()."-XXXXXX",
 		DIR => $self->config("database root directory")->[0]."tmp/");
@@ -4033,7 +4036,7 @@ sub copyProvenanceFrom {
 
 sub flatten {
 	my ($self, $target) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "flatten"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $config = {
 		filename => $target,
@@ -4048,7 +4051,7 @@ sub flatten {
 
 sub _drop_ppo_database {
 	my ($self) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "drop"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $rxn_mdls = $db->get_objects('rxnmdl',
 		{ MODEL => $self->id() });
@@ -4061,7 +4064,7 @@ sub _drop_ppo_database {
 	
 sub increment {
 	my ($self) = @_;		
-	return $self->error_message({message => "Model is not editable!", function => "increment"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $hash = { map { $_ => $self->ppo()->$_() } keys %{$self->ppo()->attributes()} };
 	my $parts = $self->parseId($self->fullId());
 	$hash->{canonicalID} = $hash->{id};
@@ -4077,7 +4080,7 @@ sub increment {
 
 sub restore {
 	my ($self, $versionToRestore, $finalVersionNumber) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "restore"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $mdl = $self->figmodel()->get_model($versionToRestore);
 	if(!defined($mdl)) {
 		return $self->error_message({message => "Model to restore $versionToRestore could not be found!", function => "restore"});

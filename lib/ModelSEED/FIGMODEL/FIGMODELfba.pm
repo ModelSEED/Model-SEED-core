@@ -311,13 +311,15 @@ sub printMediaFiles {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		printList => [$self->media()]
 	});
-	my $mediaObj = $self->mediaObj();
-	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find media object for ".$self->media()) if (!defined($mediaObj));
-	$mediaObj->printDatabaseTable({
-		filename => $self->directory()."/media.tbl",
-		printList => $args->{printList}
-	});
-	$self->dataFilename({type=>"media",filename=>$self->directory()."/media.tbl"});
+    return unless(@{$args->{printList}});
+    my $first = $args->{printList}->[0];
+    my $mediaObj = $self->figmodel()->get_media($first);
+    ModelSEED::FIGMODEL::FIGMODELERROR("Could not find media object for $first") if (!defined($mediaObj));
+    $mediaObj->printDatabaseTable({
+        filename => $self->directory()."/media.tbl",
+        printList => $args->{printList}
+    });
+    $self->dataFilename({type=>"media",filename=>$self->directory()."/media.tbl"});
 }
 =head3 printStringDBFile
 Definition:
@@ -858,7 +860,7 @@ sub runFBA {
 		mediaPrintList => undef,
 		parameterFile => "FBAParameters.txt"
 	});
-	if (defined($self->{_mediaPrintList})) {
+	if (defined($self->{_mediaPrintList}) && !defined($args->{mediaPrintList})) {
 		$args->{mediaPrintList} = $self->{_mediaPrintList};
 	}
 	if (defined($args->{error})) {return $self->error_message({function => "parseWebFBASimulation",args => $args});}

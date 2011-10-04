@@ -92,7 +92,7 @@ sub copyReaction {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 		newid=>undef,
-		owner=>$self->ppo()->owner()
+		owner=> defined($self->ppo()) ? $self->ppo()->owner() : 'master',
 	});
 	ModelSEED::FIGMODEL::FIGMODELERROR("Cannot call copyReaction on generic reaction") if (!defined($self->id()));
 	#Issuing new ID
@@ -108,7 +108,7 @@ sub copyReaction {
 			
 	} elsif ($self->id() =~ m/bio/) {
 		$self->figmodel()->database()->create_object("bof",{
-			owner => $self->ppo()->owner(),
+			owner => $args->{owner},
 			name => $self->ppo()->name(),
 			public => $self->ppo()->public(),
 			equation => $self->ppo()->equation(),
@@ -137,7 +137,7 @@ sub copyReaction {
 		});
 	}
 	my $newRxn = $self->figmodel()->get_reaction($args->{newid});
-	if (-e $self->file()) {
+	if (-e $self->filename()) {
 		$self->file()->save($newRxn->filename());
 	}
 	return $newRxn;
