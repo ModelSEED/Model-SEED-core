@@ -1227,7 +1227,7 @@ sub setTightBounds {
 		"tight bounds search variables" => $searchVariables
 	});
 	#Evaluating specific options meant for this function
-	if (defined($self->options()->{forcedGrowth})) {
+	if (!defined($self->options()->{forcedGrowth})) {
 		$self->set_parameters({"maximize single objective"=>0});
 		if (defined($self->options()->{noGrowth})) {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
@@ -1394,7 +1394,7 @@ sub setCompleteGapfillingStudy {
 	#Setting parameters
 	$self->set_parameters({
 		"Default min drain flux"=>"-10000",
-		"Default max drain flux"=>"10000",
+		"Default max drain flux"=>"0",
 		"MFASolver"=>"CPLEX",
 		"Allowable unbalanced reactions"=>$self->figmodel()->config("acceptable unbalanced reactions")->[0],
 		"dissapproved compartments"=>$self->figmodel()->config("diapprovied compartments")->[0],
@@ -1405,6 +1405,9 @@ sub setCompleteGapfillingStudy {
 		"just print LP file" => 0,
 		"Complete gap filling" => 1
 	});
+	if ($self->media() eq "Complete") {
+		$self->parameters()->{"Default max drain flux"} = "10000";
+	}
 	#Setting parameter files
 	$self->clear_drain_reaction();
 	$self->add_parameter_files(["GapFilling"]);

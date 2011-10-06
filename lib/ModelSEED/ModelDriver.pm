@@ -4754,62 +4754,66 @@ sub gapfillmodel {
 		["model",1],
 		["media",0,"Complete"],
 		["removegapfilling",0,1],
-		["rungapfilling",0,1],
-		["startfresh",0,1],
 		["inactivecoef",0,100],
 		["adddrains",0,0],
-		["iterative",0,0],
-		["queue",0,0]
+		["iterative",0,1],
+		["testsolution",0,0],
+		["printdbmessage",0,0],
+		["coefficientfile",0,undef],
+		["queue",0,0],
+		["rungapfilling",0,1],
+		["problemdirectory",0,undef],
+		["startfresh",0,1]
 	],[@Data]);
     #Getting model list
-    if ($args->{model} eq "ALL") {
-    	my $mdls = $self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "PUBSEED"});
-    	push(@{$mdls},@{$self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "SEED"})});
-		for (my $i=0; $i < @{$mdls}; $i++) {
+    my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{model}
+	});
+	#If more than one model was specified, we queue up gapfilling for each model
+	if (@{$models} > 1 || $args->{queue} == 1) {
+	    for (my $i=0; $i < @{$models}; $i++) {
 	    	$self->figmodel()->add_job_to_queue({
-	    		command => "completegapfillmodel?".$mdls->[$i]->id()."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
+	    		command => "completegapfillmodel".
+	    			"?".$models->[$i]->id().
+	    			"?".$args->{"media"}.
+	    			"?".$args->{"removegapfilling"}.
+	    			"?".$args->{"inactivecoef"}.
+	    			"?".$args->{"adddrains"}.
+	    			"?".$args->{"iterative"}.
+	    			"?0".
+	    			"?".$args->{"rungapfilling"}.
+	    			"?".$args->{"problemdirectory"}.
+	    			"?".$args->{"startfresh"},
 	    		user => $self->figmodel()->user(),
 	    		queue => "chenry"
 	    	});
 		}
-		return "SUCCESS";
-    } elsif (-e $args->{model}) {
-		my $input = $self->figmodel()->database()->load_single_column_file($args->{model},"");
-		for (my $i=0; $i < @{$input}; $i++) {
-			$self->figmodel()->add_job_to_queue({
-	    		command => "completegapfillmodel?".$input->[$i]."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
-	    		user => $self->figmodel()->user(),
-	    		queue => "chenry"
-	    	});
-		}
-		return "SUCCESS";
-    } elsif (defined($args->{"queue"}) && $args->{"queue"} == 1) {
-    	$self->figmodel()->add_job_to_queue({
-    		command => "completegapfillmodel?".$args->{model}."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
-    		user => $self->figmodel()->user(),
-    		queue => "chenry"
-    	});
-    	return "SUCCESS";
-    }
-    #Gap filling the model
-    if (!defined($args->{"start fresh"})) {
-    	$args->{"start fresh"} = 1;	
-    }
-   	my $model = $self->figmodel()->get_model($args->{model});
-	if (defined($model)) {
-		$model->completeGapfilling({
-			startFresh => $args->{"start fresh"},
-			problemDirectory => $args->{model},
-			runProblem=> $args->{"run gapfilling"},
-			removeGapfillingFromModel => $args->{"remove gapfilled reactions"},
-			gapfillCoefficientsFile => "NONE",
-			inactiveReactionBonus => 100,
-			drnRxn => [],
-			media => "Complete",
-			conservative => 0
-		});
 	}
-    return "SUCCESS";
+	#If only one model was selected, we run gapfilling
+   	my $model = $self->figmodel()->get_model($models->[0]);
+   	if (!defined($model)) {
+   		ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$models->[0]." not found in database!");
+   	}
+   	$model->completeGapfilling({
+		startFresh => $args->{startfresh},
+		problemDirectory => $args->{problemdirectory},
+		rungapfilling=> $args->{rungapfilling},
+		removeGapfillingFromModel => $args->{removegapfilling},
+		gapfillCoefficientsFile => $args->{coefficientfile},
+		inactiveReactionBonus => $args->{inactivecoef},
+		fbaStartParameters => {
+			media => $args->{"media"}
+		},
+		iterative => $args->{iterative},
+		adddrains => $args->{adddrains},
+		testsolution => $args->{testsolution},
+		globalmessage => $args->{printdbmessage}
+	});
+    return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
 
 1;

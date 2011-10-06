@@ -6453,7 +6453,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 		map<string, double, std::less<string> > ScenarioReactions;
 		map<string, double, std::less<string> > ScenarioModelReactions;
 		ifstream Input;
-		if (OpenInput(Input,GetParameter("FIGMODEL Function mapping filename"))) {
+		if (OpenInput(Input,GetParameter("Function mapping filename"))) {
 			GetFileLine(Input);
 			do {
 				vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -6482,7 +6482,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 			} while(!Input.eof());
 			Input.close();
 		}
-		if (OpenInput(Input,GetParameter("FIGMODEL Reaction database filename"))) {
+		if (OpenInput(Input,GetParameter("Reaction database filename"))) {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");
 			int KeggMapColumn = int(FLAG);
 			for (int i=0; i < int(Strings->size()); i++) {
@@ -6504,7 +6504,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 			} while(!Input.eof());
 			Input.close();
 		}
-		if (OpenInput(Input,GetParameter("FIGMODEL hope scenarios filename"))) {
+		if (OpenInput(Input,GetParameter("hope scenarios filename"))) {
 			GetFileLine(Input);
 			do {
 				vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -7181,7 +7181,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	map<string, double, std::less<string> > SubsystemReactions;
 	map<string, double, std::less<string> > SubsystemModelReactions;
 	map<string, vector<string>, std::less<string> > ReactionSubsystems;
-	if (OpenInput(Input,GetParameter("FIGMODEL Function mapping filename"))) {
+	if (OpenInput(Input,GetParameter("Function mapping filename"))) {
 		GetFileLine(Input);
 		do {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -7209,7 +7209,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	map<string, double, std::less<string> > ScenarioReactions;
 	map<string, double, std::less<string> > ScenarioModelReactions;
 	map<string, vector<string>, std::less<string> > ReactionScenarios;
-	if (OpenInput(Input,GetParameter("FIGMODEL hope scenarios filename"))) {
+	if (OpenInput(Input,GetParameter("hope scenarios filename"))) {
 		GetFileLine(Input);
 		do {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");

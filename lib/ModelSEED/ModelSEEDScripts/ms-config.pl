@@ -280,7 +280,9 @@ SCRIPT
 		"testmodelgrowth",
 		"importmodel",
 		"createlocaluser",
-		"createmedia"
+		"createmedia",
+		"fbafva",
+		"gapfillmodel"
 	];
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {

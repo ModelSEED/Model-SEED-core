@@ -1938,62 +1938,52 @@ sub completeGapfilling {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		startFresh => 1,
 		problemDirectory => undef,#Name of the job directory, which plays a role in check pointing the complete gapfilling pipeline
-		setupProblemOnly=>0,
-		doNotClear => 0,
+		rungapfilling=>1,
+		removeGapfillingFromModel => 1,
 		gapfillCoefficientsFile => "NONE",
 		inactiveReactionBonus => 100,
-		drnRxn => ["bio00001"],
-		media => "Complete",
-		conservative => 0
+		fbaStartParameters => {
+			media => "Complete",
+		},
+		iterative => 1,
+		adddrains => 0,
+		testsolution => 1,
+		globalmessage => 0
 	});
-	return $self->error_message({function => "completeGapfilling",args => $args}) if (defined($args->{error}));	
 	my $start = time();
 	my $fbaObj = $self->fba();
 	#Creating the problem directory
+	if (defined($args->{problemdirectory}) && $args->{problemdirectory} eq "MODELID") {
+   		$args->{problemdirectory} = "Gapfilling-".$self->id();
+   	}
 	if (!defined($args->{problemDirectory})) {
 		$args->{problemDirectory} = $fbaObj->filename();
 	}
-	$args->{drnRxn} = [];
-	$fbaObj->filename($args->{problemDirectory});	
+	$fbaObj->filename($args->{problemDirectory});
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
-	#Creating model version with gapfilled reactions removed
-	if (!-e $fbaObj->directory()."/".$self->id().".tbl") {
-		my $removeGapFilling = 1;
-		if ($args->{doNotClear} == 1) {
-			$removeGapFilling = 0;
-		}
-		$self->printModelFileForMFAToolkit({
-			removeGapfilling => $removeGapFilling,
-			filename => $fbaObj->directory()."/".$self->id().".tbl"
-		});
-	}
 	#Printing list of inactive reactions
-	if ($args->{conservative} == 1) {
+	if ($args->{iterative} == 0) {
 		my $list = [$self->ppo()->biomassReaction()];
 		$self->figmodel()->database()->print_array_to_file($fbaObj->directory()."/InactiveModelReactions.txt",$list);
-		$args->{drnRxn} = [];
 	}
 	my $results;
 	if (!-e $fbaObj->directory()."/InactiveModelReactions.txt") {
+		$args->{fbaStartParameters}->{options}->{freeGrowth} = 1;
 		$results = $self->runFBAStudy({
-			fbaStartParameters => {
-				parameters=>{},
-				drnRxn=>$args->{drnRxn},
-				media=>$args->{media},
-				parameter_files=>["ProductionMFA"]
-			},
+			fbaStartParameters => $args->{fbaStartParameters},
 			setupParameters => {
 				function => "setTightBounds",
-				arguments => {forcingGrowth => 0}	
+				arguments => {variables => ["FLUX"]}	
 			},
-			problemDirectory => $args->{problemDirectory},
+			problemDirectory => undef,
 			parameterFile => "FVAParameters.txt",
 			startFresh => 0,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
 			forcePrintModel => 1,
 			runProblem=>1
 		});
-		return $self->error_message({message=>"Could not calculate inactive reactions",function => "completeGapfilling",args => $args}) if (!defined($results->{tb}));
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not calculate inactive reactions") if (!defined($results->{tb}));
+		delete $args->{fbaStartParameters}->{options}->{freeGrowth};
 		my $inactive;
 		foreach my $obj (keys(%{$results->{tb}})) {
 			if ($obj =~ m/([rb][xi][no]\d+)/ && $results->{tb}->{$obj}->{min} > -0.0000001 && $results->{tb}->{$obj}->{max} < 0.0000001) {
@@ -2007,13 +1997,12 @@ sub completeGapfilling {
 	}
 	#Printing gapfilling parameters
 	if (!-e $fbaObj->directory()."/CompleteGapfillingParameters.txt") {
+		if ($args->{adddrains} == 1) {
+			$args->{fbaStartParameters}->{options}->{adddrains} = 1;
+		}
+		$args->{fbaStartParameters}->{parameters}->{"create file on completion"} = "GapfillingComplete.txt";
 		$results = $self->runFBAStudy({
-			fbaStartParameters => {
-				parameters=>{"create file on completion"=>"GapfillingComplete.txt"},
-				drnRxn=>$args->{drnRxn},
-				media=>$args->{media},
-				parameter_files=>["ProductionMFA"]
-			},
+			fbaStartParameters => $args->{fbaStartParameters},
 			setupParameters => {
 				function => "setCompleteGapfillingStudy",
 				arguments => {
@@ -2027,54 +2016,54 @@ sub completeGapfilling {
 			startFresh => 0,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
 			forcePrintModel => 1,
-			runProblem=> $args->{runProblem}
+			runProblem=> $args->{rungapfilling}
 		});
+		delete $args->{fbaStartParameters}->{options}->{adddrains};
+		delete $args->{fbaStartParameters}->{parameters}->{"create file on completion"};
 	}
-	if ($args->{setupProblemOnly} == 1) {
-		return $self->figmodel()->copyMergeHash([$args,{status=>"Success"}]);
+	#Exiting now if the user did not request that the gapfilling be run
+	if ($args->{rungapfilling} == 0) {
+		return {
+			status=>"Success",
+			problemDirectory => $args->{problemDirectory}
+		};
 	}
-	#Running gapfilling process
+	#Checking that a gapfilling solution was printed
+	my $fbaObj = $results->{fbaObj};
 	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
-		$fbaObj->runFBA({
-			runSimulation => $args->{runSimulation},
-			parameterFile => "AddnlFBAParameters.txt"
-		});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Gapfilling of model ".$self->id()." failed!");	
 	}
-	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
-		return $self->error_message({message=>"Gapfilling failed to run. Check MFAToolkit for errors.",function => "completeGapfilling",args => $args});	
-	}
+	#Loading the gapfilling solution into the model
 	$results = $self->integrateGapfillingSolution({
 		directory => $fbaObj->directory(),
 		gapfillResults => $results
 	});
-	if ($results->{success} == 0) {
-		return $self->error_message({message=>$results->{error},function => "completeGapfilling",args => $args});
-	}
+	#Calculating the growth to test the model
 	my $growthResults = $self->fbaCalculateGrowth({
-		fbaStartParameters => {},
-		problemDirectory => undef,
-		outputDirectory => $self->id()."GROWTH",
-		saveLPfile => 0
+		fbaStartParameters => $args->{fbaStartParameters}
 	});
-	my $message = "Growth:".$self->ppo()->growth().";Additions:".$results->{additions}.";Gapfilling:".$results->{gaps};
-	$self->globalMessage({
-		function => "completeGapfilling",
-		package => "FIGMODELmodel",
-		message => $message,
-		thread => "completeGapfilling",
-	});
-	if (defined($growthResults->{fbaObj})) {
-		$growthResults->{fbaObj}->clearOutput();
+	#Printing the growth message
+	if ($args->{globalmessage} == 1) {
+		my $message = "Growth:".$self->ppo()->growth().";Additions:".$results->{additions}.";Gapfilling:".$results->{gaps};
+		$self->globalMessage({
+			function => "completeGapfilling",
+			package => "FIGMODELmodel",
+			message => $message,
+			thread => "completeGapfilling",
+		});
 	}
-	$results = $self->fbaTestGapfillingSolution({
-		fbaStartParameters => {
-			media => "Complete",
-			drnRxn => $args->{drnRxn}	
-		},
-		problemDirectory => $self->id()."GFT"
-	});
-	if (defined($results->{fbaObj})) {
-		$results->{fbaObj}->clearOutput();
+	#Assessing the gapfilling solution
+	if ($args->{testsolution} == 1) {
+		$results = $self->fbaTestGapfillingSolution({
+			fbaStartParameters => {
+				media => "Complete",
+				drnRxn => $args->{drnRxn}	
+			},
+			problemDirectory => $self->id()."GFT"
+		});
+		if (defined($results->{fbaObj})) {
+			$results->{fbaObj}->clearOutput();
+		}
 	}
 	$self->set_status(2,"New gapfilling complete");
 	$self->update_model_stats();
@@ -7114,8 +7103,7 @@ sub runFBAStudy {
 		forcePrintModel => 1,
 		runProblem=>0,
 		clearOutput=>0
-	});
-	return $self->error_message({function => "completeGapfilling",args => $args}) if (defined($args->{error}));	
+	});	
 	#Setting the problem directory
 	my $fbaObj = $self->fba($args->{fbaStartParameters});
 	if (!defined($args->{problemDirectory})) {
