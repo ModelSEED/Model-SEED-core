@@ -471,9 +471,10 @@ sub makeOutputDirectory {
 	return $self->error_message({function => "makeOutputDirectory",args=>$args}) if (defined($args->{error}));
 	if (-d $self->directory() && $args->{deleteExisting} == 1) {
 		File::Path::rmtree($self->directory());
-		File::Path::mkpath($self->directory());
+		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");
+		
 	} elsif (!-d $self->directory()) {
-		File::Path::mkpath($self->directory());	
+		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");	
 	}
 	return undef;
 }
@@ -598,15 +599,17 @@ sub setDrainRxnParameters {
 			$exchange = $self->parameters()->{"exchange species"};
 		}
 		for (my $j=0; $j < @{$self->{_drnRxn}}; $j++) {
-			my $drnRxn = $self->figmodel()->get_reaction($self->{_drnRxn}->[$j]);
-			if (defined($drnRxn)) {
-				my ($Reactants,$Products) = $drnRxn->substrates_from_equation();
-				for (my $i=0; $i < @{$Reactants}; $i++) {
-					$exchange .= ";".$Reactants->[$i]->{"DATABASE"}->[0]."[".$Reactants->[$i]->{"COMPARTMENT"}->[0]."]:-10000:0";
-				}
-				for (my $i=0; $i < @{$Products}; $i++) {
-					if ($Products->[$i]->{"DATABASE"}->[0] ne "cpd11416") {
-						$exchange .= ";".$Products->[$i]->{"DATABASE"}->[0]."[".$Products->[$i]->{"COMPARTMENT"}->[0]."]:0:10000";
+			if ($self->{_drnRxn}->[$j] ne "NONE") {
+				my $drnRxn = $self->figmodel()->get_reaction($self->{_drnRxn}->[$j]);
+				if (defined($drnRxn)) {
+					my ($Reactants,$Products) = $drnRxn->substrates_from_equation();
+					for (my $i=0; $i < @{$Reactants}; $i++) {
+						$exchange .= ";".$Reactants->[$i]->{"DATABASE"}->[0]."[".$Reactants->[$i]->{"COMPARTMENT"}->[0]."]:-10000:0";
+					}
+					for (my $i=0; $i < @{$Products}; $i++) {
+						if ($Products->[$i]->{"DATABASE"}->[0] ne "cpd11416") {
+							$exchange .= ";".$Products->[$i]->{"DATABASE"}->[0]."[".$Products->[$i]->{"COMPARTMENT"}->[0]."]:0:10000";
+						}
 					}
 				}
 			}

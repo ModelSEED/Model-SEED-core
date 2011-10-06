@@ -867,28 +867,6 @@ sub loadgapfillsolution {
     $self->figmodel()->retrieve_load_gapfilling_results($Data[1],$Data[2],$Data[3]);
 }
 
-sub gapfillmodel {
-    my($self,@Data) = @_;
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 2) {
-        print "Syntax for this command: gapfillmodel?(Model ID)?(do not clear existing solution).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-    #Gap filling the model
-    my $model = $self->figmodel()->get_model($Data[1]);
-	$model->completeGapfilling({
-		startFresh => 1,
-		problemDirectory => $model->id(),#Name of the job directory, which plays a role in check pointing the complete gapfilling pipeline
-		setupProblemOnly=>0,
-		doNotClear => 0,
-		inactiveReactionBonus => 0,
-		drnRxn => [],
-		media => $model->ppo()->autoCompleteMedia(),
-		conservative => 1
-	});
-    return "SUCCESS";
-}
-
 sub gapfillstudies {
     my($self,@Data) = @_;
     #Checking the argument to ensure all required parameters are present
@@ -4719,9 +4697,9 @@ sub fbafva {
 		["savetodb",0,0],
 		["filename",0,"FBAFVA_model ID.xls"],
 		["saveformat",0,"EXCEL"],
-		["drainReactions",0,"NONE"],
-		["reactionKO",0,"NONE"],
-		["geneKO",0,"NONE"]
+		["drainReactions",0,undef],
+		["reactionKO",0,undef],
+		["geneKO",0,undef]
 	],[@Data]);
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
@@ -4738,17 +4716,27 @@ sub fbafva {
    	if (!defined($optionHash->{forceGrowth}) && !defined($optionHash->{noGrowth}) && !defined($optionHash->{freeGrowth})) {
    		$optionHash->{forceGrowth} = 1;
    	}
+    my $fbaStartParameters = {
+   		parameters=>{},
+		filename=>undef,
+		media=>$args->{media},
+		options => $optionHash,
+		geneKO => undef,
+		rxnKO => undef,
+		drnRxn => undef
+   	};
+   	if (defined($args->{geneKO})) {
+   		$fbaStartParameters->{geneKO} = [split(/[;,]/,$args->{geneKO})];
+   	}
+   	if (defined($args->{reactionKO})) {
+   		$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{reactionKO})];
+   	}
+   	if (defined($args->{drainReactions})) {
+   		$fbaStartParameters->{drnRxn} = [split(/[;,]/,$args->{drainReactions})];
+   	}
     my $results = $mdl->fbaFVA({
 	   	variables => [split(/\;/,$args->{variables})],
-	   	fbaStartParameters => {
-	   		parameters=>{},
-			filename=>undef,
-			geneKO=>[split(/[;,]/,$args->{geneKO})],
-			rxnKO=>[split(/[;,]/,$args->{reactionKO})],
-			drnRxn=>[split(/[;,]/,$args->{drainReactions})],
-			media=>$args->{media},
-			options => $optionHash
-	   	},
+	   	fbaStartParameters => $fbaStartParameters,
 	   	saveformat => $args->{saveformat},
 	   	filename => $args->{filename},
 		saveFVAResults=>$args->{savetodb},
@@ -4758,6 +4746,70 @@ sub fbafva {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
 	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->outputdirectory().$args->{filename}.".";
+}
+
+sub gapfillmodel {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",1],
+		["media",0,"Complete"],
+		["removegapfilling",0,1],
+		["rungapfilling",0,1],
+		["startfresh",0,1],
+		["inactivecoef",0,100],
+		["adddrains",0,0],
+		["iterative",0,0],
+		["queue",0,0]
+	],[@Data]);
+    #Getting model list
+    if ($args->{model} eq "ALL") {
+    	my $mdls = $self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "PUBSEED"});
+    	push(@{$mdls},@{$self->figmodel()->database()->get_objects("model",{owner => "chenry",source => "SEED"})});
+		for (my $i=0; $i < @{$mdls}; $i++) {
+	    	$self->figmodel()->add_job_to_queue({
+	    		command => "completegapfillmodel?".$mdls->[$i]->id()."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
+	    		user => $self->figmodel()->user(),
+	    		queue => "chenry"
+	    	});
+		}
+		return "SUCCESS";
+    } elsif (-e $args->{model}) {
+		my $input = $self->figmodel()->database()->load_single_column_file($args->{model},"");
+		for (my $i=0; $i < @{$input}; $i++) {
+			$self->figmodel()->add_job_to_queue({
+	    		command => "completegapfillmodel?".$input->[$i]."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
+	    		user => $self->figmodel()->user(),
+	    		queue => "chenry"
+	    	});
+		}
+		return "SUCCESS";
+    } elsif (defined($args->{"queue"}) && $args->{"queue"} == 1) {
+    	$self->figmodel()->add_job_to_queue({
+    		command => "completegapfillmodel?".$args->{model}."?".$args->{"remove gapfilled reactions"}."?".$args->{"run gapfilling"}."?".$args->{"start fresh"},
+    		user => $self->figmodel()->user(),
+    		queue => "chenry"
+    	});
+    	return "SUCCESS";
+    }
+    #Gap filling the model
+    if (!defined($args->{"start fresh"})) {
+    	$args->{"start fresh"} = 1;	
+    }
+   	my $model = $self->figmodel()->get_model($args->{model});
+	if (defined($model)) {
+		$model->completeGapfilling({
+			startFresh => $args->{"start fresh"},
+			problemDirectory => $args->{model},
+			runProblem=> $args->{"run gapfilling"},
+			removeGapfillingFromModel => $args->{"remove gapfilled reactions"},
+			gapfillCoefficientsFile => "NONE",
+			inactiveReactionBonus => 100,
+			drnRxn => [],
+			media => "Complete",
+			conservative => 0
+		});
+	}
+    return "SUCCESS";
 }
 
 1;

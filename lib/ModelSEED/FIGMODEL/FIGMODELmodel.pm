@@ -7354,13 +7354,22 @@ sub fbaFVA {
 	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$args->{directory}."Reactions-".$args->{filename},["Reaction"],";","|");
 	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$args->{directory}."Compounds-".$args->{filename},["Compound"],";","|");
 	my $varAssoc = {
-		FLUX => ["reaction",""],
-		DELTAG => ["reaction"," DELTAG"],
-		SDELTAG => ["reaction"," SDELTAG"],
-		UPTAKE => ["compound",""],
-		SDELTAGF => ["compound"," SDELTAGF"],
-		POTENTIAL => ["compound"," POTENTIAL"],
-		CONC => ["compound"," CONC"]
+		FLUX => "reaction",
+		DELTAG => "reaction",
+		SDELTAG => "reaction",
+		UPTAKE => "compound",
+		SDELTAGF => "compound",
+		POTENTIAL => "compound",
+		CONC => "compound"
+	};
+	my $varHeading = {
+		FLUX => "",
+		DELTAG => " DELTAG",
+		SDELTAG => " SDELTAG",
+		UPTAKE => "",
+		SDELTAGF => " SDELTAGF",
+		POTENTIAL => " POTENTIAL",
+		CONC => " CONC"
 	};
 	for (my $i=0; $i < @{$args->{variables}}; $i++) {
 		if (defined($varAssoc->{$args->{variables}->[$i]})) {
@@ -7370,6 +7379,7 @@ sub fbaFVA {
 					$cpdtbl->add_headings(("Class"));
 				}
 			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
 				if ($args->{variables}->[$i] eq "FLUX") {
 					$rxntbl->add_headings(("Class"));
 				}
@@ -7388,14 +7398,17 @@ sub fbaFVA {
 			#$newRow->{"Direction"} = [$rxnObj->directionality()];
 			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
 			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if (defined($results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]})) {
-					$newRow->{"Min ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]};
-					$newRow->{"Max ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"max".$varAssoc->{$args->{variables}->[$i]}->[1]};
-					if ($args->{variables}->[$i] eq "FLUX") {
-						$newRow->{Class}->[$i] = $results->{tb}->{$obj}->{class};
+				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
 					}
 				}
 			}
+			#print Data::Dumper->Dump([$newRow]);
 			$rxntbl->add_row($newRow);
 		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
 			$newRow->{"Compound"} = [$1];
@@ -7405,11 +7418,13 @@ sub fbaFVA {
 			}
 			$newRow->{"Compartment"} = [$compartment];
 			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if (defined($results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]})) {
-					$newRow->{"Min ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"min".$varAssoc->{$args->{variables}->[$i]}->[1]};
-					$newRow->{"Max ".$args->{variables}->[$i]}->[$i] = $results->{tb}->{$obj}->{"max".$varAssoc->{$args->{variables}->[$i]}->[1]};
-					if ($args->{variables}->[$i] eq "FLUX") {
-						$newRow->{Class}->[$i] = $results->{tb}->{$obj}->{class};
+				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
 					}
 				}
 			}
@@ -7418,7 +7433,11 @@ sub fbaFVA {
 	}
 	#Saving data to file
 	if ($args->{saveformat} eq "EXCEL") {
-		$self->figmodel()->make_xls($args->{directory}.$args->{filename},["Compound Bounds","Reaction Bounds"],[$cpdtbl,$rxntbl]);
+		$self->figmodel()->make_xls({
+			filename => $args->{directory}.$args->{filename},
+			sheetnames => ["Compound Bounds","Reaction Bounds"],
+			sheetdata => [$cpdtbl,$rxntbl]
+		});
 	} elsif ($args->{saveformat} eq "TEXT") {
 		$cpdtbl->save();
 		$rxntbl->save();

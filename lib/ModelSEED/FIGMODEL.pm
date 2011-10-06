@@ -9010,8 +9010,8 @@ Description:
 =cut
 sub make_xls {
     my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["filename","sheetnames","sheetdata"],{});
-    my $workbook;
+	$args = $self->process_arguments($args,["filename","sheetnames","sheetdata"],{});
+    my $workbook = $args->{filename};
     for(my $i=0; $i<@{$args->{sheetdata}}; $i++) {
         $workbook = $args->{sheetdata}->[$i]->add_as_sheet($args->{sheetnames}->[$i],$workbook);
     }
