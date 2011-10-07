@@ -156,7 +156,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
                                )),
         FIGMODEL_CONFIG => $figmodelConfigs,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
-        MFATOOLKITDIR => $directoryRoot.'/software/mfatoolkit/Source/'
+        MFATOOLKITDIR => $directoryRoot.'/software/mfatoolkit/'
     };
     if(defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
         $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
