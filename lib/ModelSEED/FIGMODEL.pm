@@ -129,6 +129,7 @@ sub new {
 
 sub FIGMODELERROR {	
 	my ($message) = @_;
+    $message = "\"\"$message\"\"";
 	Carp::confess($message);
 }
 
