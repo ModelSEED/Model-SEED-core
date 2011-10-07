@@ -330,6 +330,15 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
+    my $output = [
+    'cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"',
+	'if [ "$1" == "clean" ]',
+	'    then make clean',
+	'fi',
+	'make'
+    ];
+    printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$output);
+    chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
     unless($args->{fast}) {
     	system($directoryRoot."/bin/makeMFAToolkit");
     }
