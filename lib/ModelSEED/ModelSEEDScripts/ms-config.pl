@@ -9,6 +9,7 @@
 use strict;
 use Getopt::Long;
 use Pod::Usage;
+use File::Copy;
 use Config::Tiny;
 use Cwd qw(abs_path);
 use File::Path;
