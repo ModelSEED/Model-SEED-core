@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------
 # Directories section 
 # ---------------------------------------------------------------------
-SRCDIR = $(MFATOOLKITDIR)Source/
+SRCDIR = $(MFATOOLKITDIR)Source
 # ---------------------------------------------------------------------
 # Compiler section 
 # ---------------------------------------------------------------------
@@ -17,7 +17,7 @@ MFATOOLKIT: $(OBJFILES)
 	$(CCC) $(MFATOOLKITCCFLAGS) -o $(MFATOOLKITDIR)Linux/mfatoolkit $(^) $(MFATOOLKITCCLNFLAGS)
 
 %.o: %.cpp
-	$(CCC) $(MFATOOLKITCCFLAGS) -c $<; mv *.o ../Source
+	$(CCC) $(MFATOOLKITCCFLAGS) -c $<; mv *.o $(SRCDIR)
 
 clean:
 	rm -f $(SRCDIR)/*.o $(MFATOOLKITDIR)Linux/mfatoolkit
