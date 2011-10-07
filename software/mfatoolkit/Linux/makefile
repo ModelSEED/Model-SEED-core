@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------
 # Directories section 
 # ---------------------------------------------------------------------
-SRCDIR = ../Source
+SRCDIR = $(MFATOOLKITDIR)Source/
 # ---------------------------------------------------------------------
 # Compiler section 
 # ---------------------------------------------------------------------
@@ -14,10 +14,10 @@ SRCFILES = $(SRCDIR)/driver.cpp $(SRCDIR)/MFAProblem.cpp $(SRCDIR)/$(CPLEXAPI) $
 OBJFILES = $(SRCFILES:.cpp=.o)
 
 MFATOOLKIT: $(OBJFILES)
-	$(CCC) $(MFATOOLKITCCFLAGS) -o $(EXEC) $(^) $(MFATOOLKITCCLNFLAGS)
+	$(CCC) $(MFATOOLKITCCFLAGS) -o $(MFATOOLKITDIR)Linux/mfatoolkit $(^) $(MFATOOLKITCCLNFLAGS)
 
 %.o: %.cpp
 	$(CCC) $(MFATOOLKITCCFLAGS) -c $<; mv *.o ../Source
 
 clean:
-	rm -f $(OBJDIR)/*.o mfatoolkit
+	rm -f $(SRCDIR)/*.o $(MFATOOLKITDIR)Linux/mfatoolkit
