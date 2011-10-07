@@ -42,7 +42,7 @@ if ($os eq "windows") {
 } else {
 	#Running make
 	File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/makeMFAToolkit.sh",$args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh");
-	chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
+	chmod 0775,$args->{"-p"}."/software/mfatoolkit/bin/makeMFAToolkit.sh";
 	my $makeCommand = $args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh";
 	if (defined($args->{"-clean"})) {
 		$makeCommand .= " clean"; 
