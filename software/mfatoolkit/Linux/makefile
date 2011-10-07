@@ -17,7 +17,7 @@ MFATOOLKIT: $(OBJFILES)
 	$(CCC) $(MFATOOLKITCCFLAGS) -o $(EXEC) $(^) $(MFATOOLKITCCLNFLAGS)
 
 %.o: %.cpp
-	$(CCC) $(CCFLAGS) -c $<; mv *.o ../Source
+	$(CCC) $(MFATOOLKITCCFLAGS) -c $<; mv *.o ../Source
 
 clean:
 	rm -f $(OBJDIR)/*.o mfatoolkit
