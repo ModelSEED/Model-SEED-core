@@ -1165,7 +1165,19 @@ Description:
 =cut
 sub essentials_table {
 	my ($self,$clear) = @_;
-	my $tbl = $self->load_model_table("ModelEssentialGenes",$clear);
+    my $rows = $self->db()->get_objects("mdless", { MODEL => $self->id() }); 
+    my $tbl = $self->db()->ppo_rows_to_table({
+        headings => ["MEDIA", "MODEL", "ESSENTIAL GENES", "PARAMETERS"],
+        item_delimiter => ";",
+        delimiter => "\t",
+        hash_headings => ["MODEL", "MEDIA"],
+        heading_remap => {
+            MEDIA => "MEDIA",
+            essentials => "ESSENTIAL GENES",
+            MODEL => "MODEL",
+            parameters => "PARAMETERS",
+            }, 
+        }, $rows);
 	return $tbl;
 }
 
