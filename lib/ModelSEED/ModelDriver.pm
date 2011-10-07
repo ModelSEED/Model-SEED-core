@@ -4049,7 +4049,7 @@ sub simulatekomedialist {
 	my($self,@Data) = @_;
 	my $args = $self->check([
 		["model",1],
-		["ko",1],
+		["ko",0,undef],
 		["media",1],
 		["kolabel",0,undef],
 		["filename",0,"PhenotypeOutput.txt"]
@@ -4814,6 +4814,15 @@ sub gapfillmodel {
 		globalmessage => $args->{printdbmessage}
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
+}
+
+sub printessentialitydata {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+		["filename",1],
+		["genome",0,undef],
+		["media",0,undef],
+	],[@Data]);
 }
 
 1;

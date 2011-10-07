@@ -161,14 +161,21 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
         $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
     }
-    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-        $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
-        $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};
-        $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
-    }
+    $envSettings->{CPLEXAPI} = "CPLEXapiEMPTY.cpp";
+    $envSettings->{MFATOOLKITCCFLAGS} = "-O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX -I../Include/ -DNOSAFEMEM -DNOBLOCKMEM";    
+    $envSettings->{MFATOOLKITCCLNFLAGS} = "";
     if(defined($Config->{Optimizers}->{includeDirectoryGLPK})) {
-        $envSettings->{GLPKINCDIRECTORY} = $Config->{Optimizers}->{includeDirectoryGLPK};
-        $envSettings->{GLPKLIBDIRECTORY} = $Config->{Optimizers}->{libraryDirectoryGLPK};
+    	$envSettings->{MFATOOLKITCCFLAGS} .=  " -I".$Config->{Optimizers}->{includeDirectoryGLPK};
+    	$envSettings->{MFATOOLKITCCLNFLAGS} .= "-L".$Config->{Optimizers}->{libraryDirectoryGLPK}." -lglpk";
+    }
+    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
+    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
+    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{libraryDirectoryCPLEX};
+    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    	 $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
+    	 if ($os eq "osx") {
+    	 	$envSettings->{MFATOOLKITCCLNFLAGS} .= " -framework CoreFoundation -framework IOKit";
+    	 }
     }
     my $bootstrap = "";
     foreach my $lib (@$perl5Libs) {
@@ -223,12 +230,6 @@ BOOTSTRAP
 #Creating shell scripts for individual perl scripts
 {
 	my $mfatoolkitScript = "/lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$directoryRoot;
-	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-		$mfatoolkitScript .= "\" --cplex \"".$Config->{Optimizers}->{includeDirectoryCPLEX};	
-	}
-	if (defined($os)) {
-		$mfatoolkitScript .= "\" --os \"".$os;	
-	}
 	my $password = "";
 	if (defined($Config->{Database}->{password})) {
 		$password = "-password ".$Config->{Database}->{password}." ";
@@ -328,18 +329,10 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
-	if ($os ne "windows") {
-		my $data = ['cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"'];
-		push(@{$data},'if [ "$1" == "clean" ]');
-		push(@{$data},'    then make clean');
-		push(@{$data},'fi');
-		push(@{$data},'make');
-		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
-		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
-        unless($args->{fast}) {
-            system($directoryRoot."/bin/makeMFAToolkit".$extension);
-        }
-	}
+	chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
+    unless($args->{fast}) {
+    	system($directoryRoot."/bin/makeMFAToolkit.sh");
+    }
 }
 #Creating public useraccount
 {	

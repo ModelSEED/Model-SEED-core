@@ -2029,7 +2029,6 @@ sub completeGapfilling {
 		};
 	}
 	#Checking that a gapfilling solution was printed
-	my $fbaObj = $results->{fbaObj};
 	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Gapfilling of model ".$self->id()." failed!");	
 	}
