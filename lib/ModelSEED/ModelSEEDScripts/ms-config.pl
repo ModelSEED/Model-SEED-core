@@ -330,7 +330,7 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
-	File::Copy::copy($args->{"-p"}."software/mfatoolkit/Linux/makeMFAToolkit.sh",$args->{"-p"}."software/mfatoolkit/bin/makeMFAToolkit.sh");
+	File::Copy::copy($directoryRoot."software/mfatoolkit/Linux/makeMFAToolkit.sh",$directoryRoot."software/mfatoolkit/bin/makeMFAToolkit.sh");
 	chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
     unless($args->{fast}) {
     	system($directoryRoot."/bin/makeMFAToolkit.sh");
