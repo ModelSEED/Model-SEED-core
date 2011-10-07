@@ -9,7 +9,6 @@
 use strict;
 use Getopt::Long;
 use Pod::Usage;
-use File::Copy;
 use Config::Tiny;
 use Cwd qw(abs_path);
 use File::Path;
@@ -330,10 +329,8 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
-	File::Copy::copy($directoryRoot."software/mfatoolkit/Linux/makeMFAToolkit.sh",$directoryRoot."software/mfatoolkit/bin/makeMFAToolkit.sh");
-	chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
     unless($args->{fast}) {
-    	system($directoryRoot."/bin/makeMFAToolkit.sh");
+    	system($directoryRoot."/bin/makeMFAToolkit");
     }
 }
 #Creating public useraccount
