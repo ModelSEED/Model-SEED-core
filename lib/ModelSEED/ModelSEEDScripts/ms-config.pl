@@ -171,7 +171,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     }
     if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
     	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
-    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{libraryDirectoryCPLEX};
+    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
     	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
     	 $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
     	 if ($os eq "osx") {
