@@ -628,8 +628,9 @@ sub createReactionCode {
 	while ($OriginalEquation =~ m/\s\s/) {
 		$OriginalEquation =~ s/\s\s/ /g;
 	}
+
 	$OriginalEquation =~ s/([^\+]\s)\+([^\s])/$1+ $2/g;
-	$OriginalEquation =~ s/([^\s])\+(\s[^\+])/$1 +$2/g;
+	$OriginalEquation =~ s/([^\s])\+(\s[^\+<=])/$1 +$2/g;
 	$OriginalEquation =~ s/-->/=>/;
 	$OriginalEquation =~ s/<--/<=/;
 	$OriginalEquation =~ s/<==>/<=>/;
@@ -639,6 +640,7 @@ sub createReactionCode {
 	$OriginalEquation =~ s/([^\s])(<=)/$1 $2/;
 	$OriginalEquation =~ s/\s(\[[a-z]\])\s/$1 /ig;
 	$OriginalEquation =~ s/\s(\[[a-z]\])$/$1/ig;
+
 	#Checking for reactions that have no products, no reactants, or neither products nor reactants
 	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
 		ModelSEED::FIGMODEL::FIGMODELWARNING("Reaction either has no reactants or no products:".$OriginalEquation);
