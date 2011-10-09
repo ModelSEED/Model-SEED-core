@@ -648,7 +648,6 @@ Example:
 
 sub add_headings {
 	my ($self,@Headings) = @_;
-
 	foreach my $Heading (@Headings) {
 		#First check if the heading already exists
 		foreach my $ExistingHeading ($self->headings()) {

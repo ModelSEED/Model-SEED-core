@@ -120,7 +120,7 @@ public:
 	SavedBounds* saveBounds();
 	int loadBounds(SavedBounds* inBounds,bool loadProblem = true);
 	int loadChangedBoundsIntoSolver(SavedBounds* inBounds);
-	int loadMedia(string media, Data* inData);
+	int loadMedia(string media, Data* inData,bool loadIntoSolver = true);
 	int clearOldMedia(OptimizationParameter* InParameters);
 
 	//Analysis functions

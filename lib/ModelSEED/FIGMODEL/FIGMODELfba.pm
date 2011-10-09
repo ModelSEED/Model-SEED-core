@@ -17,6 +17,7 @@ Definition:
 		rxnKO=>[string]:reaction ids,
 		model=>string:model id,
 		media=>string:media id,
+		optionas => [string],
 		parameter_files=>[string]:parameter files
 	});
 Description:
@@ -40,7 +41,8 @@ sub new {
 		drnRxn=>[],
 		model=>undef,
 		media=>undef,
-		parameter_files=>["ProductionMFA"]
+		parameter_files=>["ProductionMFA"],
+		options => {}
 	});
 	return $self->error_message({function => "new",args=>$args}) if (defined($args->{error}));
 	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files"];
@@ -52,6 +54,7 @@ sub new {
 	$self->{_parameter_files} = $args->{parameter_files};
 	$self->{_parameters} = $args->{parameters};
 	$self->{_filename} = $args->{filename};
+	$self->{_options} = $args->{options};
 	for (my $i=0; $i < @{$self->figmodel()->config("data filenames")}; $i++) {
 		my $type = $self->figmodel()->config("data filenames")->[$i];
 		$self->{_dataFilename}->{$type} = $self->figmodel()->config($type." data filename")->[0];	
@@ -308,13 +311,15 @@ sub printMediaFiles {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		printList => [$self->media()]
 	});
-	my $mediaObj = $self->mediaObj();
-	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find media object for ".$self->media()) if (!defined($mediaObj));
-	$mediaObj->printDatabaseTable({
-		filename => $self->directory()."/media.tbl",
-		printList => $args->{printList}
-	});
-	$self->dataFilename({type=>"media",filename=>$self->directory()."/media.tbl"});
+    return unless(@{$args->{printList}});
+    my $first = $args->{printList}->[0];
+    my $mediaObj = $self->figmodel()->get_media($first);
+    ModelSEED::FIGMODEL::FIGMODELERROR("Could not find media object for $first") if (!defined($mediaObj));
+    $mediaObj->printDatabaseTable({
+        filename => $self->directory()."/media.tbl",
+        printList => $args->{printList}
+    });
+    $self->dataFilename({type=>"media",filename=>$self->directory()."/media.tbl"});
 }
 =head3 printStringDBFile
 Definition:
@@ -328,9 +333,9 @@ sub printStringDBFile {
 	my $output = [
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
 		"compound\tid\tSINGLEFILE\t".$self->figmodel()->config("compound directory")->[0]."\t".$self->dataFilename({type => "compounds"})."\tTAB\tSC\tid",
-		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
-		"reaction\tid\tSINGLEFILE\t".$self->figmodel()->config("reaction directory")->[0]."\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
-		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
+#		"compoundLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "compound links"})."\tTAB\t|\tid",
+		"reaction\tid\tSINGLEFILE\t".$self->directory()."/reaction/\t".$self->dataFilename({type => "reactions"})."\tTAB\t|\tid",
+#		"reactionLinks\tid\tSINGLEFILE\t\t".$self->dataFilename({type => "reaction links"})."\tTAB\t|\tid",
 		"cue\tNAME\tSINGLEFILE\t\t".$self->dataFilename({type => "cues"})."\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$self->figmodel()->config("Media directory")->[0]."\t".$self->dataFilename({type => "media"})."\tTAB\t|\tID;NAMES"
 	];
@@ -347,7 +352,6 @@ sub loadProblemDirectory {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
 	$self->filename($args->{filename});
-	return $self->error_message({function => "loadProblemDirectory",args=>$args}) if (defined($args->{error}));
 	$self->{_problemObject} = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$self->directory()."/FBAJobData.txt",delimiter=>"\t",-load => 1});
 	return $self->error_message({function => "loadProblemDirectory",message=>"could not load file ".$self->filename(),args=>$args}) if (!defined($self->{_problemObject}));
 	my $headings = $self->{_problemObject}->headings();
@@ -467,9 +471,10 @@ sub makeOutputDirectory {
 	return $self->error_message({function => "makeOutputDirectory",args=>$args}) if (defined($args->{error}));
 	if (-d $self->directory() && $args->{deleteExisting} == 1) {
 		File::Path::rmtree($self->directory());
-		File::Path::mkpath($self->directory());
+		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");
+		
 	} elsif (!-d $self->directory()) {
-		File::Path::mkpath($self->directory());	
+		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");	
 	}
 	return undef;
 }
@@ -594,15 +599,17 @@ sub setDrainRxnParameters {
 			$exchange = $self->parameters()->{"exchange species"};
 		}
 		for (my $j=0; $j < @{$self->{_drnRxn}}; $j++) {
-			my $drnRxn = $self->figmodel()->get_reaction($self->{_drnRxn}->[$j]);
-			if (defined($drnRxn)) {
-				my ($Reactants,$Products) = $drnRxn->substrates_from_equation();
-				for (my $i=0; $i < @{$Reactants}; $i++) {
-					$exchange .= ";".$Reactants->[$i]->{"DATABASE"}->[0]."[".$Reactants->[$i]->{"COMPARTMENT"}->[0]."]:-10000:0";
-				}
-				for (my $i=0; $i < @{$Products}; $i++) {
-					if ($Products->[$i]->{"DATABASE"}->[0] ne "cpd11416") {
-						$exchange .= ";".$Products->[$i]->{"DATABASE"}->[0]."[".$Products->[$i]->{"COMPARTMENT"}->[0]."]:0:10000";
+			if ($self->{_drnRxn}->[$j] ne "NONE") {
+				my $drnRxn = $self->figmodel()->get_reaction($self->{_drnRxn}->[$j]);
+				if (defined($drnRxn)) {
+					my ($Reactants,$Products) = $drnRxn->substrates_from_equation();
+					for (my $i=0; $i < @{$Reactants}; $i++) {
+						$exchange .= ";".$Reactants->[$i]->{"DATABASE"}->[0]."[".$Reactants->[$i]->{"COMPARTMENT"}->[0]."]:-10000:0";
+					}
+					for (my $i=0; $i < @{$Products}; $i++) {
+						if ($Products->[$i]->{"DATABASE"}->[0] ne "cpd11416") {
+							$exchange .= ";".$Products->[$i]->{"DATABASE"}->[0]."[".$Products->[$i]->{"COMPARTMENT"}->[0]."]:0:10000";
+						}
 					}
 				}
 			}
@@ -778,6 +785,23 @@ sub mediaObj {
 	return $self->{_mediaObj};
 }
 
+=head3 options
+Definition:
+	{string} = FIGMODELfba->options();
+Description:
+	Getter setter function for parameters
+=cut
+sub options {
+	my ($self,$options) = @_;
+	if (defined($options)) {
+		$self->{_options} = $options;
+	}
+	if (!defined($self->{_options})) {
+		$self->{_options} = {};
+	}
+	return $self->{_options};
+}
+
 =head3 parameters
 Definition:
 	{string:parameter type => string:value} = FIGMODELfba->parameters({string:parameter type => string:value});
@@ -839,7 +863,7 @@ sub runFBA {
 		mediaPrintList => undef,
 		parameterFile => "FBAParameters.txt"
 	});
-	if (defined($self->{_mediaPrintList})) {
+	if (defined($self->{_mediaPrintList}) && !defined($args->{mediaPrintList})) {
 		$args->{mediaPrintList} = $self->{_mediaPrintList};
 	}
 	if (defined($args->{error})) {return $self->error_message({function => "parseWebFBASimulation",args => $args});}
@@ -895,12 +919,11 @@ sub runFBA {
 	}
 	my $command = $commandLine->{excutable}.$commandLine->{files}.$commandLine->{model}.$commandLine->{logfile};
 	$command = "nohup ".$command." &" if ($args->{nohup} == 1);	
-	$self->debug_message({
-		function => "runFBA",
-		message => $command,
-		args => $args
-	});
-	print $command."\n";
+	$self->figmodel()->database()->print_array_to_file($self->directory()."/runMFAToolkit.sh",[
+		"source ".$self->figmodel()->config("software root directory")->[0]."bin/source-me.sh",
+		$command
+	]);
+	chmod 0775,$self->directory()."/runMFAToolkit.sh";
 	system($command) if ($args->{runSimulation} == 1);
 	return {success => 1};	
 }
@@ -926,10 +949,9 @@ sub clearOutput {
 sub loadProblemReport {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
-	if (defined($args->{error})) {return $self->error_message({function => "loadProblemReport",args => $args});}
 	$self->filename($args->{filename});
-	if (-e $self->directory()."/MFAOutput/ProblemReports.txt") {
-		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/ProblemReports.txt",";","",0,undef);
+	if (-e $self->directory()."/ProblemReport.txt") {
+		return ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/ProblemReport.txt",";","",0,undef);
 	}
 	return $self->error_message({message=>"Could not find problem report file",function => "loadProblemReport",args => $args});;
 }
@@ -1178,17 +1200,36 @@ sub parseSingleGrowthStudy {
 sub setTightBounds {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		growth => "forced"
-	});	
+		variables => ["FLUX","UPTAKE"],
+	});
+	#Setting MFAToolkit parameters
+	my $translation = {
+		FLUX => "FLUX;FORWARD_FLUX;REVERSE_FLUX",
+		DELTAG => "DELTAG",
+		SDELTAG => "REACTION_DELTAG_ERROR;REACTION_DELTAG_PERROR;REACTION_DELTAG_NERROR",
+		UPTAKE => "DRAIN_FLUX;FORWARD_DRAIN_FLUX;REVERSE_DRAIN_FLUX",
+		SDELTAGF => "DELTAGF_ERROR;DELTAGF_PERROR;DELTAGF_NERROR",
+		POTENTIAL => "POTENTIAL",
+		CONC => "CONC;LOG_CONC"
+	};
+	my $searchVariables;
+	for (my $i=0; $i < @{$args->{variables}}; $i++) {
+		if (length($searchVariables) > 0) {
+			$searchVariables .= ";";
+		}
+		$searchVariables .= $translation->{$args->{variables}->[$i]};
+	}
 	$self->parameter_files(["ProductionMFA"]);
 	$self->set_parameters({
 		"find tight bounds"=>1,
 		"MFASolver" => "GLPK",
-		"identify dead ends"=>1
+		"identify dead ends"=>1,
+		"tight bounds search variables" => $searchVariables
 	});
-	if ($args->{growth} ne "forced") {
+	#Evaluating specific options meant for this function
+	if (!defined($self->options()->{forcedGrowth})) {
 		$self->set_parameters({"maximize single objective"=>0});
-		if ($args->{growth} eq "none") {
+		if (defined($self->options()->{noGrowth})) {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
 			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model".$self->model()) if (!defined($mdl));
 			$self->add_reaction_ko([$mdl->biomassReaction()]);
@@ -1212,15 +1253,29 @@ sub parseTightBounds {
 	}
 	my $results = {inactive=>"",dead=>"",positive=>"",negative=>"",variable=>"",posvar=>"",negvar=>"",positiveBounds=>"",negativeBounds=>"",variableBounds=>"",posvarBounds=>"",negvarBounds=>""};
 	my $table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/TightBoundsReactionData.txt",";","|",1,["DATABASE ID"]);
+	my $variableTypes = ["FLUX","DELTAGG_ENERGY","REACTION_DELTAG_ERROR"];
+	my $varAssoc = {
+		FLUX => "",
+		DELTAGG_ENERGY => " DELTAG",
+		REACTION_DELTAG_ERROR => " SDELTAG",
+		DRAIN_FLUX => "",
+		DELTAGF_ERROR => " SDELTAGF",
+		POTENTIAL => " POTENTIAL",
+		LOG_CONC => " CONC"
+	};
 	for (my $i=0; $i < $table->size(); $i++) {
 		my $row = $table->get_row($i);
-		$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max} = $row->{"Max FLUX"}->[0];
-		$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min} = $row->{"Min FLUX"}->[0];
-		if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max}) < 0.0000001) {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{max} = 0;
-		}
-		if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min}) < 0.0000001) {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{min} = 0;
+		for (my $j=0; $j < @{$variableTypes}; $j++) {
+			if (defined($row->{"Max ".$variableTypes->[$j]})) {
+				$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
+				$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+			}
 		}
 	}
 	#Loading compound tight bounds
@@ -1228,16 +1283,19 @@ sub parseTightBounds {
 		return {error => $self->error_message({function => "parseTightBounds",message=>"could not find tight bound results file",args=>$args})};
 	}
 	$table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/TightBoundsCompoundData.txt",";","|",1,["DATABASE ID"]);
+	$variableTypes = ["DRAIN_FLUX","LOG_CONC","DELTAGF_ERROR","POTENTIAL"];
 	for (my $i=0; $i < $table->size(); $i++) {
 		my $row = $table->get_row($i);
-		if ($row->{"Max DRAIN_FLUX"}->[0] ne "1e+007") {
-			$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max} = $row->{"Max DRAIN_FLUX"}->[0];
-			$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min} = $row->{"Min DRAIN_FLUX"}->[0];
-			if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max}) < 0.0000001) {
-				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{max} = 0;
-			}
-			if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min}) < 0.0000001) {
-				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{min} = 0;
+		for (my $j=0; $j < @{$variableTypes}; $j++) {
+			if (defined($row->{"Max ".$variableTypes->[$j]}) && $row->{"Max ".$variableTypes->[$j]}->[0] ne "1e+007") {
+				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
+				$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
+				if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
+					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
+				}
 			}
 		}
 	}
@@ -1336,7 +1394,7 @@ sub setCompleteGapfillingStudy {
 	#Setting parameters
 	$self->set_parameters({
 		"Default min drain flux"=>"-10000",
-		"Default max drain flux"=>"10000",
+		"Default max drain flux"=>"0",
 		"MFASolver"=>"CPLEX",
 		"Allowable unbalanced reactions"=>$self->figmodel()->config("acceptable unbalanced reactions")->[0],
 		"dissapproved compartments"=>$self->figmodel()->config("diapprovied compartments")->[0],
@@ -1347,6 +1405,9 @@ sub setCompleteGapfillingStudy {
 		"just print LP file" => 0,
 		"Complete gap filling" => 1
 	});
+	if ($self->media() eq "Complete") {
+		$self->parameters()->{"Default max drain flux"} = "10000";
+	}
 	#Setting parameter files
 	$self->clear_drain_reaction();
 	$self->add_parameter_files(["GapFilling"]);
@@ -1688,10 +1749,12 @@ sub setMultiPhenotypeStudy {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["mediaList","labels","KOlist"],{filename=>$self->filename()});
 	if (defined($args->{error})) {return $self->error_message({function => "setMultiPhenotypeStudy",args => $args});}
+	$self->media("Empty");
 	$self->parameter_files(["ProductionMFA"]);
 	$self->filename($args->{filename});
 	$self->makeOutputDirectory();
 	my $jobData = ["Label\tKO\tMedia"];
+	my $mediaHash;
 	for (my $i=0; $i < @{$args->{labels}}; $i++) {
 		my $KO = "none";
 		if (defined($args->{KOlist}->[$i])) {
@@ -1701,6 +1764,7 @@ sub setMultiPhenotypeStudy {
 				$KO = join(";",@{$args->{KOlist}->[$i]});
 			}
 		}
+		$mediaHash->{$args->{mediaList}->[$i]} = 1;
 		push(@{$jobData},$args->{labels}->[$i]."\t".$KO."\t".$args->{mediaList}->[$i]);
 	}
 	$self->figmodel()->database()->print_array_to_file($self->directory()."/FBAExperiment.txt",$jobData);
@@ -1709,6 +1773,8 @@ sub setMultiPhenotypeStudy {
 	});
 	$self->studyArguments($args);
 	$self->parsingFunction("parseMultiPhenotypeStudy");
+	$self->{_mediaPrintList} = ["Empty"];
+	push(@{$self->{_mediaPrintList}},keys(%{$mediaHash}));
 	return {};
 }
 =head3 parseMultiPhenotypeStudy

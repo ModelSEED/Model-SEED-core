@@ -33,7 +33,8 @@ my $fm = $helper->getDebugFIGMODEL();
 		runSimulation => 0,
 		nohup => 0,
 		studyType => "LoadCentralSystem",
-		logfile => "FIGMODELfbaTest.log"
+		logfile => "FIGMODELfbaTest.log",
+        mediaPrintList => ["ArgonneLBMedia"],
     });
 }
 ok 1, "yes it passes"

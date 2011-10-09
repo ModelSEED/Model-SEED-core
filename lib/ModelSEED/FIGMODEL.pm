@@ -129,6 +129,7 @@ sub new {
 
 sub FIGMODELERROR {	
 	my ($message) = @_;
+    $message = "\"\"$message\"\"";
 	Carp::confess($message);
 }
 
@@ -2471,6 +2472,112 @@ sub distribute_bomass_data_to_biomass_files {
 
 =head2 Model related methods
 
+=head3 import_model_file
+Definition:
+	Output:{} FIGMODEL->import_model_file({
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
+		filename => $args->{"filename"},
+		biomassFile => $args->{"biomassFile"},
+		owner => $args->{"owner"},
+		public => $args->{"public"},
+		overwrite => $args->{"overwrite"},
+		provenance => $args->{"provenance"}
+	});
+Description:
+	Imports the specified model file into the database adding reactions and compounds if necessary and creating all necessary database links
+=cut
+sub import_model_file {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args,["baseid","genome"],{
+		filename => undef,
+		biomassFile => undef,
+		owner => $args->{"owner"},
+		public => $args->{"public"},
+		overwrite => $args->{"overwrite"},
+		provenance => $args->{"provenance"}
+	});
+	#Calculating the full ID of the model
+	my $id = $args->{baseid};
+	my $suffix = "";
+	if ($args->{owner} ne "master") {
+		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
+		ModelSEED::FIGMODEL::FIGMODELERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
+		$suffix = ".".$usr->_id();
+		$id .= ".".$usr->_id();
+	}
+	#Checking if the model exists, and if not, creating the model
+	my $mdl;
+	my $modelObj = $self->database()->sudo_get_object("model",{id => $id});
+	if (!defined($modelObj)) {
+		$mdl = $self->create_model({
+			id => $id,
+			owner => $args->{owner},
+			genome => $args->{genome},
+			gapfilling => 0,
+			runPreliminaryReconstruction => 0,
+			biochemSource => $args->{biochemSource}
+		});
+		$modelObj = $mdl->ppo();
+	} elsif ($args->{overwrite} == 0) {
+		ModelSEED::FIGMODEL::FIGMODELERROR($id." already exists and overwrite request was not provided. Import halted.".$args->{owner});
+	} else {
+		my $rights = $self->database()->get_object_rights($modelObj,"model");
+		if (!defined($rights->{admin})) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter model object");
+		}
+	}
+	$mdl = $self->get_model($id);
+	if (!-defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not load/create model ".$mdl."!");
+	}
+	#Clearing current model data in the database
+	if (defined($id) && length($id) > 0 && defined($mdl)) {
+		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
+		for (my $i=0; $i < @{$objs}; $i++) {
+			$objs->[$i]->delete();	
+		}
+	}
+	#Loading model rxnmdl table
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".tbl";
+	}
+	if (!-e $args->{filename}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
+	}
+	my $rxnmdl = $self->database()->load_table($args->{filename},";","|",1,["LOAD"]);
+	my $biomassID;
+	for (my $i=0; $i < $rxnmdl->size();$i++) {
+		my $row = $rxnmdl->get_row($i);
+		if ($row->{LOAD}->[0] =~ m/(bio\d+)/) {
+			$biomassID = $1;
+		}
+		$self->database()->create_object("rxnmdl",{
+			REACTION => $row->{LOAD}->[0],
+			MODEL => $id,
+			directionality => $row->{DIRECTIONALITY}->[0],
+			compartment => $row->{COMPARTMENT}->[0],
+			pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+			confidence => $row->{CONFIDENCE}->[0],
+			notes => $row->{NOTES}->[0],
+			reference => $row->{REFERENCE}->[0]
+		});
+	}
+	#Loading biomass reaction file
+	if (!defined($args->{biomassFile}) && defined($biomassID)) {
+		$args->{biomassFile} = $self->config("model file load directory")->[0].$biomassID.".txt";
+	}
+	if (!-e $args->{biomassFile}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
+	}
+	my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+	my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
+		equation => $obj->{EQUATION}->[0],
+		biomassID => $obj->{DATABASE}->[0]
+	});
+	$modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	return $modelObj;
+}
 =head3 import_model
 Definition:
 	Output:{} FIGMODEL->import_model({
@@ -2730,7 +2837,7 @@ sub import_model {
 			});
 			$newid = $bofobj->id();
 			if ($mdl->ppo()->public() == 0 && $mdl->ppo()->owner() ne "master") {
-				$mdl->figmodel()->database()->change_permissions({
+				$self->database()->change_permissions({
 					objectID => $newid,
 					permission => "admin",
 					user => $mdl->ppo()->owner(),
@@ -2740,7 +2847,6 @@ sub import_model {
 				$bofobj->owner($mdl->ppo()->owner());
 			}
 			$mdl->biomassReaction($bofobj->id());			
-			$mdl->transfer_rights_to_biomass();
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
 			$mdl->figmodel()->database()->create_object("rxnmdl",{
 				MODEL => $id,
@@ -2832,10 +2938,12 @@ sub import_model {
 		my $rxnmdl = $mdl->figmodel()->database()->get_object("rxnmdl",{
 			MODEL => $id,
 			REACTION => $rxn->id(),
-			compartment => $row->{"COMPARTMENT"}->[0],
-			directionality => $row->{"DIRECTIONALITY"}->[0]
+			compartment => $row->{"COMPARTMENT"}->[0]
 		});
 		if (defined($rxnmdl)) {
+			if ($rxnmdl->directionality() ne $row->{"DIRECTIONALITY"}->[0]) {
+				$rxnmdl->directionality("<=>");
+			}
 			if ($row->{"PEGS"}->[0] ne "UNKNOWN") {
 				my $newPegs = join("|",@{$row->{"PEGS"}});
 				if ($rxnmdl->pegs() ne "UNKNOWN") {
@@ -8925,6 +9033,22 @@ sub copyMergeHash {
 		}	
 	}
 	return $result;
+}
+
+=head3 make_xls
+Definition:
+	{} = FIGMODEL->make_xls();
+Description:
+=cut
+sub make_xls {
+    my ($self,$args) = @_;
+	$args = $self->process_arguments($args,["filename","sheetnames","sheetdata"],{});
+    my $workbook = $args->{filename};
+    for(my $i=0; $i<@{$args->{sheetdata}}; $i++) {
+        $workbook = $args->{sheetdata}->[$i]->add_as_sheet($args->{sheetnames}->[$i],$workbook);
+    }
+    $workbook->close();
+    return;
 }
 
 =head2 Pass-through functions that will soon be deleted entirely

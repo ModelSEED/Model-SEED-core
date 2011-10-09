@@ -40,7 +40,6 @@ if($command eq "unload" || $command eq "clean") {
     unload($args);
 }
 my ($Config,$extension,$arguments,$delim,$os,$configFile);
-
 #Identifying and parsing the conf file
 {
 	# By default use config/Settings.config
@@ -65,7 +64,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	unless(defined($Config->{Database}->{type})) {
 	    $Config->{Database}->{type} = "sqlite";
 	}
-	unless(defined($Config->{Optional}->{admin_user})) {
+	unless(defined($Config->{Optional}->{admin_users})) {
 	    $Config->{Optional}->{admin_users} = "admin";
 	}
 	unless(defined($Config->{Database}->{filename}) ||
@@ -87,8 +86,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	        $Config->{$section}->{$name} = abs_path($Config->{$section}->{$name});
 	    }
 	}
-	$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ] if(defined($args->{"-figconfig"}));
-}
+}	
 #Setting operating system related parameters
 {
 	$extension = "";
@@ -143,30 +141,42 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         "$directoryRoot/lib/ModelSEED/ModelSEEDClients/",
         "$directoryRoot/lib"
     ];
-
-    my $configFiles = "$directoryRoot/config/FIGMODELConfig.txt";
-    if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
-        $configFiles .= ";".join(";", @{$args->{"-figconfig"}});
-    }
+	my $figmodelConfigs = $directoryRoot."/config/FIGMODELConfig.txt";
+	if (defined($args->{"-figconfig"}) && @{$args->{"-figconfig"}} > 0) {
+		$args->{"-figconfig"} = [ map { $_ = abs_path($_) } @{$args->{"-figconfig"}} ];
+		$figmodelConfigs .= ";".join(";",@{$args->{"-figconfig"}})
+	} elsif (defined($ENV{FIGMODEL_CONFIG})) {
+		$figmodelConfigs = $ENV{FIGMODEL_CONFIG};
+	}
     my $envSettings = {
         MODELSEED_CONFIG => $configFile,
         MODEL_SEED_CORE => $directoryRoot,
         PATH => join("$delim", ( $directoryRoot.'/bin/',
                                  $directoryRoot.'/lib/ModelSEED/ModelSEEDScripts/',
                                )),
-        FIGMODEL_CONFIG => $configFiles,
+        FIGMODEL_CONFIG => $figmodelConfigs,
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
-        FIGMODEL_USER => $ENV{FIGMODEL_USER} || "public",
-        FIGMODEL_PASSWORD => $ENV{FIGMODEL_PASSWORD} || "public"
+        MFATOOLKITDIR => $directoryRoot.'/software/mfatoolkit/'
     };
-    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-        $envSettings->{CPLEXINCLUDE} = $Config->{Optimizers}->{includeDirectoryCPLEX};
-        $envSettings->{CPLEXLIB} = $Config->{Optimizers}->{libraryDirectoryCPLEX};
-        $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
+    if(defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
+        $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
+        $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
     }
+    $envSettings->{CPLEXAPI} = "CPLEXapiEMPTY.cpp";
+    $envSettings->{MFATOOLKITCCFLAGS} = "-O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX -I../Include/ -DNOSAFEMEM -DNOBLOCKMEM";    
+    $envSettings->{MFATOOLKITCCLNFLAGS} = "";
     if(defined($Config->{Optimizers}->{includeDirectoryGLPK})) {
-        $envSettings->{GLPKINCDIRECTORY} = $Config->{Optimizers}->{includeDirectoryGLPK};
-        $envSettings->{GLPKLIBDIRECTORY} = $Config->{Optimizers}->{libraryDirectoryGLPK};
+    	$envSettings->{MFATOOLKITCCFLAGS} .=  " -I".$Config->{Optimizers}->{includeDirectoryGLPK};
+    	$envSettings->{MFATOOLKITCCLNFLAGS} .= "-L".$Config->{Optimizers}->{libraryDirectoryGLPK}." -lglpk";
+    }
+    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
+    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
+    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
+    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    	 $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
+    	 if ($os eq "osx") {
+    	 	$envSettings->{MFATOOLKITCCLNFLAGS} .= " -framework CoreFoundation -framework IOKit";
+    	 }
     }
     my $bootstrap = "";
     foreach my $lib (@$perl5Libs) {
@@ -221,12 +231,6 @@ BOOTSTRAP
 #Creating shell scripts for individual perl scripts
 {
 	my $mfatoolkitScript = "/lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$directoryRoot;
-	if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-		$mfatoolkitScript .= "\" --cplex \"".$Config->{Optimizers}->{includeDirectoryCPLEX};	
-	}
-	if (defined($os)) {
-		$mfatoolkitScript .= "\" --os \"".$os;	
-	}
 	my $password = "";
 	if (defined($Config->{Database}->{password})) {
 		$password = "-password ".$Config->{Database}->{password}." ";
@@ -268,14 +272,19 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
+		"loadmodelfromfile",
+		"loadbiomassfromfile",
 		"blastgenomesequences",
-		"dumpmodelfile",
+		"printmodelfiles",
 		"logout",
 		"login",
 		"deleteaccount",
 		"testmodelgrowth",
 		"importmodel",
-		"createlocaluser"
+		"createlocaluser",
+		"createmedia",
+		"fbafva",
+		"gapfillmodel"
 	];
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
@@ -321,18 +330,18 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
-	if ($os ne "windows") {
-		my $data = ['cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"'];
-		push(@{$data},'if [ "$1" == "clean" ]');
-		push(@{$data},'    then make clean');
-		push(@{$data},'fi');
-		push(@{$data},'make');
-		printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$data);
-		chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
-        unless($args->{fast}) {
-            system($directoryRoot."/bin/makeMFAToolkit".$extension);
-        }
-	}
+    my $output = [
+    'cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"',
+	'if [ "$1" == "clean" ]',
+	'    then make clean',
+	'fi',
+	'make'
+    ];
+    printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$output);
+    chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
+    unless($args->{fast}) {
+    	system($directoryRoot."/bin/makeMFAToolkit");
+    }
 }
 #Creating public useraccount
 {	
@@ -342,6 +351,7 @@ SCRIPT
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});
 		if (!defined($usrObj)) {
+			print "Creating public account for initial installation!\n";
 			$usrObj = $figmodel->database()->create_object("user",{
 				login => "public",
 				password => "public",

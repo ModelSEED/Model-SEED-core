@@ -2096,12 +2096,23 @@ int MFAProblem::loadChangedBoundsIntoSolver(SavedBounds* inBounds) {
 	return SUCCESS;
 }
 
-int MFAProblem::loadMedia(string media, Data* inData) {
-	if (media.compare("Complete") == 0) {
-		for (int i=0; i < this->FNumVariables(); i++) {
+int MFAProblem::loadMedia(string media, Data* inData,bool loadIntoSolver) {
+	vector<MFAVariable*> mediaVariables;
+	vector<double> upperBounds;
+	vector<double> lowerBounds;
+	for (int i=0; i < this->FNumVariables(); i++) {
+		if (this->GetVariable(i)->Compartment == GetCompartment("e")->Index) {
 			if (this->GetVariable(i)->Type == DRAIN_FLUX || this->GetVariable(i)->Type == FORWARD_DRAIN_FLUX) {
-				this->GetVariable(i)->UpperBound = 100;
+				mediaVariables.push_back(this->GetVariable(i));
+				upperBounds.push_back(this->GetVariable(i)->UpperBound);
+				lowerBounds.push_back(this->GetVariable(i)->LowerBound);
+				this->GetVariable(i)->UpperBound = 0;
 			}
+		}
+	}
+	if (media.compare("Complete") == 0) {
+		for (int i=0; i < int(mediaVariables.size()); i++) {
+			mediaVariables[i]->UpperBound = 100;
 		}
 	} else {
 		FileBounds* mediaObj = ReadBounds((media+".txt").data());
@@ -2109,6 +2120,13 @@ int MFAProblem::loadMedia(string media, Data* inData) {
 			return FAIL;
 		}
 		ApplyInputBounds(mediaObj,inData);
+	}
+	if (loadIntoSolver) {
+		for (int i=0; i < int(mediaVariables.size()); i++) {
+			if (upperBounds[i] != mediaVariables[i]->UpperBound || lowerBounds[i] != mediaVariables[i]->LowerBound) {
+				LoadVariable(mediaVariables[i]->Index);
+			}
+		}
 	}
 	return SUCCESS;
 }
@@ -3403,7 +3421,7 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 		string newEssentialGenes;
 		//Loading media
 		if (InParameters->mediaConditions[i].compare("NONE") != 0) {
-			this->loadMedia(InParameters->mediaConditions[i],InData);
+			this->loadMedia(InParameters->mediaConditions[i],InData,true);
 		}
 		//Calculating WT growth
 		if (originalSense) {
@@ -3413,7 +3431,8 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 		}
 		ObjFunct = NULL;
 		this->AddObjective(originalObjective);
-		this->LoadSolver();
+		LoadObjective();
+		//this->LoadSolver();
 		NewSolution = RunSolver(false,true,false);
 		vector<Reaction*> KOReactions;
 		if (NewSolution != NULL && NewSolution->Status == SUCCESS) {
@@ -3622,7 +3641,7 @@ int MFAProblem::RunDeletionExperiments(Data* InData,OptimizationParameter* InPar
 				currentBounds->upperBounds[newVar->Index] = 0;
 			}
 		}
-		this->loadBounds(currentBounds,false);
+		this->loadBounds(currentBounds,true);
 	}
 	delete currentBounds;
 	//Reloading original bounds
@@ -4080,16 +4099,18 @@ int MFAProblem::OptimizeSingleObjective(Data* InData, OptimizationParameter* InP
 	if (ObjectiveValue > MFA_ZERO_TOLERANCE && !SubProblem && GetParameter("Combinatorial reaction deletions").compare("none") != 0) {
 		CombinatorialKO(atoi(GetParameter("Combinatorial reaction deletions").data()),InData,true);
 	}
-	if (ObjectiveValue > MFA_ZERO_TOLERANCE && !SubProblem && InParameters->KOSets.size() > 0) {
+	if (!SubProblem && InParameters->KOSets.size() > 0) {
 		RunDeletionExperiments(InData,InParameters);
 	}
 	//Checking where the tightbounds are invalid
 	for (int i=0; i < FNumVariables(); i++) {
-		if (NewSolution->SolutionData[GetVariable(i)->Index] < GetVariable(i)->Min && GetVariable(i)->Min != FLAG) {
-			//FLogFile() << "Violation for variable " << i << ", min: " << GetVariable(i)->Min << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
-		}
-		if (NewSolution->SolutionData[GetVariable(i)->Index] > GetVariable(i)->Max && GetVariable(i)->Max != FLAG) {
-			//FLogFile() << "Violation for variable " << i << ", max: " << GetVariable(i)->Max << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+		if (i < int(NewSolution->SolutionData.size())) {
+			if (NewSolution->SolutionData[GetVariable(i)->Index] < GetVariable(i)->Min && GetVariable(i)->Min != FLAG) {
+				//FLogFile() << "Violation for variable " << i << ", min: " << GetVariable(i)->Min << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+			}
+			if (NewSolution->SolutionData[GetVariable(i)->Index] > GetVariable(i)->Max && GetVariable(i)->Max != FLAG) {
+				//FLogFile() << "Violation for variable " << i << ", max: " << GetVariable(i)->Max << ", value: " << NewSolution->SolutionData[GetVariable(i)->Index] << endl;
+			}
 		}
 	}
 	//If growth was observed, we determine what media could be removed to lose growth
@@ -6432,7 +6453,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 		map<string, double, std::less<string> > ScenarioReactions;
 		map<string, double, std::less<string> > ScenarioModelReactions;
 		ifstream Input;
-		if (OpenInput(Input,GetParameter("FIGMODEL Function mapping filename"))) {
+		if (OpenInput(Input,GetParameter("Function mapping filename"))) {
 			GetFileLine(Input);
 			do {
 				vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -6461,7 +6482,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 			} while(!Input.eof());
 			Input.close();
 		}
-		if (OpenInput(Input,GetParameter("FIGMODEL Reaction database filename"))) {
+		if (OpenInput(Input,GetParameter("Reaction database filename"))) {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");
 			int KeggMapColumn = int(FLAG);
 			for (int i=0; i < int(Strings->size()); i++) {
@@ -6483,7 +6504,7 @@ int MFAProblem::CalculateGapfillCoefficients(Data* InData,OptimizationParameter*
 			} while(!Input.eof());
 			Input.close();
 		}
-		if (OpenInput(Input,GetParameter("FIGMODEL hope scenarios filename"))) {
+		if (OpenInput(Input,GetParameter("hope scenarios filename"))) {
 			GetFileLine(Input);
 			do {
 				vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -7160,7 +7181,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	map<string, double, std::less<string> > SubsystemReactions;
 	map<string, double, std::less<string> > SubsystemModelReactions;
 	map<string, vector<string>, std::less<string> > ReactionSubsystems;
-	if (OpenInput(Input,GetParameter("FIGMODEL Function mapping filename"))) {
+	if (OpenInput(Input,GetParameter("Function mapping filename"))) {
 		GetFileLine(Input);
 		do {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");
@@ -7188,7 +7209,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	map<string, double, std::less<string> > ScenarioReactions;
 	map<string, double, std::less<string> > ScenarioModelReactions;
 	map<string, vector<string>, std::less<string> > ReactionScenarios;
-	if (OpenInput(Input,GetParameter("FIGMODEL hope scenarios filename"))) {
+	if (OpenInput(Input,GetParameter("hope scenarios filename"))) {
 		GetFileLine(Input);
 		do {
 			vector<string>* Strings  = GetStringsFileline(Input,"\t");

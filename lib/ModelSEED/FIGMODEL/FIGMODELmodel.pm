@@ -1166,7 +1166,19 @@ Description:
 =cut
 sub essentials_table {
 	my ($self,$clear) = @_;
-	my $tbl = $self->load_model_table("ModelEssentialGenes",$clear);
+    my $rows = $self->db()->get_objects("mdless", { MODEL => $self->id() }); 
+    my $tbl = $self->db()->ppo_rows_to_table({
+        headings => ["MEDIA", "MODEL", "ESSENTIAL GENES", "PARAMETERS"],
+        item_delimiter => ";",
+        delimiter => "\t",
+        hash_headings => ["MODEL", "MEDIA"],
+        heading_remap => {
+            MEDIA => "MEDIA",
+            essentials => "ESSENTIAL GENES",
+            MODEL => "MODEL",
+            parameters => "PARAMETERS",
+            }, 
+        }, $rows);
 	return $tbl;
 }
 
@@ -1618,11 +1630,22 @@ sub biomassReaction {
 		return $self->ppo()->biomassReaction();
 	}
 	my $oldBiomass = $self->ppo()->biomassReaction();
-	my $rxnmdl = $self->rxnmdl();
-	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		if ($rxnmdl->[$i]->REACTION() eq $self->ppo()->biomassReaction()) {
-			$rxnmdl->[$i]->REACTION($newBiomass);
+	if ($oldBiomass =~ m/bio\d+/) {
+		my $rxnmdl = $self->rxnmdl();
+		for (my $i=0; $i < @{$rxnmdl}; $i++) {
+			if ($rxnmdl->[$i]->REACTION() eq $self->ppo()->biomassReaction()) {
+				$rxnmdl->[$i]->REACTION($newBiomass);
+			}
 		}
+	} else {
+		$self->db()->create_object("rxnmdl",{
+			MODEL=>$self->id(),
+			REACTION=>$newBiomass,
+			compartment=>"c",
+			confidence=>1,
+			pegs=>"SPONTANEOUS",
+			directionality=>"=>"
+		})
 	}
 	return $self->ppo()->biomassReaction($newBiomass);
 }
@@ -1928,63 +1951,52 @@ sub completeGapfilling {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		startFresh => 1,
 		problemDirectory => undef,#Name of the job directory, which plays a role in check pointing the complete gapfilling pipeline
-		setupProblemOnly=>0,
-		doNotClear => 0,
+		rungapfilling=>1,
+		removeGapfillingFromModel => 1,
 		gapfillCoefficientsFile => "NONE",
 		inactiveReactionBonus => 100,
-		drnRxn => ["bio00001"],
-		media => "Complete",
-		conservative => 0
+		fbaStartParameters => {
+			media => "Complete",
+		},
+		iterative => 1,
+		adddrains => 0,
+		testsolution => 1,
+		globalmessage => 0
 	});
-	return $self->error_message({function => "completeGapfilling",args => $args}) if (defined($args->{error}));	
 	my $start = time();
 	my $fbaObj = $self->fba();
 	#Creating the problem directory
+	if (defined($args->{problemdirectory}) && $args->{problemdirectory} eq "MODELID") {
+   		$args->{problemdirectory} = "Gapfilling-".$self->id();
+   	}
 	if (!defined($args->{problemDirectory})) {
 		$args->{problemDirectory} = $fbaObj->filename();
 	}
-	$args->{drnRxn} = [];
-	$fbaObj->filename($args->{problemDirectory});	
+	$fbaObj->filename($args->{problemDirectory});
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
-	#Creating model version with gapfilled reactions removed
-	if (!-e $fbaObj->directory()."/".$self->id().".tbl") {
-		my $removeGapFilling = 1;
-		if ($args->{doNotClear} == 1) {
-			$removeGapFilling = 0;
-		}
-		$self->printModelFileForMFAToolkit({
-			removeGapfilling => $removeGapFilling,
-			filename => $fbaObj->directory()."/".$self->id().".tbl"
-		});
-	}
 	#Printing list of inactive reactions
-	if ($args->{conservative} == 1) {
+	if ($args->{iterative} == 0) {
 		my $list = [$self->ppo()->biomassReaction()];
 		$self->figmodel()->database()->print_array_to_file($fbaObj->directory()."/InactiveModelReactions.txt",$list);
-		$args->{drnRxn} = [];
 	}
 	my $results;
 	if (!-e $fbaObj->directory()."/InactiveModelReactions.txt") {
+		$args->{fbaStartParameters}->{options}->{freeGrowth} = 1;
 		$results = $self->runFBAStudy({
-			fbaStartParameters => {
-				parameters=>{},
-				drnRxn=>$args->{drnRxn},
-				media=>$args->{media},
-				parameter_files=>["ProductionMFA"]
-			},
+			fbaStartParameters => $args->{fbaStartParameters},
 			setupParameters => {
 				function => "setTightBounds",
-				arguments => {forcingGrowth => 0}	
+				arguments => {variables => ["FLUX"]}	
 			},
-			problemDirectory => $args->{problemDirectory},
+			problemDirectory => undef,
 			parameterFile => "FVAParameters.txt",
 			startFresh => 0,
-			printToScratch => 1,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
 			forcePrintModel => 1,
 			runProblem=>1
 		});
-		return $self->error_message({message=>"Could not calculate inactive reactions",function => "completeGapfilling",args => $args}) if (!defined($results->{tb}));
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not calculate inactive reactions") if (!defined($results->{tb}));
+		delete $args->{fbaStartParameters}->{options}->{freeGrowth};
 		my $inactive;
 		foreach my $obj (keys(%{$results->{tb}})) {
 			if ($obj =~ m/([rb][xi][no]\d+)/ && $results->{tb}->{$obj}->{min} > -0.0000001 && $results->{tb}->{$obj}->{max} < 0.0000001) {
@@ -1998,13 +2010,12 @@ sub completeGapfilling {
 	}
 	#Printing gapfilling parameters
 	if (!-e $fbaObj->directory()."/CompleteGapfillingParameters.txt") {
+		if ($args->{adddrains} == 1) {
+			$args->{fbaStartParameters}->{options}->{adddrains} = 1;
+		}
+		$args->{fbaStartParameters}->{parameters}->{"create file on completion"} = "GapfillingComplete.txt";
 		$results = $self->runFBAStudy({
-			fbaStartParameters => {
-				parameters=>{"create file on completion"=>"GapfillingComplete.txt"},
-				drnRxn=>$args->{drnRxn},
-				media=>$args->{media},
-				parameter_files=>["ProductionMFA"]
-			},
+			fbaStartParameters => $args->{fbaStartParameters},
 			setupParameters => {
 				function => "setCompleteGapfillingStudy",
 				arguments => {
@@ -2016,57 +2027,55 @@ sub completeGapfilling {
 			problemDirectory => $args->{problemDirectory},
 			parameterFile => "CompleteGapfillingParameters.txt",
 			startFresh => 0,
-			printToScratch => 1,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
 			forcePrintModel => 1,
-			runProblem=> $args->{runProblem}
+			runProblem=> $args->{rungapfilling}
 		});
+		delete $args->{fbaStartParameters}->{options}->{adddrains};
+		delete $args->{fbaStartParameters}->{parameters}->{"create file on completion"};
 	}
-	if ($args->{setupProblemOnly} == 1) {
-		return $self->figmodel()->copyMergeHash([$args,{status=>"Success"}]);
+	#Exiting now if the user did not request that the gapfilling be run
+	if ($args->{rungapfilling} == 0) {
+		return {
+			status=>"Success",
+			problemDirectory => $args->{problemDirectory}
+		};
 	}
-	#Running gapfilling process
+	#Checking that a gapfilling solution was printed
 	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
-		$fbaObj->runFBA({
-			runSimulation => $args->{runSimulation},
-			parameterFile => "AddnlFBAParameters.txt"
-		});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Gapfilling of model ".$self->id()." failed!");	
 	}
-	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
-		return $self->error_message({message=>"Gapfilling failed to run. Check MFAToolkit for errors.",function => "completeGapfilling",args => $args});	
-	}
+	#Loading the gapfilling solution into the model
 	$results = $self->integrateGapfillingSolution({
 		directory => $fbaObj->directory(),
 		gapfillResults => $results
 	});
-	if ($results->{success} == 0) {
-		return $self->error_message({message=>$results->{error},function => "completeGapfilling",args => $args});
-	}
+	#Calculating the growth to test the model
 	my $growthResults = $self->fbaCalculateGrowth({
-		fbaStartParameters => {},
-		problemDirectory => undef,
-		outputDirectory => $self->id()."GROWTH",
-		saveLPfile => 0
+		fbaStartParameters => $args->{fbaStartParameters}
 	});
-	my $message = "Growth:".$self->ppo()->growth().";Additions:".$results->{additions}.";Gapfilling:".$results->{gaps};
-	$self->globalMessage({
-		function => "completeGapfilling",
-		package => "FIGMODELmodel",
-		message => $message,
-		thread => "completeGapfilling",
-	});
-	if (defined($growthResults->{fbaObj})) {
-		$growthResults->{fbaObj}->clearOutput();
+	#Printing the growth message
+	if ($args->{globalmessage} == 1) {
+		my $message = "Growth:".$self->ppo()->growth().";Additions:".$results->{additions}.";Gapfilling:".$results->{gaps};
+		$self->globalMessage({
+			function => "completeGapfilling",
+			package => "FIGMODELmodel",
+			message => $message,
+			thread => "completeGapfilling",
+		});
 	}
-	$results = $self->fbaTestGapfillingSolution({
-		fbaStartParameters => {
-			media => "Complete",
-			drnRxn => $args->{drnRxn}	
-		},
-		problemDirectory => $self->id()."GFT"
-	});
-	if (defined($results->{fbaObj})) {
-		$results->{fbaObj}->clearOutput();
+	#Assessing the gapfilling solution
+	if ($args->{testsolution} == 1) {
+		$results = $self->fbaTestGapfillingSolution({
+			fbaStartParameters => {
+				media => "Complete",
+				drnRxn => $args->{drnRxn}	
+			},
+			problemDirectory => $self->id()."GFT"
+		});
+		if (defined($results->{fbaObj})) {
+			$results->{fbaObj}->clearOutput();
+		}
 	}
 	$self->set_status(2,"New gapfilling complete");
 	$self->update_model_stats();
@@ -3388,7 +3397,7 @@ Description:
 sub printModelFileForMFAToolkit {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		removeGapfilling => 1,
+		removeGapfilling => 0,
 		filename => $self->directory().$self->id().".tbl"
 	});
 	return $self->error_message({function => "printModelFileForMFAToolkit",args => $args}) if (defined($args->{error}));
@@ -3972,7 +3981,7 @@ revert(id, x)
 =cut
 sub checkpoint {
 	my ($self) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "checkpoint"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $dir = $self->directory();
 	$self->flatten($dir."rxnmdl.txt");
 	$self->increment();
@@ -3981,13 +3990,16 @@ sub checkpoint {
 
 sub revert { 
 	my ($self, $version) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "revert"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	$version = "v$version" if($version =~ /^\d+$/);
 	$version = $self->id().".".$version if ($version =~ /^v\d+$/);
 	my $test = $self->figmodel()->get_model($version);
 	unless(defined($test)) {
 		return $self->figmodel()->error_message({message => "Unable to find model version $version! Doing nothing."});
 	}
+    if(!-d $self->config("database root directory")->[0]."tmp/") {
+        mkdir $self->config("database root directory")->[0]."tmp/";
+    }
 	my ($fh, $tmpfile) = File::Temp::tempfile(
 		"rxnmdl-".$self->id()."-".$self->version()."-XXXXXX",
 		DIR => $self->config("database root directory")->[0]."tmp/");
@@ -4025,7 +4037,7 @@ sub copyProvenanceFrom {
 
 sub flatten {
 	my ($self, $target) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "flatten"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $config = {
 		filename => $target,
@@ -4040,7 +4052,7 @@ sub flatten {
 
 sub _drop_ppo_database {
 	my ($self) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "drop"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $rxn_mdls = $db->get_objects('rxnmdl',
 		{ MODEL => $self->id() });
@@ -4053,7 +4065,7 @@ sub _drop_ppo_database {
 	
 sub increment {
 	my ($self) = @_;		
-	return $self->error_message({message => "Model is not editable!", function => "increment"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $hash = { map { $_ => $self->ppo()->$_() } keys %{$self->ppo()->attributes()} };
 	my $parts = $self->parseId($self->fullId());
 	$hash->{canonicalID} = $hash->{id};
@@ -4069,7 +4081,7 @@ sub increment {
 
 sub restore {
 	my ($self, $versionToRestore, $finalVersionNumber) = @_;
-	return $self->error_message({message => "Model is not editable!", function => "restore"}) if(!$self->isEditable());
+	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $mdl = $self->figmodel()->get_model($versionToRestore);
 	if(!defined($mdl)) {
 		return $self->error_message({message => "Model to restore $versionToRestore could not be found!", function => "restore"});
@@ -7099,13 +7111,12 @@ sub runFBAStudy {
 		problemDirectory => undef,
 		parameterFile => "FBAParameters.txt",
 		startFresh => 1,
-		printToScratch => 1,
+		printToScratch => $self->figmodel()->config("print to scratch")->[0],
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem=>0,
 		clearOutput=>0
-	});
-	return $self->error_message({function => "completeGapfilling",args => $args}) if (defined($args->{error}));	
+	});	
 	#Setting the problem directory
 	my $fbaObj = $self->fba($args->{fbaStartParameters});
 	if (!defined($args->{problemDirectory})) {
@@ -7134,6 +7145,8 @@ sub runFBAStudy {
 		File::Copy::copy($self->directory()."biochemistry/compound.txt",$fbaObj->directory()."/compoundDataFile.tbl");
 		$fbaObj->dataFilename({type=>"compounds",filename=>$fbaObj->directory()."/compoundDataFile.tbl"});
 	}
+	File::Path::mkpath($fbaObj->directory()."/reaction/");
+	$self->figmodel()->get_reaction($self->biomassReaction())->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$self->biomassReaction()});
 	$fbaObj->createProblemDirectory({
 		parameterFile => $args->{parameterFile},
 		printToScratch => $args->{printToScratch}
@@ -7196,7 +7209,7 @@ sub fbaDefaultStudies {
 				}
 				if ($args->{classification} == 1) {
 					$self->fbaFVA({
-						growth=>"forced",
+						options=>["forceGrowth"],
 						saveFVAResults=>1,		
 						problemDirectory => $args->{problemDirectory},
 						fbaStartParameters => $args->{fbaStartParameters}	
@@ -7207,14 +7220,14 @@ sub fbaDefaultStudies {
 	  	#Running FVA without growth to identify inactive reactions with no growth and with growth drains
 		if ($args->{mediaList}->[$i] eq "Complete" && $args->{classification} == 1) {
 			$results = $self->fbaFVA({
-				growth=>"none",
+				options=>["noGrowth"],
 				saveFVAResults=>1,		
 				problemDirectory => $args->{problemDirectory},
 				fbaStartParameters => $args->{fbaStartParameters}
 			});
 			$args->{fbaStartParameters}->{drnRxn} = ["bio00001"];
 			$results = $self->fbaFVA({
-				growth=>"none",
+				options=>["noGrowth"],
 				saveFVAResults=>1,		
 				problemDirectory => $args->{problemDirectory},
 				fbaStartParameters => 
@@ -7258,7 +7271,6 @@ sub fbaComboDeletions {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "CombinatorialDeletionStudy.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem => 1,
@@ -7309,95 +7321,157 @@ Description:
 sub fbaFVA {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-	   	growth=>"forced",
-		saveFVAResults=>1,		
+	   	saveformat => "EXCEL",
+	   	directory => $self->figmodel()->config("database message file directory")->[0],
+	   	filename => "FBAFVA_".$self->id().".xls",
+	   	saveFVAResults=>1,
+	   	variables => ["FLUX","UPTAKE"],
 		problemDirectory => undef,
 		fbaStartParameters => {
 			media => "Complete",
-			drnRxn => []	
+			drnRxn => [],
+			options => {forceGrowth => 1}
 		}
-	}); 
+	});
+	#Running FBA study with selected options
 	my $results = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
 			function => "setTightBounds",
 			arguments => {
-				growth=>$args->{growth},
-			} 
+				variables => $args->{variables}
+			}
 		},
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "FluxVariabilityAnalysis.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem => 1,
 		clearOuput => 1
 	});
-	if (defined($results->{tb})) {
-		my $rxnclasstable = $self->reaction_class_table();
-		my $cpdclasstable = $self->compound_class_table();
-		foreach my $obj (keys(%{$results->{tb}})) {
-			my $row;
-			if ($obj =~ m/(cpd\d\d\d\d\d)(.)/) {
-				$row = $cpdclasstable->get_row_by_key($obj,"COMPOUND",1);
-			} elsif ($obj =~ m/([rb][xi][no]\d\d\d\d\d)/) {
-				$row = $rxnclasstable->get_row_by_key($1,"REACTION",1);
-			}
-			#Setting row values
-			if (defined($row)) {
-				my $foundit = 0;
-				if (defined($row->{MEDIA})) {
-					for (my $i=0; $i < @{$row->{MEDIA}};$i++) {
-						if ($row->{MEDIA}->[$i] eq $args->{media}) {
-							$foundit = 1;
-							$row->{MIN}->[$i] = $results->{tb}->{$obj}->{min};
-							$row->{MAX}->[$i] = $results->{tb}->{$obj}->{max};
-							$row->{CLASS}->[$i] = $results->{tb}->{$obj}->{class};
-							$row->{MEDIA}->[$i] = $args->{media};
-							last;
-						}
-					}
+	#Checking that results were returned
+	ModelSEED::FIGMODEL::FIGMODELERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
+	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$args->{directory}."Reactions-".$args->{filename},["Reaction"],";","|");
+	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$args->{directory}."Compounds-".$args->{filename},["Compound"],";","|");
+	my $varAssoc = {
+		FLUX => "reaction",
+		DELTAG => "reaction",
+		SDELTAG => "reaction",
+		UPTAKE => "compound",
+		SDELTAGF => "compound",
+		POTENTIAL => "compound",
+		CONC => "compound"
+	};
+	my $varHeading = {
+		FLUX => "",
+		DELTAG => " DELTAG",
+		SDELTAG => " SDELTAG",
+		UPTAKE => "",
+		SDELTAGF => " SDELTAGF",
+		POTENTIAL => " POTENTIAL",
+		CONC => " CONC"
+	};
+	for (my $i=0; $i < @{$args->{variables}}; $i++) {
+		if (defined($varAssoc->{$args->{variables}->[$i]})) {
+			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+				if ($args->{variables}->[$i] eq "UPTAKE") {
+					$cpdtbl->add_headings(("Class"));
 				}
-				if ($foundit == 0) {
-					push @{$row->{MEDIA}}, $args->{media};
-					push @{$row->{MIN}}, $results->{tb}->{$obj}->{min};
-					push @{$row->{MAX}}, $results->{tb}->{$obj}->{max};
-					push @{$row->{CLASS}}, $results->{tb}->{$obj}->{class};
+			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+				if ($args->{variables}->[$i] eq "FLUX") {
+					$rxntbl->add_headings(("Class"));
 				}
 			}
 		}
-		if ($args->{saveFVAResults} == 1) {
-			my $parameters = "";
-			if ($args->{growth} eq "forced") {
-				$parameters .= "FG;";
-				$rxnclasstable->save();
-				$cpdclasstable->save();
-			} elsif ($args->{growth} eq "none") {
-				$parameters .= "NG;";
+	}
+	foreach my $obj (keys(%{$results->{tb}})) {
+		my $newRow;
+		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Reaction"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
 			}
-			if (defined($args->{fbaStartParameters}->{drnRxn})) {
-				$parameters .= "DR:".join("|",@{$args->{drnRxn}}).";";
+			$newRow->{"Compartment"} = [$compartment];
+			#$newRow->{"Direction"} = [$rxnObj->directionality()];
+			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
+					}
+				}
 			}
-			if (defined($args->{fbaStartParameters}->{rxnKO})) {
-				$parameters .= "RK:".join("|",@{$args->{rxnKO}}).";";
+			#print Data::Dumper->Dump([$newRow]);
+			$rxntbl->add_row($newRow);
+		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Compound"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
 			}
-			if (defined($args->{fbaStartParameters}->{geneKO})) {
-				$parameters .= "GK:".join("|",@{$args->{geneKO}}).";";
+			$newRow->{"Compartment"} = [$compartment];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
+					}
+				}
 			}
-			if (length($parameters) == 0) {
-				$parameters = "NONE";	
-			}
-			#Loading and updating the PPO FVA table, which will ultimately replace the flatfile tables
-			my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});
-			if (!defined($obj)) {
-				$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});	
-			}
-			my $headings = ["inactive","dead","positive","negative","variable","posvar","negvar","positiveBounds","negativeBounds","variableBounds","posvarBounds","negvarBounds"];
-			for (my $i=0; $i < @{$headings}; $i++) {
-				my $function = $headings->[$i];
-				$obj->$function($results->{$function});
-			}
+			$cpdtbl->add_row($newRow);
+		}
+	}
+	#Saving data to file
+	if ($args->{saveformat} eq "EXCEL") {
+		$self->figmodel()->make_xls({
+			filename => $args->{directory}.$args->{filename},
+			sheetnames => ["Compound Bounds","Reaction Bounds"],
+			sheetdata => [$cpdtbl,$rxntbl]
+		});
+	} elsif ($args->{saveformat} eq "TEXT") {
+		$cpdtbl->save();
+		$rxntbl->save();
+	}
+	#Loading data into database if requested
+	if ($args->{saveFVAResults} == 1) {
+		my $parameters = "";
+		if (defined($args->{fbaStartParameters}->{forceGrowth}) && $args->{fbaStartParameters}->{forceGrowth} == 1) {
+			$parameters .= "FG;";
+		} elsif (defined($args->{fbaStartParameters}->{noGrowth}) && $args->{fbaStartParameters}->{noGrowth} == 1) {
+			$parameters .= "NG;";
+		}
+		if (defined($args->{fbaStartParameters}->{drnRxn})) {
+			$parameters .= "DR:".join("|",@{$args->{drnRxn}}).";";
+		}
+		if (defined($args->{fbaStartParameters}->{rxnKO})) {
+			$parameters .= "RK:".join("|",@{$args->{rxnKO}}).";";
+		}
+		if (defined($args->{fbaStartParameters}->{geneKO})) {
+			$parameters .= "GK:".join("|",@{$args->{geneKO}}).";";
+		}
+		if (length($parameters) == 0) {
+			$parameters = "NONE";	
+		}
+		#Loading and updating the PPO FVA table, which will ultimately replace the flatfile tables
+		my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});
+		if (!defined($obj)) {
+			$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});	
+		}
+		my $headings = ["inactive","dead","positive","negative","variable","posvar","negvar","positiveBounds","negativeBounds","variableBounds","posvarBounds","negvarBounds"];
+		for (my $i=0; $i < @{$headings}; $i++) {
+			my $function = $headings->[$i];
+			$obj->$function($results->{$function});
 		}
 	}	
 	return $results;
@@ -7432,7 +7506,6 @@ sub fbaCalculateGrowth {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "fbaCalculateGrowth.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem=>1
@@ -7447,7 +7520,6 @@ sub fbaCalculateGrowth {
 	if ($args->{saveLPfile} == 1 && -e $result->{fbaObj}->directory()."/CurrentProblem.lp") {
 		system("cp ".$result->{fbaObj}->directory()."/CurrentProblem.lp ".$self->directory().$self->id().".lp");
 	}
-	print "Problem directory:".$result->{fbaObj}->directory."\n";
 	$result->{fbaObj}->clearOutput();
 	return $result;
 }
@@ -7482,7 +7554,6 @@ sub fbaCalculateMinimalMedia {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "MinimalMediaStudy.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem => 1,
@@ -7536,7 +7607,7 @@ Description:
 =cut
 sub fbaMultiplePhenotypeStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["labels","media"],{
+	$args = $self->figmodel()->process_arguments($args,["labels","mediaList"],{
 		koList => undef,
 		problemDirectory => undef,
 		fbaStartParameters => {},
@@ -7563,7 +7634,7 @@ sub fbaMultiplePhenotypeStudy {
 		setupParameters => {
 			function => "setMultiPhenotypeStudy",
 			arguments => {
-				mediaList=>$args->{media},
+				mediaList=>$args->{mediaList},
 				labels=>$args->{labels},
 				KOlist=>$args->{koList},
 			} 
@@ -7571,7 +7642,6 @@ sub fbaMultiplePhenotypeStudy {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "MultiPhenotypeStudy.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem => 1,
@@ -7624,7 +7694,6 @@ sub fbaTestGapfillingSolution {
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "GapfillingTest.txt",
 		startFresh => 1,
-		printToScratch => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,
 		runProblem=>1
@@ -7897,15 +7966,6 @@ sub calculate_growth {
 		return "NOGROWTH:".$result->{noGrowthCompounds};
 	}
 	return "";
-}
-=head3 classify_model_reactions
-REPLACED BY fbaFVA:MARKED FOR DELETION
-=cut
-sub classify_model_reactions {
-	my ($self,$Media,$SaveChanges,$forcingGrowth) = @_;
-	my $result = $self->fbaFVA({media=>$Media,saveFVAResults=>$SaveChanges,forceGrowth=>$forcingGrowth});
-	if (defined($result->{error})) {return $self->error_message({message => $result->{error},function => "fbaDefaultStudies",args => {}});}
-	return ($self->reaction_class_table(),$self->compound_class_table());
 }
 =head3 IdentifyDependancyOfGapFillingReactions
 REPLACED BY fbaBiomassPrecursorDependancy:MARKED FOR DELETION

@@ -491,6 +491,9 @@ sub get_object_rights {
     if(not defined($self->figmodel()->config("objects with rights")->{$type})) {
         return { view => 1};
     }
+    if ($object->owner() eq $login) {
+    	return { admin => 1};
+    }
     if (defined($object->attributes()->{public}) && $object->public() eq 1) {
         $rights->{view} = 1;
     }
@@ -511,22 +514,32 @@ Description:
 =cut
 sub check_out_new_id {
 	my ($self,$type) = @_;
-	if (!defined($self->{_dbhandles}->{id})) {
-		$self->{_dbhandles}->{id} = DBMaster->new(-database => $self->config("PPO_tbl_id")->{name}->[0],
-    	                   -host     => $self->config("PPO_tbl_id")->{host}->[0],
-                           -user     => $self->config("PPO_tbl_id")->{user}->[0],
-                           -password => $self->config("PPO_tbl_id")->{password}->[0],
-                           -port     => $self->config("PPO_tbl_id")->{port}->[0],
-                           -socket   => $self->config("PPO_tbl_id")->{"socket"}->[0]);
+	#If this is an sqllite database
+	my $data;
+	if (!defined($self->config("PPO_tbl_id")->{user})) {
+		my $idobj = $self->get_object("id",{object => $type});
+		$data = [$idobj->id()];
+		$idobj->id($data->[0]+1);
+		$data->[1] = $idobj->prefix();
+		$data->[2] = $idobj->digits();
+	} else {
+		if (!defined($self->{_dbhandles}->{id})) {
+			$self->{_dbhandles}->{id} = DBMaster->new(-database => $self->config("PPO_tbl_id")->{name}->[0],
+	    	                   -host     => $self->config("PPO_tbl_id")->{host}->[0],
+	                           -user     => $self->config("PPO_tbl_id")->{user}->[0],
+	                           -password => $self->config("PPO_tbl_id")->{password}->[0],
+	                           -port     => $self->config("PPO_tbl_id")->{port}->[0],
+	                           -socket   => $self->config("PPO_tbl_id")->{"socket"}->[0]);
+		}
+		#Get the id
+	    my $database = $self->config("PPO_tbl_id")->{name}->[0];
+		$data = $self->{_dbhandles}->{id}->backend()->dbh->selectrow_arrayref('select id,prefix,digits from '.
+	        $database.'.CURRENTID where (object = "'.$type.'") for update;');
+		#Iterate the ID
+		$self->{_dbhandles}->{id}->backend()->dbh->do('UPDATE '.
+	        $database.'.CURRENTID SET id = id + 1 WHERE (object = "'.$type.'");');
+	    $self->{_dbhandles}->{id}->backend()->dbh->commit();
 	}
-	#Get the id
-    my $database = $self->config("PPO_tbl_id")->{name}->[0];
-	my $data = $self->{_dbhandles}->{id}->backend()->dbh->selectrow_arrayref('select id,prefix,digits from '.
-        $database.'.CURRENTID where (object = "'.$type.'") for update;');
-	#Iterate the ID
-	$self->{_dbhandles}->{id}->backend()->dbh->do('UPDATE '.
-        $database.'.CURRENTID SET id = id + 1 WHERE (object = "'.$type.'");');
-    $self->{_dbhandles}->{id}->backend()->dbh->commit();
  	#Creating the id
  	while (length($data->[0]) < $data->[2]) {
  		$data->[0] = "0".$data->[0];
