@@ -425,6 +425,40 @@ sub add_data {
 	return $Index;
 }
 
+=head3 update_data
+Definition:
+	$TableObj->update_data($Row,"TEST",1,1);
+Description:
+	Updates a row with the data for a specified heading.
+Example:
+	$TableObj->update_data($Row,"TEST",1,1);
+=cut
+
+sub update_data {
+    my ($self,$RowObject,$Heading,$Data,$Unique) = @_;
+    
+    #First checking that the input row exists
+    if (!defined($RowObject) || !defined($Data)) {
+	return -1;
+    }
+    
+    if (ref($Data) eq 'ARRAY') {
+	my $Indecies;
+	for (my $i=0; $i < @{$Data}; $i++) {
+	    $Indecies->[$i] = $self->update_data($RowObject,$Heading,$Data->[$i],$Unique);
+	}
+	return $Indecies;
+    }
+    
+    #Now checking if the heading exists in the row
+    if (defined($Unique) && $Unique == 1 && defined($RowObject->{$Heading})) {
+	for (my $i=0; $i < @{$RowObject->{$Heading}}; $i++) {
+	    $RowObject->{$Heading}->[$i]=$Data;
+	    return $i;
+	}
+    }
+}
+
 =head3 remove_data
 Definition:
 	$TableObj->remove_data($Row,"HEADING","TEST");
@@ -686,6 +720,7 @@ Example:
 
 sub save {
 	my ($self,$filename,$delimiter,$itemdelimiter,$prefix) = @_;
+
 	if (defined($self->{_freezeFileSyncing}) && $self->{_freezeFileSyncing} == 1) {
 		return;
 	}
