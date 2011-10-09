@@ -88,7 +88,7 @@ sub new {
 			growth => 0,
 			name => $args->{name}
 		});
-		print "test6\n";
+		print "Adding new model ",$args->{id}," for ",$args->{owner}," into database\n";
 		$self->ppo($modelObj);
 		$self->create_model_rights();
 		$self->GenerateModelProvenance({
@@ -136,8 +136,8 @@ sub new {
 	}
 	# Rebuild FIGMODEL with new configuration
 	my $model_figmodel = ModelSEED::FIGMODEL->new({ userObj => $figmodel->userObj(),
-													configFiles => $configurationFiles,
-												 });
+							configFiles => $configurationFiles,
+						      });
 	$self->{_figmodel} = $model_figmodel; # strong ref intentional
 	ModelSEED::FIGMODEL::FIGMODELERROR("id must be defined to create a model object") if (!defined($id));
 	# Here the model has the "strong" reference to figmodel, while
@@ -5765,6 +5765,7 @@ sub PrintSBMLFile {
 				$ExchangeHash->{$Compound} = "e";
 			}
 			my $cmpObj = $self->figmodel()->database()->get_object("compartment",{id => $Compartment});
+			#print STDERR $Compartment,"\t",$cmpObj,"\t",$cmpObj->name(),"\n";
 			push(@{$output},'<species id="'.$Compound.'_'.$Compartment.'" name="'.$Name.'" compartment="'.$cmpObj->name().'" charge="'.$Charge.'" boundaryCondition="false"/>');
 		}
 	}
