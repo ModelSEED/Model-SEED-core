@@ -219,10 +219,12 @@ sub get_rows {
 			  );
   Trace("SQL query: $statement") if T(SQL => 3);
   my $data = [];
+
+  print "get_rows: ",$statement,"\n" if $ENV{PPO_DEBUG};
  
   eval {
     if ($options->{'row_as_hash'}) {
-      
+
       my $sth = $self->dbh->prepare($statement);
       $sth->execute;
       Trace("Processing rows as hashes.") if T(SQL => 4);
@@ -263,7 +265,7 @@ sub get_rows_for_ids {
   my ($self, $table, $ids) = @_;
 
   my $statement = "SELECT * FROM $table WHERE _id=?";
-
+  print "get_rows_for_ids: ",$statement,"\n" if $ENV{PPO_DEBUG};
   my $data = [];
  
   eval {
@@ -302,7 +304,7 @@ sub get_row {
 			   $table,
 			   ($conditions) ? " WHERE $conditions" : ''
 			  );
-  
+  print "get_row: ",$statement,"\n" if $ENV{PPO_DEBUG};
   my @data;
 
   eval {
@@ -341,7 +343,7 @@ sub insert_row {
 			   (keys(%$data)) ? join (",", keys(%$data)) : '',
 			   (keys(%$data)) ? join (",", map { $self->dbh->quote($_) } values(%$data)) : '',
 			  );
-
+  print "insert_row: ",$statement,"\n" if $ENV{PPO_DEBUG};
   Trace("SQL command: $statement") if T(SQL => 3);
   my $id;
   eval {
@@ -386,6 +388,7 @@ sub delete_rows {
   my $statement = sprintf ("DELETE FROM %s%s", $table,
 			   ($conditions) ? " WHERE $conditions" : '',
 			  );
+  print "delete_rows: ",$statement,"\n" if $ENV{PPO_DEBUG};
   Trace("SQL command: $statement") if T(SQL => 3);
   eval {
 
@@ -431,6 +434,7 @@ sub update_row {
 			   join(',', map { $_.'='.$self->dbh->quote($data->{$_}) } keys(%$data)), 
 			   ($conditions) ? " WHERE $conditions" : '',
 			  );
+  print "update_row: ",$statement,"\n" if $ENV{PPO_DEBUG};
   Trace("SQL update: $statement") if T(SQL => 3);
   eval {
     

@@ -110,7 +110,8 @@ sub new {
 	#Ensuring that the MFAToolkit uses the same database directory as the FIGMODEL
 	$self->{"MFAToolkit executable"}->[0] .= ' resetparameter "MFA input directory" '.$self->{"database root directory"}->[0]."ReactionDB/";
 	#Creating FIGMODELdatabase object
-	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($self->{"database root directory"}->[0],$self);
+    my $db_config = $self->_get_FIGMODELdatabase_config();
+	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($db_config, $self);
 	$self->{"_figmodelweb"}->[0] = ModelSEED::FIGMODEL::FIGMODELweb->new($self);
 	#Authenticating the user
 	if (defined($userObj)) {
@@ -129,6 +130,7 @@ sub new {
 
 sub FIGMODELERROR {	
 	my ($message) = @_;
+    $message = "\"\"$message\"\"";
 	Carp::confess($message);
 }
 
@@ -671,6 +673,45 @@ sub public_reaction_table {
 	return $tbl;
 }
 
+=head3 _get_FIGMODELdatabase_config
+    Return subset of current configuration that is used
+    by FIGMODELdatabase.
+=cut
+sub _get_FIGMODELdatabase_config { 
+    my ($self) = @_;
+    my $allowedKeys = [
+        "database root directory",
+        "objects with rights",
+        "model administrators",
+        "object types",
+        "Reaction database directory",
+        "locked table list filename",
+        "Translation directory",
+        "Media directory",
+        "compound directory",
+        "reaction directory",
+        "MFAToolkit input files"];
+    my $allowed_but_not_found = [
+        "experimental data directory",
+        "Metagenome directory",
+    ];
+    my $allowedKeysByRegex = [ qr{PPO_tbl_.*} ];
+    my $config = {};
+    foreach my $key (@$allowedKeys) {
+        if(defined($self->config($key))) {
+            $config->{$key} = $self->config($key);
+        }
+    }
+    foreach my $key (keys %$self) {
+        foreach my $regex (@$allowedKeysByRegex) {
+            if($key =~ $regex) {
+                $config->{$key} = $self->config($key);
+            }
+        }
+    }
+    return $config;
+}
+
 =head2 Routines that access or set other SEED modules
 
 =head3 sapSvr
@@ -684,6 +725,7 @@ sub sapSvr {
 		$target = 'PUBSEED';
 	}
 	$ENV{'SAS_SERVER'} = $target;
+	
 	return SAPserver->new();
 }
 
@@ -1522,7 +1564,7 @@ sub clusterModels {
 	} while ($currentSize > 0);
 	$self->database()->print_array_to_file($args->{directory}."ModelClusters.txt",$output);
 }
-=head3 parseSBMLtoTabTable
+=head3 parseSBMLtoTable
 Definition:
 	{} = FIGMODEL->parseSBMLtoTabTable({
 		directory => "",
@@ -1531,217 +1573,250 @@ Definition:
 Description:
 	Translates SBML file to tab delimited table
 =cut
-sub parseSBMLtoTabTable {
-	my ($self,$args) = @_;
-	#Seaver 07/07/11
-	#Processing file or directory
-	if(defined($args->{directory})){
-		if(substr($args->{directory},-1) ne "/"){
-		$args->{directory}.="/";
-		}
+sub parseSBMLtoTable {
+    my ($self,$args) = @_;
+    #Seaver 07/07/11
+    #Processing file or directory
+    if(defined($args->{directory})){
+	if(substr($args->{directory},-1) ne "/"){
+	    $args->{directory}.="/";
+	}
+	
+	if(!defined($args->{error}) && !-d $args->{directory}){
+	    $args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
+	}
+	
+	
+	my $dir = $args->{directory};
+	my $name = $args->{model_name};
+	$name.="-";
+	
+	$args = $self->process_arguments($args,["directory"],{
+	    SBMLFile => $dir."ModelData.xml",
+	    compartmentFiles => $dir.$name."compartments.tbl",
+	    compoundFiles => $dir.$name."compounds.tbl",
+	    reactionFiles => $dir.$name."reactions.tbl"
+					 });
+	
+	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
+	}
+	
+    }elsif(defined($args->{file})){
+	my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
+	my $name = $args->{model_name};
+	$name.="-";
+	
+	$args = $self->process_arguments($args,["file"],{
+	    SBMLFile => $args->{file},
+	    compartmentFiles => $dir.$name."compartments.tbl",
+	    compoundFiles => $dir.$name."compounds.tbl",
+	    reactionFiles => $dir.$name."reactions.tbl"
+					 });
+	
+	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
+	}
+	
+    }
+    
+    return $self->new_error_message({function => "parseSBMLtoTable",args=>$args}) if (defined($args->{error}));
+    
+    my $parser = XML::DOM::Parser->new();
+    my $doc = $parser->parsefile($args->{SBMLFile});
+    my $TableList = {};
+    my %HeadingTranslation=();
+    my %TableHeadings = ("id"=>0,"kegg"=>1,"name"=>2,"abbrev"=>3,"charge"=>4,"mass"=>5,"compartment"=>6,
+			 "reversible"=>7,"formula"=>8,"equation"=>9,"pegs"=>10,"enzymes"=>11,
+			 "reference"=>12,"notes"=>13,);
 
-		if(!defined($args->{error}) && !-d $args->{directory}){
-		$args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
-		}
+    my @cmpts = $doc->getElementsByTagName("compartment");
+    my %cmptAttrs=();
+    my $name="";
+
+    foreach my $attr($cmpts[0]->getAttributes()->getValues()){
+	$name=$attr->getName();
+	$HeadingTranslation{$name}=uc($name);
+	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	$cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    }
 
 
-		my $dir = $args->{directory};
-		my $name = $args->{model_name};
-		$name.="-";
+    $TableList->{compartment}=ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmptAttrs{$a} <=> $cmptAttrs{$b} } keys %cmptAttrs],
+									 $args->{compartmentFiles},undef,"\t","|",undef);
+    foreach my $cmpt (@cmpts){
+	my $row={};
+	foreach my $attr($cmpt->getAttributes()->getValues()){
+	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
+	}
+	$TableList->{compartment}->add_row($row);
+    }
 
-		$args = $self->process_arguments($args,["directory"],{
-		SBMLFile => $dir."ModelData.xml",
-		compartmentFiles => $dir.$name."compartments.tbl",
-		compoundFiles => $dir.$name."compounds.tbl",
-		reactionFiles => $dir.$name."reactions.tbl"
-		});
+    my @cmpds = $doc->getElementsByTagName("species");
+    my %cmpdAttrs=();
 
-		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-			$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-		}
+    #go through all compounds in case of KEGG IDs
+    foreach my $cmpd(@cmpds){
+	foreach my $attr($cmpds[0]->getAttributes()->getValues()){
+	    $name=$attr->getName();
+	    $HeadingTranslation{$name}=uc($name);
+	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	    $cmpdAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+	    if($name eq "id" && $attr->getValue =~ /[CG]\d{5}/){
+		$cmpdAttrs{KEGG}=$TableHeadings{KEGG};
+	    }
+	}
+    }
 
-	}elsif(defined($args->{file})){
-		my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
-		my $name = $args->{model_name};
-		$name.="-";
+    my %CmpdCmptTranslation=();
+    $TableList->{compound} = ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmpdAttrs{$a} <=> $cmpdAttrs{$b} } keys %cmpdAttrs],
+								     $args->{compoundFiles},undef,"\t","|",undef);
+    foreach my $cmpd (@cmpds){
+	my $row={};
+	foreach my $attr($cmpd->getAttributes()->getValues()){
+	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
+	    if($attr->getValue() =~ /([CG]\d{5})/){
+		$row->{KEGG}->[0]=$1;
+	    }
+	}
+	$CmpdCmptTranslation{$row->{ID}->[0]}=$row->{COMPARTMENT}->[0];
 
-		$args = $self->process_arguments($args,["file"],{
-		SBMLFile => $args->{file},
-		compartmentFiles => $dir.$name."compartments.tbl",
-		compoundFiles => $dir.$name."compounds.tbl",
-		reactionFiles => $dir.$name."reactions.tbl"
-		});
+	$TableList->{compound}->add_row($row);
+    }
 
-		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-		$args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-		}
+    my @rxns = $doc->getElementsByTagName("reaction");
+    my %rxnAttrs=();
+    foreach my $attr($rxns[0]->getAttributes()->getValues()){
+	$name=$attr->getName();
+	$HeadingTranslation{$name}=uc($name);
+	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	$HeadingTranslation{$name} = ($name eq "reversible") ? "DIRECTIONALITY" : $HeadingTranslation{$name};
+	$rxnAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    }
 
+    my $nodehash={};
+    foreach my $node($rxns[0]->getElementsByTagName("*",0)){
+	next if $node->getNodeName() =~ "^listOf";
+	my $path=$node->getNodeName();
+	traverse_sbml($node,"",$path,$nodehash);
+    }
+    foreach my $key (keys %$nodehash){
+	$HeadingTranslation{$key}=uc($key);
+	$HeadingTranslation{$key} = ($key eq "annotation") ? "NOTES" : $HeadingTranslation{$key};
+	$rxnAttrs{$HeadingTranslation{$key}}= (exists($TableHeadings{$key})) ? $TableHeadings{$key} : 100;
+    }
+
+    #add equation/pegs
+    $rxnAttrs{EQUATION}=$TableHeadings{"equation"};
+    $rxnAttrs{PEGS}=$TableHeadings{"pegs"};
+    $rxnAttrs{COMPARTMENT}=$TableHeadings{"compartment"};
+    $rxnAttrs{ENZYMES}=$TableHeadings{"enzymes"};
+
+    $TableList->{reaction} = ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $rxnAttrs{$a} <=> $rxnAttrs{$b} } keys %rxnAttrs],
+								     $args->{reactionFiles},undef,"\t","|",undef);
+    foreach my $rxn (@rxns){
+	my $row={};
+	foreach my $attr($rxn->getAttributes()->getValues()){
+	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
+	    if($attr->getName() eq "reversible"){
+		$row->{$HeadingTranslation{$attr->getName()}}->[0]= ($attr->getValue() eq "true") ? "<=>" : "=>";
+	    }
 	}
 
-	return $self->new_error_message({function => "parseSBMLtoTabTable",args=>$args}) if (defined($args->{error}));
-
-	my $parser = XML::DOM::Parser->new();
-	my $doc = $parser->parsefile($args->{SBMLFile});
-	my $objectLists = {species=>[],reaction=>[],compartment=>[]};
-
-	my $compartmentAttrs = ["id","name"];
-	my @cmpts = $doc->getElementsByTagName("compartment");
-	my $cmpt_searchstring = "";
-	foreach my $cmpt (@cmpts) {
-		my @attributes = $cmpt->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-			if ($attributes[$i]->getName() eq "id") {
-				$cmpt_searchstring .= $attributes[$i]->getValue();
-			}
-			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		push(@{$objectLists->{compartment}},$data);
+	my $nodehash={};
+	foreach my $node($rxn->getElementsByTagName("*",0)){
+	    next if $node->getNodeName() =~ "^listOf";
+	    my $path=$node->getNodeName();
+	    traverse_sbml($node,"",$path,$nodehash);
 	}
-
-	my $compoundAttrs = ["id","name","charge"];
-	my @cpds = $doc->getElementsByTagName("species");
-	foreach my $cpd (@cpds) {
-		my @attributes = $cpd->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-		if ($attributes[$i]->getName() eq "id") {
-			if($attributes[$i]->getValue() =~ /.*_[$cmpt_searchstring]$/){
-			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-2));
-			}elsif($attributes[$i]->getValue() =~ /.*\[[$cmpt_searchstring]\]$/){
-			    $attributes[$i]->setValue(substr($attributes[$i]->getValue(),0,-3));
-			}
-		}
-		$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		push(@{$objectLists->{species}},$data);
+	foreach my $key (keys %$nodehash){
+	    $row->{$HeadingTranslation{$key}}->[0]=join("|",keys %{$nodehash->{$key}});
 	}
+	$row->{EQUATION}->[0]=join(" ",@{$self->get_reaction_equation_sbml($rxn,\%CmpdCmptTranslation)});
+	$row->{PEGS}->[0]="";
+	$row->{COMPARTMENT}->[0]="c";
+	$row->{ENZYMES}->[0]="";
+	$TableList->{reaction}->add_row($row);
+    }
 
-	my $reactionAttrs = ["id","name","reversible","equation"];
-	my @rxns = $doc->getElementsByTagName("reaction");
-	foreach my $rxn (@rxns) {
-		my @attributes = $rxn->getAttributes()->getValues();
-		my $data;
-		for (my $i=0; $i < @attributes; $i++) {
-			$data->{$attributes[$i]->getName()} = $attributes[$i]->getValue();			
-		}
-		my $eq = $self->get_reaction_equation_sbml($rxn,$cmpt_searchstring);
-		push(@{$objectLists->{reaction}},$data);
-		$data->{equation} = join(" ",@$eq);
-	}
-
-	my $compartmentData = [join("\t",@{$compartmentAttrs})];
-	for (my $i=0; $i < @{$objectLists->{compartment}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$compartmentAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]})) {
-				$line .= $objectLists->{compartment}->[$i]->{$compartmentAttrs->[$j]};
-			}
-		}
-		push(@{$compartmentData},$line);
-	}
-
-	my $compoundData = [join("\t",("ID","NAMES","CHARGE"))];
-	for (my $i=0; $i < @{$objectLists->{species}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$compoundAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{species}->[$i]->{$compoundAttrs->[$j]})) {
-				$line .= $objectLists->{species}->[$i]->{$compoundAttrs->[$j]};
-			}
-		}
-		push(@{$compoundData},$line);
-	}
-
-	my $reactionData = [join("\t",("ID","NAMES","REVERSIBLE","EQUATION"))];
-	for (my $i=0; $i < @{$objectLists->{reaction}}; $i++) {
-		my $line = "";
-		for (my $j=0; $j < @{$reactionAttrs}; $j++) {
-			if ($j > 0) {
-				$line .= "\t";
-			}
-			if (defined($objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]})) {
-				$line .= $objectLists->{reaction}->[$i]->{$reactionAttrs->[$j]};
-			}
-		}
-		push(@{$reactionData},$line);
-	}
-	$self->database()->print_array_to_file($args->{compartmentFiles},$compartmentData);
-	$self->database()->print_array_to_file($args->{compoundFiles},$compoundData);
-	$self->database()->print_array_to_file($args->{reactionFiles},$reactionData);
+    return $TableList;
 }
 
+=head3 traverse_sbml
+Definition:
+	FIGMODEL->traverse_sbml($SBML_Node);
+=cut
+sub traverse_sbml {
+    my $node=shift;
+    my $prev_path=shift;
+    my $path=shift;
+    my $nodehash=shift;
+    my @children=$node->getElementsByTagName("*",0);
+
+    if(scalar(@children)==0){
+	my $textstring=undef;
+	$textstring=$node->getFirstChild()->getNodeValue() if $node->hasChildNodes();
+	$nodehash->{$path}{$textstring}=1 if defined($textstring);
+	foreach my $attr(@{$node->getAttributes()->getValues()}){
+	    $nodehash->{$path}{$attr->getName().":".$attr->getValue()}=1;
+	}
+	return $prev_path;
+    }
+
+    foreach my $n (@children){
+	$prev_path=$path;
+	unless($path =~ /a?n{1,2}ot[ea][st]/i){  #Notes and Annotation fields have needless <html> and <p> elements
+	    $path.="|" if $path ne "";
+	    $path.=$n->getNodeName();
+	}
+	$path=traverse_sbml($n,$prev_path,$path,$nodehash);
+    }
+    return $path;
+}
 
 =head3 get_reaction_equation_sbml
 Definition:
 	FIGMODEL->get_reaction_equation_sbml($SBML_Reaction_Object, $Compartments);
 =cut
 sub get_reaction_equation_sbml {
-	my ($self, $rxn, $cmpsearch) = @_;
-	my $eq = [];
-	my $reversable = $rxn->getAttribute("reversible");
-	(defined($reversable) && $reversable eq "true") ? $reversable = "<=>" : $reversable = "=>";
-	my @reactants = $rxn->getElementsByTagName("listOfReactants");
-	my @products = $rxn->getElementsByTagName("listOfProducts");
-	if(@reactants) {
-		@reactants = $reactants[0]->getElementsByTagName("speciesReference");
-		for(my $i=0; $i<@reactants; $i++) {
-			push(@$eq, "+") unless($i == 0);
-			my $reactant = $reactants[$i];
-			my $count = $reactant->getAttribute("stoichiometry");
-			$count = undef if ( defined($count) && ($count == 1 || $count eq "") );
-			push(@$eq, "(".$count.")") if defined($count);
-
-			my $cpd = $reactant->getAttribute("species");
-		my $text=$cpd;
-		my $cmpt=undef;
-		if($cpd =~ /.*_[$cmpsearch]$/){
-		$text=substr($cpd,0,-2);
-		$cmpt=substr($cpd,-1);
-		}elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
-		$text=substr($cpd,0,-3);
-		$cmpt=substr($cpd,-2,1);
-		}
-		if(!defined($cmpt)){
-		$cmpt='c';
-		}
-		$text.="[".$cmpt."]";
-			push(@$eq, $text);
-		}
+    my ($self, $rxn, $cmptsearch) = @_;
+    my $eq = [];
+    my $reversable = $rxn->getAttribute("reversible");
+    (defined($reversable) && $reversable eq "true") ? $reversable = "<=>" : $reversable = "=>";
+    my @reactants = $rxn->getElementsByTagName("listOfReactants");
+    my @products = $rxn->getElementsByTagName("listOfProducts");
+    if(@reactants) {
+	@reactants = $reactants[0]->getElementsByTagName("speciesReference");
+	for(my $i=0; $i<@reactants; $i++) {
+	    push(@$eq, "+") unless($i == 0);
+	    push(@$eq, @{expand_sbml_reaction_participant($reactants[$i],$cmptsearch)});
 	}
-	push(@$eq, $reversable);
-	if(@products) {
-		@products = $products[0]->getElementsByTagName("speciesReference"); 
-		for(my $i=0; $i<@products; $i++) {
-			push(@$eq, "+") unless($i == 0);
-			my $product = $products[$i];
-			my $count = $product->getAttribute("stoichiometry");
-			$count = undef if ( defined($count) && ($count == 1 || $count eq "") );
-			push(@$eq, "(".$count.")") if defined($count);
-
-			my $cpd = $product->getAttribute("species");
-		my $text=$cpd;
-		my $cmpt=undef;
-		if($cpd =~ /.*_[$cmpsearch]$/){
-		$text=substr($cpd,0,-2);
-		$cmpt=substr($cpd,-1);
-		}elsif($cpd =~ /.*\[[$cmpsearch]\]$/){
-		$text=substr($cpd,0,-3);
-		$cmpt=substr($cpd,-2,1);
-		}
-		if(!defined($cmpt)){
-		$cmpt='c';
-		}
-		$text.="[".$cmpt."]";
-			push(@$eq, $text);
-		}
+    }
+    push(@$eq, $reversable);
+    if(@products) {
+	@products = $products[0]->getElementsByTagName("speciesReference"); 
+	for(my $i=0; $i<@products; $i++) {
+	    push(@$eq, "+") unless($i == 0);
+	    push(@$eq, @{expand_sbml_reaction_participant($products[$i],$cmptsearch)});
 	}
-	return $eq;
+    }
+    return $eq;
+}
+
+sub expand_sbml_reaction_participant {
+    my $species = shift;
+    my $cmptsearch = shift;
+    my $text = [];
+
+    my $count = $species->getAttribute("stoichiometry");
+    $count = undef if ( defined($count) && ($count == 1 || $count eq "") );
+    $count = abs($count) if defined($count); #avoids negative stoichiometry, yea, it happens(!)
+    push(@$text,"(".$count.")") if defined($count);
+    
+    my $cpd = $species->getAttribute("species");
+    my $cmpt= (exists($cmptsearch->{$cpd})) ? $cmptsearch->{$cpd} : "NULL";
+    push(@$text,$cpd."[".$cmpt."]");
+    return $text;
 }
 
 =head3 get_genome_stats
@@ -2513,7 +2588,7 @@ sub import_model_file {
 	if (!-e $args->{filename}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
-	my $rxnmdl = $self->database()->load_table($args->{filename},";","|",1,["LOAD"]);
+	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},";","|",1,["LOAD"]);
 	my $biomassID;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
@@ -2596,6 +2671,7 @@ sub import_model {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
 	}
 	$mdl = $self->get_model($id);
+
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
 		for (my $i=0; $i < @{$importTables}; $i++) {
@@ -2653,13 +2729,16 @@ sub import_model {
 				for (my $k=0; $k < @{$searchNames}; $k++) {
 					my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
 					if (!defined($cpdals)) {
-						my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k]});
-						for (my $m = 0; $m < @{$cpdalss}; $m++) {
-							if ($cpdalss->[$m]->type() =~ m/searchname.+\.796/) {
-								$cpdals = $cpdalss->[$m];
-								last;
-							}
+					    my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k]});
+					    for (my $m = 0; $m < @{$cpdalss}; $m++) {
+						#Seaver 10/07/2011
+						#Due to many small acronyms potentially being added to database for other models
+						#this length restriction is applied for the time being
+						if(length($cpdalss->[$m]->alias())>3){
+						    $cpdals = $cpdalss->[$m];
+						    last;
 						}
+					    }
 					}
 					if (defined($cpdals)) {
 						if (!defined($cpd)) {
@@ -2667,7 +2746,7 @@ sub import_model {
 						}
 					} else {
 						$newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
-						$newNames->{seach}->{$searchNames->[$k]} = 1;
+						$newNames->{search}->{$searchNames->[$k]} = 1;
 					}
 				}
 			}
@@ -2678,7 +2757,7 @@ sub import_model {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			}
 		}
-		if (!defined($cpd) && defined($row->{"MetaCyc"}->[0])) {
+		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
@@ -2708,20 +2787,6 @@ sub import_model {
 					$cpd->formula($row->{"FORMULA"}->[0]);
 				}
 			}
-			foreach my $name (keys(%{$newNames->{name}})) {
-				$mdl->figmodel()->database()->create_object("cpdals",{
-					COMPOUND => $cpd->id(),
-					type => "name".$id,
-					alias => $name
-				});
-			}
-			foreach my $name (keys(%{$newNames->{seach}})) {
-				$mdl->figmodel()->database()->create_object("cpdals",{
-					COMPOUND => $cpd->id(),
-					type => "searchname".$id,
-					alias => $name
-				});
-			}
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
@@ -2749,13 +2814,18 @@ sub import_model {
 				scope => $id
 			});
 		}
-		$mdl->figmodel()->database()->create_object("cpdals",{
-			COMPOUND => $cpd->id(),
-			type => $id,
-			alias => $row->{"ID"}->[0]
-		});
+		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
+		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $name});
+		}
+		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{search}})) {
+		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $name});
+		}
+
+		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
+
 		$translation->{$row->{"ID"}->[0]} = $cpd->id();
 	}
+
 	#Loading the reaction table
 	return $self->new_error_message({message=> "could not find import file:".$args->{path}.$args->{baseid}."-reactions.tbl",function => "import_model",args => $args}) if (!-e $args->{path}.$args->{baseid}."-reactions.tbl");
 	$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-reactions.tbl","\t","|",0,["ID"]);
@@ -2951,10 +3021,12 @@ sub import_model {
 			});
 		}
 	}
+
 	for (my $i=0; $i < @{$importTables}; $i++) {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);
 	}
 	$mdl->processModel();
+
 	return $result;
 }
 
@@ -3581,8 +3653,8 @@ sub CompareModelGenes {
 	#Creating the output table
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["EXTRA PEG","ROLE","SUBSYSTEM","CLASS 1","CLASS 2","REACTIONS","OTHER MODEL PEGS","REFERENCE MODEL"],$self->{"database message file directory"}->[0].$ModelOne."-".$ModelTwo."-GeneComparison.tbl",["PEG"],"\t","|",undef);
 	#Getting gene tables
-	my $GeneTblOne = $self->database()->GetDBModelGenes($ModelOne);
-	my $GeneTblTwo = $self->database()->GetDBModelGenes($ModelTwo);
+	my $GeneTblOne = $One->feature_table();
+	my $GeneTblTwo = $Two->feature_table();
 	my $RxnTblOne = $One->reaction_table();
 	my $RxnTblTwo = $Two->reaction_table();
 	for (my $m=0; $m < 2; $m++) {
@@ -4528,7 +4600,7 @@ sub AdjustReactionDirectionalityInDatabase {
 				if (defined($rxnobj)) {
 					$rxnobj->{"DIRECTIONALITY"}->[0] = $Direction;
 				}
-				$self->database()->save_table($rxntbl);
+				$rxntbl->save();
 				$model->PrintModelLPFile();
 				#Testing model growth
 				my $growth = $model->calculate_growth("Complete");
@@ -8256,9 +8328,10 @@ sub parse_experiment_description {
 		"thioctic_acid" => ["NONE"],
 		"zinc_chloride" => ["cpd00034","cpd00099"]
 	};
-	
-	#Checking if the input is a filename instead of an array of data
-	$descriptions = $self->database()->check_for_file($descriptions);
+    if(ref($descriptions) eq "ARRAY" && @$descriptions == 1 &&
+        -f $descriptions->[0]) {
+        $descriptions = $self->database()->load_single_column_file($descriptions->[0]);
+    }
 	#Processing the input list of experimental conditions
 	$self->database()->LockDBTable("EXPERIMENT");
 	$self->database()->LockDBTable("MEDIA");
@@ -8355,7 +8428,7 @@ Description:
 sub getExperimentsTable {
 	my ($self) = @_;
 	unless (defined($self->{"CACHE"}->{"EXPERIMENT_TABLE"})) {
-		$self->{"CACHE"}->{"EXPERIMENT_TABLE"} = $self->database()->load_table(
+		$self->{"CACHE"}->{"EXPERIMENT_TABLE"} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
 			$self->{"Reaction database directory"}->[0]."masterfiles/Experiments.txt",
 			'\t', ',', 0, ['name', 'genome']) or die "Could not load Experiments database! Error: " . $!;
 	}

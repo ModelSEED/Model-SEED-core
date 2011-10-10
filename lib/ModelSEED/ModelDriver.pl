@@ -10,8 +10,49 @@
 
 use strict;
 use ModelSEED::ModelDriver;
+use Try::Tiny;
+use File::Temp;
 
 $|=1;
+
+sub printErrorLog {
+    my $errorMessage = shift @_;
+    my $actualMessage;
+    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+        $actualMessage = $1;
+    }
+    my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
+    mkdir $errorDir unless(-d $errorDir);
+    my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
+    print $errorFH <<MSG;
+> ModelDriver encountered an unrecoverable error:
+
+$errorMessage
+MSG
+    my $viewerMessage = <<MSG;
+Whoops! We encountered an unrecoverable error.
+
+MSG
+    if(defined($actualMessage)) {
+        $viewerMessage .= $actualMessage."\n\n";
+    }
+    $viewerMessage .= <<MSG;
+A complete log of the problem has been printed to:
+
+$errorFilename
+
+Have you updated recently? ( git pull )
+Have you changed your configuration? ( ms-config )
+
+If you are still having problems, please submit a ticket
+copying the contents of the error file printed above to:
+
+https://github.com/ModelSEED/Model-SEED-core/issues/new
+
+Thanks!
+MSG
+    print $viewerMessage;
+}
 
 #First checking to see if at least one argument has been provided
 my $driv = ModelSEED::ModelDriver->new();
@@ -76,8 +117,12 @@ for (my $i=0; $i < @ARGV; $i++) {
 			}
 		}
         #Calling function
-        $Status = $driv->$FunctionName(@Data);
-        print $Status."\n\n";
+        try {
+            $Status .= $driv->$FunctionName(@Data);
+            print $Status."\n\n";
+        } catch {
+            printErrorLog($_);
+        };
     }
 }
 #Printing the finish file if specified

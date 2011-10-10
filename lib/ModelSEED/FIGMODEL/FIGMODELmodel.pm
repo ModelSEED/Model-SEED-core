@@ -88,6 +88,7 @@ sub new {
 			growth => 0,
 			name => $args->{name}
 		});
+		print "Adding new model ",$args->{id}," for ",$args->{owner}," into database\n";
 		$self->ppo($modelObj);
 		$self->create_model_rights();
 		$self->GenerateModelProvenance({
@@ -135,8 +136,8 @@ sub new {
 	}
 	# Rebuild FIGMODEL with new configuration
 	my $model_figmodel = ModelSEED::FIGMODEL->new({ userObj => $figmodel->userObj(),
-													configFiles => $configurationFiles,
-												 });
+							configFiles => $configurationFiles,
+						      });
 	$self->{_figmodel} = $model_figmodel; # strong ref intentional
 	ModelSEED::FIGMODEL::FIGMODELERROR("id must be defined to create a model object") if (!defined($id));
 	# Here the model has the "strong" reference to figmodel, while
@@ -723,7 +724,9 @@ sub get_reaction_class {
 
 	if (!-e $self->directory()."ReactionClassification-".$self->id().".tbl") {
 		if (!defined($self->{_reaction_classes})) {
-			$self->{_reaction_classes} = $self->figmodel()->database()->load_table($self->directory()."ReactionClassification-".$self->id()."-Complete.tbl",";","|",0,["REACTION"]);
+			$self->{_reaction_classes} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+                $self->directory()."ReactionClassification-".
+                $self->id()."-Complete.tbl",";","|",0,["REACTION"]);
 			if (!defined($self->{_reaction_classes})) {
 				return undef;
 			}
@@ -765,7 +768,8 @@ sub get_reaction_class {
 	}
 
 	if (!defined($self->{_reaction_classes})) {
-		$self->{_reaction_classes} = $self->figmodel()->database()->load_table($self->directory()."ReactionClassification-".$self->id().".tbl",";","|",0,["REACTION"]);
+		$self->{_reaction_classes} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->directory()."ReactionClassification-".$self->id().".tbl",";","|",0,["REACTION"]);
 		if (!defined($self->{_reaction_classes})) {
 			return undef;
 		}
@@ -905,7 +909,8 @@ sub role_table {
 			}
 			$tbl->save();
 		} else {
-			$tbl = $self->figmodel()->database()->load_table($self->directory()."Roles.tbl",";","|",0,["ROLE","REACTIONS","GENES","ESSENTIAL"]);		
+			$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."Roles.tbl",
+                ";","|",0,["ROLE","REACTIONS","GENES","ESSENTIAL"]);		
 		}
 		$self->setCache("roletable",$tbl);
 	}
@@ -1077,12 +1082,16 @@ sub load_model_table {
 			}
 		}
 		if (-e $filename) {
-			$self->{"_".$name} = $self->figmodel()->database()->load_table($filename,$columnDelim,$itemDelim,$tbldef->{headingline}->[0],$tbldef->{hashcolumns});
+			$self->{"_".$name} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+                $filename,$columnDelim,$itemDelim,$tbldef->{headingline}->[0],$tbldef->{hashcolumns});
 		} else {
 			if (defined($tbldef->{prefix})) {
-				$self->{"_".$name} = ModelSEED::FIGMODEL::FIGMODELTable->new($tbldef->{columns},$filename,$tbldef->{hashcolumns},$columnDelim,$itemDelim,join(@{$tbldef->{prefix}},"\n"));
+				$self->{"_".$name} = ModelSEED::FIGMODEL::FIGMODELTable->new(
+                    $tbldef->{columns},$filename,$tbldef->{hashcolumns},
+                    $columnDelim,$itemDelim,join(@{$tbldef->{prefix}},"\n"));
 			} else {
-				$self->{"_".$name} = ModelSEED::FIGMODEL::FIGMODELTable->new($tbldef->{columns},$filename,$tbldef->{hashcolumns},$columnDelim,$itemDelim);
+				$self->{"_".$name} = ModelSEED::FIGMODEL::FIGMODELTable->new(
+                    $tbldef->{columns},$filename,$tbldef->{hashcolumns},$columnDelim,$itemDelim);
 			}
 		}
 	}
@@ -2132,7 +2141,8 @@ sub integrateGapfillingSolution {
 	}
 	return $self->error_message({message => $args->{gapfillResults}->{error},function => "completeGapfilling",args => $args}) if (defined($args->{gapfillResults}->{error}));
 	#Loading the reaction table located in the problem directory and adjusting based on the gapfilling solution
-	my $rxns = $self->figmodel()->database()->load_table($args->{directory}."/".$self->id().".tbl",";","|",1,["LOAD","ASSOCIATED PEG","COMPARTMENT"]);
+	my $rxns = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{directory}."/".$self->id().".tbl",
+        ";","|",1,["LOAD","ASSOCIATED PEG","COMPARTMENT"]);
 	foreach my $rxn (keys(%{$solutionHash})) {
 		if ($rxn ne "rxn12985") {
 			my $rev = $self->figmodel()->reversibility_of_reaction($rxn);
@@ -2470,9 +2480,12 @@ sub compare_two_reaction_tables {
 	if (defined($args->{changeTbl})) {
 		$changeTbl = $args->{changeTbl};
 	} elsif (defined($args->{changeTblFile})) {
-		$changeTbl = $self->figmodel()->database()->load_table($self->directory().$args->{changeTblFile},"\t","|",0,["Reaction","ChangeType"]);
+		$changeTbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->directory().$args->{changeTblFile},"\t","|",0,["Reaction","ChangeType"]);
 	} else {
-		$changeTbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Direction","Compartment","Genes","ChangeType","Note","ChangeTime"],"Temp.txt",["Reaction","ChangeType"],"\t","|",undef);
+		$changeTbl = ModelSEED::FIGMODEL::FIGMODELTable->new(
+            [qw(Reaction Direction Compartment Genes ChangeType Note ChangeTime)],
+            "Temp.txt",["Reaction ChangeType"],"\t |",undef);
 	}
 	my $rxnTbl = $self->reaction_table();
 	my $cmpTbl = $args->{compareTbl};
@@ -2548,7 +2561,9 @@ sub calculate_model_changes {
 		$version = $self->selected_version();
 	}
 	if (defined($filename) && !defined($originalReactions) && -e $self->directory()."OriginalModel-".$self->id()."-".$filename.".txt") {
-		$originalReactions = $self->figmodel()->database()->load_table($self->directory()."OriginalModel-".$self->id()."-".$filename.".txt",";","|",1,["LOAD","ASSOCIATED PEG"]);
+		$originalReactions = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->directory()."OriginalModel-".$self->id()."-$filename.txt",
+            ";","|",1,["LOAD","ASSOCIATED PEG"]);
 	}
 	my $user = $self->figmodel()->user();
 	#Getting the current reaction table if not provided at input
@@ -2668,7 +2683,7 @@ sub GapGenModel {
 	} else {
 		$solutionRow = {Media => [$Media],Experiment => [$Experiment],KOlist => [join(",",@{$KOList})]};
 		$tbl->add_row($solutionRow);
-		$self->figmodel()->database()->save_table($tbl);
+		$tbl->save();
 	}
 	$self->releaseModelLock();
 	
@@ -2705,7 +2720,7 @@ sub GapGenModel {
 			}
 		}
 	}
-	$self->figmodel()->database()->save_table($tbl);
+	$tbl->save();
 	$self->releaseModelLock();
 	
 	return $solutions;
@@ -2727,7 +2742,8 @@ sub datagapfill {
 			$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selected_version()."-GFS.txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
 			return $self->error_message({function => "datagapfill",message => "Could not find MFA output file!"});
 		}
-		my $GapFillResultTable = $self->figmodel()->database()->load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt",";","",0,undef);
+		my $GapFillResultTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->config("MFAToolkit output directory")->[0]."$UniqueFilename/GapFillingSolutionTable.txt",";","",0,undef);
 		if (defined($TansferFileSuffix)) {
 			system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt ".$self->directory().$self->id().$self->selected_version()."-".$TansferFileSuffix.".txt");
 		}
@@ -3627,7 +3643,7 @@ sub InspectModelState {
 		$msgs->[$i]->delete();
 	}
 	#Loading model from old system
-	my $tbl = $self->figmodel()->database()->load_table(
+	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
 		"/vol/model-dev/MODEL_DEV_DB/Models/".$self->owner()."/".$self->genome()."/".$self->id().".txt",
 		";",
 		"|",
@@ -4665,7 +4681,8 @@ sub GapFillingAlgorithm {
 	}
 	if (-e $self->directory().$self->id().$self->selected_version()."-OldGFS.txt") {
 		#Reading in the solution file from the previous gap filling if it exists
-		$PreviousGapFilling = $self->figmodel()->database()->load_table($self->directory().$self->id().$self->selected_version()."-OldGFS.txt",";",",",0,["Experiment"]);
+		$PreviousGapFilling = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->directory().$self->id().$self->selected_version()."-OldGFS.txt",";",",",0,["Experiment"]);
 	}
 
 	#Now we use the simulation output to make the gap filling run data
@@ -4727,7 +4744,8 @@ sub GapFillingAlgorithm {
 	}
 
 	#Updating the growmatch progress table
-	my $Row = $self->figmodel()->database()->get_row_by_key("GROWMATCH TABLE",$self->genome(),"ORGANISM",1);
+    my $growmatchTbl = $self->figmodel()->database()->get_table("GROWMATCH TABLE");
+	my $Row = $growmatchTbl->get_row_by_key($self->genome(),"ORGANISM",1);
 	$Row->{"INITIAL FP"}->[0] = $FalsePostives;
 	$Row->{"INITIAL FN"}->[0] = $FalseNegatives;
 	$Row->{"GF TIMING"}->[0] = time()."-";
@@ -4736,7 +4754,7 @@ sub GapFillingAlgorithm {
 	$Row->{"TOTAL ACCEPTED GF SOL"}->[0] = $AcceptedSolutions;
 	$Row->{"TOTAL REJECTED GF SOL"}->[0] = $RejectedSolutions;
 	$Row->{"FN WITH NO SOL"}->[0] = $NoExistingSolutions+$RejectedSolutions;
-	$self->figmodel()->database()->update_row("GROWMATCH TABLE",$Row,"ORGANISM");
+    $growmatchTbl->save();
 
 	#Running the gap filling once to correct all false negative errors
 	my $SolutionsFound = 0;
@@ -4756,7 +4774,7 @@ sub GapFillingAlgorithm {
 	#Recording the finishing of the gapfilling
 	$Row = $self->figmodel()->database()->get_row_by_key("GROWMATCH TABLE",$self->genome(),"ORGANISM",1);
 	$Row->{"GF TIMING"}->[0] .= time();
-	$self->figmodel()->database()->update_row("GROWMATCH TABLE",$Row,"ORGANISM");
+    $growmatchTbl->save();
 
 	if ($SolutionsFound == 1) {
 		#Scheduling solution testing
@@ -5776,6 +5794,7 @@ sub PrintSBMLFile {
 				$ExchangeHash->{$Compound} = "e";
 			}
 			my $cmpObj = $self->figmodel()->database()->get_object("compartment",{id => $Compartment});
+			#print STDERR $Compartment,"\t",$cmpObj,"\t",$cmpObj->name(),"\n";
 			push(@{$output},'<species id="'.$Compound.'_'.$Compartment.'" name="'.$Name.'" compartment="'.$cmpObj->name().'" charge="'.$Charge.'" boundaryCondition="false"/>');
 		}
 	}
@@ -6860,7 +6879,8 @@ sub run_geneKO_slow {
 		print "Deletion study file not found!.\n";
 		return undef;	
 	}
-	my $deltbl = $self->figmodel()->database()->load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."DeletionStudyResults.txt",";","|",1,["Experiment"]);
+	my $deltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->config(
+        "MFAToolkit output directory")->[0].$UniqueFilename."DeletionStudyResults.txt",";","|",1,["Experiment"]);
 	for (my $i=0; $i < $deltbl->size(); $i++) {
 		my $row = $deltbl->get_row($i);
 		if ($row->{"Insilico growth"}->[0] < 0.0000001) {
@@ -6945,7 +6965,8 @@ sub identify_inactive_genes {
 	#Reading in the output bounds file
 	my $ReactionTB;
 	if (-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/MFAOutput/TightBoundsReactionData0.txt") {
-		$ReactionTB = $self->figmodel()->database()->load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."/MFAOutput/TightBoundsReactionData0.txt",";","|",1,["DATABASE ID"]);
+		$ReactionTB = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+            $self->config("MFAToolkit output directory")->[0]."$UniqueFilename/MFAOutput/TightBoundsReactionData0.txt",";","|",1,["DATABASE ID"]);
 	}
 	if (!defined($ReactionTB)) {
 		print STDERR "FIGMODEL:ClassifyModelReactions: Classification file not found when classifying reactions in ".$self->id().$self->selected_version()." with ".$media." media. Most likely the model did not grow.\n";
@@ -7015,13 +7036,17 @@ sub ConvertVersionsToHistoryFile {
 			$noHitCount = 0;
 			$lastChanged = 0;
 			$vone = $vone+1;
-			$currentTable = $self->figmodel()->database()->load_table($self->directory().$self->id()."V".$vone.".".$vtwo.".txt",";","|",1,["LOAD","DIRECTIONALITY","COMPARTMENT","ASSOCIATED PEG"]);	
+			$currentTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+                $self->directory().$self->id()."V$vone.$vtwo.txt",";","|",1,
+                ["LOAD","DIRECTIONALITY","COMPARTMENT","ASSOCIATED PEG"]);	
 			$cause = "RECONSTRUCTION";
 		} elsif (-e $self->directory().$self->id()."V".$vone.".".($vtwo+1).".txt") {
 			$noHitCount = 0;
 			$lastChanged = 0;
 			$vtwo = $vtwo+1;
-			$currentTable = $self->figmodel()->database()->load_table($self->directory().$self->id()."V".$vone.".".$vtwo.".txt",";","|",1,["LOAD","DIRECTIONALITY","COMPARTMENT","ASSOCIATED PEG"]);	
+			$currentTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+                $self->directory().$self->id()."V$vone.$vtwo.txt",";","|",1,
+                ["LOAD","DIRECTIONALITY","COMPARTMENT","ASSOCIATED PEG"]);	
 			$cause = "AUTOCOMPLETION";
 		} elsif ($lastChanged == 0) {
 			$lastChanged = 1;

@@ -1,4 +1,4 @@
-.project
+.*
 *~
 *.swp
 *.#*
@@ -21,3 +21,4 @@ logs/*
 *.pdb
 software/mfatoolkit/bin/*
 software/cygwin/*
+!.gitignore
