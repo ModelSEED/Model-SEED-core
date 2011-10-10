@@ -7475,21 +7475,21 @@ sub fbaFVA {
 			$parameters .= "NG;";
 		}
 		if (defined($args->{fbaStartParameters}->{drnRxn})) {
-			$parameters .= "DR:".join("|",@{$args->{drnRxn}}).";";
+			$parameters .= "DR:".join("|",@{$args->{fbaStartParameters}->{drnRxn}}).";";
 		}
 		if (defined($args->{fbaStartParameters}->{rxnKO})) {
-			$parameters .= "RK:".join("|",@{$args->{rxnKO}}).";";
+			$parameters .= "RK:".join("|",@{$args->{fbaStartParameters}->{rxnKO}}).";";
 		}
 		if (defined($args->{fbaStartParameters}->{geneKO})) {
-			$parameters .= "GK:".join("|",@{$args->{geneKO}}).";";
+			$parameters .= "GK:".join("|",@{$args->{fbaStartParameters}->{geneKO}}).";";
 		}
 		if (length($parameters) == 0) {
 			$parameters = "NONE";	
 		}
 		#Loading and updating the PPO FVA table, which will ultimately replace the flatfile tables
-		my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});
+		my $obj = $self->figmodel()->database()->get_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{fbaStartParameters}->{media}});
 		if (!defined($obj)) {
-			$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{media}});	
+			$obj = $self->figmodel()->database()->create_object("mdlfva",{parameters => $parameters,MODEL => $self->id(),MEDIA => $args->{fbaStartParameters}->{media}});	
 		}
 		my $headings = ["inactive","dead","positive","negative","variable","posvar","negvar","positiveBounds","negativeBounds","variableBounds","posvarBounds","negvarBounds"];
 		for (my $i=0; $i < @{$headings}; $i++) {
