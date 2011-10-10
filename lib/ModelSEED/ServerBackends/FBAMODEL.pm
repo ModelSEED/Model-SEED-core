@@ -1,7 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use warnings;
-use Data::Dumper;
+use ModelSEED::FIGMODEL;
 
 #
 # Copyright (c) 2003-2006 University of Chicago and Fellowship
@@ -19,14 +18,7 @@ use Data::Dumper;
 # Genomes at veronika@thefig.info or download a copy from
 # http://www.theseed.org/LICENSE.TXT.
 #
-package ModelSEED::FBAMODEL;
-	use ModelSEEDSupport;
-    use ModelSEED::FIGMODEL;
-	use Tracer;
-    use SeedUtils;
-    use ServerThing;
-    use DBMaster;
-
+package ModelSEED::ServerBackends::FBAMODEL;
 
 =head1 FBA Model Function Object
 
@@ -54,7 +46,7 @@ Description:
 sub new {
     my ($class) = @_;
     my $FBAMODELObject;
-	$FBAMODELObject->{_figmodel} = ModelSEED::FIGMODEL->new();
+	$FBAMODELObject->{_figmodel} = ModelSEED::ServerBackends::FBAMODEL->new();
 	bless $FBAMODELObject, $class;
     return $FBAMODELObject;
 }
@@ -126,7 +118,6 @@ sub methods {
             "fba_submit_gene_activity_analysis",
             "model_build",
             "model_status",
-            "getRastGenomeData",
             "changeModelRole"
         ];
 	}
@@ -149,75 +140,6 @@ sub configure_environment {
 	$ENV{'ILOG_LICENSE_FILE'} = '/home/chenry/Software/ilm/access.ilm';
 	$ENV{'ARGONNEDB'} = '/vol/model-dev/MODEL_DEV_DB/ReactionDB/';
 	return $args;
-}
-
-=head3 authenticate_user
-
-Definition:
-
-	FIGMODEL::figmodel object = FBAMODEL->authenticate_user( { user => string:username,password => string:password} );
-
-Description:
-
-    Determines if user data was input and points to a valid account
-
-=cut
-sub authenticate_user {
-    my ($self,$args) = @_;
-	if (defined($args->{user}) && defined($args->{password})) {
-		$self->figmodel()->authenticate({username => $args->{user},password => $args->{password}});
-    } elsif (defined($args->{username}) && defined($args->{password})) {
-		$self->figmodel()->authenticate({username => $args->{username},password => $args->{password}});
-	} elsif (defined($self->{cgi})) {
-		$self->figmodel()->authenticate({cgi => $self->{cgi}});
-	}
-	return $args;
-}
-
-=head3 process_arguments
-
-Definition:
-
-	{key=>value} = FBAMODEL->process_arguments( {key=>value},[string:mandatory arguments] );
-
-Description:
-
-    Processes arguments to authenticate users and perform other needed tasks
-
-=cut
-sub process_arguments {
-    my ($self,$args,$mandatoryArguments) = @_;
-    if (defined($mandatoryArguments)) {
-    	for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
-    		if (!defined($args->{$mandatoryArguments->[$i]})) {
-				if (!defined($args->{error})) {
-	    			$args->{error} = "Mandatory argument ".$mandatoryArguments->[$i]." not provided";
-				} else {
-					$args->{error} .= "; mandatory argument ".$mandatoryArguments->[$i]." not provided";
-				}
-    		}
-    	}
-    }
-	return $self->authenticate_user($self->configure_environment($args));
-}
-
-=head3 error_message
-
-Definition:
-
-	{error=>error message} = FBAMODEL->error_message({message* => string:error message,args* => {}:argument hash});
-	
-Description:
-
-    Returns the errors message when FBAMODEL functions fail
-    
-=cut
-sub error_message {
-    my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args,[],{
-		package => "FBAMODEL",
-	});
-	return $self->figmodel()->new_error_message($args);
 }
 
 =head2 Methods that access data from the database
@@ -246,7 +168,7 @@ Example:
 =cut
 sub get_reaction_id_list {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#List of IDs to be returned will be stored here
 	my $ids;
 	#First checking that the "id" key exists
@@ -327,7 +249,7 @@ Example:
 =cut
 sub get_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#Getting all reactions from the database
 	my $idHash;
 	my $objects = $self->figmodel()->database()->get_objects("reaction");
@@ -374,8 +296,13 @@ sub get_reaction_data {
 				push(@{$row->{KEGGID}},$keggobjs->[$j]->alias());
 			}
 			if (defined($obj->enzyme()) && length($obj->enzyme()) > 0) {
+			    if (index($obj->enzyme(), '|') == 0) {
 				my $enzyme = substr($obj->enzyme(),1,length($obj->enzyme())-2);
 				push(@{$row->{ENZYME}},split(/\|/,$enzyme));	
+			    }
+			    else {
+				push(@{$row->{ENZYME}},split(/\|/,$obj->enzyme()));
+			    }
 			}
 			if (defined($obj->abstractReaction())) {
 			    push(@{$row->{"ABSTRACT REACTION"}},$obj->abstractReaction());
@@ -440,7 +367,7 @@ Example:
 
 sub get_biomass_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	if (!defined($args->{model})) {
 		return {error=>["No model ID provided"]};	
 	}
@@ -504,7 +431,7 @@ Example:
 =cut
 sub get_compound_id_list {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#List of IDs to be returned will be stored here
 	my $ids;
 	#First checking that the "id" key exists
@@ -586,7 +513,7 @@ Example:
 =cut
 sub get_compound_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	my $idHash;
 	my $objects = $self->figmodel()->database()->get_objects("compound");
 	for (my $i=0; $i < @{$objects}; $i++) {
@@ -605,7 +532,7 @@ sub get_compound_data {
 	if ($args->{id}->[0] eq "ALL") {
 		push(@{$ids},keys(%{$idHash}));
 	}
-
+	
 	my $cpdAlsHash = $self->figmodel()->database()->get_object_hash({
 		type => "cpdals",
 		attribute => "COMPOUND",
@@ -687,7 +614,7 @@ Example:
 =cut
 sub get_media_id_list {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	my $output;
 	my $all_media = $self->figmodel()->database()->get_objects("media"); 
     foreach my $media (@$all_media) {
@@ -723,7 +650,7 @@ Example:
 =cut
 sub get_media_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args, ["id"]);
+	$args = $self->figmodel()->process_arguments($args, ["id"]);
     if(ref($args->{"id"}) ne "ARRAY") {
         $args->{"id"} = [$args->{"id"}];
     }
@@ -779,7 +706,7 @@ Description:
 
 sub get_metabolic_models {
     my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
     my $objs = [];
     my $params = {};
     if(defined($args->{genome})) {
@@ -824,7 +751,7 @@ Description:
 =cut
 sub get_model_id_list {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args, [], {'onlyMine' => 0});
+	$args = $self->figmodel()->process_arguments($args, [], {'onlyMine' => 0});
 	my ($output, $objs);
     if($args->{'onlyMine'} == 1) {
         $objs = $self->figmodel()->database()->get_objects("model", {'owner' => $self->figmodel()->user()});
@@ -853,8 +780,7 @@ Give it a list of model ids. Returns a list of key-value pair statisics, one for
 =cut
 sub get_model_stats {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args,["id"]);
-	return $self->error_message({args=>$args}) if (defined($args->{error}));
+    $args = $self->figmodel()->process_arguments($args,["id"]);
     if(ref($args->{id}) ne 'ARRAY') {
         $args->{id} = [ $args->{id} ];
     }
@@ -863,7 +789,7 @@ sub get_model_stats {
         next unless defined $id;
         my $mdl = $self->figmodel()->get_model($id);
         if(!defined($mdl)) {
-            $args = $self->error_message(args=>$args, message => "Could not find model $id!");
+            ModelSEED::FIGMODEL::FIGMODELWARNING("Could not find model $id!");
             next;
         }
         my $mdl_stats = {};
@@ -916,7 +842,7 @@ Example:
 
 sub get_model_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
     my $figmodel = $self->figmodel();
 	#Getting the id list
 	my $ids;
@@ -935,7 +861,8 @@ sub get_model_data {
 		my $modelobj = $self->figmodel()->get_model($ids->[$i]);
 		if (defined($modelobj)) {
 			$output->{$ids->[$i]} = { Id => $ids->[$i], Genome => "ID:".$modelobj->genome(),
-                                      Name => $modelobj->name(), Source => $modelobj->source()
+                                      Name => $modelobj->name(), Source => $modelobj->source(),
+						  Media => $modelobj->autocompleteMedia()
                                     };
 		}
 	}
@@ -980,8 +907,7 @@ Description:
 
 sub get_model_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args,["id"]);
-	if (defined($args->{error})) {return $self->error_message({args=>$args});}
+	$args = $self->figmodel()->process_arguments($args,["id"]);
 	my $mdl = $self->figmodel()->get_model($args->{id});
 	if (!defined($mdl)) {return $self->error_message({message=>"get_model_reaction_data:could not access model",args=>$args});}
 	my $tbl = $mdl->generate_reaction_data_table($args);
@@ -1019,7 +945,7 @@ sub get_model_reaction_data {
 
 sub get_model_essentiality_data {
 	my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
 	my $results;
     if (defined($args->{model})) {
     	for (my $i=0; $i < @{$args->{model}}; $i++) {
@@ -1065,7 +991,7 @@ sub get_model_essentiality_data {
 
 sub get_experimental_essentiality_data {
 	my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
 	my $results;
     if (defined($args->{genome})) {
     	for (my $i=0; $i < @{$args->{genome}}; $i++) {
@@ -1211,7 +1137,7 @@ the reactions and transportable compounds in the model), and "fluxes"
 
 sub simulate_model_growth {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#Checking that at least one parameter was input
 	if (!defined($args->{parameters})) {
 		return undef;
@@ -1263,7 +1189,6 @@ sub simulate_model_growth {
 	return $output;
 }
 
-
 =head3 fba_calculate_minimal_media
 
 =item Definition:
@@ -1288,7 +1213,7 @@ sub simulate_model_growth {
 
 sub fba_calculate_minimal_media {
 	my ($self,$args) = @_;
-    $args = $self->process_arguments($args,["model"]);
+    $args = $self->figmodel()->process_arguments($args,["model"]);
 	if (defined($args->{error})) {
 		return {error => $args->{error}};
 	}
@@ -1362,7 +1287,7 @@ classification data.
 
 sub get_model_reaction_classification_table {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#Checking that some model ID has been submitted
 	if (!defined($args->{model})) {
 		return undef;
@@ -1416,7 +1341,7 @@ sub get_model_reaction_classification_table {
 
 sub get_role_to_complex {
     my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     my $roles = $self->figmodel()->database()->get_objects("role");
     my $roleHash = {};
     for(my $i=0; $i<@$roles; $i++) {
@@ -1438,7 +1363,7 @@ sub get_role_to_complex {
 
 sub get_complex_to_reaction {
     my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     my $objs = $self->figmodel()->database()->get_objects("rxncpx",{'master' => 1});
     my $complexToReactionTable = [];
     for(my $i=0; $i<@$objs; $i++) {
@@ -1524,7 +1449,7 @@ Example:
 =cut
 sub classify_model_entities {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#Checking that at least one parameter was input
 	if (!defined($args->{parameters})) {
 		return undef;
@@ -1643,7 +1568,7 @@ means the specified model did not grow in the specified conditions.
 =cut
 sub simulate_all_single_gene_knockout {
 	my ($self, $args) = @_;
-	$args = $self->process_arguments($args);
+	$args = $self->figmodel()->process_arguments($args);
 	#Checking that at least one parameter was input
 	if (!defined($args->{parameters})) {
 		return undef;
@@ -1700,7 +1625,7 @@ sub simulate_all_single_gene_knockout {
 
 sub subsystems_of_reaction {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["reactions"]);
+	$args = $self->figmodel()->process_arguments($args,["reactions"]);
 	if (defined($args->{error})) {return $self->error_message({function=>"subsystems_of_reaction",args=>$args});}
 	my $output;
 	if (@{$args->{reactions}} == 1) {
@@ -1733,7 +1658,7 @@ sub subsystems_of_reaction {
 
 sub metabolic_neighborhood_of_roles {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["ids"]);
+	$args = $self->figmodel()->process_arguments($args,["ids"]);
     return $self->figmodel()->mapping()->metabolic_neighborhood_of_roles({roles => $args->{ids}});
 }
 
@@ -1753,7 +1678,7 @@ sub metabolic_neighborhood_of_roles {
 
 sub modelseed_roles {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{});
     return {roles=>$self->figmodel()->mapping()->roles({})};
 }
 
@@ -1774,7 +1699,7 @@ sub modelseed_roles {
 
 sub gapfilled_roles {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["ids"],{});
+	$args = $self->figmodel()->process_arguments($args,["ids"],{});
 	my $result;
 	for (my $i=0; $i < @{$args->{ids}}; $i++) {
 		my $mdl;
@@ -1816,7 +1741,7 @@ sub gapfilled_roles {
 
 sub rename_functional_role {
     my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     if ($self->figmodel()->admin() != 1) {
     	return "Cannot use this function without Model SEED administrator privelages";	
     }
@@ -1866,7 +1791,7 @@ sub rename_functional_role {
 #TODO: This function is incomplete
 sub add_functional_role_mapping {
     my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     #Checking for administrative privelages
     if ($self->figmodel()->admin() != 1) {
     	return "Cannot use this function without Model SEED administrator privelages";	
@@ -1892,7 +1817,7 @@ sub add_functional_role_mapping {
 
 sub pegs_of_function {
 	my ($self,$args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
  	my $result;
  	for (my $i=0; $i < @{$args->{roles}}; $i++) {
  		my @pegs = $self->figmodel()->fig()->prots_for_role($args->{roles}->[$i]);
@@ -1916,7 +1841,7 @@ Description:
 =cut
 sub fba_submit_gene_activity_analysis {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","geneCalls"],{user => undef,password => undef,media => "Complete"});
+	$args = $self->figmodel()->process_arguments($args,["id","geneCalls"],{user => undef,password => undef,media => "Complete"});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	my $mdl = $self->figmodel()->get_model($args->{id});
 	if (!defined($mdl) && $args->{id} =~ m/^\d+\.\d+$/) {
@@ -1946,7 +1871,7 @@ Description:
 =cut
 sub fba_retreive_gene_activity_analysis {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["jobid"]);
+	$args = $self->figmodel()->process_arguments($args,["jobid"]);
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	my $fbaObj = $self->figmodel()->fba();
 	return $fbaObj->returnFBAJobResults($args);
@@ -1971,7 +1896,7 @@ Description:
 
 sub get_abstract_reaction_groups {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     my $groups = {};
     foreach my $x (@{$self->figmodel()->database()->get_objects('reaction')}) {
         my $g = $x->abstractReaction(); 
@@ -2000,7 +1925,7 @@ Description:
 
 sub get_abstract_reaction_group {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args, ['grouping']);
+    $args = $self->figmodel()->process_arguments($args, ['grouping']);
     my $grouping = $args->{grouping};
     my $group = $self->figmodel()->database()->get_objects('reaction', {'abstractReaction' => $grouping });
     my @rxns = map { $_->id() } @$group;
@@ -2017,7 +1942,7 @@ Description:
 =cut
 sub set_abstract_reaction_group {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args, ['group']);
+    $args = $self->figmodel()->process_arguments($args, ['group']);
     my $group = $args->{'group'};
     my $grouping = $group->{'grouping'};    
     my $reactions = $group->{'reactions'} || [];
@@ -2053,7 +1978,7 @@ Description:
 
 sub get_abstract_compound_groups {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args);
+    $args = $self->figmodel()->process_arguments($args);
     my $groups = {};
     foreach my $x (@{$self->figmodel()->database()->get_objects('compound')}) {
         my $g = $x->abstractcompound(); 
@@ -2082,7 +2007,7 @@ Description:
 
 sub get_abstract_compound_group {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args, ['grouping']);
+    $args = $self->figmodel()->process_arguments($args, ['grouping']);
     my $grouping = $args->{grouping};
     my $group = $self->figmodel()->database()->get_objects('compound', {'abstractCompound' => $grouping });
     my @cpds = map { $_->id() } @$group;
@@ -2099,7 +2024,7 @@ Description:
 =cut
 sub set_abstract_compound_group {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args, ['group']);
+    $args = $self->figmodel()->process_arguments($args, ['group']);
     my $group = $args->{'group'};
     my $grouping = $group->{'grouping'};    
     my $compounds = $group->{'compounds'} || [];
@@ -2167,7 +2092,7 @@ Description:
 
 sub model_status {
     my ($self, $args) = @_;
-    $args = $self->process_arguments($args, ['models']);
+    $args = $self->figmodel()->process_arguments($args, ['models']);
     my $params = ['id', 'growth', 'status', 'message'];
     my $models = $args->{'models'};
     my $results = {'models' => []};
@@ -2193,7 +2118,7 @@ sub model_status {
         push(@{$results->{'models'}}, $data);
     }
     return $results;
-}
+} 
 
 =haed3 changeModelRole
 Definition:
@@ -2213,7 +2138,7 @@ sub changeModelRole {
     my ($self, $args) = @_;
     my $logfile = $self->figmodel()->config("database root directory")->[0].'Mappings/automatic-role-changes.txt';
     my $errfile = $self->figmodel()->config("database root directory")->[0].'Mappings/manual-role-changes.txt';
-    $args = $self->process_arguments($args, ['oldRole', 'newRole'],
+    $args = $self->figmodel()->process_arguments($args, ['oldRole', 'newRole'],
         { syntaxOnly => 0, user => undef });
     if(defined($args->{error})) {
         $self->figmodel()->new_error_message({ message => $args->{error}});
@@ -2273,175 +2198,6 @@ sub changeModelRole {
         
         }
     } 
-}
-
-=head3 getRastGenomeData
-Definition:
-	Output:{} = FBAMODEL->getRastFeatureTable({
-		genome => string:genome ID
-	});
-	Output:{
-		source => string:source of genome,
-		genome => string:genome ID,
-		features => FIGMODELTable:table of features
-		name => string:organism name,
-		taxonomy => string:taxonomy,
-		size => int:genome size in nucleotides,
-		owner => string:owner login
-	}
-Description:
-	Returns a table of features in the genome
-=cut
-sub getRastGenomeData {
-	my ($self,$args) = @_;
-	$args = $self->process_arguments($args, ['genome'],{
-		getSequences => 0,
-		getDNASequence => 0	
-	});
-	$args->{figmodel} = $self->figmodel();
-	return ModelSEEDSupport::MSSgetRastGenomeData($args);
-}
-
-=head3 transferRightsToModelFromGenome
-Definition:
-    FIGMODELTable = FBAMODEL->transferRightsToModelFromGenome({
-        genome => string,
-        model => string,   
-    });
-Description:
-    Transfering rights from genome to model
-=cut
-sub transferRightsToModelFromGenome {
-    my ($self,$args) = @_;
-    $args = $self->process_arguments($args, ["genome","model"],{});
-	$args->{figmodel} = $self->figmodel();
-	return ModelSEEDSupport::MSStransferRightsToModelFromGenome($args);
-}
-
-=head3 test
-Definition:
-	FBAMODEL->test();                   
-Description:
-	This function is designed to test every function of the FBAMODEL server.
-	This function be successfully run prior to any new code release to ensure no functionality has been lost.
-	An error message will be printed for any function that fails.
-=cut
-sub test {
-	my ($self) = @_;
-	delete $self->figmodel()->{_user_acount};
-	my $output = $self->get_reaction_id_list({id => ["Seed441768.4.16242"]});
-	if (defined($output) && defined($output->{"Seed441768.4.16242"}->[10])) {
-		print STDERR "FBAMODEL:get_reaction_id_list:private model protection test failed!\n";
-	}
-	$output = $self->get_reaction_id_list({id => ["Seed441768.4.16242"],user => "reviewer",password => "natbtech"});
-	if (!defined($output) || !defined($output->{"Seed441768.4.16242"}->[10])) {
-		print STDERR "FBAMODEL:get_reaction_id_list:private model access test failed!\n";
-	}
-	$output = $self->get_reaction_id_list({id => ["ALL","Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"ALL"}->[10]) || !defined($output->{"Seed83333.1"}->[10])) {
-		print STDERR "FBAMODEL:get_reaction_id_list:test failed!\n";
-	}
-	$output = $self->get_reaction_data({id => $output->{"Seed83333.1"},model => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"rxn00781"}) || !defined($output->{"rxn00781"}->{EQUATION}->[0]) || !defined($output->{"rxn00781"}->{"Seed83333.1"}->{"ASSOCIATED PEG"}->[0])) {
-		print STDERR "FBAMODEL:get_reaction_data:test failed!\n";
-	}
-	$output = $self->get_biomass_reaction_data({model => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"Seed83333.1"}) || !defined($output->{"Seed83333.1"}->{EQUATION}->[0])) {
-		print STDERR "FBAMODEL:get_biomass_reaction_data:test failed!\n";
-	}
-	$output = $self->get_compound_id_list({id => ["ALL","Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"ALL"}->[10]) || !defined($output->{"Seed83333.1"}->[10])) {
-		print STDERR "FBAMODEL:get_compound_id_list:test failed!\n";
-	}
-	$output = $self->get_compound_data({id => $output->{"Seed83333.1"},model => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"cpd00002"}) || !defined($output->{"cpd00002"}->{FORMULA}->[0])) {
-		print STDERR "FBAMODEL:get_compound_data:test failed!\n";
-	}
-	$output = $self->get_media_id_list();
-	if (!defined($output) || !defined($output->[10])) {
-		print STDERR "FBAMODEL:get_media_id_list:test failed!\n";
-	}
-	$output = $self->get_media_data({id => $output});
-	if (!defined($output) || !defined($output->{"Carbon-D-Glucose"}->{COMPOUNDS}->[0])) {
-		print STDERR "FBAMODEL:get_media_data:test failed!\n";
-	}
-	$output = $self->get_model_id_list();
-	if (!defined($output) || !defined($output->[10])) {
-		print STDERR "FBAMODEL:get_model_id_list:test failed!\n";
-	}
-	$output = $self->get_model_data({"id"   => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"Seed83333.1"}->{Name})) {
-		print STDERR "FBAMODEL:get_model_data:test failed!\n";
-	}
-	$output = $self->get_model_reaction_data({"id"   => "Seed83333.1"});
-	if (!defined($output) || !defined($output->{"data"}->[10]->{DATABASE}->[0])) {
-		print STDERR "FBAMODEL:get_model_reaction_data:test failed!\n";
-	}
-	$output = $self->classify_model_entities({parameters => [{"id" => "Seed83333.1",media => "Complete",archiveResults => 0}]});
-	if (!defined($output) || !defined($output->[0]->{classes}->[0])) {
-		print STDERR "FBAMODEL:classify_model_entities:test failed!\n";
-	}	
-	$output = $self->simulate_all_single_gene_knockout({parameters => [{"id" => "Seed83333.1",media => "Complete"}]});
-	if (!defined($output) || !defined($output->[0]->{"essential genes"}->[0])) {
-		print STDERR "FBAMODEL:simulate_all_single_gene_knockout:test failed!\n";
-	}
-	$output = $self->simulate_model_growth({parameters => [{"id" => "Seed83333.1",media => "Complete"}]});
-	if (!defined($output) || !defined($output->[0]->{"fluxes"}->[0])) {
-		print STDERR "FBAMODEL:simulate_model_growth:test failed!\n";
-	}
-	$output = $self->get_model_reaction_classification_table({"model" => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"Seed83333.1"}->[0]->{class}->[0])) {
-		print STDERR "FBAMODEL:get_model_reaction_classification_table:test failed!\n";
-	}
-	$output = $self->get_role_to_complex();
-	if (!defined($output) || !defined($output->[0]->{"Functional Role"})) {
-		print STDERR "FBAMODEL:get_role_to_complex:test failed!\n";
-	}
-	$output = $self->get_complex_to_reaction();
-	if (!defined($output) || !defined($output->[0]->{"Reaction Id"})) {
-		print STDERR "FBAMODEL:get_complex_to_reaction:test failed!\n";
-	}
-	$output = $self->get_model_essentiality_data({model => ["Seed83333.1"]});
-	if (!defined($output) || !defined($output->{"Seed83333.1"}->{Complete}->{essential}->[0])) {
-		print STDERR "FBAMODEL:get_model_essentiality_data:test failed!\n";
-	}
-	$output = $self->get_experimental_essentiality_data({model => ["83333.1"]});
-	if (!defined($output) || !defined($output->{"83333.1"}->{ArgonneLBMedia}->{essential}->[0])) {
-		print STDERR "FBAMODEL:get_experimental_essentiality_data:test failed!\n";
-	}
-	$output = $self->fba_calculate_minimal_media({model => "Seed83333.1",numFormulations => 2});
-	if (!defined($output) || !defined($output->{essential}->[0])) {
-		print STDERR "FBAMODEL:fba_calculate_minimal_media:test failed!\n";
-	}
-	$output = $self->pegs_of_function({roles => ["Phosphomannomutase (EC 5.4.2.8)"]});
-	if (!defined($output) || !defined($output->{"Phosphomannomutase (EC 5.4.2.8)"}->[0])) {
-		print STDERR "FBAMODEL:pegs_of_function:test failed!\n";
-	}
-	$output = $self->subsystems_of_reaction({reactions => ["rxn00781"]});
-	if (!defined($output) || !defined($output->{"rxn00781"}->[0])) {
-		print STDERR "FBAMODEL:subsystems_of_reaction:test failed!\n";
-	}
-	$output = $self->get_metabolically_neighboring_roles({role => ["NAD-dependent glyceraldehyde-3-phosphate dehydrogenase (EC 1.2.1.12)"]});
-	if (!defined($output) || !defined($output->{"cpd00102"}->[0])) {
-		print STDERR "FBAMODEL:get_metabolically_neighboring_roles:test failed!\n";
-	}
-	my $geneCalls;
-	my $fileData = $self->figmodel()->database()->load_single_column_file($self->figmodel()->config("test function data")->[0]."GeneActivityAnalysis.dat");
-	for (my $i=1; $i < @{$fileData}; $i++) {
-		my @array = split(/\t/,$fileData->[$i]);
-		if (@array >= 2) {
-			$geneCalls->{$array[0]} = $array[1];
-		}
-	}
-	$output = $self->fba_submit_gene_activity_analysis({model => "Seed158878.1",media => "Complete",queue => "test",geneCalls => $geneCalls});
-	if (!defined($output) || !defined($output->{jobid})) {
-		print STDERR "FBAMODEL:fba_submit_gene_activity_analysis:test failed!\n";
-	}
-	$self->figmodel()->runTestJob($output->{jobid});
-	$output = $self->fba_retreive_gene_activity_analysis({jobid => $output->{jobid}});
-	if (!defined($output) || !defined($output->{On_On}->[10])) {
-		print STDERR "FBAMODEL:fba_retreive_gene_activity_analysis:test failed!\n";
-	}
 }
 
 1;

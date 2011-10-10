@@ -127,6 +127,48 @@ sub figmodel {
 	my ($self) = @_;
 	return $self->{_figmodel};
 }
+=head3 FBAStartParametersFromArguments
+Definition:
+	FIGMODELfba = FIGMODELfba->FBAStartParametersFromArguments({
+		args => {},
+		argkeys => []
+	});
+Description:
+	Translates the input arguments behind the specified keys into parameters for the FBA object
+=cut
+sub FBAStartParametersFromArguments {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["arguments"],{});
+	my $fbaStartParameters;
+	if (defined($args->{arguments}->{geneKO})) {
+		$fbaStartParameters->{geneKO} = [split(/;/,$args->{arguments}->{geneKO})];
+	}
+	if (defined($args->{arguments}->{rxnKO})) {
+		$fbaStartParameters->{rxnKO} = [split(/;/,$args->{arguments}->{rxnKO})];
+	}
+	if (defined($args->{arguments}->{drainRxn})) {
+		$fbaStartParameters->{drnRxn} = [split(/;/,$args->{arguments}->{drainRxn})];
+	}
+	if (defined($args->{arguments}->{geneKO})) {
+		$fbaStartParameters->{geneKO} = [split(/;/,$args->{arguments}->{geneKO})];
+	}
+	if (defined($args->{arguments}->{paramfiles})) {
+		$fbaStartParameters->{parameter_files} = [split(/;/,$args->{arguments}->{paramfiles})];
+	}
+	if (defined($args->{arguments}->{options})) {
+		my $optionArray = [split(/;/,$args->{arguments}->{options})];
+		for (my $i=0; $i < @{$optionArray}; $i++) {
+			$fbaStartParameters->{options}->{$optionArray->[$i]} = 1;
+		}
+	}
+	if (defined($args->{arguments}->{media})) {
+		$fbaStartParameters->{media} = $args->{arguments}->{media};
+	}
+	if (defined($args->{arguments}->{fbajobdir})) {
+		$fbaStartParameters->{filename} = $args->{arguments}->{fbajobdir};
+	}
+	return $fbaStartParameters;
+}
 
 =head2 JOB HANDLING FUNCTIONS
 =head3 queueFBAJob

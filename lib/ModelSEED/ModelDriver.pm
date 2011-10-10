@@ -4139,64 +4139,6 @@ sub printmfatoolkitdata {
 	$self->figmodel()->database()->printMFAToolkitDatabaseTables();
 }
 
-sub testmodelgrowth {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1],
-		["media",0,"Complete"],
-		["parameters",0,undef],
-		["probdirectory",0,undef],
-		["savelp",0,0]
-	],[@Data]);
-	my $results = $self->figmodel()->processIDList({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => $args->{"model"}
-	});
-	my $growthModels = [];
-	my $noGrowthModels = [];
-    for (my $i=0; $i < @{$results}; $i++) {
-    	print "Testing ".$results->[$i].": ";
-        my $Parameters = {};
-		if (defined($args->{parameters})) {
-			my @DataArray = split(/\|/,$args->{parameters});
-			foreach my $Item (@DataArray) {
-				if ($Item =~ m/RKO:(.+)/) {
-					$Parameters->{"Reactions to knockout"} = $1;
-				} elsif ($Item =~ m/GKO:(.+)/) {
-					$Parameters->{"Genes to knockout"} = $1;
-				} elsif ($Item =~ m/OBJ:(.+)/) {
-					$Parameters->{"objective"} = $1;
-				} elsif ($Item =~ m/MetOptRxn:(.+)/) {
-					$Parameters->{"metabolites to optimize"} = "REACTANTS;".$1;
-				}
-			}
-		}
- 		my $model = $self->figmodel()->get_model($results->[$i]);
- 		my $fbaresult = $model->fbaCalculateGrowth({
-	        fbaStartParameters => {
-	        	media => $args->{media},
-	        	parameters => $Parameters	        	
-	        },
-	        problemDirectory => $args->{"problem directory"},
-	        outputDirectory => $self->outputdirectory(),
-	        saveLPfile => $args->{"save lp file"}
-	    });
- 		print "Growth:".$fbaresult->{growth};
- 		if (defined($fbaresult->{noGrowthCompounds}) && $fbaresult->{noGrowthCompounds} ne "NONE") {
- 			print " No growth compound:".$fbaresult->{noGrowthCompounds};
- 			push(@{$noGrowthModels},$results->[$i]);
- 		} else {
- 			push(@{$growthModels},$results->[$i]);
- 		}
- 		print "\n";
-    }
-    print "\nGrowth models:".join(",",@{$growthModels})."\n\nNo growth models:".join(",",@{$noGrowthModels})."\n";
-    return "SUCCESS";
-}
-
 sub completegapfillmodel {
     my($self,@Data) = @_;
     my $args = $self->check([
@@ -4687,20 +4629,80 @@ sub createmedia {
 	print "Media successfully created!\n";
 }
 
+sub fbacheckgrowth {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["media",0,"Complete"],
+		["rxnKO",0,undef],
+		["geneKO",0,undef],
+		["drainRxn",0,undef],
+		["options",0,undef],
+		["fbajobdir",0,undef],
+		["savelp",0,0]
+	],[@Data]);
+	my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {},
+		input => $args->{"model"}
+	});
+	if (@{$models} > 1) {
+		for (my $i=0; $i < @{$models}; $i++) {
+			$args->{model} = $models->[$i];
+			my $command = "completegapfillmodel";
+			foreach my $key (keys(%{$args})) {
+				$command .= " -".$key." ".$args->{$key};
+			}
+			$self->figmodel()->add_job_to_queue({
+	    		command => $command,
+	    		user => $self->figmodel()->user(),
+	    		queue => "chenry"
+	    	});
+		}	
+	}
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+    }
+	my $results = $mdl->fbaCalculateGrowth({
+        fbaStartParameters => $fbaStartParameters,
+        problemDirectory => $fbaStartParameters->{filename},
+        outputDirectory => $self->outputdirectory(),
+        saveLPfile => $args->{"save lp file"}
+    });
+	if (!defined($results->{growth})) {
+		ModelSEED::FIGMODEL->FIGMODELERROR("FBA growth test of ".$args->{model}." failed!");
+	}
+	my $message = "";
+	if ($results->{growth} > 0.000001) {
+		$message .= $args->{model}." grew in ".$fbaStartParameters->{media}." media with rate:".$results->{growth}." gm biomass/gm CDW hr.\n"
+	} else {
+		$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n";
+		if (defined($results->{noGrowthCompounds}) && $results->{noGrowthCompounds} ne "NONE") {
+			$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n"
+		}
+	}
+	return $message;
+}
+
 sub fbafva {
     my($self,@Data) = @_;
     my $args = $self->check([
 		["model",1],
 		["media",0,"Complete"],
-		["variables",0,"FLUX;UPTAKE"],
-		["options",0,"forceGrowth"],
+		["rxnKO",0,undef],
+		["geneKO",0,undef],
+		["drainRxn",0,undef],
+		["options",0,"forcedGrowth"],
+		["variables",0,"FLUX;UPTAKE"],	
 		["savetodb",0,0],
 		["filename",0,"FBAFVA_model ID.xls"],
 		["saveformat",0,"EXCEL"],
-		["drainReactions",0,undef],
-		["reactionKO",0,undef],
-		["geneKO",0,undef]
 	],[@Data]);
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
     	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
@@ -4708,31 +4710,10 @@ sub fbafva {
     if ($args->{filename} eq "FBAFVA_model ID.xls") {
     	$args->{filename} = undef; 
     }
-    my $options = [split(/[;,]/,$args->{options})];
-   	my $optionHash;
-   	for (my $i=0; $i < @{$options}; $i++) {
-   		$optionHash->{$options->[$i]} = 1;
-   	}
-   	if (!defined($optionHash->{forceGrowth}) && !defined($optionHash->{noGrowth}) && !defined($optionHash->{freeGrowth})) {
-   		$optionHash->{forceGrowth} = 1;
-   	}
-    my $fbaStartParameters = {
-   		parameters=>{},
-		filename=>undef,
-		media=>$args->{media},
-		options => $optionHash,
-		geneKO => undef,
-		rxnKO => undef,
-		drnRxn => undef
-   	};
-   	if (defined($args->{geneKO})) {
-   		$fbaStartParameters->{geneKO} = [split(/[;,]/,$args->{geneKO})];
-   	}
-   	if (defined($args->{reactionKO})) {
-   		$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{reactionKO})];
-   	}
-   	if (defined($args->{drainReactions})) {
-   		$fbaStartParameters->{drnRxn} = [split(/[;,]/,$args->{drainReactions})];
+   	if (!defined($fbaStartParameters->{options}->{forceGrowth})
+   		&& !defined($fbaStartParameters->{options}->{forceGrowth}) 
+   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
+   		$fbaStartParameters->{options}->{forceGrowth} = 1;
    	}
     my $results = $mdl->fbaFVA({
 	   	variables => [split(/\;/,$args->{variables})],

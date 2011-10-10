@@ -513,8 +513,8 @@ sub process_arguments {
 			}
 		}	
 	}
-	if (defined($args->{user}) && defined($args->{password})) {
-		$self->authenticate_user($args->{user},$args->{password});
+	if (defined($args->{cgi}) || ((defined($args->{user}) || defined($args->{username})) && defined($args->{password}))) {
+		$self->authenticate($args);
 	}
 	return $args;
 }
@@ -800,6 +800,9 @@ Description:
 =cut
 sub authenticate {
 	my($self,$args) = @_;
+	if (defined($args->{user})) {
+		$args->{username} = $args->{user};
+	}
 	if (defined($args->{cgi})) {
 		   my $session = $self->database()->create_object("session",$args->{cgi});
 		   if (!defined($session) || !defined($session->user)) {

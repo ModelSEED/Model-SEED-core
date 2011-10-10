@@ -76,7 +76,8 @@ for (my $i=0; $i < @ARGV; $i++) {
 			}
 		}
         #Calling function
-        $Status .= $driv->$FunctionName(@Data);
+        $Status = $driv->$FunctionName(@Data);
+        print $Status."\n\n";
     }
 }
 #Printing the finish file if specified

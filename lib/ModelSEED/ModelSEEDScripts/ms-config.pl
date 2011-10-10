@@ -279,10 +279,10 @@ SCRIPT
 		"logout",
 		"login",
 		"deleteaccount",
-		"testmodelgrowth",
 		"importmodel",
 		"createlocaluser",
 		"createmedia",
+		"fbacheckgrowth",
 		"fbafva",
 		"gapfillmodel"
 	];
