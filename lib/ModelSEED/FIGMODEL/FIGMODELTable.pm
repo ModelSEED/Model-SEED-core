@@ -719,7 +719,6 @@ Example:
 
 sub save {
 	my ($self,$filename,$delimiter,$itemdelimiter,$prefix) = @_;
-
 	if (defined($self->{_freezeFileSyncing}) && $self->{_freezeFileSyncing} == 1) {
 		return;
 	}

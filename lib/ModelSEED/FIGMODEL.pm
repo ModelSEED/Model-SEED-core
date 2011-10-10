@@ -110,7 +110,8 @@ sub new {
 	#Ensuring that the MFAToolkit uses the same database directory as the FIGMODEL
 	$self->{"MFAToolkit executable"}->[0] .= ' resetparameter "MFA input directory" '.$self->{"database root directory"}->[0]."ReactionDB/";
 	#Creating FIGMODELdatabase object
-	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($self->{"database root directory"}->[0],$self);
+    my $db_config = $self->_get_FIGMODELdatabase_config();
+	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($db_config, $self);
 	$self->{"_figmodelweb"}->[0] = ModelSEED::FIGMODEL::FIGMODELweb->new($self);
 	#Authenticating the user
 	if (defined($userObj)) {
@@ -670,6 +671,45 @@ sub public_reaction_table {
 		$tbl->add_row($newRow);
 	}
 	return $tbl;
+}
+
+=head3 _get_FIGMODELdatabase_config
+    Return subset of current configuration that is used
+    by FIGMODELdatabase.
+=cut
+sub _get_FIGMODELdatabase_config { 
+    my ($self) = @_;
+    my $allowedKeys = [
+        "database root directory",
+        "objects with rights",
+        "model administrators",
+        "object types",
+        "Reaction database directory",
+        "locked table list filename",
+        "Translation directory",
+        "Media directory",
+        "compound directory",
+        "reaction directory",
+        "MFAToolkit input files"];
+    my $allowed_but_not_found = [
+        "experimental data directory",
+        "Metagenome directory",
+    ];
+    my $allowedKeysByRegex = [ qr{PPO_tbl_.*} ];
+    my $config = {};
+    foreach my $key (@$allowedKeys) {
+        if(defined($self->config($key))) {
+            $config->{$key} = $self->config($key);
+        }
+    }
+    foreach my $key (keys %$self) {
+        foreach my $regex (@$allowedKeysByRegex) {
+            if($key =~ $regex) {
+                $config->{$key} = $self->config($key);
+            }
+        }
+    }
+    return $config;
 }
 
 =head2 Routines that access or set other SEED modules
@@ -2545,7 +2585,7 @@ sub import_model_file {
 	if (!-e $args->{filename}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
-	my $rxnmdl = $self->database()->load_table($args->{filename},";","|",1,["LOAD"]);
+	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},";","|",1,["LOAD"]);
 	my $biomassID;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
@@ -3610,8 +3650,8 @@ sub CompareModelGenes {
 	#Creating the output table
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["EXTRA PEG","ROLE","SUBSYSTEM","CLASS 1","CLASS 2","REACTIONS","OTHER MODEL PEGS","REFERENCE MODEL"],$self->{"database message file directory"}->[0].$ModelOne."-".$ModelTwo."-GeneComparison.tbl",["PEG"],"\t","|",undef);
 	#Getting gene tables
-	my $GeneTblOne = $self->database()->GetDBModelGenes($ModelOne);
-	my $GeneTblTwo = $self->database()->GetDBModelGenes($ModelTwo);
+	my $GeneTblOne = $One->feature_table();
+	my $GeneTblTwo = $Two->feature_table();
 	my $RxnTblOne = $One->reaction_table();
 	my $RxnTblTwo = $Two->reaction_table();
 	for (my $m=0; $m < 2; $m++) {
@@ -4557,7 +4597,7 @@ sub AdjustReactionDirectionalityInDatabase {
 				if (defined($rxnobj)) {
 					$rxnobj->{"DIRECTIONALITY"}->[0] = $Direction;
 				}
-				$self->database()->save_table($rxntbl);
+				$rxntbl->save();
 				$model->PrintModelLPFile();
 				#Testing model growth
 				my $growth = $model->calculate_growth("Complete");
@@ -8285,9 +8325,10 @@ sub parse_experiment_description {
 		"thioctic_acid" => ["NONE"],
 		"zinc_chloride" => ["cpd00034","cpd00099"]
 	};
-	
-	#Checking if the input is a filename instead of an array of data
-	$descriptions = $self->database()->check_for_file($descriptions);
+    if(ref($descriptions) eq "ARRAY" && @$descriptions == 1 &&
+        -f $descriptions->[0]) {
+        $descriptions = $self->database()->load_single_column_file($descriptions->[0]);
+    }
 	#Processing the input list of experimental conditions
 	$self->database()->LockDBTable("EXPERIMENT");
 	$self->database()->LockDBTable("MEDIA");
@@ -8384,7 +8425,7 @@ Description:
 sub getExperimentsTable {
 	my ($self) = @_;
 	unless (defined($self->{"CACHE"}->{"EXPERIMENT_TABLE"})) {
-		$self->{"CACHE"}->{"EXPERIMENT_TABLE"} = $self->database()->load_table(
+		$self->{"CACHE"}->{"EXPERIMENT_TABLE"} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
 			$self->{"Reaction database directory"}->[0]."masterfiles/Experiments.txt",
 			'\t', ',', 0, ['name', 'genome']) or die "Could not load Experiments database! Error: " . $!;
 	}
