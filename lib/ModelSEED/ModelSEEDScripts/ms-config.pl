@@ -193,18 +193,11 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 sub run {
     if (defined($ARGV[0])) {
     	my $prog = shift(@ARGV);
-    	if ($prog =~ /ModelDriver\.pl/ && $ARGV[0] =~ m/FUNCTION:(.+)/) {
-    		my $function = $1;
-    		if (defined($ARGV[1]) && ($ARGV[1] eq "-usage" || $ARGV[1] eq "-h" || $ARGV[1] eq "-help")) {
-    			@ARGV = ("usage?".$function);
-    		} else {
-    			$ARGV[0] = $function;
-    		}
-    	} else {
-            local @ARGV = @ARGV;
-    	    do $prog;
-        }
-    	if ($@) { die "Failure running $prog: $@\n"; }
+    	if (defined($ARGV[1]) && ($ARGV[1] eq "-usage" || $ARGV[1] eq "-h" || $ARGV[1] eq "-help")) {
+    		@ARGV = ("usage?".$ARGV[0]);
+    	}
+    	local @ARGV = @ARGV;
+    	do $prog;
     }
 }
 1;
@@ -294,11 +287,8 @@ SCRIPT
 			unlink $directoryRoot."/bin/".$function.$extension;
 		}
 		my $script = <<SCRIPT;
-perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "FUNCTION:$function" $arguments
+perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT
-		#if ($os eq "windows") {
-        #    $script = "\@echo off\n" . $script . "pause\n";
-        #}
         open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
         print $fh $script;
         close($fh);
