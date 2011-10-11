@@ -2598,16 +2598,28 @@ sub import_model_file {
 		if ($row->{LOAD}->[0] =~ m/(bio\d+)/) {
 			$biomassID = $1;
 		}
-		$self->database()->create_object("rxnmdl",{
+		my $rxnObj = $self->database()->get_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
 			MODEL => $id,
-			directionality => $row->{DIRECTIONALITY}->[0],
-			compartment => $row->{COMPARTMENT}->[0],
-			pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-			confidence => $row->{CONFIDENCE}->[0],
-			notes => $row->{NOTES}->[0],
-			reference => $row->{REFERENCE}->[0]
+			compartment => $row->{COMPARTMENT}->[0]
 		});
+		if (!defined($rxnObj)) {
+			$self->database()->create_object("rxnmdl",{
+				REACTION => $row->{LOAD}->[0],
+				MODEL => $id,
+				directionality => $row->{DIRECTIONALITY}->[0],
+				compartment => $row->{COMPARTMENT}->[0],
+				pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+				confidence => $row->{CONFIDENCE}->[0],
+				notes => $row->{NOTES}->[0],
+				reference => $row->{REFERENCE}->[0]
+			});
+		} else {
+			if ($rxnObj->directionality() ne $row->{DIRECTIONALITY}->[0]) {
+				$rxnObj->directionality("<=>");
+			}
+			#$rxnObj->pegs($rxnObj->pegs()."|".join("|",@{$row->{"ASSOCIATED PEG"}}));
+		}
 	}
 	#Loading biomass reaction file
 	if (!defined($args->{biomassFile}) && defined($biomassID)) {
