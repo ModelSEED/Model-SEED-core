@@ -5066,10 +5066,10 @@ sub printgapfilledreactions {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
-								$tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
-							$tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+							$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
 							if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
 								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 							}
