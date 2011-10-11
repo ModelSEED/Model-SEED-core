@@ -4995,8 +4995,7 @@ sub configuredatabase {
 sub printgapfilledreactions {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["models",1],
-		["filename",1]
+		["models",1]
 	],[@Data]);
 	my $results = $self->figmodel()->processIDList({
 		objectType => "model",
