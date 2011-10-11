@@ -895,6 +895,7 @@ sub load_table {
 		$Line = <TABLEINPUT>;
 	}
 	chomp($Line);
+	print "HeadingLine:".$Line."\n";
 	print "Delimiter:".$Delimiter."\n";
 	@Headings = split(/$Delimiter/,$Line);
 	my $headingCount = @Headings;
