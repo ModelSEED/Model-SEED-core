@@ -44,11 +44,15 @@ Description:
 
 =cut
 sub new {
-    my ($class) = @_;
-    my $FBAMODELObject;
-	$FBAMODELObject->{_figmodel} = ModelSEED::ServerBackends::FBAMODEL->new();
-	bless $FBAMODELObject, $class;
-    return $FBAMODELObject;
+    my ($class, $args) = @_;
+    my $self = {};
+    if(defined($args->{figmodel})) {
+        $self->{_figmodel} = $args->{figmodel};
+    } else {
+	    $self->{_figmodel} = ModelSEED::FIGMODEL->new();
+    }
+	bless $self, $class;
+    return $self;
 }
 
 =head3 figmodel

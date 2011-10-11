@@ -4,13 +4,21 @@ use ModelSEED::TestingHelpers;
 use Test::More qw(no_plan);
 use Data::Dumper;
 use ModelSEED::ServerBackends::FBAMODEL;
-my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
+
+my $model = "Seed83333.1";
+my $helper = ModelSEED::TestingHelpers->new();
+my $fm = $helper->getDebugFIGMODEL();
+my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new({figmodel => $fm});
 
 #Testing each server function
 {
-    my $output = $fbamodel->get_reaction_id_list({id => ["Seed441768.4.16242"]});
-	print STDERR Data::Dumper->Dump([$output]);
-	ok defined($output->{"Seed441768.4.16242"}->[10]), "get_reaction_id_list not functioning!\n";
+    my $output = $fbamodel->get_reaction_id_list({id => [$model]});
+    my $rxn = $output->{$model}->[0];
+	ok defined($rxn), "get_reaction_id_list for model Seed83333.1".
+        " should return at least 1 reaction, got ". scalar(@{$output->{$model}});
+}
+=head
+{
 	$output = $fbamodel->get_reaction_id_list({id => ["Seed441768.4.16242"],user => "reviewer",password => "natbtech"});
 	ok !defined($output) || !defined($output->{"Seed441768.4.16242"}->[10]), "get_reaction_id_list:private model access test failed!\n";
 	$output = $fbamodel->get_reaction_id_list({id => ["ALL","Seed83333.1"]});
@@ -69,3 +77,4 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
 	$output = $fbamodel->fba_retreive_gene_activity_analysis({jobid => $output->{jobid}});
 	ok !defined($output) || !defined($output->{On_On}->[10]), "FBAMODEL:fba_retreive_gene_activity_analysis:test failed!\n";
 }
+=cut
