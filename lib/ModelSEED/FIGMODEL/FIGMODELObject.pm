@@ -10,7 +10,7 @@
 use strict;
 package ModelSEED::FIGMODEL::FIGMODELObject;
 use Carp qw(cluck);
-use ModelSEED::FIGMODEL qw(FIGMODELERROR);
+#use ModelSEED::FIGMODEL qw(FIGMODELERROR);
 
 =head1 FIGMODELObject object
 =head2 Introduction
