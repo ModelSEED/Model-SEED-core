@@ -282,7 +282,7 @@ sub get_objects {
 	# By default, the cache behavior is not to use the cache;
 	# cache is used if cacheBehavior = 1; cache is reset if
 	# cacheBehavior = 2; ONLY cache is used if cacheBehavior = 3;
-    $cacheBehavior = $self->config("CacheBehavior") unless(defined($cacheBehavior));
+    $cacheBehavior = $self->config("CacheBehavior") || 0 unless(defined($cacheBehavior));
     $query = {} unless(defined($query));
     my %queryCpy = %$query;
 	my $cacheKey = "type:$type".

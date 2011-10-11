@@ -200,8 +200,10 @@ sub run {
     		} else {
     			$ARGV[0] = $function;
     		}
-    	}
-    	do $prog;
+    	} else {
+            local @ARGV = @ARGV;
+    	    do $prog;
+        }
     	if ($@) { die "Failure running $prog: $@\n"; }
     }
 }
@@ -249,6 +251,7 @@ BOOTSTRAP
 	my $plFileList = {
 		"/lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
 		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver",
+        "/lib/ModelSEED/ModelSEEDScripts/ms-load-mysql.pl" => "ms-load-mysql",
 		$ppoScript => "CreateDBScheme",
 		$mfatoolkitScript => "makeMFAToolkit",
 		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
