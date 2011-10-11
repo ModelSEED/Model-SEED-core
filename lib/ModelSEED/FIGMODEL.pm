@@ -2584,6 +2584,9 @@ sub import_model_file {
 	#Loading model rxnmdl table
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".tbl";
+		if (!-e $args->{filename}) {
+			$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".txt";
+		}
 	}
 	if (!-e $args->{filename}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
