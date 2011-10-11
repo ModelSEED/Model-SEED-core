@@ -2591,7 +2591,7 @@ sub import_model_file {
 	if (!-e $args->{filename}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
-	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},";","|",1,["LOAD"]);
+	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
 	my $biomassID;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
