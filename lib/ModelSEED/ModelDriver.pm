@@ -5233,7 +5233,7 @@ sub printgapfilledreactions {
 	foreach my $filename (keys(%{$fileData})) {
 		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
 	}
-	return "Successfully printed all gapfilling stats!";
+	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
 #Creates a new local user account in the ModelSEED user table

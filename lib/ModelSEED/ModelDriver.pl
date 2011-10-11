@@ -70,7 +70,7 @@ if (!defined($ARGV[0]) || $ARGV[0] eq "help") {
 }
 
 #This variable will hold the name of a file that will be printed when a job finishes
-my $Status = "SUCCESS";
+my $Status = "";
 
 #Searching for recognized arguments
 for (my $i=0; $i < @ARGV; $i++) {
@@ -118,8 +118,8 @@ for (my $i=0; $i < @ARGV; $i++) {
 		}
         #Calling function
         try {
-            $Status .= $driv->$FunctionName(@Data);
-            print $Status."\n\n";
+            $Status .= $driv->$FunctionName(@Data)."\n";
+            print $Status."\n";
         } catch {
             printErrorLog($_);
         };
