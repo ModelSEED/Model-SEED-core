@@ -4992,7 +4992,6 @@ sub configuredatabase {
     return "SUCCESS";
 }
 
-#Adds a new user to the ModelSEED user table
 sub printgapfilledreactions {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -5007,26 +5006,235 @@ sub printgapfilledreactions {
 		input => $args->{"models"}
 	});
 	print "Number of models: ".@{$results}."\n";
-	my $gapRxnHash;
+	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap);
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
-			my $genome = $1;
+			#Parsing out biomass compounds
+			my $mdlObj = $self->figmodel()->database()->get_object("model",{id => $results->[$i]});
+			if (!defined($mdlObj) || $mdlObj->biomassReaction() != m/bio\d+/) {
+				next;
+			}
+			my $bioObj = $self->figmodel()->database()->get_object("bof",{id => $mdlObj->biomassReaction()});
+			if (!defined($bioObj)) {
+				next;
+			}
+			$_ = $bioObj->equation();
+			my @array = /(cpd\d+)/g;
+			for (my $k=0; $k < @array; $k++) {
+				$mdlCpdTbl->{$results->[$i]}->{$array[$k]} = 0;
+				if (!defined($modelCpd->{$array[$k]})) {
+					$modelCpd->{$array[$k]} = 0;
+				}
+				$modelCpd->{$array[$k]}++;
+			}
+			#Calculating model gapfilling stats
+			my $tempGapRxnHash;
+			my $tempRxnGapHash;
+			$modelStats->{$results->[$i]}->{reactions} = 0;
+			$modelStats->{$results->[$i]}->{gaps} = 0;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
 			for (my $j=0; $j < @{$rxns}; $j++) {
-				if (lc($rxns->[$j]->pegs()) eq "unknown" || lc($rxns->[$j]->pegs()) eq "none" || lc($rxns->[$j]->pegs()) =~ m/auto/ || lc($rxns->[$j]->pegs()) =~ m/gap/) {
-					push(@{$gapRxnHash->{$genome}},$rxns->[$j]->REACTION());
+				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
+					next;
+				}
+				$modelStats->{$results->[$i]}->{reactions}++;
+				if (!defined($modelRxn->{$rxns->[$j]->REACTION()})) {
+					$modelRxn->{$rxns->[$j]->REACTION()} = 0;
+				}
+				$modelRxn->{$rxns->[$j]->REACTION()}++;
+				if (lc($rxns->[$j]->pegs()) eq "autocompletion" || lc($rxns->[$j]->pegs()) eq "universal") {
+					$gfMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					$ngfMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					if (!defined($modelGaps->{$rxns->[$j]->REACTION()})) {
+						$modelGaps->{$rxns->[$j]->REACTION()} = 0;
+					}
+					$modelGaps->{$rxns->[$j]->REACTION()}++;
+					if (defined($rxns->[$j]->notes())) {
+						$_ = $rxns->[$j]->notes();
+						@array = /(cpd\d+)/g;
+						for (my $k=0; $k < @array; $k++) {
+							$mdlCpdTbl->{$results->[$i]}->{$array[$k]}++;
+							if (!defined($gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							}
+							$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+						}
+						$_ = $rxns->[$j]->notes();
+						@array = /(rxn\d+)/g;
+						for (my $k=0; $k < @array; $k++) {
+							if (!defined($actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+							}
+							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
+							if (!defined($tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+								$tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							}
+							$tempRxnGapHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+							if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							}
+							$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+						}	
+						if ($rxns->[$j]->notes() =~ m/DELETED/) {
+							if (!defined($actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED})) {
+								$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED} = 0;
+							}
+							$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED}++;
+						}
+					}
+				} else {
+					$actMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					$nactMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+				}
+			}
+			foreach my $rxn (keys(%{$tempGapRxnHash})) {
+				my $count = keys(%{$tempGapRxnHash->{$rxn}});
+				foreach my $actrxn (keys(%{$tempGapRxnHash->{$rxn}})) {
+					if (defined($actMdlTbl->{$actrxn}->{$results->[$i]})) {
+						$actMdlTbl->{$actrxn}->{$results->[$i]}++;
+						$nactMdlTbl->{$actrxn}->{$results->[$i]} += 1/$count;
+						my $countTwo = keys(%{$tempRxnGapHash->{$actrxn}});
+						$gfMdlTbl->{$rxn}->{$results->[$i]}++;
+						$ngfMdlTbl->{$rxn}->{$results->[$i]} += 1/$countTwo;
+					}
 				}
 			}
 		}
 	}
-	my $output = ["Genome\tGapfilled reactions"];
-	foreach my $genome (keys(%{$gapRxnHash})) {
-		push(@{$output},$genome."\t".join(",",@{$gapRxnHash->{$genome}}));
+	#Populating and printing model stats
+	my $modelList = [keys(%{$modelStats})];
+	my $fileData = {
+		"ModelStats.tbl" => ["Model\tTotal reactions\tGapfilled reactions"]
+	};
+	for (my $i=0; $i < @{$modelList}; $i++) {
+		push(@{$fileData->{"ModelStats.tbl"}},$modelList->[$i]."\t".$modelStats->{$modelList->[$i]}->{reactions}."\t".$modelStats->{$modelList->[$i]}->{gaps});
 	}
-	print "Printing results in ".$self->outputdirectory().$args->{"filename"}."\n";
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
-    return "SUCCESS";
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing gapfilled reaction and active reaction relations
+	my $gapRxnList = [keys(%{$modelGaps})];
+	$fileData = {
+		"NumModelPerActRxnPerGap.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$gapRxnList})]
+	};
+	foreach my $rxn (keys(%{$modelRxn})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
+		if (defined($modelGaps->{$rxn})) {
+			$line .= $modelGaps->{$rxn};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$gapRxnList}; $i++) {
+			if (defined($actRxnTbl->{$rxn}->{$gapRxnList->[$i]})) {
+				$line .= "\t".$actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+			} else {
+				$line .= "\t0";
+			}
+		}
+		push(@{$fileData->{"NumModelPerActRxnPerGap.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of model reactions and models
+	$fileData = {
+		"NumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})],
+		"NormNumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
+	};
+	foreach my $rxn (keys(%{$modelRxn})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
+		if (defined($modelGaps->{$rxn})) {
+			$line .= $modelGaps->{$rxn};
+		} else {
+			$line .= "0";
+		}
+		my $lineTwo = $line;
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($actMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$line .= "\t".$actMdlTbl->{$rxn}->{$modelList->[$i]};
+				$lineTwo .= "\t".$nactMdlTbl->{$rxn}->{$modelList->[$i]};
+			} else {
+				$line .= "\tN";
+				$lineTwo .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
+		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of gapfilled reactions and models
+	$fileData = {
+		"NumActRxnPerGapPerModel.tbl" => ["Gapfilled reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})],
+		"NormNumActRxnPerGapPerModel.tbl" => ["Gapfilled reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
+	};
+	foreach my $rxn (keys(%{$modelGaps})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t".$modelGaps->{$rxn};
+		my $lineTwo = $line;
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($gfMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$line .= "\t".$gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				$lineTwo .= "\t".$ngfMdlTbl->{$rxn}->{$modelList->[$i]};
+			} else {
+				$line .= "\tN";
+				$lineTwo .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumActRxnPerGapPerModel.tbl"}},$line);
+		push(@{$fileData->{"NormNumActRxnPerGapPerModel.tbl"}},$lineTwo);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of biomass compounds and models
+	$fileData = {
+		"NumGapPerBioCpdPerModel.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$modelList})]
+	};
+	foreach my $cpd (keys(%{$modelCpd})) {
+		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
+		if (defined($modelCpdGap->{$cpd})) {
+			$line .= $modelCpdGap->{$cpd};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
+				$line .= "\t".$mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+			} else {
+				$line .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumGapPerBioCpdPerModel.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of gapfilled reactions and biomass compounds
+	$fileData = {
+		"NumModelPerBioCpdPerGap.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$gapRxnList})]
+	};
+	foreach my $cpd (keys(%{$modelCpd})) {
+		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
+		if (defined($modelCpdGap->{$cpd})) {
+			$line .= $modelCpdGap->{$cpd};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$gapRxnList}; $i++) {
+			if (defined($gfCpdTbl->{$gapRxnList->[$i]}->{$cpd})) {
+				$line .= "\t".$gfCpdTbl->{$gapRxnList->[$i]}->{$cpd};
+			} else {
+				$line .= "\t0";
+			}
+		}
+		push(@{$fileData->{"NumModelPerBioCpdPerGap.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	return "Successfully printed all gapfilling stats!";
 }
 
 #Creates a new local user account in the ModelSEED user table
@@ -5526,15 +5734,6 @@ sub gapfillmodel {
 		globalmessage => $args->{printdbmessage}
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
-}
-
-sub printessentialitydata {
-	my($self,@Data) = @_;
-    my $args = $self->check([
-		["filename",1],
-		["genome",0,undef],
-		["media",0,undef],
-	],[@Data]);
 }
 
 1;

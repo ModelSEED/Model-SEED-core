@@ -398,7 +398,7 @@
 		<scalar label="REACTION" type="CHAR(32)" mandatory="1" />
 		<scalar label="MODEL" type="CHAR(32)" mandatory="1" />
 		<scalar label="directionality" type="CHAR(3)" mandatory="1" />
-		<scalar label="compartment" type="CHAR(1)" mandatory="1" />
+		<scalar label="compartment" type="CHAR(3)" mandatory="1" />
 		<scalar label="pegs" type="TEXT" mandatory="1" />
 		<scalar label="confidence" type="INTEGER" />
 		<scalar label="notes" type="TEXT" default="NONE"/>
@@ -408,6 +408,8 @@
 		  <attribute label="MODEL" />
 		  <attribute label="compartment" />
 		</unique_index>
+		<index><attribute label="REACTION"/></index>
+		<index><attribute label="MODEL"/></index>
 	</object>
 	<object label="BIOMASS" >
 		<scalar label="id" type="CHAR(32)" mandatory="1" />
