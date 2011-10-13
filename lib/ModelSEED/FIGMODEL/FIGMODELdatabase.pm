@@ -78,10 +78,10 @@ avoids this.
 
 sub _cache {
     my ($self) = @_;
+    return undef;
     return $self->{_cache} if(defined($self->{_cache}));
     my $settings = ($self->config('CacheSettings')) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
-    
     return $self->{_cache} = CHI->new(%$settings);
 }
 
