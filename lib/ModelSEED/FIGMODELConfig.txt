@@ -29,7 +29,7 @@ Recursive model driver executable|qsub -l fs_scratch=100 -l arch=lx26-amd64 -b y
 database message file directory|${software root directory}logs/
 #Parameter arrays
 print to scratch|0
-CacheBehavior|0
+CacheSettings|0
 data filenames|compounds|compound links|reactions|reaction links|cues|media
 compounds data filename|${database root directory}ReactionDB/MFAToolkitInputFiles/compoundTable.txt
 compound links data filename|${database root directory}ReactionDB/MFAToolkitInputFiles/compoundLinkTable.txt
