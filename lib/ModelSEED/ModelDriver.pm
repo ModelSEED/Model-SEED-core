@@ -4567,13 +4567,15 @@ sub printsbmlfiles {
 
 sub preliminaryreconstruction {
     my($self,@Data) = @_;
-    my $args = $self->check([["model id",1],["run gapfilling",0,1]],[@Data]);
-	my $model = $self->figmodel()->get_model($args->{"model id"});
-	if (defined($model)) {
-		$model->preliminary_reconstruction({
-			runGapfilling => $args->{"run gapfilling"}	
-		});
-	}
+	my $args = $self->check([
+		["model",1],
+		["gapfilling",0,0],
+		["queuegapfilling",0,0]
+	],[@Data]);
+    $self->figmodel()->get_model($args->{"model"})->preliminary_reconstruction({
+		runGapfilling => $args->{"gapfilling"},
+		queueGapfilling => $args->{"queuegapfilling"}
+	});
     return "SUCCESS";
 }
 
@@ -4585,8 +4587,8 @@ sub createmodel {
 		["biomass",0,undef],
 		["owner",0,$self->figmodel()->user()],
 		["biochemSource",0,undef],
-		["preliminary reconstruction",0,1],
-		["run gapfilling",0,1],
+		["reconstruction",0,1],
+		["gapfilling",0,1],
 		["queue",0,"fast"],
 	],[@Data]);
     my $output = $self->figmodel()->processIDList({
@@ -4599,8 +4601,8 @@ sub createmodel {
 			genome => $output->[0],
 			id => $args->{id},
 			owner => $args->{owner},
-			gapfilling => $args->{"run gapfilling"},
-			runPreliminaryReconstruction  => $args->{"preliminary reconstruction"},
+			gapfilling => $args->{"gapfilling"},
+			runPreliminaryReconstruction  => $args->{"reconstruction"},
 			biochemSource => $args->{"biochemSource"},
 			queue => $args->{"queue"},
 			biomassReaction => $args->{"biomass"}
@@ -4614,8 +4616,8 @@ sub createmodel {
 	    			.$args->{"biomass"}
 	    			.$args->{"owner"}."?"
 	    			.$args->{"biochemSource"}."?"
-	    			.$args->{"preliminary reconstruction"}."?"
-	    			.$args->{"run gapfilling"}."?"
+	    			.$args->{"reconstruction"}."?"
+	    			.$args->{"gapfilling"}."?"
 	    			.$args->{"queue"}."?",
 	    		user => $self->figmodel()->user(),
 	    		queue => $args->{queue}
@@ -5024,15 +5026,26 @@ sub printgapfilledreactions {
 				$mdlCpdTbl->{$results->[$i]}->{$array[$k]} = 0;
 				if (!defined($modelCpd->{$array[$k]})) {
 					$modelCpd->{$array[$k]} = 0;
+					$modelCpdGap->{$array[$k]} = 0;
 				}
 				$modelCpd->{$array[$k]}++;
 			}
 			#Calculating model gapfilling stats
 			my $tempGapRxnHash;
 			my $tempRxnGapHash;
+			my $tempGapCpdHash;
 			$modelStats->{$results->[$i]}->{reactions} = 0;
 			$modelStats->{$results->[$i]}->{gaps} = 0;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
+			my $gapfilledHash;
+			for (my $j=0; $j < @{$rxns}; $j++) {
+				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
+					next;
+				}
+				if (lc($rxns->[$j]->pegs()) eq "autocompletion" || lc($rxns->[$j]->pegs()) eq "universal") {
+					$gapfilledHash->{$rxns->[$j]->REACTION()} = 1;
+				}
+			}
 			for (my $j=0; $j < @{$rxns}; $j++) {
 				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
 					next;
@@ -5058,6 +5071,7 @@ sub printgapfilledreactions {
 								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 							}
 							$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+							$tempGapCpdHash->{$array[$k]} = 1;
 						}
 						$_ = $rxns->[$j]->notes();
 						@array = /(rxn\d+)/g;
@@ -5066,15 +5080,17 @@ sub printgapfilledreactions {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
-								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+							if (!defined($gapfilledHash->{$array[$k]})) {
+								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+									$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+								}
+								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
+								if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+									$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+								}
+								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
 							}
-							$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
-								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
-							}
-							$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
-						}	
+						}
 						if ($rxns->[$j]->notes() =~ m/DELETED/) {
 							if (!defined($actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED})) {
 								$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED} = 0;
@@ -5086,6 +5102,9 @@ sub printgapfilledreactions {
 					$actMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
 					$nactMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
 				}
+			}
+			foreach my $gapcpd (keys(%{$tempGapCpdHash})) {
+				$modelCpdGap->{$gapcpd}++;
 			}
 			foreach my $rxn (keys(%{$tempGapRxnHash})) {
 				my $count = keys(%{$tempGapRxnHash->{$rxn}});

@@ -67,7 +67,7 @@ sub new {
 			$public = 0;
 		}
 		#Checking to see if a model with the same ID doesnt already exist
-		$modelObj = $figmodel->database()->get_object("model",{id => $args->{id}});
+		$modelObj = $figmodel->database()->sudo_get_object("model",{id => $args->{id}});
 		ModelSEED::FIGMODEL::FIGMODELERROR("A model called ".$args->{id}." already exists.") if (defined($modelObj));
 		#Adding model to the database
 		$modelObj = $figmodel->database()->create_object("model",{  
@@ -88,9 +88,9 @@ sub new {
 			growth => 0,
 			name => $args->{name}
 		});
-		print "Adding new model ",$args->{id}," for ",$args->{owner}," into database\n";
 		$self->ppo($modelObj);
-		$self->create_model_rights();
+		$self->changeRight($args->{owner}, "admin","force");
+		print "Adding new model ",$args->{id}," for ",$args->{owner}," into database\n";
 		$self->GenerateModelProvenance({
 			biochemSource => $args->{biochemSource}
 		});
@@ -425,13 +425,13 @@ Description:
 =cut
 sub id {
 	my ($self) = @_;
-	if(not defined($self->ppo()) && defined($self->{_id})) {
+	if(!defined($self->ppo()) && defined($self->{_id})) {
 		my $parse = $self->parseId($self->{_fullId});
 		return $self->{_id} = $parse->{canonical}; 
 	}
-	   if (defined($self->ppo()->attributes()->{canonicalID})) {
-		   return $self->ppo()->canonicalID();
-	   }	
+	if (defined($self->ppo()->attributes()->{canonicalID})) {
+		return $self->ppo()->canonicalID();
+	}
 	return $self->ppo()->id();
 }
 
