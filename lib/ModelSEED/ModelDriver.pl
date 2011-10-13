@@ -20,6 +20,7 @@ try {
 	$driv = ModelSEED::ModelDriver->new();
 } catch {
 	printErrorLog($_);
+    exit(1);
 };
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
     print "Welcome to the Model SEED! You are currently logged in as: ".$driv->figmodel()->user().".\n";
