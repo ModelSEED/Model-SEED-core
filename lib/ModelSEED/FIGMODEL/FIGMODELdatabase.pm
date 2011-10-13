@@ -2,7 +2,7 @@ use strict;
 use ModelSEED::FIGMODEL::FIGMODELdata;
 use File::Path qw(make_path);
 use File::NFSLock;
-use CHI;
+#use CHI;
 use DBMaster;
 use Storable;
 
@@ -81,6 +81,7 @@ sub _cache {
     return $self->{_cache} if(defined($self->{_cache}));
     my $settings = ($self->config('CacheSettings')) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
+    
     return $self->{_cache} = CHI->new(%$settings);
 }
 
