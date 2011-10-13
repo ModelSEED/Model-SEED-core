@@ -1291,7 +1291,55 @@ sub create_model_class_tables {
 	my ($self) = @_;
 	my $rxnTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["REACTION","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-ReactionClasses.txt",["REACTION","MEDIA","CLASS"],"\t","\|",undef);;
 	my $cpdTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["COMPOUND","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-CompoundClasses.txt",["COMPOUND","MEDIA","CLASS"],"\t","\|",undef);;
-	my $objs = $self->db()->get_objects("mdlfva",{MODEL => $self->id()});
+	my $objs = $self->db()->get_objects("mdlfva",{parameters => "FG;",MODEL => $self->id()});
+	my $classHash = {
+		inactive => "Blocked",
+		positive => "Positive",
+		negative => "Negative",
+		negvar => "Negative variable",
+		posvar => "Positive variable",
+		dead => "Dead",
+		variable => "Variable"
+	};
+	my $class = [keys(%{$classHash})];
+	for (my $i=0;$i < @{$objs};$i++) {
+		for (my $j=0;$j < @{$class};$j++) {
+			my $function = $class->[$j];
+			my $varArray = [split(/;/,$objs->[$i]->$function())];
+			my $boundArray;
+			if ($function ne "inactive" && $function ne "dead") {
+				$function .= "Bounds";
+				$boundArray = [split(/;/,$objs->[$i]->$function())];
+			}
+			for (my $k;$k < @{$varArray};$k++) {
+				my $bounds = [0,0];
+				if ($class->[$j] eq "posvar") {
+					$bounds->[1] = $boundArray->[$k];
+				} elsif ($class->[$j] eq "negvar") {
+					$bounds->[0] = $boundArray->[$k];
+				} elsif ($class->[$j] eq "positive" || $class->[$j] eq "negative" || $class->[$j] eq "variable") {
+					$bounds = [split(/:/,$boundArray->[$k])];
+				}
+				if ($varArray->[$k] =~ m/rxn\d+/) {
+					$rxnTable->add_row({
+						"REACTION" => [$varArray->[$k]],
+						"MEDIA" => [$objs->[$i]->MEDIA()],
+						"CLASS" => [$classHash->{$class->[$j]}],
+						"MAX" => [$bounds->[1]],
+						"MIN" => [$bounds->[0]]
+					});
+				} elsif ($varArray->[$k] =~ m/cpd\d+/) {
+					$cpdTable->add_row({
+						"COMPOUND" => [$varArray->[$k]],
+						"MEDIA" => [$objs->[$i]->MEDIA()],
+						"CLASS" => [$classHash->{$class->[$j]}],
+						"MAX" => [$bounds->[1]],
+						"MIN" => [$bounds->[0]]
+					});
+				}
+			}
+		}
+	}
 	$self->{_reaction_class_table} = $rxnTable;
 	$self->{_compound_class_table} = $cpdTable;
 }
@@ -7496,18 +7544,18 @@ sub fbaFVA {
 	#Loading data into database if requested
 	if ($args->{saveFVAResults} == 1) {
 		my $parameters = "";
-		if (defined($args->{fbaStartParameters}->{forceGrowth}) && $args->{fbaStartParameters}->{forceGrowth} == 1) {
+		if (defined($args->{fbaStartParameters}->{options}->{forceGrowth}) && $args->{fbaStartParameters}->{options}->{forceGrowth} == 1) {
 			$parameters .= "FG;";
-		} elsif (defined($args->{fbaStartParameters}->{noGrowth}) && $args->{fbaStartParameters}->{noGrowth} == 1) {
+		} elsif (defined($args->{fbaStartParameters}->{options}->{noGrowth}) && $args->{fbaStartParameters}->{options}->{noGrowth} == 1) {
 			$parameters .= "NG;";
 		}
-		if (defined($args->{fbaStartParameters}->{drnRxn})) {
+		if (defined($args->{fbaStartParameters}->{drnRxn}) && @{$args->{fbaStartParameters}->{drnRxn}} > 0) {
 			$parameters .= "DR:".join("|",@{$args->{fbaStartParameters}->{drnRxn}}).";";
 		}
-		if (defined($args->{fbaStartParameters}->{rxnKO})) {
+		if (defined($args->{fbaStartParameters}->{rxnKO}) && @{$args->{fbaStartParameters}->{rxnKO}} > 0) {
 			$parameters .= "RK:".join("|",@{$args->{fbaStartParameters}->{rxnKO}}).";";
 		}
-		if (defined($args->{fbaStartParameters}->{geneKO})) {
+		if (defined($args->{fbaStartParameters}->{geneKO}) && @{$args->{fbaStartParameters}->{geneKO}} > 0) {
 			$parameters .= "GK:".join("|",@{$args->{fbaStartParameters}->{geneKO}}).";";
 		}
 		if (length($parameters) == 0) {

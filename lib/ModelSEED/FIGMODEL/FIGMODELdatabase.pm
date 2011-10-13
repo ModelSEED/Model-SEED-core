@@ -283,6 +283,7 @@ sub get_objects {
 	# cache is used if cacheBehavior = 1; cache is reset if
 	# cacheBehavior = 2; ONLY cache is used if cacheBehavior = 3;
     $cacheBehavior = $self->config("CacheBehavior") || 0 unless(defined($cacheBehavior));
+    $cacheBehavior = 0;#Will fix once we got CHI working properly.
     $query = {} unless(defined($query));
     my %queryCpy = %$query;
 	my $cacheKey = "type:$type".
