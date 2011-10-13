@@ -282,7 +282,7 @@ sub get_objects {
 	# By default, the cache behavior is not to use the cache;
 	# cache is used if cacheBehavior = 1; cache is reset if
 	# cacheBehavior = 2; ONLY cache is used if cacheBehavior = 3;
-    $cacheBehavior = $self->config("CacheSettings")->[0] || 0 unless(defined($cacheBehavior));
+    $cacheBehavior = $self->config("CacheSettings") || 0 unless(defined($cacheBehavior));
     $cacheBehavior = 0;#Will fix once we got CHI working properly.
     $query = {} unless(defined($query));
     my %queryCpy = %$query;
@@ -402,7 +402,7 @@ sub get_object_hash {
 	my ($self,$args) = @_;
     $args = $self->figmodel()->process_arguments($args,["type","attribute"],{
     	parameters => {},
-    	useCache => $self->config("CacheSettings")->[0] || 0,
+    	useCache => $self->config("CacheSettings") || 0,
     });
     $args->{useCache} = 0;#TODO change this once caching is fixed
 	my $hash;
