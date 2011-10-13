@@ -79,7 +79,7 @@ avoids this.
 sub _cache {
     my ($self) = @_;
     return $self->{_cache} if(defined($self->{_cache}));
-    my $settings = ($self->config('CacheSettings')) ?
+    my $settings = ($self->config('CacheSettings')->[0]) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
     return $self->{_cache} = CHI->new(%$settings);
 }
@@ -282,7 +282,7 @@ sub get_objects {
 	# By default, the cache behavior is not to use the cache;
 	# cache is used if cacheBehavior = 1; cache is reset if
 	# cacheBehavior = 2; ONLY cache is used if cacheBehavior = 3;
-    $cacheBehavior = $self->config("CacheBehavior") || 0 unless(defined($cacheBehavior));
+    $cacheBehavior = $self->config("CacheBehavior")->[0] || 0 unless(defined($cacheBehavior));
     $cacheBehavior = 0;#Will fix once we got CHI working properly.
     $query = {} unless(defined($query));
     my %queryCpy = %$query;
@@ -402,8 +402,9 @@ sub get_object_hash {
 	my ($self,$args) = @_;
     $args = $self->figmodel()->process_arguments($args,["type","attribute"],{
     	parameters => {},
-    	useCache => $self->config("CacheBehavior") || 0,
+    	useCache => $self->config("CacheBehavior")->[0] || 0,
     });
+    $args->{useCache} = 0;#TODO change this once caching is fixed
 	my $hash;
     my @paramKeysCopy = keys %{$args->{parameters}};
     my $cacheKey = "type:".$args->{type}.":method:get_object_hash:attribute:";
