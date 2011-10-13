@@ -31,7 +31,7 @@ sub new {
 			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->id()});
 		} else {
 			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
-		}
+		}		
 	}
 	return $self;
 }

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use lib $ENV{MODEL_SEED_CORE}."/config/";
+use lib "../../../../config/";
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
