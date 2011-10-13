@@ -171,39 +171,27 @@ Example:
 
 =cut
 sub get_reaction_id_list {
-	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#List of IDs to be returned will be stored here
-	my $ids;
-	#First checking that the "id" key exists
-	if (!defined($args->{id})) {
-		$ids = ["ALL"];
-	} else {
-		#Checking if the hash contains a single ID instead of a reference to an array of IDs
-		if (ref($args->{id}) ne "ARRAY") {
-			push(@{$ids},$args->{id});
-		} else {
-			push(@{$ids},@{$args->{id}});
-		}
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		id => ["ALL"]
+	});
+	if (ref($args->{id}) ne "ARRAY") {
+		$args->{id} = [split(/[;,]/,$args->{id})];
 	}
-	#If IDs is ["ALL"], we return an array of all reaction objects
 	my $output;
-	for (my $i=0; $i < @{$ids}; $i++) {
-		if ($ids->[$i] eq "ALL") {
+	for (my $i=0; $i < @{$args->{id}}; $i++) {
+		if ($args->{id}->[$i] eq "ALL") {
 			my $objects = $self->figmodel()->database()->get_objects("reaction");
 			for (my $j=0; $j < @{$objects}; $j++) {
-				push(@{$output->{$ids->[$i]}},$objects->[$j]->id());
+				push(@{$output->{$args->{id}->[$i]}},$objects->[$j]->id());
 			}
-		} elsif (defined($self->figmodel()->get_model($ids->[$i]))) {
-			my $tbl = $self->figmodel()->get_model($ids->[$i])->reaction_table();
-			if (defined($tbl)) {
-				for (my $j=0; $j < $tbl->size(); $j++) {
-					push(@{$output->{$ids->[$i]}},$tbl->get_row($j)->{LOAD}->[0]);
-				}
+		} else {
+			my $objects = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}->[$i]});
+			for (my $j=0; $j < @{$objects}; $j++) {
+				push(@{$output->{$args->{id}->[$i]}},$objects->[$j]->REACTION());
 			}
 		}
 	}
-	#Returning the output
 	return $output;
 }
 
@@ -253,49 +241,62 @@ Example:
 =cut
 sub get_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Getting all reactions from the database
+	$args = $self->figmodel()->process_arguments($args,[],{
+		id => ["ALL"],
+		model => undef
+	});
+	if (ref($args->{id}) ne "ARRAY") {
+		$args->{id} = [split(/[;,]/,$args->{id})];
+	}
+	#Loading all reactions from database into id hash
 	my $idHash;
 	my $objects = $self->figmodel()->database()->get_objects("reaction");
 	for (my $i=0; $i < @{$objects}; $i++) {
 		$idHash->{$objects->[$i]->id()} = $objects->[$i];
 	}
-	#Checking id list
-	my $ids;
-	if (!defined($args->{id})) {
-		$args->{id}->[0] = "ALL";
-	} elsif (ref($args->{id}) ne "ARRAY") {
-		push(@{$ids},$args->{id});
-	} else {
-		push(@{$ids},@{$args->{id}});
-	}
+	#Setting ID list of "ALL" selected
 	if ($args->{id}->[0] eq "ALL") {
-		push(@{$ids},keys(%{$idHash}));
+		$args->{id} = [keys(%{$idHash})];
+	}
+	#Getting model data
+	my $modelhash;
+	if (defined($args->{model})) {
+		for (my $j=0; $j < @{$args->{model}}; $j++) {
+			my $model = $self->figmodel()->get_model($args->{model}->[$j]);
+			if (defined($model)) {
+				my $rxnmdl = $model->rxnmdl();
+				for (my $k=0; $k < @{$rxnmdl}; $k++) {
+					$modelhash->{$model->id()}->{$rxnmdl->[$k]->REACTION()} = $rxnmdl->[$k];
+				}
+			}
+		}
 	}
 	#Collecting reaction data for ID list
 	my $output;
-	for (my $i=0; $i < @{$ids}; $i++) {
+	for (my $i=0; $i < @{$args->{id}}; $i++) {
 		my $row;
-		if ($ids->[$i] =~ m/rxn\d\d\d\d\d/ && defined($idHash->{$ids->[$i]})) {
-			my $obj = $idHash->{$ids->[$i]};
-			$row = {DATABASE => [$ids->[$i]],
-					NAME => [$obj->name()],
-					EQUATION => [$obj->equation()],
-					CODE => [$obj->equation()],
-					"MAIN EQUATION" => [$obj->equation()],
-					REVERSIBILITY => [$obj->thermoReversibility()],
-					DELTAG => [$obj->deltaG()],
-				        DELTAGERR => [$obj->deltaGErr()]};
+		if ($args->{id}->[$i] =~ m/rxn\d+/ && defined($idHash->{$args->{id}->[$i]})) {
+			my $obj = $idHash->{$args->{id}->[$i]};
+			$row = {
+				DATABASE => [$args->{id}->[$i]],
+				NAME => [$obj->name()],
+				EQUATION => [$obj->equation()],
+				CODE => [$obj->equation()],
+				"MAIN EQUATION" => [$obj->equation()],
+				REVERSIBILITY => [$obj->thermoReversibility()],
+				DELTAG => [$obj->deltaG()],
+				DELTAGERR => [$obj->deltaGErr()]
+			};
 			#Adding KEGG map data
-			my $mapHash = $self->figmodel()->get_map_hash($args);
-			if (defined($mapHash->{$ids->[$i]})) {
-				foreach my $diagram (keys(%{$mapHash->{$ids->[$i]}})) {
-					push(@{$row->{"PATHWAY"}},$mapHash->{$ids->[$i]}->{$diagram}->name());
-					push(@{$row->{"KEGG MAPS"}},"map".$mapHash->{$ids->[$i]}->{$diagram}->altid());
+			my $mapHash = $self->figmodel()->get_map_hash({type => "reaction"});
+			if (defined($mapHash->{$args->{id}->[$i]})) {
+				foreach my $diagram (keys(%{$mapHash->{$args->{id}->[$i]}})) {
+					push(@{$row->{"PATHWAY"}},$mapHash->{$args->{id}->[$i]}->{$diagram}->name());
+					push(@{$row->{"KEGG MAPS"}},"map".$mapHash->{$args->{id}->[$i]}->{$diagram}->altid());
 				}
 			}
 			#Adding KEGG data
-			my $keggobjs = $self->figmodel()->database()->get_objects("rxnals",{REACTION => $ids->[$i],type => "KEGG"});
+			my $keggobjs = $self->figmodel()->database()->get_objects("rxnals",{REACTION => $args->{id}->[$i],type => "KEGG"});
 			for (my $j=0; $j < @{$keggobjs}; $j++) {
 				push(@{$row->{KEGGID}},$keggobjs->[$j]->alias());
 			}
@@ -311,26 +312,33 @@ sub get_reaction_data {
 			if (defined($obj->abstractReaction())) {
 			    push(@{$row->{"ABSTRACT REACTION"}},$obj->abstractReaction());
 			}
-		} elsif ($ids->[$i] =~ m/bio\d\d\d\d\d/) {
-			my $obj = $self->figmodel()->database()->get_object("bof",{id=>$ids->[$i]});
-			$row = {DATABASE => [$ids->[$i]],
-					NAME => ["Biomass"],
-					EQUATION => [$obj->equation()],
-					CODE => [$obj->equation()],
-					"MAIN EQUATION" => [$obj->equation()],
-					PATHWAY => ["Macromolecule biosynthesis"],
-					REVERSIBILITY => ["=>"]};
+		} elsif ($args->{id}->[$i] =~ m/bio\d\d\d\d\d/) {
+			my $obj = $self->figmodel()->database()->get_object("bof",{id=>$args->{id}->[$i]});
+			$row = {
+				DATABASE => [$args->{id}->[$i]],
+				NAME => ["Biomass"],
+				EQUATION => [$obj->equation()],
+				CODE => [$obj->equation()],
+				"MAIN EQUATION" => [$obj->equation()],
+				PATHWAY => ["Macromolecule biosynthesis"],
+				REVERSIBILITY => ["=>"]
+			};
 		}
 		if (defined($row)) {
-			$output->{$ids->[$i]} = $row;
+			$output->{$args->{id}->[$i]} = $row;
 			if (defined($args->{model})) {
 				for (my $j=0; $j < @{$args->{model}}; $j++) {
-					my $model = $self->figmodel()->get_model($args->{model}->[$j]);
-					if (defined($model)) {
-						my $data = $model->get_reaction_data($ids->[$i]);
-						if (defined($data)) {
-							$output->{$ids->[$i]}->{$args->{model}->[$j]} = $data;
-						}
+					if (defined($modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]})) {
+						$output->{$args->{id}->[$i]}->{$args->{model}->[$j]} = {
+							LOAD => [$args->{id}->[$i]],
+							DIRECTIONALITY => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->directionality()],
+							COMPARTMENT => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->compartment()],
+							"ASSOCIATED PEG" => [split(/\|/,$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->pegs())],
+							SUBSYSTEM => ["NONE"],
+							CONFIDENCE => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->confidence()],
+							REFERENCE => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->reference()],
+							NOTES => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->notes()],
+						};
 					}
 				}
 			}
@@ -551,9 +559,10 @@ sub get_compound_data {
 			my $obj = $idHash->{$ids->[$i]};
 			my $names = [$obj->name()];
 			if (defined($cpdAlsHash->{$ids->[$i]})) {
-				$names = [];
 				for (my $j=0; $j < @{$cpdAlsHash->{$ids->[$i]}}; $j++) {
-					push(@{$names},$cpdAlsHash->{$ids->[$i]}->[$j]->alias());
+					if ($cpdAlsHash->{$ids->[$i]}->[$j]->alias() ne $obj->name()) {
+						push(@{$names},$cpdAlsHash->{$ids->[$i]}->[$j]->alias());
+					}
 				}	
 			}
 			$row = {DATABASE => [$ids->[$i]],
@@ -1291,15 +1300,7 @@ classification data.
 
 sub get_model_reaction_classification_table {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Checking that some model ID has been submitted
-	if (!defined($args->{model})) {
-		return undef;
-	}
-	
-	#First logging in the user if a username is provided
-	$self->figmodel()->authenticate_user($args->{username},$args->{password});
-	
+	$args = $self->figmodel()->process_arguments($args,["model"]);
 	#Now retreiving the specified models from the database
 	my $output;
 	for (my $i=0; $i < @{$args->{model}}; $i++) {

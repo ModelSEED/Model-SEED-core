@@ -2006,10 +2006,7 @@ Description:
 =cut
 sub get_map_hash {
 	my($self,$args) = @_;
-	$args = $self->process_arguments($args,["type"]);
-	if (defined($args->{error})) {
-		$args->{type} = "reaction";
-	}
+	$args = $self->process_arguments($args,["type"],{});
 	if (!defined($self->{_maphash}->{$args->{type}})) {
 		my $objs = $self->database()->get_objects("diagram",{type => "KEGG"});
 		my $mapHash;

@@ -1255,7 +1255,13 @@ Description:
 =cut
 sub reaction_class_table {
 	my ($self,$clear) = @_;
-	return $self->load_model_table("ModelReactionClasses",$clear);
+	if (defined($clear) && $clear == 1) {
+		delete $self->{_reaction_class_table};
+	}
+	if (!defined($self->{_reaction_class_table})) {
+		 $self->create_model_class_tables();
+	}
+	return $self->{_reaction_class_table}
 }
 
 =head3 compound_class_table
@@ -1266,7 +1272,28 @@ Description:
 =cut
 sub compound_class_table {
 	my ($self,$clear) = @_;
-	return $self->load_model_table("ModelCompoundClasses",$clear);
+	if (defined($clear) && $clear == 1) {
+		delete $self->{_compound_class_table};
+	}
+	if (!defined($self->{_compound_class_table})) {
+		 $self->create_model_class_tables();
+	}
+	return $self->{_compound_class_table}
+}
+
+=head3 create_model_class_tables
+Definition:
+	FIGMODELTable = FIGMODELmodel->create_model_class_tables();
+Description:
+	Creates FIGMODELTables with the compound and reaction class data pulled from the database
+=cut
+sub create_model_class_tables {
+	my ($self) = @_;
+	my $rxnTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["REACTION","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-ReactionClasses.txt",["REACTION","MEDIA","CLASS"],"\t","\|",undef);;
+	my $cpdTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["COMPOUND","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-CompoundClasses.txt",["COMPOUND","MEDIA","CLASS"],"\t","\|",undef);;
+	my $objs = $self->db()->get_objects("mdlfva",{MODEL => $self->id()});
+	$self->{_reaction_class_table} = $rxnTable;
+	$self->{_compound_class_table} = $cpdTable;
 }
 
 =head3 get_essential_genes

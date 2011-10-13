@@ -5735,4 +5735,102 @@ sub gapfillmodel {
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
 
+sub mathmatdist {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["matrixfile",1],
+		["binsize",0,1],
+		["startcol",0,1],
+		["endcol",0,undef],
+		["startrow",0,1],
+		["endrow",0,undef],
+		["delimiter",0,"\\t"]
+	],[@Data]);
+    #Checking that file exists
+    if (!-e $self->outputdirectory().$args->{matrixfile}) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find matrix file ".$self->outputdirectory().$args->{matrixfile}."!");
+    }
+    #Loading the file
+    print "Loading...\n";
+    my $distribData;
+    my $data = $self->figmodel()->database()->load_single_column_file($self->outputdirectory().$args->{matrixfile});
+    if (!defined($args->{endrow})) {
+    	$args->{endrow} = @{$data};
+    }
+    print "Calculating...\n";
+    #Calculating the distribution for each row as well as the overall distribution
+    for (my $i=$args->{startrow}; $i < $args->{endrow}; $i++) {
+    	my $rowData = [split($args->{delimiter},$data->[$i])];
+    	print "Processing row ".$i.":".$rowData->[0]."\n";
+    	if (!defined($args->{endcol})) {
+	    	$args->{endcol} = @{$rowData};
+	    }
+    	for (my $j=$args->{startcol}; $j < $args->{endcol}; $j++) {
+    		if ($rowData->[$j] =~ m/^\d+\.*\d*$/) {
+    			my $bin = ModelSEED::FIGMODEL::floor($rowData->[$j]/$args->{binsize});
+    			if (!defined($distribData->{$rowData->[0]}->[$bin])) {
+    				$distribData->{$rowData->[0]}->[$bin] = 0;
+    			}
+    			$distribData->{$rowData->[0]}->[$bin]++;
+    			if (!defined($distribData->{"total"}->[$bin])) {
+    				$distribData->{"total"}->[$bin] = 0;
+    			}
+    			$distribData->{"total"}->[$bin]++;
+    		}
+    	}
+    	delete $data->[$i];
+    }
+    #Normalizing distrubtions
+    my $largestBin = 0;
+    my $normDistribData;
+    print "Normalizing\n";
+    foreach my $label (keys(%{$distribData})) {
+    	if (@{$distribData->{$label}} > $largestBin) {
+    		$largestBin = @{$distribData->{$label}};
+    	}
+    	my $total = 0;
+    	for (my $j=0; $j < @{$distribData->{$label}}; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$total += $distribData->{$label}->[$j];
+    		}
+    	}
+    	for (my $j=0; $j < @{$distribData->{$label}}; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$normDistribData->{$label}->[$j] = $distribData->{$label}->[$j]/$total;
+    		}
+    	}
+    }
+    #Printing distributions
+    print "Printing...\n";
+    my $bins = [];
+    for (my $i=0; $i < $largestBin; $i++) {
+    	$bins->[$i] = $i*$args->{binsize}."-".($i+1)*$args->{binsize};
+    }
+    my $fileData = {
+    	"Distributions.txt" => ["Label\t".join("\t",@{$bins})],
+    	"NormDistributions.txt" => ["Label\t".join("\t",@{$bins})]
+    };
+    foreach my $label (keys(%{$distribData})) {
+		my $line = $label;
+		my $normline = $label;
+		for (my $j=0; $j < $largestBin; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$line .= "\t".$distribData->{$label}->[$j];
+    			$normline .= "\t".$distribData->{$label}->[$j];
+    		} else {
+    			$line .= "\t0";
+    			$normline .= "\t0";
+    		}
+    	}
+		push(@{$fileData->{"Distributions.txt"}},$line);
+		push(@{$fileData->{"NormDistributions.txt"}},$normline);
+	}
+	my $message = "";
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+		$message .= "Printed distributions to ".$self->outputdirectory().$filename."\n";
+	}
+	return $message;
+}
+
 1;
