@@ -5816,7 +5816,7 @@ sub mathmatdist {
 		for (my $j=0; $j < $largestBin; $j++) {
     		if (defined($distribData->{$label}->[$j])) {
     			$line .= "\t".$distribData->{$label}->[$j];
-    			$normline .= "\t".$distribData->{$label}->[$j];
+    			$normline .= "\t".$normDistribData->{$label}->[$j];
     		} else {
     			$line .= "\t0";
     			$normline .= "\t0";
