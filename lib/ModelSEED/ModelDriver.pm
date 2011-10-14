@@ -10,6 +10,7 @@
 
 use strict;
 use ModelSEED::FIGMODEL;
+use ModelSEED::FIGMODEL::FIGMODELTable;
 
 package ModelSEED::ModelDriver;
 
@@ -263,7 +264,8 @@ sub gatherroledata {
 	    	print "Running:".$mdls->[$i]->id()."\t".$count."\n";
 	    	my $mdl = $self->figmodel()->get_model($mdls->[$i]->id());
 	    	if (-e $mdl->directory()."Roles.tbl") {
-		    	my $roleTbl = $self->figmodel()->database()->load_table($mdl->directory()."Roles.tbl",";","|",0,["ROLE","REACTIONS","GENES","ESSENTIAL"]);		
+		    	my $roleTbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
+                    $mdl->directory()."Roles.tbl",";","|",0,["ROLE","REACTIONS","GENES","ESSENTIAL"]);		
 		    	for (my $j=0; $j < $roleTbl->size(); $j++) {
 		    		my $row = $roleTbl->get_row($j);
 		    		$roleHash->{$row->{ROLE}->[0]} = 1;
@@ -2238,8 +2240,49 @@ sub createdblp {
 
 sub consolidatemedia {
     my($self,@Data) = @_;
-
-    $self->figmodel()->database()->ConsolidateMediaFiles();
+	# This function consolidates all of the various media
+	# formulations in the Media directory into a single file.
+	# This file is formated as a FIGMODELTable, and it is used
+	# by the mpifba code to determine media formulations.  The
+	# file will be in the masterfiles directory names: MediaTable.txt.
+	# Creating a new media table
+    my $db = $self->figmodel()->database();
+	my $names = $db->config("Reaction database directory");
+	my $MediaTable = ModelSEED::FIGMODEL::FIGMODELTable->new(
+        ["NAME","NAMES","COMPOUNDS","MAX","MIN"],$names->[0]."masterfiles/MediaTable.txt",["NAME","COMPOUNDS"],";","|",undef);
+	#Loading media formulations into table
+	my $mediadir = $db->config("Media directory");
+	my @Filenames = glob($mediadir->[0]."*");
+	foreach my $Filename (@Filenames) {
+		if ($Filename !~ m/Test/ && $Filename =~ m/\/([^\/]+)\.txt/) {
+			my $MediaName = $1;
+			my $MediaFormulation = ModelSEED::FIGMODEL::FIGMODELTable::load_table($Filename,";","",0,undef);
+			my ($CompoundList,$NameList,$MaxList,$MinList);
+			if (defined($MediaFormulation)) {
+				for (my $i=0; $i < $MediaFormulation->size(); $i++) {
+					if ($MediaFormulation->get_row($i)->{"VarName"}->[0] =~ m/cpd\d\d\d\d\d/) {
+						push(@{$CompoundList},$MediaFormulation->get_row($i)->{"VarName"}->[0]);
+						my $CompoundData = $db->get_compound($MediaFormulation->get_row($i)->{"VarName"}->[0]);
+						if (defined($CompoundData) && defined($CompoundData->{NAME}->[0])) {
+							push(@{$NameList},$CompoundData->{NAME}->[0]);
+						}
+						push(@{$MinList},$MediaFormulation->get_row($i)->{"Min"}->[0]);
+						push(@{$MaxList},$MediaFormulation->get_row($i)->{"Max"}->[0]);
+					}
+				}
+				$MediaTable->add_row({"NAME" => [$MediaName],
+                                      "NAMES" => $NameList,
+                                      "COMPOUNDS" => $CompoundList,
+                                      "MAX" => $MaxList,
+                                      "MIN" => $MinList});
+			} else {
+				print STDERR "Failed to load media file ".$Filename."\n";
+			}	
+		}
+	}
+	#Saving the table
+	$MediaTable->save();
+	#return $MediaTable;
 }
 
 sub runmodelcheck {
@@ -2719,7 +2762,661 @@ sub loadppo {
         print "Syntax for this command: loadppo?(object type)\n\n";
         return "ARGUMENT SYNTAX FAIL";
     }
-	$self->figmodel()->database()->load_ppo($Data[1]);
+    my $db = $self->figmodel()->database();
+    my $object = @Data[1];
+	if ($object eq "media") {
+		my $mediaTbl = $db->figmodel()->database()->get_table("MEDIA");
+		for (my $i=0; $i < $mediaTbl->size(); $i++) {
+			my $row = $mediaTbl->get_row($i);
+			my $aerobic = 0;
+			for (my $j=0; $j < @{$row->{COMPOUNDS}}; $j++) {
+				if ($row->{COMPOUNDS}->[$j] eq "cpd00007" && $row->{MAX}->[$j] > 0) {
+					$aerobic = 1;
+					last;
+				}
+			}
+			my $mediaMgr = $db->figmodel()->database()->get_object_manager("media");
+			$mediaMgr->create({id=>$row->{NAME}->[0],owner=>"master",modificationDate=>time(),creationDate=>time(),aerobic=>$aerobic});
+		}
+	} elsif ($object eq "keggmap") {
+		my $tbl = $db->get_table("KEGGMAPDATA");
+		for (my $i=0; $i < $tbl->size(); $i++) {
+			my $row = $tbl->get_row($i);
+			if (defined($row->{NAME}->[0]) && defined($row->{ID}->[0])) {
+				my $obj = $db->get_object("diagram",{type => "KEGG",altid => $row->{ID}->[0]});
+				if (!defined($obj)) {
+					my $newIDs = $db->check_out_new_id("diagram");
+					$obj = $db->create_object("diagram",{id => $newIDs,type => "KEGG",altid => $row->{ID}->[0],name => $row->{NAME}->[0]});
+				}
+				if (defined($row->{REACTIONS})) {
+					for (my $j=0; $j < @{$row->{REACTIONS}}; $j++) {
+						my $dgmobj = $db->get_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "reaction",entity => $row->{REACTIONS}->[$j]});
+						if (!defined($dgmobj)) {
+							$dgmobj = $db->create_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "reaction",entity => $row->{REACTIONS}->[$j]});
+						}
+					}
+				}
+				if (defined($row->{COMPOUNDS})) {
+					for (my $j=0; $j < @{$row->{COMPOUNDS}}; $j++) {
+						my $dgmobj = $db->get_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "compound",entity => $row->{COMPOUNDS}->[$j]});
+						if (!defined($dgmobj)) {
+							$dgmobj = $db->create_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "compound",entity => $row->{COMPOUNDS}->[$j]});
+						}
+					}
+				}
+				if (defined($row->{ECNUMBERS})) {
+					for (my $j=0; $j < @{$row->{ECNUMBERS}}; $j++) {
+						my $dgmobj = $db->get_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "enzyme",entity => $row->{ECNUMBERS}->[$j]});
+						if (!defined($dgmobj)) {
+							$dgmobj = $db->create_object("dgmobj",{DIAGRAM => $obj->id(),entitytype => "enzyme",entity => $row->{ECNUMBERS}->[$j]});
+						}
+					}
+				}
+			}
+		}
+	} elsif ($object eq "rxnmdl") {
+		my $objects = $db->get_objects("model");
+		for (my $i=0; $i < @{$objects}; $i++) {
+			my $mdl = $db->figmodel()->get_model($objects->[$i]->id());
+			my $rxntbl = $mdl->reaction_table();
+			if (defined($rxntbl)) {
+				my $rxnhash;
+				my $rxnobjects = $db->get_objects("rxnmdl",{MODEL=>$mdl->id()});
+				for (my $j=0; $j < @{$rxnobjects}; $j++) {
+					my $row = $rxntbl->get_row_by_key($rxnobjects->[$j]->REACTION(),"LOAD");
+					if (defined($row)) {
+						$rxnhash->{$rxnobjects->[$j]->REACTION()}->{$rxnobjects->[$j]->directionality().$rxnobjects->[$j]->compartment()} = 1;
+						$rxnobjects->[$j]->directionality($row->{DIRECTIONALITY}->[0]);
+						$rxnobjects->[$j]->compartment($row->{COMPARTMENT}->[0]);
+						if (defined($row->{"ASSOCIATED PEG"}->[0])) {
+							$rxnobjects->[$j]->pegs(join("|",@{$row->{"ASSOCIATED PEG"}}));
+						} else {
+							$rxnobjects->[$j]->pegs("UNKNOWN");
+						}
+						if (defined($row->{CONFIDENCE}->[0])) {
+							$rxnobjects->[$j]->confidence($row->{CONFIDENCE}->[0]);
+						} else {
+							$rxnobjects->[$j]->confidence(5);
+						}
+					} else {
+						$rxnobjects->[$j]->delete();
+					}
+				}
+				for (my $j=0; $j < $rxntbl->size(); $j++) {
+					my $row = $rxntbl->get_row($j);
+					if (defined($row->{LOAD}->[0]) && !defined($rxnhash->{$row->{LOAD}->[0]}->{$row->{DIRECTIONALITY}->[0].$row->{COMPARTMENT}->[0]})) {
+						$rxnhash->{$row->{LOAD}->[0]}->{$row->{DIRECTIONALITY}->[0].$row->{COMPARTMENT}->[0]} = 1;
+						my $confidence = 5;
+						if (defined($row->{CONFIDENCE}->[0])) {
+							$confidence = $row->{CONFIDENCE}->[0];
+						}
+						my $mdlrxnMgr = $db->get_object_manager("rxnmdl");
+						$mdlrxnMgr->create({directionality=>$row->{DIRECTIONALITY}->[0],compartment=>$row->{COMPARTMENT}->[0],REACTION=>$row->{LOAD}->[0],MODEL=>$mdl->id(),pegs=>join("|",@{$row->{"ASSOCIATED PEG"}}),confidence=>$confidence});
+					}
+				}
+			}
+		}
+	} elsif ($object eq "mediacpd") {
+		my $mediaTbl = $db->figmodel()->database()->get_table("MEDIA");
+		for (my $i=0; $i < $mediaTbl->size(); $i++) {
+			my $row = $mediaTbl->get_row($i);
+			my $alreadySeed;
+			for (my $j=0; $j < @{$row->{COMPOUNDS}}; $j++) {
+				if (!defined($alreadySeed->{$row->{COMPOUNDS}->[$j]})) {
+					$alreadySeed->{$row->{COMPOUNDS}->[$j]} = 1;
+					my $max = 100;
+					my $conc = 0.001;
+					if (defined($row->{MAX}->[$j])) {
+						$max = $row->{MAX}->[$j];
+					}
+					my $mediaMgr = $db->figmodel()->database()->get_object_manager("mediacpd");
+					$mediaMgr->create({MEDIA=>$row->{NAME}->[0],COMPOUND=>$row->{COMPOUNDS}->[$j],concentration=>$conc,maxFlux=>$max});
+				} else {
+					print "Compound ".$row->{COMPOUNDS}->[$j]." repeated in ".$row->{NAME}->[0]." media!\n";
+				}
+			}
+		}
+	} elsif ($object eq "compound") {
+		my $tbl = $db->figmodel()->database()->get_table("COMPOUNDS");
+		for (my $i=0; $i < $tbl->size(); $i++) {
+			my $row = $tbl->get_row($i);
+			my $name = $row->{NAME}->[0];
+			for (my $j=1; $j < @{$row->{NAME}}; $j++) {
+				if (length($name) > 32) {
+					$name = $row->{NAME}->[$j];
+					last;
+				}
+			}
+			if (length($name) > 32) {
+				$name = substr($name,32);
+			}
+			my $dataHash = {id=>$row->{DATABASE}->[0],name=>$name,owner=>"master",users=>"all",modificationDate=>time(),creationDate=>time()};
+			if (defined($row->{STRINGCODE}->[0])) {
+				$dataHash->{stringcode} = $row->{STRINGCODE}->[0];
+			}
+			if (defined($row->{DELTAG}->[0])) {
+				$dataHash->{deltaG} = $row->{DELTAG}->[0];
+			}
+			if (defined($row->{DELTAGERR}->[0])) {
+				$dataHash->{deltaGErr} = $row->{DELTAGERR}->[0];
+			}
+			if (defined($row->{FORMULA}->[0])) {
+				$dataHash->{formula} = $row->{FORMULA}->[0];
+			}
+			if (defined($row->{MASS}->[0])) {
+				$dataHash->{mass} = $row->{MASS}->[0];
+			}
+			if (defined($row->{CHARGE}->[0])) {
+				$dataHash->{charge} = $row->{CHARGE}->[0];
+			}
+			my $fileData = ModelSEED::FIGMODEL::FIGMODELObject->load($db->config("compound directory")->[0].$row->{DATABASE}->[0],"\t");		
+			if (defined($fileData->{PKA})) {
+				$dataHash->{pKa} = join(";",@{$fileData->{PKA}});
+			}
+			if (defined($fileData->{PKB})) {
+				$dataHash->{pKb} = join(";",@{$fileData->{PKB}});
+			}
+			if (defined($fileData->{STRUCTURAL_CUES})) {
+				$dataHash->{structuralCues} = join(";",@{$fileData->{STRUCTURAL_CUES}});
+			}
+			my $cpdMgr = $db->figmodel()->database()->get_object_manager("compound");
+			$cpdMgr->create($dataHash);
+		}
+	} elsif ($object eq "cpdals") {
+		my $aliasHash;
+		my $tbl = $db->figmodel()->database()->get_table("COMPOUNDS");
+		for (my $i=0; $i < $tbl->size(); $i++) {
+			my $row = $tbl->get_row($i);
+			for (my $j=0; $j < @{$row->{NAME}}; $j++) {
+				if (!defined($aliasHash->{$row->{DATABASE}->[0]}->{name}->{lc($row->{NAME}->[$j])})) {
+					$aliasHash->{$row->{DATABASE}->[0]}->{name}->{lc($row->{NAME}->[$j])} = 1;
+					my $cpdMgr = $db->figmodel()->database()->get_object_manager("cpdals");
+					$cpdMgr->create({COMPOUND=>$row->{DATABASE}->[0],alias=>$row->{NAME}->[$j],type=>"name"});
+					my @searchNames = $db->ConvertToSearchNames($row->{NAME}->[$j]);
+					for (my $k=0; $k < @searchNames; $k++) {
+						if (!defined($aliasHash->{$row->{DATABASE}->[0]}->{searchname}->{lc($searchNames[$k])})) {
+							$aliasHash->{$row->{DATABASE}->[0]}->{searchname}->{lc($searchNames[$k])} = 1;
+							my $cpdMgr = $db->figmodel()->database()->get_object_manager("cpdals");
+							$cpdMgr->create({COMPOUND=>$row->{DATABASE}->[0],alias=>lc($searchNames[$k]),type=>"searchname"});
+						}
+					}
+				}
+			}
+		}
+		my @files = glob($db->config("Translation directory")->[0]."CpdTo*");
+		for (my $i=0; $i < @files; $i++) {
+			if ($files[$i] !~ m/CpdToAll/ && $files[$i] =~ m/CpdTo(.+)\.txt/) {
+				my $type = $1;
+				my $data = $db->load_multiple_column_file($files[$i],"\t");
+				for (my $j=0; $j < @{$data}; $j++) {
+					my $cpdMgr = $db->figmodel()->database()->get_object_manager("cpdals");
+					$cpdMgr->create({COMPOUND=>$data->[$j]->[0],alias=>$data->[$j]->[1],type=>$type});
+				}
+			}
+		}
+		my $data = $db->load_multiple_column_file($db->config("Translation directory")->[0]."ObsoleteCpdIDs.txt","\t");
+		for (my $j=0; $j < @{$data}; $j++) {
+			my $cpdMgr = $db->figmodel()->database()->get_object_manager("cpdals");
+			$cpdMgr->create({COMPOUND=>$data->[$j]->[0],alias=>$data->[$j]->[1],type=>"obsolete"});
+		}
+	} elsif ($object eq "reaction") {
+		my $tbl = $db->figmodel()->database()->get_table("REACTIONS");
+		for (my $i=0; $i < $tbl->size(); $i++) {
+			my $row = $tbl->get_row($i);
+			my $name = $row->{DATABASE}->[0];
+			if (defined($row->{NAME}->[0])){
+				$name = $row->{NAME}->[0];
+				for (my $j=1; $j < @{$row->{NAME}}; $j++) {
+					if (length($name) > 250 && length($row->{NAME}->[$j]) < 32) {
+						$name = $row->{NAME}->[$j];
+						last;
+					}
+				}
+				if (length($name) > 250) {
+					$name = substr($name,250);
+				}
+			}
+			my $rxnObj = $db->figmodel()->LoadObject($row->{DATABASE}->[0]);
+			my $thermodynamicReversibility = "<=>";
+			my $definition = "NONE";
+			if (defined($rxnObj) && defined($rxnObj->{DEFINITION}->[0])) {
+				$definition = $rxnObj->{DEFINITION}->[0];
+			}
+			if (defined($rxnObj) && defined($rxnObj->{"THERMODYNAMIC REVERSIBILITY"}->[0])) {
+				$thermodynamicReversibility = $rxnObj->{"THERMODYNAMIC REVERSIBILITY"}->[0];
+			}
+			my $dataHash = {id=>$row->{DATABASE}->[0],name=>$name,thermoReversibility=>$thermodynamicReversibility,reversibility=>$db->figmodel()->reversibility_of_reaction($row->{DATABASE}->[0]),definition=>$definition,code=>$row->{CODE}->[0],equation=>$row->{EQUATION}->[0],owner=>"master",users=>"all",modificationDate=>time(),creationDate=>time()};
+			if (defined($row->{ENZYME}->[0])) {
+				$dataHash->{enzyme} = "|".join("|",@{$row->{ENZYME}})."|";
+			}
+			if (defined($row->{DELTAG}->[0])) {
+				$dataHash->{deltaG} = $row->{DELTAG}->[0];
+			}
+			if (defined($row->{DELTAGERR}->[0])) {
+				$dataHash->{deltaGErr} = $row->{DELTAGERR}->[0];
+			}
+			
+			if (defined($rxnObj->{STRUCTURAL_CUES})) {
+				$dataHash->{structuralCues} = "|".join("|",@{$rxnObj->{STRUCTURAL_CUES}})."|";
+			}
+			my $rxnMgr = $db->figmodel()->database()->get_object_manager("reaction");
+			$rxnMgr->create($dataHash);
+			my ($reactants,$products) = $db->figmodel()->GetReactionSubstrateDataFromEquation($row->{EQUATION}->[0]);
+			if (defined($reactants)) {
+				for (my $j=0; $j < @{$reactants}; $j++) {
+					my $cpdrxnMgr = $db->figmodel()->database()->get_object_manager("cpdrxn");
+					$cpdrxnMgr->create({COMPOUND=>$reactants->[$j]->{DATABASE}->[0],REACTION=>$row->{DATABASE}->[0],coefficient=>-1*$reactants->[$j]->{COEFFICIENT}->[0],compartment=>$reactants->[$j]->{COMPARTMENT}->[0],cofactor=>"false"});
+				}
+			}
+			if (defined($products)) {
+				for (my $j=0; $j < @{$products}; $j++) {
+					my $cpdrxnMgr = $db->figmodel()->database()->get_object_manager("cpdrxn");
+					$cpdrxnMgr->create({COMPOUND=>$products->[$j]->{DATABASE}->[0],REACTION=>$row->{DATABASE}->[0],coefficient=>$products->[$j]->{COEFFICIENT}->[0],compartment=>$products->[$j]->{COMPARTMENT}->[0],cofactor=>"false"});
+				}
+			}
+		}
+	} elsif ($object eq "cofactor") {
+		my $cpdobjs = $db->get_objects("cpdrxn");
+		for (my $i=0; $i < @{$cpdobjs}; $i++) {
+			$cpdobjs->[$i]->cofactor(1);
+		}
+		my $objs = $db->get_objects("reaction");
+		print "Processing reactions...\n";
+		for (my $j=0; $j < @{$objs}; $j++) {
+			my $obj = $db->figmodel()->LoadObject($objs->[$j]->id());
+			if ($obj eq "0") {
+				print $objs->[$j]->id()." not found!\n";
+				next;
+			}
+			my $main;
+			if (defined($obj->{"MAIN EQUATION"}->[0])) {
+				$main = $obj->{"MAIN EQUATION"}->[0];
+			} else {
+				$main = $obj->{"EQUATION"}->[0];
+				$main =~ s/\d*(\s*)cpd00001\s\+\s/$1/;
+				$main =~ s/\d*(\s*)cpd00067\s\+\s/$1/;
+				$main =~ s/\s\+\s\d*(\s*)cpd00067/$1/;
+				$main =~ s/\s\+\s\d*(\s*)cpd00001/$1/;
+			}
+			my ($reactants,$products) = $db->figmodel()->GetReactionSubstrateDataFromEquation($main);
+			if (defined($reactants)) {
+				for (my $i=0; $i < @{$reactants}; $i++) {
+					my $cpdobj = $db->get_objects("cpdrxn",{REACTION=>$objs->[$j]->id(),COMPOUND=>$reactants->[$i]->{DATABASE}->[0],compartment=>$reactants->[$i]->{COMPARTMENT}->[0]});
+					if (defined($cpdobj->[0]) && $cpdobj->[0]->coefficient() < 0) {
+						$cpdobj->[0]->cofactor("false");
+					} elsif (defined($cpdobj->[1]) && $cpdobj->[1]->coefficient() < 0) {
+						$cpdobj->[1]->cofactor("false");
+					}
+				}
+			}
+			if (defined($products)) {
+				for (my $i=0; $i < @{$products}; $i++) {
+					my $cpdobj = $db->get_objects("cpdrxn",{REACTION=>$objs->[$j]->id(),COMPOUND=>$products->[$i]->{DATABASE}->[0],compartment=>$products->[$i]->{COMPARTMENT}->[0]});
+					if (defined($cpdobj->[0]) && $cpdobj->[0]->coefficient() > 0) {
+						$cpdobj->[0]->cofactor("false");
+					} elsif (defined($cpdobj->[1]) && $cpdobj->[1]->coefficient() > 0) {
+						$cpdobj->[1]->cofactor("false");
+					}
+				}
+			}
+		}
+	} elsif ($object eq "rxnals") {
+		my @files = glob($db->config("Translation directory")->[0]."RxnTo*");
+		for (my $i=0; $i < @files; $i++) {
+			if ($files[$i] !~ m/RxnToAll/ && $files[$i] =~ m/RxnTo(.+)\.txt/) {
+				my $type = $1;
+				my $data = $db->load_multiple_column_file($files[$i],"\t");
+				for (my $j=0; $j < @{$data}; $j++) {
+					my $rxnMgr = $db->figmodel()->database()->get_object_manager("rxnals");
+					$rxnMgr->create({REACTION=>$data->[$j]->[0],alias=>$data->[$j]->[1],type=>$type});
+				}
+			}
+		}
+		my $data = $db->load_multiple_column_file($db->config("Translation directory")->[0]."ObsoleteRxnIDs.txt","\t");
+		for (my $j=0; $j < @{$data}; $j++) {
+			my $rxnMgr = $db->figmodel()->database()->get_object_manager("rxnals");
+			$rxnMgr->create({REACTION=>$data->[$j]->[0],alias=>$data->[$j]->[1],type=>"obsolete"});
+		}
+	} elsif ($object eq "complex") {
+		#Storing current complex data in a hash
+		my $cpxHash;
+		my $inDBHash;
+		my $cpxRoleLoaded;
+		my $rxncpxs = $db->get_objects("rxncpx");
+		for (my $i=0; $i < @{$rxncpxs}; $i++) {
+			my $cpxroles = $db->get_objects("cpxrole",{COMPLEX=>$rxncpxs->[$i]->COMPLEX()});
+			my $roles;
+			for (my $j=0; $j < @{$cpxroles}; $j++) {
+				push(@{$roles},$cpxroles->[$j]->ROLE());
+			}
+			$cpxHash->{join("|",sort(@{$roles}))}->{$rxncpxs->[$i]->REACTION()} = $rxncpxs->[$i];
+			$inDBHash->{join("|",sort(@{$roles}))}->{$rxncpxs->[$i]->REACTION()} = 0;
+		}
+		#Translating roles in mapping table to role IDs
+		my $ftrTbl = $db->get_table("ROLERXNMAPPING");
+		my $hash;
+		for (my $i=0; $i < $ftrTbl->size(); $i++) {
+			my $row = $ftrTbl->get_row($i);
+			my $role = 	$row->{ROLE}->[0];
+			if (defined($row->{ROLE}->[0])) {
+				$role = $db->figmodel()->convert_to_search_role($role);
+				my $roleobj = $db->get_object("role",{searchname => $role});
+				if (!defined($roleobj)) {
+					my $newRoleID = $db->check_out_new_id("role");
+					my $roleMgr = $db->get_object_manager("role");
+					$roleobj = $roleMgr->create({id=>$newRoleID,name=>$row->{ROLE}->[0],searchname=>$role});
+				}
+				$hash->{$row->{REACTION}->[0]}->{$row->{COMPLEX}->[0]}->{$roleobj->id()} = $row->{MASTER}->[0];
+			}
+		}
+		#Loading new complexes into the database
+		my @rxns = keys(%{$hash});
+		for (my $i=0; $i < @rxns; $i++) {
+			my @cpxs = keys(%{$hash->{$rxns[$i]}});
+			for (my $j=0; $j < @cpxs; $j++) {
+				my $sortedRoleList = join("|",sort(keys(%{$hash->{$rxns[$i]}->{$cpxs[$j]}})));
+				#Determining whether the complex is in the master list
+				my $master = 0;
+				my @roles = keys(%{$hash->{$rxns[$i]}->{$cpxs[$j]}});
+				for (my $k=0; $k < @roles; $k++) {
+					if ($hash->{$rxns[$i]}->{$cpxs[$j]}->{$roles[$k]} > 0) {
+						$master = 1;
+					}
+				}
+				#Creating a new complex
+				my $cpxID;
+				if (!defined($cpxHash->{$sortedRoleList})) {
+					$cpxID = $db->check_out_new_id("complex");
+					my $cpxMgr = $db->get_object_manager("complex");
+					my $newCpx = $cpxMgr->create({id=>$cpxID});
+					#Adding roles to new complex
+					for (my $k=0; $k < @roles; $k++) {
+						my $type = "G";
+						if ($hash->{$rxns[$i]}->{$cpxs[$j]}->{$roles[$k]} == 0) {
+							$type = "N";
+						} elsif ($hash->{$rxns[$i]}->{$cpxs[$j]}->{$roles[$k]} == 2) {
+							$type = "L";
+						}
+						my $cpxRoleMgr = $db->get_object_manager("cpxrole");
+						$cpxRoleMgr->create({COMPLEX=>$cpxID,ROLE=>$roles[$k],type=>$type});
+						$cpxRoleLoaded->{$cpxID}->{$roles[$k]} = $type;
+					}
+				} else {
+					#Checking to make sure the status of each role in the complex has not changed
+					my @cpxRxns = keys(%{$cpxHash->{$sortedRoleList}});
+					my $firstRxn = $cpxRxns[0];					
+					$cpxID = $cpxHash->{$sortedRoleList}->{$firstRxn}->COMPLEX();
+					for (my $k=0; $k < @roles; $k++) {
+						my $type = "G";
+						if ($hash->{$rxns[$i]}->{$cpxs[$j]}->{$roles[$k]} == 0) {
+							$type = "N";
+						} elsif ($hash->{$rxns[$i]}->{$cpxs[$j]}->{$roles[$k]} == 2) {
+							$type = "L";
+						}				
+						my $cpxRole = $db->get_object("cpxrole",{COMPLEX=>$cpxID,ROLE=>$roles[$k]});
+						if (!defined($cpxRole)) {
+							my $cpxRoleMgr = $db->get_object_manager("cpxrole");
+							$cpxRoleMgr->create({COMPLEX=>$cpxID,ROLE=>$roles[$k],type=>$type});
+							$cpxRoleLoaded->{$cpxID}->{$roles[$k]} = $type;
+						} else {
+							if (defined($cpxRoleLoaded->{$cpxID}->{$roles[$k]}) && $cpxRoleLoaded->{$cpxID}->{$roles[$k]} ne "N" && $type eq "N") {
+								$type = $cpxRoleLoaded->{$cpxID}->{$roles[$k]};
+							}
+							$cpxRoleLoaded->{$cpxID}->{$roles[$k]} = $type;
+							$cpxRole->type($type);
+						}
+					}
+				}
+				#Adding complex to reaction table
+				if (!defined($cpxHash->{$sortedRoleList}->{$rxns[$i]})) {
+					my $rxncpxMgr = $db->get_object_manager("rxncpx");
+					$cpxHash->{$sortedRoleList}->{$rxns[$i]} = $rxncpxMgr->create({REACTION=>$rxns[$i],COMPLEX=>$cpxID,master=>$master});
+				} else {
+					#Checking to make sure the "master" status of the complex has not changed
+					$cpxHash->{$sortedRoleList}->{$rxns[$i]}->master($master);
+				}
+				$inDBHash->{$sortedRoleList}->{$rxns[$i]} = 1;
+			}
+		}
+		#Now we go through the database and look for complexes that no longer exist
+		my @complexKeys = keys(%{$cpxHash});
+		my $deletedComplexes;
+		for (my $i=0; $i < @complexKeys; $i++) {
+			if ($inDBHash->{$complexKeys[$i]} == 0) {
+				$deletedComplexes->{$cpxHash->{$complexKeys[$i]}->COMPLEX()} = 1;
+				$cpxHash->{$complexKeys[$i]}->delete();
+			}
+		}
+		#Deleting any complexes that are no longer mapped to any reactions in the database
+		my @deletedComplexArray = keys(%{$deletedComplexes});
+		for (my $i=0; $i < @deletedComplexArray; $i++) {
+			if (!defined($db->get_object("rxncpx",{COMPLEX=>$deletedComplexArray[$i]}))) {
+				$db->get_object("cpx",{id=>$deletedComplexArray[$i]})->delete();
+				my $cpxroles = $db->get_objects("cpxrole",{COMPLEX=>$deletedComplexArray[$i]});
+				for (my $j=0; $j < @{$cpxroles}; $j++) {
+					$cpxroles->[$j]->delete();
+				} 
+			}	
+		}
+	} elsif ($object eq "esssets") {
+		my @genomes = glob($db->config("experimental data directory")->[0]."*");
+		for (my $i=0; $i < @genomes; $i++) {
+			my $genome;
+			if (-e $genomes[$i]."/Essentiality.txt" && $genomes[$i] =~ m/(\d+\.\d+$)/) {
+				$genome = $1;
+				my $data = $db->load_single_column_file($genomes[$i]."/Essentiality.txt");
+				my $media;
+				for (my $j=1; $j < @{$data}; $j++) {
+					my @results = split(/\t/,$data->[$j]);
+					$media->{$results[1]}->{genes}->{$results[0]} = $results[2];
+					$media->{$results[1]}->{reference} = $results[3];
+				}
+				my @mediaList = keys(%{$media});
+				for (my $j=0; $j < @mediaList; $j++) {
+					#Adding the esssets object
+					my $obj = $db->get_object("esssets",{GENOME=>$genome,MEDIA=>$mediaList[$j]});
+					if (!defined($obj)) {
+						$obj = $db->create_object("esssets",{id=>-1,GENOME=>$genome,MEDIA=>$mediaList[$j]});
+						$obj->id($obj->_id());
+					}
+					#Adding the literature references
+					my @references = keys(%{$media->{$mediaList[$j]}->{reference}});
+					for (my $k=0; $k < @references; $k++) {
+						my $refobj = $db->get_object("reference",{objectID=>$obj->_id(),DBENTITY=>"esssets",pubmedID=>$references[$k]});
+						if (!defined($refobj)) {
+							$refobj = $db->create_object("reference",{objectID=>$obj->_id(),DBENTITY=>"esssets",pubmedID=>$references[$k],notation=>"none",date=>time()});
+						}	
+					}
+					my @geneList = keys(%{$media->{$mediaList[$j]}->{genes}});
+					for (my $k=0; $k < @geneList; $k++) {
+						my $subobj = $db->get_object("essgenes",{ESSENTIALITYSET=>$obj->id(),FEATURE=>$geneList[$k]});
+						if (!defined($subobj)) {
+							$subobj = $db->create_object("essgenes",{essentiality=>$media->{$mediaList[$j]}->{genes}->{$geneList[$k]},ESSENTIALITYSET=>$obj->id(),FEATURE=>$geneList[$k]});
+						} else {
+							$subobj->essentiality($media->{$mediaList[$j]}->{genes}->{$geneList[$k]});
+						}
+					}
+				}
+			}
+		}
+	} elsif ($object eq "abbrev") {
+		#Load compound abbreviations
+		my $cpdAbbrevHash;
+		my $cpdObjs = $db->figmodel()->database()->get_objects("compound");
+		for (my $i=0; $i < @{$cpdObjs}; $i++) {
+			my $aliasObjs = $db->figmodel()->database()->get_objects("cpdals",{COMPOUND=>$cpdObjs->[$i]->id()});
+			my $abbrev;
+			my $name;
+			for (my $j=0; $j < @{$aliasObjs}; $j++) {
+				if ($aliasObjs->[$j]->type() ne "obsolete" && $aliasObjs->[$j]->type() ne "KEGG" && $aliasObjs->[$j]->type() ne "name" && $aliasObjs->[$j]->type() ne "searchname") {
+					if (!defined($cpdAbbrevHash->{$aliasObjs->[$j]->alias()})) {
+						$abbrev = $aliasObjs->[$j]->alias();
+					}
+				} elsif ($aliasObjs->[$j]->type() ne "obsolete" && $aliasObjs->[$j]->type() ne "KEGG" && $aliasObjs->[$j]->type() ne "searchname") {
+					if (!defined($name) || length($aliasObjs->[$j]->alias()) < length($name)) {
+						$name = $aliasObjs->[$j]->alias();	
+					}
+				}
+			}
+			if (defined($abbrev)) {
+				$cpdObjs->[$i]->abbrev($abbrev);
+			} else {
+				$cpdObjs->[$i]->abbrev($name);
+			}
+		}
+		#Load reaction abbreviations
+		my $rxnAbbrevHash;
+		my $rxnObjs = $db->figmodel()->database()->get_objects("reaction");
+		for (my $i=0; $i < @{$rxnObjs}; $i++) {
+			my $rxnFileData = $db->figmodel()->LoadObject($rxnObjs->[$i]->id());
+			if (ref($rxnFileData) eq "HASH" && defined($rxnFileData->{NAME})) {
+				for (my $j=0; $j < @{$rxnFileData->{NAME}}; $j++) {
+					my $aliasObj = $db->figmodel()->database()->get_object("rxnals",{type=>"name",alias=>$rxnFileData->{NAME}->[$j],REACTION=>$rxnObjs->[$i]->id()});
+					if (!defined($aliasObj)) {
+						$db->figmodel()->database()->create_object("rxnals",{REACTION=>$rxnObjs->[$i]->id(),type=>"name",alias=>$rxnFileData->{NAME}->[$j]});
+					}
+					my @searchNames = $db->figmodel()->convert_to_search_name($rxnFileData->{NAME}->[$j]);
+					for (my $k=0; $k < @searchNames; $k++) {
+						my $aliasObj = $db->figmodel()->database()->get_object("rxnals",{type=>"searchname",alias=>$searchNames[$k],REACTION=>$rxnObjs->[$i]->id()});
+						if (!defined($aliasObj)) {
+							$db->figmodel()->database()->create_object("rxnals",{REACTION=>$rxnObjs->[$i]->id(),type=>"searchname",alias=>$searchNames[$k]});
+						}
+					}
+				}
+			}
+			my $aliasObjs = $db->figmodel()->database()->get_objects("rxnals",{REACTION=>$rxnObjs->[$i]->id()});
+			my $abbrev;
+			my $name;
+			for (my $j=0; $j < @{$aliasObjs}; $j++) {
+				if ($aliasObjs->[$j]->type() ne "obsolete" && $aliasObjs->[$j]->type() ne "KEGG" && $aliasObjs->[$j]->type() ne "name" && $aliasObjs->[$j]->type() ne "searchname") {
+					if (!defined($rxnAbbrevHash->{$aliasObjs->[$j]->alias()})) {
+						$abbrev = $aliasObjs->[$j]->alias();
+					}
+				} elsif ($aliasObjs->[$j]->type() ne "obsolete" && $aliasObjs->[$j]->type() ne "KEGG" && $aliasObjs->[$j]->type() ne "searchname") {
+					if (!defined($name) || length($aliasObjs->[$j]->alias()) < length($name)) {
+						$name = $aliasObjs->[$j]->alias();	
+					}
+				}
+			}
+			if (defined($abbrev)) {
+				$rxnObjs->[$i]->abbrev($abbrev);
+			} else {
+				$rxnObjs->[$i]->abbrev($name);
+			}
+			if ($rxnObjs->[$i]->abbrev() eq "all") {
+				$rxnObjs->[$i]->abbrev($rxnObjs->[$i]->id());	
+			}
+		}
+	} elsif ($object eq "bof") {
+		my $aliasHash;
+		my $tbl = $db->figmodel()->database()->get_table("BIOMASS");
+		my $botTempTbl = $db->figmodel()->database()->GetDBTable("BIOMASS TEMPLATE");
+		my $groupHash;
+		my $grpIndex = {L=>"pkg00001",W=>"pkg00001",C=>"pkg00001"};
+		my $mdlMgr = $db->figmodel()->database()->get_object_manager("model");
+		for (my $i=0; $i < $tbl->size(); $i++) {
+			my $row = $tbl->get_row($i);
+			my $cpdMgr = $db->figmodel()->database()->get_object_manager("bof");
+			my $data = {id=>$row->{DATABASE}->[0],name=>"Biomass",equation=>$row->{EQUATION}->[0],protein=>"0.5284",DNA=>"0.026",RNA=>"0.0655",lipid=>"0.075",cellWall=>"0.25",cofactor=>"0.10",modificationDate=>time(),creationDate=>time()};
+			$data->{owner} = "master";
+			$data->{users}  = "all";
+			my $mdlObjs = $mdlMgr->get_objects({biomassReaction=>$row->{DATABASE}->[0]});
+			if (defined($mdlObjs->[0]) && !defined($mdlObjs->[1])) {
+				$data->{owner} = $mdlObjs->[0]->owner();
+				$data->{users}  = $mdlObjs->[0]->users();
+			}
+			my ($lccdata,$coef,$package);
+			my ($reactants,$products) = $db->figmodel()->GetReactionSubstrateDataFromEquation($row->{EQUATION}->[0]);
+			#Populating the compound biomass table
+			my $hash;
+			for (my $j=0; $j < @{$reactants}; $j++) {
+				my $category = "U";#Unknown
+				my $tempRow = $botTempTbl->get_row_by_key($reactants->[$j]->{DATABASE}->[0],"ID");
+				if (defined($tempRow) && $tempRow->{CLASS}->[0] eq "LIPIDS") {
+					$category = "L";#Lipid
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "CELL WALL") {
+					$category = "W";#Cell wall
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "COFACTOR") {
+					$category = "C";#Cofactor
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "ENERGY") {
+					$category = "E";#Energy
+				} elsif (defined($tempRow)) {
+					$category = "M";#Macromolecule
+				}
+				$lccdata->{$category}->{$reactants->[$j]->{DATABASE}->[0]} = "-".$reactants->[$j]->{COEFFICIENT}->[0];
+				if (!defined($hash->{$reactants->[$j]->{DATABASE}->[0]}->{$row->{DATABASE}->[0]}->{$reactants->[$j]->{COMPARTMENT}->[0]})) {
+					$hash->{$reactants->[$j]->{DATABASE}->[0]}->{$row->{DATABASE}->[0]}->{$reactants->[$j]->{COMPARTMENT}->[0]} = 1;
+					my $cpdbofMgr = $db->figmodel()->database()->get_object_manager("cpdbof");
+					$cpdbofMgr->create({COMPOUND=>$reactants->[$j]->{DATABASE}->[0],BIOMASS=>$row->{DATABASE}->[0],coefficient=>(-1*$reactants->[$j]->{COEFFICIENT}->[0]),compartment=>$reactants->[$j]->{COMPARTMENT}->[0],category=>$category});	
+				}
+			}
+			for (my $j=0; $j < @{$products}; $j++) {
+				my $category = "U";#Unknown
+				my $tempRow = $botTempTbl->get_row_by_key($products->[$j]->{DATABASE}->[0],"ID");
+				if (defined($tempRow) && $tempRow->{CLASS}->[0] eq "LIPIDS") {
+					$category = "L";#Lipid
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "CELL WALL") {
+					$category = "W";#Cell wall
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "COFACTOR") {
+					$category = "C";#Cofactor
+				} elsif (defined($tempRow) && $tempRow->{CLASS}->[0] eq "ENERGY") {
+					$category = "E";#Energy
+				} elsif (defined($tempRow)) {
+					$category = "M";#Macromolecule
+				}
+				$lccdata->{$category}->{$products->[$j]->{DATABASE}->[0]} = "-".$products->[$j]->{COEFFICIENT}->[0];
+				if (!defined($hash->{$products->[$j]->{DATABASE}->[0]}->{$row->{DATABASE}->[0]}->{$products->[$j]->{COMPARTMENT}->[0]})) {
+					$hash->{$products->[$j]->{DATABASE}->[0]}->{$row->{DATABASE}->[0]}->{$products->[$j]->{COMPARTMENT}->[0]} = 1;
+					my $cpdbofMgr = $db->figmodel()->database()->get_object_manager("cpdbof");
+					$cpdbofMgr->create({COMPOUND=>$products->[$j]->{DATABASE}->[0],BIOMASS=>$row->{DATABASE}->[0],coefficient=>$products->[$j]->{COEFFICIENT}->[0],compartment=>$products->[$j]->{COMPARTMENT}->[0],category=>$category});	
+				}
+			}
+			my $types = ["L","C","W"];
+			my $typeNames = {L=>"Lipid",C=>"Cofactor",W=>"CellWall"};
+			for (my $j=0; $j < @{$types}; $j++) {
+				if (!defined($lccdata->{$types->[$j]})) {
+					$coef->{$types->[$j]} = "NONE";
+					$package->{$types->[$j]} = "NONE";
+				} else {
+					my @list = sort(keys(%{$lccdata->{$types->[$j]}}));
+					for (my $k=0; $k < @list; $k++) {
+						$coef->{$types->[$j]} .= $lccdata->{$types->[$j]}->{$list[$k]}.";";
+					}
+					my $key = join(";",@list);
+					if (!defined($groupHash->{$types->[$j]}->{$key})) {
+						$groupHash->{$types->[$j]}->{$key} = $grpIndex->{$types->[$j]};
+						for (my $k=0; $k < @list; $k++) {
+							print "Creating compound group:";
+							my $cpdGrpMgr = $db->figmodel()->database()->get_object_manager("cpdgrp");
+							$cpdGrpMgr->create({COMPOUND=>$list[$k],grouping=>$grpIndex->{$types->[$j]},type=>$typeNames->{$types->[$j]}."Package"});
+							print "DONE\n";
+						}
+						$grpIndex->{$types->[$j]}++;
+					}
+					$package->{$types->[$j]} = $groupHash->{$types->[$j]}->{$key};
+				}
+			}
+			$data->{cofactorPackage} = $package->{"C"};
+			$data->{lipidPackage} = $package->{"L"};
+			$data->{cellWallPackage} = $package->{"W"};
+			$data->{DNACoef} = "-0.284|1|-0.216|-0.216|-0.284";
+			$data->{RNACoef} = "1|-0.262|-0.323|-0.199|-0.215";
+			$data->{proteinCoef} = "1|-0.0637|-0.0999|-0.0653|-0.0790|-0.0362|-0.0472|-0.0637|-0.0529|-0.0277|-0.0133|-0.0430|-0.0271|-0.0139|-0.0848|-0.0200|-0.0393|-0.0362|-0.0751|-0.0456|-0.0660";
+			$data->{lipidCoef} = $coef->{"L"};
+			$data->{cellWallCoef} = $coef->{"W"};
+			$data->{cofactorCoef} = $coef->{"C"};
+			$data->{energy} = 40;
+			if (defined($row->{"ESSENTIAL REACTIONS"})) {
+				$data->{essentialRxn} = join("|",@{$row->{"ESSENTIAL REACTIONS"}});
+			}
+			print "Creating biomass reaction.";
+			$cpdMgr->create($data);
+			print "Done.\n";
+		}
+	} else {
+        print "Unknown object type $object!\n";
+        return "ARGUMENT SYNTAX FAIL";    
+    }
 }
 
 sub loadbofrxn {
@@ -3399,7 +4096,34 @@ sub loadcpdppofromfile {
 
 sub parsemetagenomefile {
 	my($self,@Data) = @_;
-    $self->figmodel()->database()->parseMetagenomeDataTable({filename => $Data[1]});
+    my $args = {filename => $Data[1]};
+	$args = $self->figmodel()->process_arguments($args,["filename"],{});
+	return if (defined($args->{error}));
+	my $data = $self->figmodel()->database()->load_single_column_file(
+        $args->{filename},"");
+	my $metagenomeData;
+	for (my $i=1; $i < @{$data}; $i++) {
+		my @array = split(/\t/,$data->[$i]);
+		push(@{$metagenomeData->{$array[0]}},[@array]);
+	}
+	foreach my $genome (keys(%{$metagenomeData})) {
+		my $currentPeg = 1;
+		my $output = [join("\t",qw(ID GENOME ROLES SOURCE ABUNDANCE
+            AVG EVALUE AVG IDENTITY AVG ALIGNMENT PROTEIN COUNT))];
+		for (my $i=0; $i < @{$metagenomeData->{$genome}}; $i++) {
+			my $line = "mgrast|$genome.peg.$currentPeg\t$genome\t".
+                $metagenomeData->{$genome}->[$i]->[4]."\tMGRAST\t";
+			$line .= $metagenomeData->{$genome}->[$i]->[5].
+                "\t".$metagenomeData->{$genome}->[$i]->[6]."\t";
+			$line .= $metagenomeData->{$genome}->[$i]->[7].
+                "\t".$metagenomeData->{$genome}->[$i]->[8]."\t";
+			$line .= $metagenomeData->{$genome}->[$i]->[9];
+			push(@{$output},$line);
+			$currentPeg++;
+		}
+		$self->figmodel()->database()->print_array_to_file(
+        $self->config("Metagenome directory")->[0]."$genome.tbl",$output);
+	}
 }
 
 sub loadintervals {
@@ -4162,66 +4886,15 @@ sub simulatekomedialist {
 
 sub printmfatoolkitdata {
 	my($self,@Data) = @_;
-	my $args = $self->check([],[@Data]);
-	$self->figmodel()->database()->printMFAToolkitDatabaseTables();
-}
-
-sub testmodelgrowth {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1],
-		["media",0,"Complete"],
-		["parameters",0,undef],
-		["probdirectory",0,undef],
-		["savelp",0,0]
-	],[@Data]);
-	my $results = $self->figmodel()->processIDList({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => $args->{"model"}
-	});
-	my $growthModels = [];
-	my $noGrowthModels = [];
-    for (my $i=0; $i < @{$results}; $i++) {
-    	print "Testing ".$results->[$i].": ";
-        my $Parameters = {};
-		if (defined($args->{parameters})) {
-			my @DataArray = split(/\|/,$args->{parameters});
-			foreach my $Item (@DataArray) {
-				if ($Item =~ m/RKO:(.+)/) {
-					$Parameters->{"Reactions to knockout"} = $1;
-				} elsif ($Item =~ m/GKO:(.+)/) {
-					$Parameters->{"Genes to knockout"} = $1;
-				} elsif ($Item =~ m/OBJ:(.+)/) {
-					$Parameters->{"objective"} = $1;
-				} elsif ($Item =~ m/MetOptRxn:(.+)/) {
-					$Parameters->{"metabolites to optimize"} = "REACTANTS;".$1;
-				}
-			}
-		}
- 		my $model = $self->figmodel()->get_model($results->[$i]);
- 		my $fbaresult = $model->fbaCalculateGrowth({
-	        fbaStartParameters => {
-	        	media => $args->{media},
-	        	parameters => $Parameters	        	
-	        },
-	        problemDirectory => $args->{"problem directory"},
-	        outputDirectory => $self->outputdirectory(),
-	        saveLPfile => $args->{"save lp file"}
-	    });
- 		print "Growth:".$fbaresult->{growth};
- 		if (defined($fbaresult->{noGrowthCompounds}) && $fbaresult->{noGrowthCompounds} ne "NONE") {
- 			print " No growth compound:".$fbaresult->{noGrowthCompounds};
- 			push(@{$noGrowthModels},$results->[$i]);
- 		} else {
- 			push(@{$growthModels},$results->[$i]);
- 		}
- 		print "\n";
-    }
-    print "\nGrowth models:".join(",",@{$growthModels})."\n\nNo growth models:".join(",",@{$noGrowthModels})."\n";
-    return "SUCCESS";
+	my $functionHash = {
+		"get_reaction" => undef,
+		"get_compound" => undef,
+		"get_media" => {printList=>["ALL"]},
+	};
+	foreach my $function (keys(%{$functionHash})) {
+		$self->figmodel()->$function()->printDatabaseTable(
+            $functionHash->{$function});
+	}
 }
 
 sub completegapfillmodel {
@@ -4346,12 +5019,10 @@ sub configuredatabase {
     return "SUCCESS";
 }
 
-#Adds a new user to the ModelSEED user table
 sub printgapfilledreactions {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["models",1],
-		["filename",1]
+		["models",1]
 	],[@Data]);
 	my $results = $self->figmodel()->processIDList({
 		objectType => "model",
@@ -4361,26 +5032,235 @@ sub printgapfilledreactions {
 		input => $args->{"models"}
 	});
 	print "Number of models: ".@{$results}."\n";
-	my $gapRxnHash;
+	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap);
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
-			my $genome = $1;
+			#Parsing out biomass compounds
+			my $mdlObj = $self->figmodel()->database()->get_object("model",{id => $results->[$i]});
+			if (!defined($mdlObj) || $mdlObj->biomassReaction() != m/bio\d+/) {
+				next;
+			}
+			my $bioObj = $self->figmodel()->database()->get_object("bof",{id => $mdlObj->biomassReaction()});
+			if (!defined($bioObj)) {
+				next;
+			}
+			$_ = $bioObj->equation();
+			my @array = /(cpd\d+)/g;
+			for (my $k=0; $k < @array; $k++) {
+				$mdlCpdTbl->{$results->[$i]}->{$array[$k]} = 0;
+				if (!defined($modelCpd->{$array[$k]})) {
+					$modelCpd->{$array[$k]} = 0;
+				}
+				$modelCpd->{$array[$k]}++;
+			}
+			#Calculating model gapfilling stats
+			my $tempGapRxnHash;
+			my $tempRxnGapHash;
+			$modelStats->{$results->[$i]}->{reactions} = 0;
+			$modelStats->{$results->[$i]}->{gaps} = 0;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
 			for (my $j=0; $j < @{$rxns}; $j++) {
-				if (lc($rxns->[$j]->pegs()) eq "unknown" || lc($rxns->[$j]->pegs()) eq "none" || lc($rxns->[$j]->pegs()) =~ m/auto/ || lc($rxns->[$j]->pegs()) =~ m/gap/) {
-					push(@{$gapRxnHash->{$genome}},$rxns->[$j]->REACTION());
+				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
+					next;
+				}
+				$modelStats->{$results->[$i]}->{reactions}++;
+				if (!defined($modelRxn->{$rxns->[$j]->REACTION()})) {
+					$modelRxn->{$rxns->[$j]->REACTION()} = 0;
+				}
+				$modelRxn->{$rxns->[$j]->REACTION()}++;
+				if (lc($rxns->[$j]->pegs()) eq "autocompletion" || lc($rxns->[$j]->pegs()) eq "universal") {
+					$gfMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					$ngfMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					if (!defined($modelGaps->{$rxns->[$j]->REACTION()})) {
+						$modelGaps->{$rxns->[$j]->REACTION()} = 0;
+					}
+					$modelGaps->{$rxns->[$j]->REACTION()}++;
+					if (defined($rxns->[$j]->notes())) {
+						$_ = $rxns->[$j]->notes();
+						@array = /(cpd\d+)/g;
+						for (my $k=0; $k < @array; $k++) {
+							$mdlCpdTbl->{$results->[$i]}->{$array[$k]}++;
+							if (!defined($gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							}
+							$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+						}
+						$_ = $rxns->[$j]->notes();
+						@array = /(rxn\d+)/g;
+						for (my $k=0; $k < @array; $k++) {
+							if (!defined($actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+							}
+							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
+							if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+							}
+							$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
+							if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+							}
+							$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+						}	
+						if ($rxns->[$j]->notes() =~ m/DELETED/) {
+							if (!defined($actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED})) {
+								$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED} = 0;
+							}
+							$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED}++;
+						}
+					}
+				} else {
+					$actMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+					$nactMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
+				}
+			}
+			foreach my $rxn (keys(%{$tempGapRxnHash})) {
+				my $count = keys(%{$tempGapRxnHash->{$rxn}});
+				foreach my $actrxn (keys(%{$tempGapRxnHash->{$rxn}})) {
+					if (defined($actMdlTbl->{$actrxn}->{$results->[$i]})) {
+						$actMdlTbl->{$actrxn}->{$results->[$i]}++;
+						$nactMdlTbl->{$actrxn}->{$results->[$i]} += 1/$count;
+						my $countTwo = keys(%{$tempRxnGapHash->{$actrxn}});
+						$gfMdlTbl->{$rxn}->{$results->[$i]}++;
+						$ngfMdlTbl->{$rxn}->{$results->[$i]} += 1/$countTwo;
+					}
 				}
 			}
 		}
 	}
-	my $output = ["Genome\tGapfilled reactions"];
-	foreach my $genome (keys(%{$gapRxnHash})) {
-		push(@{$output},$genome."\t".join(",",@{$gapRxnHash->{$genome}}));
+	#Populating and printing model stats
+	my $modelList = [keys(%{$modelStats})];
+	my $fileData = {
+		"ModelStats.tbl" => ["Model\tTotal reactions\tGapfilled reactions"]
+	};
+	for (my $i=0; $i < @{$modelList}; $i++) {
+		push(@{$fileData->{"ModelStats.tbl"}},$modelList->[$i]."\t".$modelStats->{$modelList->[$i]}->{reactions}."\t".$modelStats->{$modelList->[$i]}->{gaps});
 	}
-	print "Printing results in ".$self->outputdirectory().$args->{"filename"}."\n";
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
-    return "SUCCESS";
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing gapfilled reaction and active reaction relations
+	my $gapRxnList = [keys(%{$modelGaps})];
+	$fileData = {
+		"NumModelPerActRxnPerGap.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$gapRxnList})]
+	};
+	foreach my $rxn (keys(%{$modelRxn})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
+		if (defined($modelGaps->{$rxn})) {
+			$line .= $modelGaps->{$rxn};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$gapRxnList}; $i++) {
+			if (defined($actRxnTbl->{$rxn}->{$gapRxnList->[$i]})) {
+				$line .= "\t".$actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+			} else {
+				$line .= "\t0";
+			}
+		}
+		push(@{$fileData->{"NumModelPerActRxnPerGap.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of model reactions and models
+	$fileData = {
+		"NumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})],
+		"NormNumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
+	};
+	foreach my $rxn (keys(%{$modelRxn})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
+		if (defined($modelGaps->{$rxn})) {
+			$line .= $modelGaps->{$rxn};
+		} else {
+			$line .= "0";
+		}
+		my $lineTwo = $line;
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($actMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$line .= "\t".$actMdlTbl->{$rxn}->{$modelList->[$i]};
+				$lineTwo .= "\t".$nactMdlTbl->{$rxn}->{$modelList->[$i]};
+			} else {
+				$line .= "\tN";
+				$lineTwo .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
+		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of gapfilled reactions and models
+	$fileData = {
+		"NumActRxnPerGapPerModel.tbl" => ["Gapfilled reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})],
+		"NormNumActRxnPerGapPerModel.tbl" => ["Gapfilled reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
+	};
+	foreach my $rxn (keys(%{$modelGaps})) {
+		my $line = $rxn."\t".$modelRxn->{$rxn}."\t".$modelGaps->{$rxn};
+		my $lineTwo = $line;
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($gfMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$line .= "\t".$gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				$lineTwo .= "\t".$ngfMdlTbl->{$rxn}->{$modelList->[$i]};
+			} else {
+				$line .= "\tN";
+				$lineTwo .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumActRxnPerGapPerModel.tbl"}},$line);
+		push(@{$fileData->{"NormNumActRxnPerGapPerModel.tbl"}},$lineTwo);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of biomass compounds and models
+	$fileData = {
+		"NumGapPerBioCpdPerModel.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$modelList})]
+	};
+	foreach my $cpd (keys(%{$modelCpd})) {
+		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
+		if (defined($modelCpdGap->{$cpd})) {
+			$line .= $modelCpdGap->{$cpd};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$modelList}; $i++) {
+			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
+				$line .= "\t".$mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+			} else {
+				$line .= "\tN";
+			}
+		}
+		push(@{$fileData->{"NumGapPerBioCpdPerModel.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	#Populating and printing relation of gapfilled reactions and biomass compounds
+	$fileData = {
+		"NumModelPerBioCpdPerGap.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$gapRxnList})]
+	};
+	foreach my $cpd (keys(%{$modelCpd})) {
+		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
+		if (defined($modelCpdGap->{$cpd})) {
+			$line .= $modelCpdGap->{$cpd};
+		} else {
+			$line .= "0";
+		}
+		for (my $i=0; $i < @{$gapRxnList}; $i++) {
+			if (defined($gfCpdTbl->{$gapRxnList->[$i]}->{$cpd})) {
+				$line .= "\t".$gfCpdTbl->{$gapRxnList->[$i]}->{$cpd};
+			} else {
+				$line .= "\t0";
+			}
+		}
+		push(@{$fileData->{"NumModelPerBioCpdPerGap.tbl"}},$line);
+	}
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+	}
+	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
 #Creates a new local user account in the ModelSEED user table
@@ -4714,20 +5594,80 @@ sub createmedia {
 	print "Media successfully created!\n";
 }
 
+sub fbacheckgrowth {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["media",0,"Complete"],
+		["rxnKO",0,undef],
+		["geneKO",0,undef],
+		["drainRxn",0,undef],
+		["options",0,undef],
+		["fbajobdir",0,undef],
+		["savelp",0,0]
+	],[@Data]);
+	my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {},
+		input => $args->{"model"}
+	});
+	if (@{$models} > 1) {
+		for (my $i=0; $i < @{$models}; $i++) {
+			$args->{model} = $models->[$i];
+			my $command = "completegapfillmodel";
+			foreach my $key (keys(%{$args})) {
+				$command .= " -".$key." ".$args->{$key};
+			}
+			$self->figmodel()->add_job_to_queue({
+	    		command => $command,
+	    		user => $self->figmodel()->user(),
+	    		queue => "chenry"
+	    	});
+		}	
+	}
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+    }
+	my $results = $mdl->fbaCalculateGrowth({
+        fbaStartParameters => $fbaStartParameters,
+        problemDirectory => $fbaStartParameters->{filename},
+        outputDirectory => $self->outputdirectory(),
+        saveLPfile => $args->{"save lp file"}
+    });
+	if (!defined($results->{growth})) {
+		ModelSEED::FIGMODEL->FIGMODELERROR("FBA growth test of ".$args->{model}." failed!");
+	}
+	my $message = "";
+	if ($results->{growth} > 0.000001) {
+		$message .= $args->{model}." grew in ".$fbaStartParameters->{media}." media with rate:".$results->{growth}." gm biomass/gm CDW hr.\n"
+	} else {
+		$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n";
+		if (defined($results->{noGrowthCompounds}) && $results->{noGrowthCompounds} ne "NONE") {
+			$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n"
+		}
+	}
+	return $message;
+}
+
 sub fbafva {
     my($self,@Data) = @_;
     my $args = $self->check([
 		["model",1],
 		["media",0,"Complete"],
-		["variables",0,"FLUX;UPTAKE"],
-		["options",0,"forceGrowth"],
+		["rxnKO",0,undef],
+		["geneKO",0,undef],
+		["drainRxn",0,undef],
+		["options",0,"forcedGrowth"],
+		["variables",0,"FLUX;UPTAKE"],	
 		["savetodb",0,0],
 		["filename",0,"FBAFVA_model ID.xls"],
 		["saveformat",0,"EXCEL"],
-		["drainReactions",0,undef],
-		["reactionKO",0,undef],
-		["geneKO",0,undef]
 	],[@Data]);
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
     	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
@@ -4735,31 +5675,10 @@ sub fbafva {
     if ($args->{filename} eq "FBAFVA_model ID.xls") {
     	$args->{filename} = undef; 
     }
-    my $options = [split(/[;,]/,$args->{options})];
-   	my $optionHash;
-   	for (my $i=0; $i < @{$options}; $i++) {
-   		$optionHash->{$options->[$i]} = 1;
-   	}
-   	if (!defined($optionHash->{forceGrowth}) && !defined($optionHash->{noGrowth}) && !defined($optionHash->{freeGrowth})) {
-   		$optionHash->{forceGrowth} = 1;
-   	}
-    my $fbaStartParameters = {
-   		parameters=>{},
-		filename=>undef,
-		media=>$args->{media},
-		options => $optionHash,
-		geneKO => undef,
-		rxnKO => undef,
-		drnRxn => undef
-   	};
-   	if (defined($args->{geneKO})) {
-   		$fbaStartParameters->{geneKO} = [split(/[;,]/,$args->{geneKO})];
-   	}
-   	if (defined($args->{reactionKO})) {
-   		$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{reactionKO})];
-   	}
-   	if (defined($args->{drainReactions})) {
-   		$fbaStartParameters->{drnRxn} = [split(/[;,]/,$args->{drainReactions})];
+   	if (!defined($fbaStartParameters->{options}->{forceGrowth})
+   		&& !defined($fbaStartParameters->{options}->{forceGrowth}) 
+   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
+   		$fbaStartParameters->{options}->{forceGrowth} = 1;
    	}
     my $results = $mdl->fbaFVA({
 	   	variables => [split(/\;/,$args->{variables})],
@@ -4842,15 +5761,6 @@ sub gapfillmodel {
 		globalmessage => $args->{printdbmessage}
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
-}
-
-sub printessentialitydata {
-	my($self,@Data) = @_;
-    my $args = $self->check([
-		["filename",1],
-		["genome",0,undef],
-		["media",0,undef],
-	],[@Data]);
 }
 
 1;

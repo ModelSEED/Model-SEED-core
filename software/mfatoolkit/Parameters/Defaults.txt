@@ -104,14 +104,14 @@ Load foreign reaction database|0|"If you would like to attempt to add foreign re
 Filename for foreign reaction database|PalssonBsub.txt|This is the name of the extended database file for the foreign reaction database|MFA parameters
 Load tight bounds|0|"This binary parameter indicates whether the bounds on the reaction flux (and concentrations, deltaGs, and errors) are read from a file containing the tight bounds."|MFA parameters
 uptake limits|none|This variable indicates the limits on the uptake of various atom types in the model
-exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:0;cpd08636[c]:-100:0||MFA parameters
+exchange species|Biomass[c]:-1000:0;cpd15302[c]:-1000:0;cpd08636[c]:-1000:0||MFA parameters
 media list file|BiologMediaList.txt|0|MFA parameters
 user bounds filename|ArgonneLBMedia.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
 Additional user bounds|none|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
 Default max drain flux|0|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
-Default min drain flux|-100|This is the negative of the default maximum rate at which any extracellular compound may be consumed.|MFA parameters
-Max flux|100|This indicates the maximum possible flux any reaction can have.|MFA parameters
-Min flux|-100|This indicates the minimum possible flux any reaction can have.|MFA parameters
+Default min drain flux|-1000|This is the negative of the default maximum rate at which any extracellular compound may be consumed.|MFA parameters
+Max flux|1000|This indicates the maximum possible flux any reaction can have.|MFA parameters
+Min flux|-1000|This indicates the minimum possible flux any reaction can have.|MFA parameters
 Reactions use variables|0|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
 Force use variables for all reactions|0|This binary parameter indicates whether or not use variables should be added for every reaction and not just the reactions that can be inactive (flux bounds include 0).|MFA parameters
 Reactions that should always be active|none|A list of reactions for which no use variable should be introduced because are expected to always be active.|MFA parameters

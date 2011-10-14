@@ -57,6 +57,11 @@ sub figmodel {
 	return $self->{_figmodel};
 }
 
+sub db {
+    my ($self) = @_;
+    return $self->{_figmodel}->database();
+}
+
 =head3 id
 Definition:
 	string:compound ID = FIGMODELcompound->id();
@@ -303,5 +308,110 @@ sub printDatabaseTable {
 	my $tbl = $self->figmodel()->database()->ppo_rows_to_table($config,$self->figmodel()->database()->get_objects('compound'));
 	$tbl->save();
 }
+
+=head3 replacesCompound
+Definition:
+    (success/failure) = Figmodelcompound->replacesCompound(other_compound);
+    Where other_compound is either the string:compoundID or the
+    FIGMODELcompound object. Replaces that compound with the current
+    compound in the current database.
+=cut
+sub replacesCompound {
+    my ($self, $compound) = @_; 
+    unless(ref($compound) =~ "FIGMODELcompound") {
+        $compound = $self->figmodel()->get_compound($compound);
+    }
+    my $oldId = $compound->id();
+    my $newId = $self->id();
+    # Do aliases
+    my $oldAliases = $self->db()->get_objects("cpdals", { 'COMPOUND' => $oldId });
+    my $newAliases = $self->db()->get_objects("cpdals", { 'COMPOUND' => $newId });
+    my %newAliasHash = map { $_->type() => $_->alias() } @$newAliases;
+    # If new compound already has the alias, delete the old, otherwise set the old to the new id
+    foreach my $als (@$oldAliases) {
+        if(defined($newAliasHash{$als->type()}) &&
+            $newAliasHash{$als->type()} eq $als->alias()) {
+            $als->delete();
+        } else {
+            $als->COMPOUND($newId);
+        }
+    }
+    # Compound Reaction, Reaction
+    # First get all reactions of new compound, hash by reaction code
+    my $newCpdRxns = $self->db()->get_objects("cpdrxn", { 'COMPOUND' => $newId });
+    my $newRxns = [];
+    foreach my $cpdRxn (@$newCpdRxns) {
+        next unless(defined($cpdRxn));
+        push(@$newRxns, @{$self->db()->get_objects("reaction", { 'id' => $cpdRxn->REACTION() })});
+    }
+    my %newRxnCodeHash = map { $_->code() => $_ } @$newRxns;
+    # Now foreach reaction containing the old compound: 
+    my $oldCpdRxns = $self->db()->get_objects("cpdrxn", { 'COMPOUND' => $oldId });
+    my $oldRxns = [];
+    foreach my $cpdRxn (@$oldCpdRxns) {
+        next unless(defined($cpdRxn));
+        push(@$oldRxns, @{$self->db()->get_objects("reaction", { 'id' => $cpdRxn->REACTION() })});
+    }
+    my $oldToNewCpd = { $oldId => $newId };
+    foreach my $rxn (@$oldRxns) {
+        my ($direction, $code, $revCode, $eq, $compartment, $error) =
+            $self->db()->figmodel()->ConvertEquationToCode($rxn->equation(), $oldToNewCpd);
+        if ($error) {
+            next; #FIXME
+        }
+        my $existingRxn; # Either the reaction exists (compare on code replacing the obsolete id)
+        if (defined($newRxnCodeHash{$code}) || defined($newRxnCodeHash{$revCode})){
+            $existingRxn = defined($newRxnCodeHash{$code}) ? $newRxnCodeHash{$code} : $newRxnCodeHash{$revCode};
+            my $status = $self->db()->makeReactionObsolete($rxn->id(), $existingRxn->id());
+            if ($status == -1) {
+                next; #FIXME
+            }
+        } else { # or it must be linked to the new compound id
+            my $rxnCpd = $self->db()->get_object('cpdrxn', { 'REACTION' => $rxn->id(), 'COMPOUND' => $oldId });
+            $rxnCpd->COMPOUND($newId);
+            $rxn->equation($code);
+            $rxn->code($code);
+        }
+    }
+    # Compound Biomass
+    my $newCpdBofs = $self->db()->get_objects("cpdbof", { 'COMPOUND' => $newId });
+    my %newCpdBofsHash = map { $_->BIOMASS() => $_} @$newCpdBofs;
+    my $oldCpdBofs = $self->db()->get_objects("cpdbof", { 'COMPOUND' => $oldId });
+    foreach my $cpdbof (@$oldCpdBofs) {
+        # Both compounds in the same biomass formulation (probably rare)
+        if (defined($newCpdBofsHash{$cpdbof->BIOMASS}) && 
+            $newCpdBofsHash{$cpdbof->BIOMASS}->compartment() eq $cpdbof->compartment()) {
+            # Alter the coefficient values of the new cpdbof entry
+            my $newCoff = $newCpdBofsHash{$cpdbof->BIOMASS}->coefficient();
+            $newCoff += $cpdbof->coefficient(); 
+            $newCpdBofsHash{$cpdbof->BIOMASS}->coefficient($newCoff);
+            $cpdbof->delete();
+        } else {
+            $cpdbof->COMPOUND($newId);
+        }
+    }
+    # Compound Grouping
+    my $newCpdGrps = $self->db()->get_objects("cpdgrp", { 'COMPOUND' => $newId });
+    my %newCpdGrpsHash = map { $_->grouping() => $_->type() } @$newCpdGrps;
+    my $oldCpdGrps = $self->db()->get_objects("cpdgrp", { 'COMPOUND' => $oldId});
+    foreach my $cpdGrp (@$oldCpdGrps) {
+        if (defined($newCpdGrpsHash{$cpdGrp->grouping()}) &&
+            $newCpdGrpsHash{$cpdGrp->grouping()} eq $cpdGrp->type()) {
+            $cpdGrp->delete();
+        } else {
+            $cpdGrp->COMPOUND($newId);
+        }
+    }
+    # Now delete the compound
+    my $oldcpds = $self->db()->get_objects("compound", { "id" => $oldId});
+    $oldcpds->[0]->delete() if(@$oldcpds > 0);    
+    # Now construct the obsolete alias
+    my $cpdalsObs = $self->db()->get_object('cpdals',{ 'COMPOUND' => $newId, 'type' => 'obsolete', 'alias' => $oldId});
+    unless(defined($cpdalsObs)) {
+        $self->db()->create_object('cpdals', { 'COMPOUND' => $newId, 'type' => 'obsolete', 'alias' => $oldId});
+    }
+    return 1;
+}
+
 
 1;

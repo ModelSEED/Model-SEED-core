@@ -20,4 +20,5 @@ logs/*
 *.ilk
 *.pdb
 software/mfatoolkit/bin/*
+software/cygwin/*
 !.gitignore

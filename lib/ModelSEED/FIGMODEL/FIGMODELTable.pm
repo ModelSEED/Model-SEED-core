@@ -719,7 +719,6 @@ Example:
 
 sub save {
 	my ($self,$filename,$delimiter,$itemdelimiter,$prefix) = @_;
-
 	if (defined($self->{_freezeFileSyncing}) && $self->{_freezeFileSyncing} == 1) {
 		return;
 	}
@@ -897,6 +896,7 @@ sub load_table {
 	}
 	chomp($Line);
 	@Headings = split(/$Delimiter/,$Line);
+	my $headingCount = @Headings;
 	my $HeadingRef;
 	push(@{$HeadingRef},@Headings);
 	my $Table = new ModelSEED::FIGMODEL::FIGMODELTable($HeadingRef,$Filename,$HashColumns,$Delimiter,$ItemDelimiter,$Prefix);

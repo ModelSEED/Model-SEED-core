@@ -1323,4 +1323,81 @@ sub add_biomass_reaction_from_file {
 	$self->add_biomass_reaction_from_equation($object->{equation}->[0],$biomassid);
 }
 
+
+=head3 replacesReaction 
+definition
+    (success/fail) = figmodelreaction->replacesReaction(other_reaction)
+    where other_reaction is either a FIGMODELreaction object or
+    a string "rxn00001". The passed in reaction is replaced with
+    the current reaction in the active database.
+=cut
+sub replacesReaction {
+    my ($self, $reaction) = @_;
+    unless(ref($reaction) =~ "FIGMODELreaction") {
+        $reaction = $self->figmodel->get_reaction($reaction);
+    }
+    my $newId = $self->id();
+    my $oldId = $reaction->id();
+    # Reaction Alias
+    my $newAliases = $self->db()->get_objects("rxnals", { 'REACTION' => $newId });
+    my %newAliasHash = map { $_->type() => $_->alias() } @$newAliases;
+    my $oldAliases = $self->db()->get_objects("rxnals", { 'REACTION' => $oldId });
+    foreach my $als (@$oldAliases) {
+        if(defined($newAliasHash{$als->type()}) &&
+            $newAliasHash{$als->type()} eq $als->alias()) {
+            $als->delete();
+        } else {
+            $als->REACTION($newId);
+        }
+    }
+    # Reaction Compound
+    my $oldRxnCpds = $self->db()->get_objects("cpdrxn", { 'REACTION' => $oldId});
+    foreach my $rxnCpd (@$oldRxnCpds) {
+        $rxnCpd->delete();
+    }
+    # Reaction Grouping
+    my $newRxnGrps = $self->db()->get_objects("rxngrp", { "REACTION" => $newId});
+    my %newRxnGrpHash = map { $_->grouping() => $_->type() } @$newRxnGrps;
+    my $oldRxnGrps = $self->db()->get_objects("rxngrp", { "REACTION" => $oldId});
+    foreach my $rxnGrp (@$oldRxnGrps) {
+        if (defined($newRxnGrpHash{$rxnGrp->grouping()}) &&
+            $newRxnGrpHash{$rxnGrp->grouping()} eq $rxnGrp->type()) {
+            $rxnGrp->delete();
+        } else {
+            $rxnGrp->REACTION($newId);
+        }
+    }
+    # Reaction Complex
+    my $newRxnCpxs = $self->db()->get_objects("rxncpx", { "REACTION" => $newId});
+    my %newRxnCpxHash = map { $_->COMPLEX() => $_ } @$newRxnCpxs;
+    my $oldRxnCpxs = $self->db()->get_objects("rxncpx", { "REACTION" => $oldId});
+    foreach my $rxnCpx (@$oldRxnCpxs) {
+        if(defined($newRxnCpxHash{$rxnCpx->COMPLEX()})) {
+            $rxnCpx->delete();
+        } else {
+            $rxnCpx->REACTION($newId);
+        }
+    }
+    # Reaction Model
+    my $newRxnMdls = $self->db()->get_objects("rxnmdl", { "REACTION" => $newId});
+    my %newRxnMdlHash = map { $_->MODEL() => $_->compartment() } @$newRxnMdls;
+    my $oldRxnMdls = $self->db()->get_objects("rxnmdl", { "REACTION" => $oldId});
+    foreach my $rxnMdl (@$oldRxnMdls) {
+        if(defined($newRxnMdlHash{$rxnMdl->MODEL()}) &&
+            $newRxnMdlHash{$rxnMdl->MODEL()} eq $rxnMdl->compartment()) {
+            $rxnMdl->delete();
+        } else {
+            $rxnMdl->REACTION($newId);
+        }
+    }
+    # Now delete the old reaction
+    my $oldRxns = $self->db()->get_objects("reaction", { "id" => $oldId});
+    $oldRxns->[0]->delete() if(@$oldRxns > 0);
+    # Now create the obsolete alias 
+    my $rxnalsObs = $self->db()->get_object("rxnals", { "REACTION" => $newId, "type" => "obsolete", "alias" => $oldId});
+    unless(defined($rxnalsObs)) {
+        $self->db()->create_object("rxnals", { "REACTION" => $newId, "type" => "obsolete", "alias" => $oldId});
+    }
+    return 1;
+}
 1;
