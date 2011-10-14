@@ -5112,8 +5112,8 @@ sub printgapfilledreactions {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($gapfilledHash->{$array[$k]})) {
-								print $array[$k]." considered!";
+							#if (!defined($gapfilledHash->{$array[$k]})) {
+							#	print $array[$k]." considered!";
 								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
 									$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 								}
@@ -5122,9 +5122,9 @@ sub printgapfilledreactions {
 									$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 								}
 								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
-							} else {
-								print $array[$k]." skipped!";
-							}
+							#} else {
+							#	print $array[$k]." skipped!";
+							#}
 						}
 						if ($rxns->[$j]->notes() =~ m/DELETED/) {
 							if (!defined($actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED})) {
