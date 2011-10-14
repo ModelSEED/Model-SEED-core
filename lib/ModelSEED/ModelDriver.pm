@@ -4570,16 +4570,35 @@ sub preliminaryreconstruction {
 	my $args = $self->check([
 		["model",1],
 		["gapfilling",0,0],
-		["queuegapfilling",0,0]
+		["usequeue",0,0],
+		["queue",0,0]
 	],[@Data]);
-    $self->figmodel()->get_model($args->{"model"})->preliminary_reconstruction({
-		runGapfilling => $args->{"gapfilling"},
-		queueGapfilling => $args->{"queuegapfilling"}
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+    }
+    $mdl->preliminary_reconstruction({
+		gapfilling => $args->{"gapfilling"},
+		usequeue => $args->{"usequeue"},
+		queue => $args->{"queue"},
 	});
-    return "SUCCESS";
+    return "Generated model reaction list from genome annotations";
 }
 
-sub createmodel {
+sub makedbmodel {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+	],[@Data]);
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+    }
+    $mdl->generate_fulldb_model();
+	return "Set model reaction list to entire biochemistry database";
+}
+
+sub creategenomemodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["genome",1],
@@ -4587,44 +4606,54 @@ sub createmodel {
 		["biomass",0,undef],
 		["owner",0,$self->figmodel()->user()],
 		["biochemSource",0,undef],
-		["reconstruction",0,1],
-		["gapfilling",0,1],
-		["queue",0,"fast"],
+		["reconstruction",0,0],
+		["gapfilling",0,0],
+		["usequeue",0,0],
+		["queue",0,0]
 	],[@Data]);
     my $output = $self->figmodel()->processIDList({
 		objectType => "genome",
 		delimiter => ",",
 		input => $args->{genome}
 	});
-    if (@{$output} == 1) {
-    	my $mdl = $self->figmodel()->create_model({
-			genome => $output->[0],
-			id => $args->{id},
-			owner => $args->{owner},
-			gapfilling => $args->{"gapfilling"},
-			runPreliminaryReconstruction  => $args->{"reconstruction"},
-			biochemSource => $args->{"biochemSource"},
-			queue => $args->{"queue"},
-			biomassReaction => $args->{"biomass"}
-		});
-		return "FAIL:model creation failed for genome:".$output->[0] if (!defined($mdl));
+	my $message = "";
+    if (@{$output} == 1 || $args->{usequeue} eq 0) {
+    	for (my $i=0; $i < @{$output}; $i++) {
+    		my $mdl = $self->figmodel()->create_model({
+				genome => $output->[0],
+				id => $args->{id},
+				owner => $args->{owner},
+				biochemSource => $args->{"biochemSource"},
+				biomassReaction => $args->{"biomass"},
+				reconstruction => $args->{"reconstruction"},
+				gapfilling => $args->{"gapfilling"},
+				usequeue => $args->{"usequeue"},
+				queue => $args->{"queue"}
+			});
+			if (defined($mdl)) {
+				$message .= "Successfully created model ".$mdl->id()."!\n";
+			} else {
+				$message .= "Failed to create model ".$mdl->id()."!\n";
+			}
+    	}
 	} else {
 		for (my $i=0; $i < @{$output}; $i++) {
 	    	$self->figmodel()->add_job_to_queue({
-	    		command => "createmodel?"
-	    			.$output->[$i]."??"
-	    			.$args->{"biomass"}
-	    			.$args->{"owner"}."?"
-	    			.$args->{"biochemSource"}."?"
-	    			.$args->{"reconstruction"}."?"
-	    			.$args->{"gapfilling"}."?"
-	    			.$args->{"queue"}."?",
+	    		command => "createmodel".
+	    			"?".$output->[$i]."?".
+	    			"?".$args->{"biomass"}.
+	    			"?".$args->{"owner"}.
+	    			"?".$args->{"biochemSource"}.
+	    			"?".$args->{"reconstruction"}.
+	    			"?".$args->{"gapfilling"}.
+	    			"?".$args->{"usequeue"}.
+	    			"?".$args->{"queue"},
 	    		user => $self->figmodel()->user(),
-	    		queue => $args->{queue}
+	    		queue => $args->{"queue"}
 	    	});
     	}
 	}
-    return "SUCCESS";
+    return $message;
 }
 
 sub printroleclass {
@@ -5081,6 +5110,7 @@ sub printgapfilledreactions {
 							}
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
 							if (!defined($gapfilledHash->{$array[$k]})) {
+								print $array[$k]." considered!";
 								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
 									$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 								}
@@ -5089,6 +5119,8 @@ sub printgapfilledreactions {
 									$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 								}
 								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+							} else {
+								print $array[$k]." skipped!";
 							}
 						}
 						if ($rxns->[$j]->notes() =~ m/DELETED/) {

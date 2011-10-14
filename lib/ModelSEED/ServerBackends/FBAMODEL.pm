@@ -1646,6 +1646,65 @@ sub subsystems_of_reaction {
 	return $output;
 }
 
+=head3 get_subsystem_data
+
+=item Definition:
+
+	Output = FBAMODEL->get_subsystem_data->({
+		ids => [string]:subsystem IDs
+	})
+	
+	Output: {
+		string:subsystem ID => {
+			ID => string,
+			NAME => string,
+			CLASS => string,
+			SUBCLASS => string,
+			STATUS => string,
+			TYPE => string
+		}
+	}
+	
+=item Description:	
+
+	Returns a list of the subsystems the reaction is involved in
+
+=cut
+
+sub get_subsystem_data {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		ids => ["ALL"],
+	});
+	if (ref($args->{ids}) ne "ARRAY") {
+		$args->{ids} = [split(/[;,]/,$args->{ids})];
+	}
+	#Loading all subsystems from database into id hash
+	my $idHash;
+	my $objects = $self->figmodel()->database()->get_objects("subsystem");
+	for (my $i=0; $i < @{$objects}; $i++) {
+		$idHash->{$objects->[$i]->id()} = $objects->[$i];
+	}
+	#Setting ID list of "ALL" selected
+	if ($args->{ids}->[0] eq "ALL") {
+		$args->{ids} = [keys(%{$idHash})];
+	}
+	#Collecting subsystem data for ID list
+	my $output;
+	for (my $i=0; $i < @{$args->{ids}}; $i++) {
+		if ($args->{ids}->[$i] =~ m/ss\d+/ && defined($idHash->{$args->{ids}->[$i]})) {
+			$output->{$args->{ids}->[$i]} = {
+				ID => [$idHash->{$args->{ids}->[$i]}->id()],
+				NAME => [$idHash->{$args->{ids}->[$i]}->name()],
+				CLASS => [$idHash->{$args->{ids}->[$i]}->classOne()],
+				SUBCLASS => [$idHash->{$args->{ids}->[$i]}->classTwo()],
+				STATUS => [$idHash->{$args->{ids}->[$i]}->status()],
+			};
+		}
+	}
+	return $output;
+}
+
 =head3 metabolic_neighborhood_of_roles
 
 =item Definition:

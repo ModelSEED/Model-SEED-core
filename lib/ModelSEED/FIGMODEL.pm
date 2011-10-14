@@ -3609,11 +3609,15 @@ sub OptimizeAnnotation {
 =head3 create_model
 Definition:
 	FIGMODELmodel FIGMODEL->create_model({
-		genome => string:genomeID,
+		genome => string:genome ID,
+		id => string:model ID,
 		owner => string:owner,
+		biochemSource => string:directory where biochemistry for new model should be pulled from,
+		biomassReaction => string:biomass ID,
+		reconstruction => 0/1,
 		gapfilling => 0/1,
-		runPreliminaryReconstruction => 0/1,
-		biochemSource => string:directory where biochemistry for new model should be pulled from
+		usequeue => 0/1,
+		queue => string:queue name
 	});
 Description:
 =cut

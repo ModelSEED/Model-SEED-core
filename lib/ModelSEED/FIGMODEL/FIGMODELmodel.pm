@@ -2964,6 +2964,8 @@ sub generate_fulldb_model {
 	return {success => 1};
 }
 
+
+
 =head3 preliminary_reconstruction
 Definition:
 	FIGMODELmodel->preliminary_reconstruction({
@@ -2974,12 +2976,9 @@ Description:
 sub preliminary_reconstruction {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		runGapfilling => 1
+		runGapfilling => 1,
+		queueGapfilling => 1
 	});
-	#If the genome is "Complete", then we build the model for the entire database
-	if ($self->genome() =~ m/Complete/) {
-		return $self->generate_fulldb_model();
-	}
 	#Getting genome data and feature table
 	my $genomeObj = $self->genomeObj();
 	if (!defined($genomeObj)) {

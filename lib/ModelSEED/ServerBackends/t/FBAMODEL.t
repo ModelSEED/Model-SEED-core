@@ -72,6 +72,9 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
 	$output = $fbamodel->subsystems_of_reaction({reactions => ["rxn00781"]});
 	ok defined($output->{"rxn00781"}->[0]), "subsystems_of_reaction for database".
         " should return at least one subsystem, got ". scalar(@{$output->{"rxn00781"}});
+    $output = $fbamodel->get_subsystem_data({ids => ["ss00001"]});
+	ok defined($output->{"ss00001"}->{NAME}->[0]), "get_subsystem_data for ss00001".
+        " should return a subsystem name, got ". $output->{"ss00001"}->{NAME}->[0];
     $output = $fbamodel->get_model_reaction_classification_table({"model" => [$pubmodel]});
 	ok defined($output->{$pubmodel}->[0]->{class}->[0]), "get_model_reaction_classification_table for model ".$pubmodel.
         " should return classification data for at least one reaction, got ". $output->{$pubmodel}->[0]->{class}->[0];
