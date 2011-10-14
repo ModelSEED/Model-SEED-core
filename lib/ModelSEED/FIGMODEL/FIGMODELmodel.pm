@@ -1624,6 +1624,7 @@ sub biomassReaction {
 	if (!defined($newBiomass) || $newBiomass eq $self->ppo()->biomassReaction()) {
 		return $self->ppo()->biomassReaction();	
 	}
+	
 	my $bioobj = $self->db()->get_object("bof",{id=>$newBiomass});
 	if (!defined($bioobj)) {
 		ModelSEED::FIGMODEL::FIGMODELWARNING("Could not find new biomass reaction ".$newBiomass);
@@ -1973,12 +1974,15 @@ sub completeGapfilling {
 		$args->{problemDirectory} = $fbaObj->filename();
 	}
 	$fbaObj->filename($args->{problemDirectory});
+	print "Creating problem directory: ",$fbaObj->filename(),"\n";
+
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 	#Printing list of inactive reactions
 	if ($args->{iterative} == 0) {
 		my $list = [$self->ppo()->biomassReaction()];
 		$self->figmodel()->database()->print_array_to_file($fbaObj->directory()."/InactiveModelReactions.txt",$list);
 	}
+	print "Creating list of inactive reactions: ",$fbaObj->directory()."/InactiveModelReactions.txt\n";
 	my $results;
 	if (!-e $fbaObj->directory()."/InactiveModelReactions.txt") {
 		$args->{fbaStartParameters}->{options}->{freeGrowth} = 1;
@@ -2008,12 +2012,14 @@ sub completeGapfilling {
 			unorderedList => $inactive,
 		});
 	}
+	print "Printing gapfilling parameters in : ",$fbaObj->directory()."/CompleteGapfillingParameters.txt\n";
 	#Printing gapfilling parameters
 	if (!-e $fbaObj->directory()."/CompleteGapfillingParameters.txt") {
 		if ($args->{adddrains} == 1) {
 			$args->{fbaStartParameters}->{options}->{adddrains} = 1;
 		}
 		$args->{fbaStartParameters}->{parameters}->{"create file on completion"} = "GapfillingComplete.txt";
+		print "Running runFBAStudy\n";
 		$results = $self->runFBAStudy({
 			fbaStartParameters => $args->{fbaStartParameters},
 			setupParameters => {
@@ -2033,6 +2039,7 @@ sub completeGapfilling {
 		});
 		delete $args->{fbaStartParameters}->{options}->{adddrains};
 		delete $args->{fbaStartParameters}->{parameters}->{"create file on completion"};
+		print "Finished runFBAStudy\n";
 	}
 	#Exiting now if the user did not request that the gapfilling be run
 	if ($args->{rungapfilling} == 0) {
@@ -2050,6 +2057,7 @@ sub completeGapfilling {
 		directory => $fbaObj->directory(),
 		gapfillResults => $results
 	});
+	print "Calculting the growth with which to test the model\n";
 	#Calculating the growth to test the model
 	my $growthResults = $self->fbaCalculateGrowth({
 		fbaStartParameters => $args->{fbaStartParameters}
@@ -7126,6 +7134,7 @@ sub runFBAStudy {
 	#Creating the output directory
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 	#Creating model file
+	print "Creating the model file: ",$fbaObj->directory()."/".$self->id().".tbl\n";
 	if (!-e $fbaObj->directory()."/".$self->id().".tbl" || $args->{forcePrintModel} == 1) {
 		$self->printModelFileForMFAToolkit({
 			removeGapfilling => $args->{removeGapfillingFromModel},
@@ -7137,6 +7146,7 @@ sub runFBAStudy {
 		$function = $args->{setupParameters}->{function};
 		$fbaObj->$function($args->{setupParameters}->{arguments});
 	}
+	print "Creating biochemistry provenance files\n";
 	if (-e $self->directory()."biochemistry/reaction.txt") {
 		File::Copy::copy($self->directory()."biochemistry/reaction.txt",$fbaObj->directory()."/reactionDataFile.tbl");
 		$fbaObj->dataFilename({type=>"reactions",filename=>$fbaObj->directory()."/reactionDataFile.tbl"});
@@ -7146,7 +7156,12 @@ sub runFBAStudy {
 		$fbaObj->dataFilename({type=>"compounds",filename=>$fbaObj->directory()."/compoundDataFile.tbl"});
 	}
 	File::Path::mkpath($fbaObj->directory()."/reaction/");
-	$self->figmodel()->get_reaction($self->biomassReaction())->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$self->biomassReaction()});
+	my $bioRxn=$self->biomassReaction();
+	if(!defined($bioRxn) || $bioRxn eq "NONE"){
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->id()." does not contain a biomass function");
+		return;
+	}
+	$self->figmodel()->get_reaction($bioRxn)->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$bioRxn});
 	$fbaObj->createProblemDirectory({
 		parameterFile => $args->{parameterFile},
 		printToScratch => $args->{printToScratch}

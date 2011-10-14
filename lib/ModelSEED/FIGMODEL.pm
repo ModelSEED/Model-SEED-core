@@ -1583,9 +1583,9 @@ sub parseSBMLtoTable {
     my $doc = $parser->parsefile($args->{SBMLFile});
     my $TableList = {};
     my %HeadingTranslation=();
-    my %TableHeadings = ("id"=>0,"kegg"=>1,"name"=>2,"abbrev"=>3,"charge"=>4,"mass"=>5,"compartment"=>6,
-			 "reversible"=>7,"formula"=>8,"equation"=>9,"pegs"=>10,"enzymes"=>11,
-			 "reference"=>12,"notes"=>13,);
+    my %TableHeadings = ("id"=>0,"KEGG"=>1,"METACYC"=>2,"name"=>3,"abbrev"=>4,"charge"=>5,"mass"=>6,"compartment"=>7,
+			 "reversible"=>8,"formula"=>9,"equation"=>10,"pegs"=>11,"enzymes"=>12,
+			 "reference"=>13,"notes"=>14,);
 
     my @cmpts = $doc->getElementsByTagName("compartment");
     my %cmptAttrs=();
@@ -1597,7 +1597,6 @@ sub parseSBMLtoTable {
 	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
 	$cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
     }
-
 
     $TableList->{compartment}=ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmptAttrs{$a} <=> $cmptAttrs{$b} } keys %cmptAttrs],
 									 $args->{compartmentFiles},undef,"\t","|",undef);
@@ -1612,32 +1611,36 @@ sub parseSBMLtoTable {
     my @cmpds = $doc->getElementsByTagName("species");
     my %cmpdAttrs=();
 
-    #go through all compounds in case of KEGG IDs
+    #go through all compounds in case of irregular attributes
     foreach my $cmpd(@cmpds){
-	foreach my $attr($cmpds[0]->getAttributes()->getValues()){
+	foreach my $attr($cmpd->getAttributes()->getValues()){
 	    $name=$attr->getName();
 	    $HeadingTranslation{$name}=uc($name);
 	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
 	    $cmpdAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
-	    if($name eq "id" && $attr->getValue =~ /[CG]\d{5}/){
-		$cmpdAttrs{KEGG}=$TableHeadings{KEGG};
-	    }
 	}
     }
+
+    #Add kegg and metacyc
+    $cmpdAttrs{KEGG}=$TableHeadings{KEGG};
+    $cmpdAttrs{METACYC}=$TableHeadings{METACYC};
 
     my %CmpdCmptTranslation=();
     $TableList->{compound} = ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmpdAttrs{$a} <=> $cmpdAttrs{$b} } keys %cmpdAttrs],
 								     $args->{compoundFiles},undef,"\t","|",undef);
+
     foreach my $cmpd (@cmpds){
 	my $row={};
 	foreach my $attr($cmpd->getAttributes()->getValues()){
+#	    print $attr->getName(),"\n";
 	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
 	    if($attr->getValue() =~ /([CG]\d{5})/){
 		$row->{KEGG}->[0]=$1;
 	    }
 	}
 	$CmpdCmptTranslation{$row->{ID}->[0]}=$row->{COMPARTMENT}->[0];
-
+	$row->{METACYC}->[0]="";
+	$row->{KEGG}->[0]="" if !exists($row->{KEGG});
 	$TableList->{compound}->add_row($row);
     }
 
@@ -1673,6 +1676,8 @@ sub parseSBMLtoTable {
 								     $args->{reactionFiles},undef,"\t","|",undef);
     foreach my $rxn (@rxns){
 	my $row={};
+	#default for DIRECTIONALITY
+	$row->{DIRECTIONALITY}->[0] = "<=>";
 	foreach my $attr($rxn->getAttributes()->getValues()){
 	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
 	    if($attr->getName() eq "reversible"){
@@ -1687,7 +1692,7 @@ sub parseSBMLtoTable {
 	    traverse_sbml($node,"",$path,$nodehash);
 	}
 	foreach my $key (keys %$nodehash){
-	    $row->{$HeadingTranslation{$key}}->[0]=join("|",keys %{$nodehash->{$key}});
+	    $row->{$HeadingTranslation{$key}}->[0]=join("|",sort keys %{$nodehash->{$key}});
 	}
 	$row->{EQUATION}->[0]=join(" ",@{$self->get_reaction_equation_sbml($rxn,\%CmpdCmptTranslation)});
 	$row->{PEGS}->[0]="";
@@ -1739,7 +1744,7 @@ sub get_reaction_equation_sbml {
     my ($self, $rxn, $cmptsearch) = @_;
     my $eq = [];
     my $reversable = $rxn->getAttribute("reversible");
-    (defined($reversable) && $reversable eq "true") ? $reversable = "<=>" : $reversable = "=>";
+    (defined($reversable) && $reversable eq "false") ? $reversable = "=>" : $reversable = "<=>";
     my @reactants = $rxn->getElementsByTagName("listOfReactants");
     my @products = $rxn->getElementsByTagName("listOfProducts");
     if(@reactants) {
@@ -1766,7 +1771,7 @@ sub expand_sbml_reaction_participant {
     my $text = [];
 
     my $count = $species->getAttribute("stoichiometry");
-    $count = undef if ( defined($count) && ($count == 1 || $count eq "") );
+    $count = undef if ( defined($count) && ($count eq "1" || $count eq "") );
     $count = abs($count) if defined($count); #avoids negative stoichiometry, yea, it happens(!)
     push(@$text,"(".$count.")") if defined($count);
     
@@ -2684,44 +2689,43 @@ sub import_model {
 			if (length($row->{"NAMES"}->[$j]) > 0) {
 				my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
 				for (my $k=0; $k < @{$searchNames}; $k++) {
-					my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
-					if (!defined($cpdals)) {
-					    my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k]});
-					    for (my $m = 0; $m < @{$cpdalss}; $m++) {
-						#Seaver 10/07/2011
-						#Due to many small acronyms potentially being added to database for other models
-						#this length restriction is applied for the time being
-						if(length($cpdalss->[$m]->alias())>3){
-						    $cpdals = $cpdalss->[$m];
-						    last;
-						}
-					    }
+				    #Look for searchname in original 'searchname' type
+				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
+
+				  
+				    #if not, look for it in previous imports
+				    if (!defined($cpdals)) {
+					my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
+					for (my $m = 0; $m < @{$cpdalss}; $m++) {
+					    $cpdals = $cpdalss->[$m];
+					    last;
 					}
-					if (defined($cpdals)) {
-						if (!defined($cpd)) {
-							$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						}
-					} else {
-						$newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
-						$newNames->{search}->{$searchNames->[$k]} = 1;
+				    }
+				    if (defined($cpdals)) {
+					if (!defined($cpd)) {
+					    $cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 					}
+				    } else {
+					$newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+					$newNames->{search}->{$searchNames->[$k]} = 1;
+				    }
 				}
 			}
 		}
 		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			}
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			}
 		}
 		if (!defined($cpd) && defined($row->{"BRENDA"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"BRENDA"}->[0],type => "BRENDA"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"BRENDA"}->[0],type => "BRENDA%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			}
@@ -2772,10 +2776,10 @@ sub import_model {
 			});
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
-		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $name});
+		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "name".$id, alias => $name});
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{search}})) {
-		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $name});
+		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "searchname".$id, alias => $name});
 		}
 
 		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
@@ -2858,6 +2862,7 @@ sub import_model {
 				reference => join("|",@{$row->{"REFERENCE"}}),
 				notes => join("|",@{$row->{"NOTES"}})
 			});
+			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}
 		if (!defined($row->{"DIRECTIONALITY"}->[0])) {
@@ -2908,7 +2913,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{fullEquation}."\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -4432,7 +4437,6 @@ sub GenerateMFAToolkitCommandLineCall {
 	if (!defined($Version)) {
 		$Version = "";
 	}
-	$ParameterValueHash->{"Network output location"} = "/scratch/";
 
 	if (defined($ParameterFileList)) {
 		#Adding the list of parameter files to the command line
@@ -4454,13 +4458,21 @@ sub GenerateMFAToolkitCommandLineCall {
 		}
 	}
 
-	#Setting the output folder
+	print $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/\n";
+
+	#Setting the output folder and the scratch folder
 	if (defined($UniqueFilename) && length($UniqueFilename) > 0) {
 		$CommandLine .= ' resetparameter output_folder "'.$UniqueFilename.'/"';
 		if (!-d $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/") {
 			system("mkdir ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/");
+			system("mkdir ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/scratch/");
+			$ParameterValueHash->{"Network output location"} = $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/scratch/";
+		}else{
+			system("mkdir ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/scratch/");
+			$ParameterValueHash->{"Network output location"} = $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/scratch/";
 		}
 	}
+
 
 	#Adding specific parameter value changes to the parameter list
 	if (defined($ParameterValueHash)) {

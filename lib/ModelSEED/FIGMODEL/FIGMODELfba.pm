@@ -472,9 +472,10 @@ sub makeOutputDirectory {
 	if (-d $self->directory() && $args->{deleteExisting} == 1) {
 		File::Path::rmtree($self->directory());
 		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");
-		
+		File::Path::mkpath($self->directory()."/reactions/");		
 	} elsif (!-d $self->directory()) {
 		File::Path::mkpath($self->directory()."/MFAOutput/RawData/");	
+		File::Path::mkpath($self->directory()."/reactions/");
 	}
 	return undef;
 }

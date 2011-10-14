@@ -689,54 +689,81 @@ sub buildbiomass {
 }
 
 sub processreaction {
-	my($self,@Data) = @_;
-    if (@Data < 2) {
-        print "Syntax for this command: processreaction?(reaction)?(options)?(comparison file).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",0,undef],
+		["reaction",1],
+		["overwrite",0,0]
+	],[@Data]);
+
+    my $rxn;
+    my $model;
+    #reaction retrieved from main biochemistry database
+    if(!defined($args->{model})){
+	$rxn = $self->figmodel()->get_reaction($args->{reaction});
+    }else{
+	$model = $self->figmodel()->get_model($args->{model});
+   	if (!defined($model)) {
+	    ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$args->{model}." not found in database!");
+	    return "FAIL";
+   	}else{
+	    $rxn = $model->figmodel()->get_reaction($args->{reaction});
+	}
+    }	
+
+    if(!defined($rxn)){
+	ModelSEED::FIGMODEL::FIGMODELERROR("Reaction ".$args->{reaction}." not found in database!");
+	return "FAIL";
+    }else{
+	print $model->fullId(),"\t",$rxn->id(),"\n";
+	$rxn->processReactionWithMFAToolkit($args);
+	return "SUCCESS";
     }
-    my $options = {
-    	overwriteReactionFile => 0,
-		loadToPPO => 0,
-		loadEquationFromPPO => 0,
-		comparisonFile => $Data[3]
-	};
-	if (defined($Data[2])) {
-		if ($Data[2] =~ m/o/) {
-			$options->{overwriteReactionFile} = 1;
-		}
-		if ($Data[2] =~ m/p/) {
-			$options->{loadToPPO} = 1;
-		}
-		if ($Data[2] =~ m/e/) {
-			$options->{loadEquationFromPPO} = 1;
-		}
-	}
-	my $results = $self->figmodel()->processIDList({
-		objectType => "reaction",
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => $Data[1]
-	});
-	if (@{$results} == 1) {
-		my $rxn = $self->figmodel()->get_reaction($results->[0]);
-		if (defined($rxn)) {
-			$rxn->processReactionWithMFAToolkit($options);
-		}
-		return "SUCCESS";	
-	} else {
-		for (my $i=0; $i < @{$results}; $i++) {
-			my $command = "processreaction?".$results->[$i]."?";
-			for (my $j=2; $j < @Data; $j++) {
-				$command .= "?".$Data[$j];
-			}
-			$self->figmodel()->add_job_to_queue({
-				command => $command,
-				queue => "fast",
-				priority => 3
-			});
-		}
-	}
+
+    return;
+#    my $options = {
+#    	overwriteReactionFile => 0,
+#	loadToPPO => 0,
+#	loadEquationFromPPO => 0,
+#	comparisonFile => $Data[3]
+#    };
+#    if (defined($Data[2])) {
+#	if ($Data[2] =~ m/o/) {
+#	    $options->{overwriteReactionFile} = 1;
+#	}
+#	if ($Data[2] =~ m/p/) {
+#	    $options->{loadToPPO} = 1;
+#	}
+#	if ($Data[2] =~ m/e/) {
+#	    $options->{loadEquationFromPPO} = 1;
+#	}
+#    }
+#    my $results = $self->figmodel()->processIDList({
+#	objectType => "reaction",
+#	delimiter => ",",
+#	column => "id",
+#	parameters => {},
+#	input => $Data[1]
+#						   });
+#    if (@{$results} == 1) {
+#	my $rxn = $self->figmodel()->get_reaction($results->[0]);
+#	if (defined($rxn)) {
+#	    $rxn->processReactionWithMFAToolkit($options);
+#	}
+#	return "SUCCESS";	
+#    } else {
+#	for (my $i=0; $i < @{$results}; $i++) {
+#	    my $command = "processreaction?".$results->[$i]."?";
+#	    for (my $j=2; $j < @Data; $j++) {
+#		$command .= "?".$Data[$j];
+#	    }
+#	    $self->figmodel()->add_job_to_queue({
+#		command => $command,
+#		queue => "fast",
+#		priority => 3
+#						});
+#	}
+#    }
 }
 
 #Function for combining identical reactions in the database
@@ -4245,7 +4272,7 @@ sub completegapfillmodel {
 		$model->completeGapfilling({
 			startFresh => $args->{"start fresh"},
 			problemDirectory => $args->{model},
-			runProblem=> $args->{"run gapfilling"},
+			xrunProblem=> $args->{"run gapfilling"},
 			removeGapfillingFromModel => $args->{"remove gapfilled reactions"},
 			gapfillCoefficientsFile => "NONE",
 			inactiveReactionBonus => 100,
@@ -4526,10 +4553,10 @@ sub loadmodelfromfile {
 sub loadbiomassfromfile {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["biomass",1],
-    	["model",0,undef],
-    	["equation",0,undef],
-    	["overwrite",0,0]
+	    ["biomass",1],
+	    ["model",0,undef],
+	    ["equation",0,undef],
+	    ["overwrite",0,0]
 	],[@Data]);
 	#Load the file if no equation was specified
 	if (!defined($args->{equation})) {
@@ -4798,6 +4825,7 @@ sub gapfillmodel {
    	if (!defined($model)) {
    		ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$models->[0]." not found in database!");
    	}
+
    	$model->completeGapfilling({
 		startFresh => $args->{startfresh},
 		problemDirectory => $args->{problemdirectory},

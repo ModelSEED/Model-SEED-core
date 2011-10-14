@@ -32,6 +32,9 @@ sub new {
 		} else {
 			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
 		}
+		if(!defined($self->{_ppo})){
+		    return undef;
+		}
 	}
 	return $self;
 }
@@ -331,53 +334,67 @@ Description:
 	The database should probably be backed up before running the function just in case something goes wrong.
 =cut
 sub processReactionWithMFAToolkit {
-	my($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		overwriteReactionFile => 0,
-		loadToPPO => 0,
-		loadEquationFromPPO => 0,
-		comparisonFile => undef
-	});
-	#Backing up the old file
-	system("cp ".$self->figmodel()->config("reaction directory")->[0].$self->id()." ".$self->figmodel()->config("database root directory")->[0]."ReactionDB/oldreactions/".$self->id());
-	#Getting unique directory for output
-	my $filename = $self->figmodel()->filename();
-	#Eliminating the mfatoolkit errors from the compound and reaction files
-	my $data = $self->file();
-	if (defined($self->ppo()) && $args->{loadEquationFromPPO} == 1) {
-		$data->{EQUATION}->[0] = $self->ppo()->equation();
-	}
-	$data->remove_heading("MFATOOLKIT ERRORS");
-	$data->remove_heading("STATUS");
-	$data->remove_heading("TRANSATOMS");
-	$data->remove_heading("DBLINKS");
-	$data->save();
-	#Running the mfatoolkit
-	print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
-	system($self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log"));
+    my($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{
+	overwriteReactionFile => 0,
+	loadToPPO => 0,
+	loadEquationFromPPO => 0,
+	comparisonFile => undef
+						 });
+    
+    my $fbaObj = $self->figmodel()->fba();
+
+    print "Creating problem directory: ",$fbaObj->directory()."\n";
+    $fbaObj->makeOutputDirectory({deleteExisting => $args->{overwrite}});    
+    print "Writing reaction to file\n";
+    $self->print_file_from_ppo({filename=>$fbaObj->directory()."/reactions/".$self->id()});
+
+    my $filename = $fbaObj->filename();
+    print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
+ 
+   return {};
+
+    #Backing up the old file
+#    system("cp ".$self->figmodel()->config("reaction directory")->[0].$self->id()." ".$self->figmodel()->config("database root directory")->[0]."ReactionDB/oldreactions/".$self->id());
+    #Getting unique directory for output
+#    my $filename = $self->figmodel()->filename();
+    #Eliminating the mfatoolkit errors from the compound and reaction files
+#    my $data = $self->file();
+
+#    if (defined($self->ppo()) && $args->{loadEquationFromPPO} == 1) {
+#	$data->{EQUATION}->[0] = $self->ppo()->equation();
+#    }
+#    $data->remove_heading("MFATOOLKIT ERRORS");
+#    $data->remove_heading("STATUS");
+#    $data->remove_heading("TRANSATOMS");
+#    $data->remove_heading("DBLINKS");
+#    $data->save();
+    #Running the mfatoolkit
+#    print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
+#    system($self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log"));
 	#Copying in the new file
-	print $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()."\n";
-	if (-e $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()) {
-		my $newData = $self->file({filename=>$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()});
-		if ($args->{overwriteReactionFile} == 1) {
-			system("cp ".$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()." ".$self->figmodel()->config("reaction directory")->[0].$self->id());
-		}
-		if ($args->{loadToPPO} == 1) {
-			$self->updateReactionData();
-		}
-		if (defined($args->{comparisonFile}) && $newData->{EQUATION}->[0] ne $data->{EQUATION}->[0]) {
-			if (-e $args->{comparisonFile}) {
-				$self->figmodel()->database()->print_array_to_file($args->{comparisonFile},["ID\tPPO equation\tOriginal equation\tNew equation\tStatus",$self->id()."\t".$data->ppo()->equation()."\t".$data->{EQUATION}->[0]."\t".$newData->{EQUATION}->[0]."\t".$newData->{STATUS}->[0]],1);
-			} else {
-				$self->figmodel()->database()->print_array_to_file($args->{comparisonFile},[$self->id()."\t".$data->ppo()->equation()."\t".$data->{EQUATION}->[0]."\t".$newData->{EQUATION}->[0]."\t".$newData->{STATUS}->[0]]);
-			}
-		}
-	} else {
-		ModelSEED::FIGMODEL::FIGMODELERROR("could not find output reaction file");	
-	}
-	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
-	return {};
-}
+#	print $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()."\n";
+#	if (-e $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()) {
+#		my $newData = $self->file({filename=>$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()});
+#		if ($args->{overwriteReactionFile} == 1) {
+#			system("cp ".$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()." ".$self->figmodel()->config("reaction directory")->[0].$self->id());
+#		}
+#		if ($args->{loadToPPO} == 1) {
+#			$self->updateReactionData();
+#		}
+#		if (defined($args->{comparisonFile}) && $newData->{EQUATION}->[0] ne $data->{EQUATION}->[0]) {
+#			if (-e $args->{comparisonFile}) {
+#				$self->figmodel()->database()->print_array_to_file($args->{comparisonFile},["ID\tPPO equation\tOriginal equation\tNew equation\tStatus",$self->id()."\t".$data->ppo()->equation()."\t".$data->{EQUATION}->[0]."\t".$newData->{EQUATION}->[0]."\t".$newData->{STATUS}->[0]],1);
+#			} else {
+#				$self->figmodel()->database()->print_array_to_file($args->{comparisonFile},[$self->id()."\t".$data->ppo()->equation()."\t".$data->{EQUATION}->[0]."\t".$newData->{EQUATION}->[0]."\t".$newData->{STATUS}->[0]]);
+#			}
+#		}
+#	} else {
+#		ModelSEED::FIGMODEL::FIGMODELERROR("could not find output reaction file");	
+#	}
+#	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
+#	return {};
+#}
 
 =head3 get_neighboring_reactions
 Definition:
