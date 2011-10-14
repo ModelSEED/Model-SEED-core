@@ -1,4 +1,4 @@
-database spec file|../../Input/Singlefile.txt|
+database spec file|../Input/Singlefile.txt|
 structural cue database file|FinalGroups.dat|
 user constraints filename|UserConstraints.txt|
 MFA problem report filename|ProblemReport.txt|
