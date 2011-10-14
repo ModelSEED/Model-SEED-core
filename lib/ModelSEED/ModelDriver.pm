@@ -5076,6 +5076,9 @@ sub printgapfilledreactions {
 				}
 			}
 			for (my $j=0; $j < @{$rxns}; $j++) {
+				if ($rxns->[$j]->REACTION() =~ m/bio/) {
+					next;
+				}
 				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
 					next;
 				}
