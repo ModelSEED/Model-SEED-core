@@ -2570,8 +2570,16 @@ sub import_model {
 		if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
 			next;
 		}
-		#Finding if existing compound shares search name
+
 		my $cpd;
+
+		#Temporary KEGG and MetaCyc IDs merge code using BKM
+		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
+		if(defined($cpdals)){
+		    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+		}
+
+		#Finding if existing compound shares search name
 		my $newNames;
 		for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
 			if (length($row->{"NAMES"}->[$j]) > 0) {
@@ -2602,19 +2610,25 @@ sub import_model {
 			}
 		}
 		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG"});
+		    foreach my $kegg (@{$row->{"KEGG"}}){
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $kegg,type => "KEGG%"});
 			if (defined($cpdals)) {
-				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    last;
 			}
+		    }
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc"});
+		    foreach my $metacyc (@{$row->{"METACYC"}}){
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $metacyc,type => "MetaCyc%"});
 			if (defined($cpdals)) {
-				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    last;
 			}
+		    }
 		}
 		if (!defined($cpd) && defined($row->{"BRENDA"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"BRENDA"}->[0],type => "BRENDA"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"BRENDA"}->[0],type => "BRENDA%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			}
