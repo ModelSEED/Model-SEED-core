@@ -5143,6 +5143,7 @@ sub printgapfilledreactions {
 			}
 			foreach my $rxn (keys(%{$tempGapRxnHash})) {
 				my $count = keys(%{$tempGapRxnHash->{$rxn}});
+				print $rxn."\t".$count."\n";
 				foreach my $actrxn (keys(%{$tempGapRxnHash->{$rxn}})) {
 					if (defined($actMdlTbl->{$actrxn}->{$results->[$i]})) {
 						$actMdlTbl->{$actrxn}->{$results->[$i]}++;
