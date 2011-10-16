@@ -577,7 +577,6 @@ sub build_complete_biomass_reaction {
     $reactants = substr($reactants,0,length($reactants)-2);
     $products = substr($products,2);
     $bioObj->equation($reactants."=>".$products);
-	$self->figmodel()->print_biomass_reaction_file("bio00001");
 	if ($bioObj->equation() ne $oldEquation) {
 		$bioObj->essentialRxn("NONE");
 		$self->figmodel()->add_job_to_queue({command => "runfigmodelfunction?determine_biomass_essential_reactions?bio00001",user => $self->figmodel()->user(),queue => "fast"});
@@ -1383,4 +1382,34 @@ sub replacesReaction {
     }
     return 1;
 }
+
+=head3 get_reaction_reversibility_hash
+Definition:
+	Output = FIGMODELreaction->get_reaction_reversibility_hash();
+	Output: {
+		string:reaction ID => string:reversibility
+	}
+Description:
+	This function returns a hash of all reactions with their reversiblities.
+=cut
+sub get_reaction_reversibility_hash {
+	my ($self) = @_;
+	my $objs = $self->db->get_objects("reaction");
+	my $revHash;
+	for (my $i=0; $i < @{$objs};$i++) {
+		my $rev = "<=>";
+		if ($objs->[$i]->id() =~ m/^bio/ || defined($self->figmodel()->{"forward only reactions"}->{$objs->[$i]->id()})) {
+			$rev = "=>";
+		} elsif (defined($self->figmodel()->{"reverse only reactions"}->{$objs->[$i]->id()})) {
+			$rev = "<=";
+		} elsif (defined($self->figmodel()->{"reversibility corrections"}->{$objs->[$i]->id()})) {
+			$rev = "<=>";
+		} else {
+			$rev = $objs->[$i]->reversibility();
+		}
+		$revHash->{$objs->[$i]->id()} = $rev;
+	}
+	return $revHash;
+}
+
 1;

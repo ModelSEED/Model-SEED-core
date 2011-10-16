@@ -140,17 +140,33 @@ sub FBAStartParametersFromArguments {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["arguments"],{});
 	my $fbaStartParameters;
-	if (defined($args->{arguments}->{geneKO})) {
-		$fbaStartParameters->{geneKO} = [split(/;/,$args->{arguments}->{geneKO})];
-	}
 	if (defined($args->{arguments}->{rxnKO})) {
-		$fbaStartParameters->{rxnKO} = [split(/;/,$args->{arguments}->{rxnKO})];
+		if (ref($args->{arguments}->{rxnKO}) ne "ARRAY") {
+			$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{arguments}->{rxnKO})];
+		} else {
+			$fbaStartParameters->{rxnKO} = $args->{arguments}->{rxnKO};
+		}
+	}
+	if (defined($args->{arguments}->{reactionKO})) {
+		if (ref($args->{arguments}->{reactionKO}) ne "ARRAY") {
+			$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{arguments}->{reactionKO})];
+		} else {
+			$fbaStartParameters->{rxnKO} = $args->{arguments}->{reactionKO};
+		}
 	}
 	if (defined($args->{arguments}->{drainRxn})) {
-		$fbaStartParameters->{drnRxn} = [split(/;/,$args->{arguments}->{drainRxn})];
+		if (ref($args->{arguments}->{drainRxn}) ne "ARRAY") {
+			$fbaStartParameters->{drnRxn} = [split(/[;,]/,$args->{arguments}->{drainRxn})];
+		} else {
+			$fbaStartParameters->{drnRxn} = $args->{arguments}->{drainRxn};
+		}
 	}
 	if (defined($args->{arguments}->{geneKO})) {
-		$fbaStartParameters->{geneKO} = [split(/;/,$args->{arguments}->{geneKO})];
+		if (ref($args->{arguments}->{geneKO}) ne "ARRAY") {
+			$fbaStartParameters->{geneKO} = [split(/[;,]/,$args->{arguments}->{geneKO})];
+		} else {
+			$fbaStartParameters->{geneKO} = $args->{arguments}->{geneKO};
+		}
 	}
 	if (defined($args->{arguments}->{paramfiles})) {
 		$fbaStartParameters->{parameter_files} = [split(/;/,$args->{arguments}->{paramfiles})];

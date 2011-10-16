@@ -81,6 +81,7 @@ sub _cache {
     return $self->{_cache} if(defined($self->{_cache}));
     my $settings = ($self->config('CacheSettings')) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
+    ModelSEED::FIGMODEL::FIGMODELERROR("Cannot call _cache right now. The feature is broken!");
     return $self->{_cache} = CHI->new(%$settings);
 }
 
@@ -338,7 +339,7 @@ sub change_permissions {
 			permission => $args->{permission},
 			type => $args->{type}
 		});
-	} elsif (lc($args->{permission}) eq "none") {
+	} elsif (lc($args->{permission}) eq "none" || $args->{permission} eq "") {
 		$permObj->delete();
 	} else {
 		$permObj->permission($args->{permission});

@@ -1049,7 +1049,10 @@ sub get_model {
 	# if cache miss:
     my $mdl = undef;
     eval {
-	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
+	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
+			figmodel => $self,
+			id => $id
+		});
         if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
             $self->setCache({key => $mdl->fullId(), data => $mdl});
         }
@@ -1925,22 +1928,6 @@ sub add_reaction_role_mapping {
 			my $rxncpxMgr = $self->database()->get_object_manager("rxncpx");
 			$rxncpxMgr->create({REACTION=>$reactions->[$i],COMPLEX=>$cpxID,master=>1});
 		}
-	}
-}
-
-=head3 print_biomass_reaction_file
-Definition:
-	FIGMODEL->print_biomass_reaction_file(string:biomass id);
-Description:
-	Prints a flatfile with data on the specified biomass reaction for the MFAToolkit
-=cut
-
-sub print_biomass_reaction_file {
-	my($self,$biomassID) = @_;
-	my $bioMgr = $self->database()->get_object_manager("bof");
-	my $objs = $bioMgr->get_objects({id=>$biomassID});
-	if (defined($objs->[0])) {
-		$self->database()->print_array_to_file($self->config("reaction directory")->[0].$biomassID,["DATABASE\t".$biomassID,"EQUATION\t".$objs->[0]->equation(),"NAME\t".$objs->[0]->name()]);
 	}
 }
 
@@ -3290,34 +3277,6 @@ sub reactions_of_scenario {
 	return $FinalReactionList;
 }
 
-=head3 reversibility_of_reaction
-Definition:
-	$Reversibility = $model->reversibility_of_reaction($ReactionID);
-Description:
-	This function takes into account a number of criteria to determine the reversibility of a reaction.
-	It is the definative function to use to determine reaction reversibility.
-=cut
-sub reversibility_of_reaction {
-	my ($self,$rxn) = @_;
-	if ($rxn =~ m/^bio/ || defined($self->{"forward only reactions"}->{$rxn})) {
-		return "=>";
-	} elsif (defined($self->{"reverse only reactions"}->{$rxn})) {
-		return "<=";
-	} elsif (defined($self->{"reversibility corrections"}->{$rxn})) {
-		return "<=>";
-	}
-	my $rev = "<=>";
-	my $rxnHash = $self->database()->get_object_hash({
-		type => "reaction",
-		attribute => "id",
-		useCache => 1
-	});
-	if (defined($rxnHash->{$rxn}->[0])) {
-		$rev = $rxnHash->{$rxn}->[0]->reversibility();
-	}
-	return $rev;
-}
-
 =head3 colocalized_genes
 Definition:
 	(1/0) = FIGMODEL->colocalized_genes(string:gene one,string:gene two,string:genome ID);
@@ -3623,7 +3582,11 @@ Description:
 =cut
 sub create_model {
 	my ($self,$args) = @_;
-	return ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$args->{id}, $args);
+	return ModelSEED::FIGMODEL::FIGMODELmodel->new({
+			figmodel => $self,
+			id => $args->{id},
+			init => $args
+	});
 }
 
 =head3 compareManyModels

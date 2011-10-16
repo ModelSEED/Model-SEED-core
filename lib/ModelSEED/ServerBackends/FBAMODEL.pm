@@ -302,11 +302,11 @@ sub get_reaction_data {
 			}
 			if (defined($obj->enzyme()) && length($obj->enzyme()) > 0) {
 			    if (index($obj->enzyme(), '|') == 0) {
-				my $enzyme = substr($obj->enzyme(),1,length($obj->enzyme())-2);
-				push(@{$row->{ENZYME}},split(/\|/,$enzyme));	
+					my $enzyme = substr($obj->enzyme(),1,length($obj->enzyme())-2);
+					push(@{$row->{ENZYME}},split(/\|/,$enzyme));	
 			    }
 			    else {
-				push(@{$row->{ENZYME}},split(/\|/,$obj->enzyme()));
+					push(@{$row->{ENZYME}},split(/\|/,$obj->enzyme()));
 			    }
 			}
 			if (defined($obj->abstractReaction())) {
@@ -1385,24 +1385,28 @@ sub get_complex_to_reaction {
 
 Definition:
 
-    [ { id      => string,
-        media   => string,
-        reactionKO  => string,
-        geneKO      => string,
-        entities    => [ string::reaction and transportable compounds ids],
-        classes => [string::classes],
-        "min flux" => [float::minimum flux],
-        "max flux" => [float::maximum flux]
-    } ] = FBAMODEL->classify_model_entities(
-        { "parameters" => [ { id         => string,
-                              media      => string,
-                              reactionKO => [string::reaction ids],
-                              geneKO     => [string::gene ids],
-                              archiveResults => [0|1],
-                          } ],
-           "user" => string,
-           "password" => string
-    });
+   Output = FBAMODEL->classify_model_entities({
+		parameters => [{
+			id => string,
+			media => string,
+			reactionKO => [string::reaction ids],
+			geneKO => [string::gene ids],
+			archiveResults => 0|1,
+		}],
+		user => string,
+		password => string
+    })
+    
+    Output: [{
+		id      => string,
+		media   => string,
+		reactionKO  => [string],
+		geneKO      => [string],
+		entities    => [ string::reaction and transportable compounds ids],
+		classes => [string::classes],
+		"min flux" => [float::minimum flux],
+		"max flux" => [float::maximum flux]
+    }]
 
 Description:
 
@@ -1432,75 +1436,46 @@ minimum possible flux through each reaction/compound)
 If the	"entities" key is undefined in the output, this means
 the specified model did not grow in the specified conditions.
 
-Example:
-
-    my $ConfigHashRef = {"model" => [{"id" => "Seed83333.1",
-                                      "media" => "Carbon-D-Glucose",
-                                      "reactionKO" => "rxn00001;rxn00002",
-                                      "geneKO" => "peg.1,peg.2"}],
-                         "user" => "reviewer",
-                         "password" => "eval"};
-    my $retValArrayRef = $FBAModel->classify_model_entities($ConfigHashRef);
-    $retValArrayRef == [{ "id" => "Seed83333.1",
-                          "media" => "Carbon-D-Glucose",
-                          "reactionKO" => "rxn00001;rxn00002",
-                          "geneKO" => "peg.1,peg.2",
-                          "reactions" => ["rxn00001","rxn00002"....],
-                          "classes" => ["essential =>","essential<=",...],
-                          "max flux" => [100,-10...],
-                          "min flux" => [10,-100...],
-                       }]
-
 =cut
 sub classify_model_entities {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Checking that at least one parameter was input
-	if (!defined($args->{parameters})) {
-		return undef;
-	}
-	#Getting parameter array
-	my $parameters;
+	$args = $self->figmodel()->process_arguments($args,["parameters"],{});
 	if (ref($args->{parameters}) ne "ARRAY") {
-		$parameters = [$args->{parameters}];
-	} else {
-		$parameters = $args->{parameters};
+		$args->{parameters} = [$args->{parameters}];
 	}
 	#Cycling through parameters and running fba studies
 	my $output;
-	for (my $i=0; $i < @{$parameters}; $i++) {
-		if (defined($parameters->[$i]->{id})) {
-			if (!defined($parameters->[$i]->{media})) {
-				$parameters->[$i]->{media} = "Complete";
-			}
-			my $modelobj = $self->figmodel()->get_model($parameters->[$i]->{id});
+	for (my $i=0; $i < @{$args->{parameters}}; $i++) {
+		if (defined($args->{parameters}->[$i]->{id})) {		
+			my $modelobj = $self->figmodel()->get_model($args->{parameters}->[$i]->{id});
 			if (defined($modelobj)) {
+				my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args->{parameters}->[$i]});
+				if (!defined($fbaStartParameters->{media})) {
+					$fbaStartParameters->{media} = "Complete";
+				}
+				if (!defined($fbaStartParameters->{options}->{forceGrowth})
+			   		&& !defined($fbaStartParameters->{options}->{forceGrowth}) 
+			   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
+			   		$fbaStartParameters->{options}->{forceGrowth} = 1;
+			   	}
 				my $archiveResults = 0;
-				if (defined($parameters->[$i]->{archiveResults}) && !defined($parameters->[$i]->{reactionKO}) && !defined($parameters->[$i]->{geneKO})) {
-					$archiveResults = 1;
+				if (defined($args->{parameters}->[$i]->{archiveResults})) {
+					$archiveResults = $args->{parameters}->[$i]->{archiveResults}
 				}
-				my ($rxnclasstable,$cpdclasstable) = $modelobj->classify_model_reactions($parameters->[$i]->{media},$archiveResults,$parameters->[$i]->{reactionKO},$parameters->[$i]->{geneKO});
-				if (defined($rxnclasstable)) {
-					for (my $j=0; $j < $rxnclasstable->size();$j++) {
-						my $row = $rxnclasstable->get_row($j);
-						push(@{$parameters->[$i]->{entities}},$row->{REACTION}->[0]);
-						push(@{$parameters->[$i]->{classes}},$row->{CLASS}->[0]);
-						push(@{$parameters->[$i]->{"min flux"}},$row->{MIN}->[0]);
-						push(@{$parameters->[$i]->{"max flux"}},$row->{MAX}->[0]);
-					}
+				my $results = $modelobj->fbaFVA({
+				   	fbaStartParameters => $fbaStartParameters,
+					saveFVAResults=>$archiveResults
+				});
+				if (!defined($results) || defined($results->{error})) {
+					return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 				}
-				if (defined($cpdclasstable)) {
-					for (my $j=0; $j < $cpdclasstable->size();$j++) {
-						my $row = $cpdclasstable->get_row($j);
-						if ($row->{CLASS}->[0] ne "Unknown") {
-							push(@{$parameters->[$i]->{entities}},$row->{COMPOUND}->[0]);
-							push(@{$parameters->[$i]->{classes}},$row->{CLASS}->[0]);
-							push(@{$parameters->[$i]->{"min flux"}},$row->{MIN}->[0]);
-							push(@{$parameters->[$i]->{"max flux"}},$row->{MAX}->[0]);
-						}
-					}
+				foreach my $obj (keys(%{$results->{tb}})) {
+					push(@{$args->{parameters}->[$i]->{entities}},$obj);
+					push(@{$args->{parameters}->[$i]->{classes}},$results->{tb}->{$obj}->{class});
+					push(@{$args->{parameters}->[$i]->{"min flux"}},$results->{tb}->{$obj}->{min});
+					push(@{$args->{parameters}->[$i]->{"max flux"}},$results->{tb}->{$obj}->{max});
 				}
-				push(@{$output},$parameters->[$i]);
+				push(@{$output},$args->{parameters}->[$i]);
 			}
 		}
 	}
@@ -2114,30 +2089,54 @@ sub set_abstract_compound_group {
 
 =head3 model_build
 Definition:
-    FIGMODEL->model_build({id => string:genomeID,
-                              source => string:source,
-                              username => string:username,
-                              password => string:password,
-                              owner => string:owner,
-                              gapfilling => 0/1,
-                            });
+    Output = FIGMODEL->model_build({
+    	id => (required string):ID of model or ID of genome
+    	genome => (optional string):if a model ID was provided, a separate genome ID must be provided here
+    	biomass => (optional string):if of biomass reaction the model should be used,
+    	biochemSource => (optional string):id of biochemistry database to be used as a backend,
+    	reconstruction => (optional 0/1):set this to "1" to automatically queue up reconstruction of model - default is "1",
+    	gapfilling => (optional 0/1):set this to "1" to automatically queue up gapfilling of model - default is "1",
+    	overwrite => (optional 0/1):set this to "1" to overwrite the model if it already exists - default is "1",
+    });
+    Output: {
+    	string:genome ID => string:success message
+    }
 Description:
     Constructs a new model for owner
 =cut
 sub model_build {
     my ($self, $args) = @_;
-    my $id = $args->{id};
-    delete $args->{id};
-    if(defined($args->{username}) && defined($args->{password})) {
-        $self->figmodel()->authenticate($args);
+    $args = $self->figmodel()->process_arguments($args, ['id'],{
+    	genome => undef,
+    	biomass => undef,
+    	biochemSource => undef,
+    	reconstruction => 1,
+    	gapfilling => 1,
+    	overwrite => 1
+    });
+    if (!defined($self->figmodel()->userObj())) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("You must log in in order to build a model!");
     }
-    if(defined($self->figmodel()->get_genome($id))) {
-        $args->{genome} = $id;
-    } elsif(defined($self->figmodel()->get_model($id))) {
-        my $model = $self->figmodel()->get_model($id);
-        $args->{genome} = $model->genome();
+    $args->{owner} = $self->figmodel()->user();
+    if ($args->{id} =~ m/^\d+\.\d+$/) {
+    	$args->{genome} = $args->{id};
+    	$args->{id} = undef;
+    } elsif (!defined($args->{genome})) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("If the genome is not specified in the ID, then the genome argument must be provided.");
     }
-    return $self->figmodel()->create_model($args);
+    my $mdl = $self->figmodel()->create_model({
+		genome => $args->{genome},
+		id => $args->{id},
+		owner => $args->{owner},
+		biochemSource => $args->{"biochemSource"},
+		biomassReaction => $args->{"biomass"},
+		reconstruction => $args->{"reconstruction"},
+		gapfilling => $args->{"gapfilling"},
+		overwrite => $args->{"overwrite"},
+		usequeue => 1,
+		queue => "fast"
+	});
+	return {$args->{genome} => "Successfully queued ".$mdl->id()." for reconstruction"};
 }
 
 =head 3 model_status

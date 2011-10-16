@@ -193,4 +193,55 @@ sub subsystems_of_role {
 	return $self->{_subsys};
 }
 
+=head3 role_object_hash
+Definition:
+	{} = FIGMODELrole->role_object_hash({
+		attribute => string
+	});
+Description:
+=cut
+sub role_object_hash {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		attribute => "id"
+	});
+	return $self->figmodel()->database()->get_object_hash({
+		type => "role",
+		attribute => $args->{attribute},
+		useCache => 1
+	});
+}
+
+=head3 role_subsystem_hash
+Definition:
+	{} = FIGMODELrole->role_subsystem_hash({
+		attribute => string
+	});
+Description:
+=cut
+sub role_subsystem_hash {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{});
+	my $subsys = $self->figmodel()->database()->get_object_hash({
+		type => "subsystem",
+		attribute => "id",
+		parameters => {status => "core"},
+		useCache => 1
+	});
+	my $subsysRoles = $self->figmodel()->database()->get_object_hash({
+		type => "ssroles",
+		attribute => "ROLE",
+		useCache => 1
+	});
+	my $subsyshash;
+	foreach my $role (keys(%{$subsysRoles})) {
+		for (my $i=0; $i < @{$subsysRoles->{$role}}; $i++) {
+			if (defined($subsys->{$subsysRoles->{$role}->[$i]->SUBSYSTEM()})) {
+				push(@{$subsyshash->{$role}},$subsys->{$subsysRoles->{$role}->[$i]->SUBSYSTEM()}->[0]);
+			}
+		}
+	}
+	return $subsyshash;
+}
+
 1;

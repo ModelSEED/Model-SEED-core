@@ -45,7 +45,7 @@ sub AUTOLOAD {
     my $database = $self->{_figmodel}->database();
     my $rights = $database->get_object_rights($self->{_obj}, $self->{_type});
     if(defined($rights->{'admin'}) or defined($rights->{'edit'})) {
-        $database->clearCache("type:".$self->{_type});
+        #$database->clearCache("type:".$self->{_type});
         return $self->{_obj}->$call($value);
     } else {
         Carp::cluck("User " . $self->{_figmodel}->user() . " does not have rights to set attribute ".

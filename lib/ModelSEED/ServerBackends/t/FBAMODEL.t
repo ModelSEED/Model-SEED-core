@@ -46,7 +46,7 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
     $cpd = $output->{"ALL"}->[0];
     ok defined($cpd), "get_compound_id_list for entire database".
         " should return at least 1 compound, got ". scalar(@{$output->{"ALL"}});
-	$output = $fbamodel->get_compound_data({id => $output->{$pubmodel},model => [$pubmodel]});
+	$output = $fbamodel->get_compound_data({id => $output->{$pubmodel}});
 	$cpd = $output->{"cpd00002"};
 	ok defined($cpd->{FORMULA}->[0]), "get_compound_data for public model ".$pubmodel.
         " should return compound formula, got ". $cpd->{FORMULA}->[0];
@@ -75,9 +75,15 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
     $output = $fbamodel->get_subsystem_data({ids => ["ss00001"]});
 	ok defined($output->{"ss00001"}->{NAME}->[0]), "get_subsystem_data for ss00001".
         " should return a subsystem name, got ". $output->{"ss00001"}->{NAME}->[0];
+    $output = $fbamodel->classify_model_entities({parameters => [{"id" => $pubmodel,media => "Complete",archiveResults => 1}]});
+	ok defined($output->[0]->{classes}->[10]), "classify_model_entities for public model ".$pubmodel.
+        " should return at least 10 entity classes, got ". scalar(@{$output->[0]->{classes}});
     $output = $fbamodel->get_model_reaction_classification_table({"model" => [$pubmodel]});
 	ok defined($output->{$pubmodel}->[0]->{class}->[0]), "get_model_reaction_classification_table for model ".$pubmodel.
         " should return classification data for at least one reaction, got ". $output->{$pubmodel}->[0]->{class}->[0];
+	$output = $fbamodel->model_build({id => "83333.1",overwrite => 1,user => "chenry",password => "Ko3BA9yMnMj2k"});
+	ok defined($output->{"83333.1"}), "model_build for genome 83333.1".
+        " should return a success message, got ". $output->{"83333.1"};
 	exit();
 	$output = $fbamodel->get_model_essentiality_data({model => [$pubmodel]});
 	ok defined($output->{$pubmodel}->{Complete}->{essential}->[0]), "get_model_essentiality_data for model ".$pubmodel.
@@ -104,8 +110,6 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
 	$fbamodel->figmodel()->runTestJob($output->{jobid});
 	$output = $fbamodel->fba_retreive_gene_activity_analysis({jobid => $output->{jobid}});
 	ok !defined($output) || !defined($output->{On_On}->[10]), "FBAMODEL:fba_retreive_gene_activity_analysis:test failed!\n";
-	$output = $fbamodel->classify_model_entities({parameters => [{"id" => "Seed83333.1",media => "Complete",archiveResults => 0}]});
-	ok !defined($output) || !defined($output->[0]->{classes}->[0]), "FBAMODEL:classify_model_entities:test failed!\n";
 	$output = $fbamodel->simulate_all_single_gene_knockout({parameters => [{"id" => "Seed83333.1",media => "Complete"}]});
 	ok !defined($output) || !defined($output->[0]->{"essential genes"}->[0]), "FBAMODEL:simulate_all_single_gene_knockout:test failed!\n";
 	$output = $fbamodel->simulate_model_growth({parameters => [{"id" => "Seed83333.1",media => "Complete"}]});

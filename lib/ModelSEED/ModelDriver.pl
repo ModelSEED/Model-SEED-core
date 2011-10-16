@@ -14,10 +14,9 @@ use Try::Tiny;
 use File::Temp;
 
 $|=1;
-
 #First checking to see if at least one argument has been provided
 my $driv = ModelSEED::ModelDriver->new();
-if (!defined($ARGV[0]) || $ARGV[0] eq "help") {
+if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
     print "Welcome to the Model SEED! You are currently logged in as: ".$driv->figmodel()->user().".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";
     print "Possible usage:\n\n";
