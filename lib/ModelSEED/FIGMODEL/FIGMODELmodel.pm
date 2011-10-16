@@ -3825,8 +3825,6 @@ sub InspectModelState {
 		useCache => 0,
 	});
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		
-		
 		if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d+/ && !defined($rxnHash->{$rxnmdl->[$i]->REACTION()})) {
 			my $rxndata = $self->figmodel()->get_reaction()->file({
 				clear => 1,
@@ -3878,13 +3876,13 @@ sub InspectModelState {
 						}
 						$self->globalMessage({thread => "warning",msg => $rxnmdl->[$i]->REACTION()." added to PPO!"});
 						my $rxn = $self->figmodel()->database()->create_object("reaction",$rxnhash);
-						$self->globalMessage({thread => "masterdb",msg => 
-							$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
-							."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
-							."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
-							."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
-							."!".$rxn->thermoReversibility()
-						});
+						#$self->globalMessage({thread => "masterdb",msg => 
+						#	$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
+						#	."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
+						#	."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
+						#	."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
+						#	."!".$rxn->thermoReversibility()
+						#});
 					}
 				}
 			}
