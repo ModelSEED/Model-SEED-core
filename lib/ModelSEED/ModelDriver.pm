@@ -5973,7 +5973,7 @@ sub mdlinspectstate {
 		parameters => {},
 		input => $args->{"model"}
 	});
-	if (@{$results} == 1 || $args->{usequeue} == 1) {
+	if (@{$results} == 1 || $args->{usequeue} == 0) {
 		for (my $i=0;$i < @{$results}; $i++) {
 			my $mdl = $self->figmodel()->get_model($results->[$i]);
 	 		if (!defined($mdl)) {
