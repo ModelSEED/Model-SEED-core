@@ -3784,6 +3784,7 @@ sub InspectModelState {
 		1,
 		["LOAD","COMPARTMENT"]
 	);
+	$self->globalMessage({thread => "warning",msg => "Loaded ".$tbl->size()." reaction in original model!"});
 	#Checking that the model is properly loaded into PPO
 	my $rxnmdl = $self->rxnmdl();
 	my $rxnMdlHash;

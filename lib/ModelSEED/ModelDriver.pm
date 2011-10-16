@@ -5977,9 +5977,10 @@ sub mdlinspectstate {
 		for (my $i=0;$i < @{$results}; $i++) {
 			my $mdl = $self->figmodel()->get_model($results->[$i]);
 	 		if (!defined($mdl)) {
-	 			ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$results->[$i]);	
+	 			ModelSEED::FIGMODEL::FIGMODELWARNING("Model not valid ".$results->[$i]);	
+	 		} else {
+	 			$mdl->InspectModelState({});
 	 		}
-	 		$mdl->InspectModelState({});
 		}
 	} else {
 		for (my $i=0; $i < @{$results}; $i++) {
