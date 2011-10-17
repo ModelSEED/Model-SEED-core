@@ -2727,13 +2727,19 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	} elsif (defined($args->{biochemSource})){
-		$modelObj->GenerateModelProvenance({
-		    biochemSource => $args->{biochemSource}
-		});
-	}
+	} 
 
 	$mdl = $self->get_model($id);
+
+	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
+	    print "Overwriting provenance\n";
+	    $mdl->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+					  });
+	}
+
+	
+
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
@@ -2788,8 +2794,8 @@ sub import_model {
 
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
-		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		}
 
 		my $newNames;

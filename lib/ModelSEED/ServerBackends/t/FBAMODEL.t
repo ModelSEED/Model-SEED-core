@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use lib 'c:/Code/Model-SEED-core/config/';
+use lib '../../../../config/';
 use ModelSEEDbootstrap;
 use ModelSEED::TestingHelpers;
 use Test::More qw(no_plan);
