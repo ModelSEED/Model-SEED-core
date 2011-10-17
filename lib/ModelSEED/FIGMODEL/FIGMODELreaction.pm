@@ -348,12 +348,12 @@ sub processReactionWithMFAToolkit {
     $fbaObj->makeOutputDirectory({deleteExisting => $args->{overwrite}});    
     print "Writing reaction to file\n";
     $self->print_file_from_ppo({filename=>$fbaObj->directory()."/reactions/".$self->id()});
-
+    
     my $filename = $fbaObj->filename();
     print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
- 
-   return {};
-
+    
+    return {};
+    
     #Backing up the old file
 #    system("cp ".$self->figmodel()->config("reaction directory")->[0].$self->id()." ".$self->figmodel()->config("database root directory")->[0]."ReactionDB/oldreactions/".$self->id());
     #Getting unique directory for output
@@ -394,7 +394,7 @@ sub processReactionWithMFAToolkit {
 #	}
 #	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
 #	return {};
-#}
+}
 
 =head3 get_neighboring_reactions
 Definition:
