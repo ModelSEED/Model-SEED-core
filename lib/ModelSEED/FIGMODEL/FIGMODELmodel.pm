@@ -5819,7 +5819,6 @@ sub PrintSBMLFile {
 	my $reactionCompartments;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
-		print $rxnmdl->[$i]->REACTION()."\n";
 		my $rxnObj;
 		if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
 			if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
