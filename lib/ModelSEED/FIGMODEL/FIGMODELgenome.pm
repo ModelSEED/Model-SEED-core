@@ -410,6 +410,9 @@ sub update_genome_stats {
 		return undef;
 	}
 	#Looping through the genes and gathering statistics
+	my $roleObj = $self->figmodel()->get_role();
+	my $roleHash = $roleObj->role_object_hash({attribute => "searchname"});
+	my $ssHash = $roleObj->role_subsystem_hash();
 	for (my $j=0; $j < $GenomeData->size(); $j++) {
 		my $GeneData = $GenomeData->get_row($j);
 		if (defined($GeneData) && $GeneData->{"ID"}->[0] =~ m/(peg\.\d+)/) {
@@ -422,18 +425,20 @@ sub update_genome_stats {
 				my $gramPosFound = 0;
 				my $gramNegFound = 0;
 				my @Roles = @{$GeneData->{"ROLES"}};
-				foreach my $Role (@Roles) {
-					if ($self->figmodel()->role_is_valid($Role) != 0) {
+				foreach my $Role (@Roles) {					
+					if ($roleObj->role_is_valid({name => $Role}) != 0) {
 						$functionFound = 1;
 						#Looking for role subsystems
-						my $GeneSubsystems = $self->figmodel()->subsystems_of_role($Role);
-						if (defined($GeneSubsystems) && @{$GeneSubsystems} > 0) {
-							$subsystemFound = 1;
-							foreach my $Subsystem (@{$GeneSubsystems}) {
-								if ($Subsystem->classOne() =~ m/Gram\-Negative/ || $Subsystem->classTwo() =~ m/Gram\-Negative/) {
-									$gramNegFound = 1;
-								} elsif ($Subsystem->classOne() =~ m/Gram\-Positive/ || $Subsystem->classTwo() =~ m/Gram\-Positive/) {
-									$gramPosFound = 1;
+						my $searchName = $roleObj->convert_to_search_role({name => $Role});
+						if (defined($roleHash->{$searchName})) {
+							if (defined($ssHash->{$roleHash->{$searchName}->[0]->id()})) {
+								$subsystemFound = 1;
+								for (my $k=0; $k < @{$ssHash->{$roleHash->{$searchName}->[0]->id()}}; $k++) {
+									if ($ssHash->{$roleHash->{$searchName}->[0]->id()}->[$k]->classOne() =~ m/Gram\-Negative/ || $ssHash->{$roleHash->{$searchName}->[0]->id()}->[$k]->classTwo() =~ m/Gram\-Negative/) {
+										$gramNegFound = 1;
+									} elsif ($ssHash->{$roleHash->{$searchName}->[0]->id()}->[$k]->classOne() =~ m/Gram\-Positive/ || $ssHash->{$roleHash->{$searchName}->[0]->id()}->[$k]->classTwo() =~ m/Gram\-Positive/) {
+										$gramPosFound = 1;
+									}
 								}
 							}
 						}
@@ -479,13 +484,13 @@ sub update_genome_stats {
 		}
 	}
 	#Loading the data into the PPO database
-	$self->{_stats} = $self->figmodel()->database()->get_object("genomestats",{GENOME => $self->genome()});
-	if (defined($self->{_stats})) {	
+	$self->{_ppo} = $self->figmodel()->database()->get_object("genomestats",{GENOME => $self->genome()});
+	if (defined($self->{_ppo})) {	
 		foreach my $key (keys(%{$genomeStats})) {
-			$self->{_stats}->$key($genomeStats->{$key});	
+			$self->{_ppo}->$key($genomeStats->{$key});	
 		}
 	} else {
-		$self->{_stats} = $self->figmodel()->database()->create_object("genomestats",$genomeStats);
+		$self->{_ppo} = $self->figmodel()->database()->create_object("genomestats",$genomeStats);
 	}
 }
 =head3 roles_of_peg
@@ -524,10 +529,9 @@ sub active_subsystems {
 				-ids => [$self->genome()],
 				-exclude => ['cluster-based','experimental']	
 			});
-			$self->{_active_subsystems} = [];
 			if (defined($output->{$self->genome()})) {
 				for (my $i=0; $i < @{$output->{$self->genome()}}; $i++) {
-					push(@{$self->{_active_subsystems}},$output->{$self->genome()}->[$i]->[0]);
+					$self->{_active_subsystems}->{$output->{$self->genome()}->[$i]} = 1;
 				}	
 			}
 		} else {

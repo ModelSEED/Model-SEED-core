@@ -18,115 +18,126 @@ Description:
 		   
 =cut
 sub new {
-	my ($class, $figmodel, $id, $args) = @_;
-	if (!defined($figmodel)) {
-		warn "FIGMODELmodel->new(undef,".$id."):".
-			 "figmodel must be defined to create a model object!\n";
-		return undef;
+	my ($class,$args) = @_;
+	if (!defined($args->{figmodel})) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("FIGMODEL must be defined to load a model object!");
 	}
-	my $modelObj; # <== the ppo object
-	my $self = {_id => $id, _fullId => $id, _figmodel => $figmodel};
+	$args = $args->{figmodel}->process_arguments($args,["figmodel"],{
+		id => undef,
+		init => undef
+	});
+	my $self = {_figmodel => $args->{figmodel}};
 	# weaken figmodel even though it should disappear quickly, replaced by a private figmodel
 	Scalar::Util::weaken($self->{_figmodel});
 	bless $self;
-	if(defined($args) && ref($args) eq 'HASH') { # if we're constructing a new model
-		my $isDebug	= $figmodel->config("Database version")->[0] eq "DevModelDB";
-		my $default_id = "Seed".$args->{genome};
-		my $user = $figmodel->database()->get_object("user",
-			{login=>$args->{owner}}) if(defined($args->{owner}) && $args->{owner} ne "master");
-		my $user_id;
-		if(defined($user)) {
-			$user_id = $user->_id();
-			$default_id .= '.'.$user_id;
-		}
-		$args = $figmodel->process_arguments($args, ["genome"], {
-			runPreliminaryReconstruction => 1,
-			id => (defined($id)) ? $id : $default_id,
-			gapfilling => 0,
-			autocompleteMedia => "Complete",
-			owner => "master",
-			queue => $isDebug ? "development" : "fast",
-			biochemSource => undef,
-			biomassReaction => "NONE",
-			cellwalltype => "Unknown",
-			name => "Unknown",
-			source => "Unknown",
-		});
-		# append userid if the user opted out of the "Seed"+"organism_id" setup
-		if($args->{id} ne $default_id && $args->{owner} ne 'master') {
-			if(!defined($user_id)) {
-				ModelSEED::FIGMODEL::FIGMODELERROR("No valid user for ".$args->{owner}.", failed to create model!");
-			} elsif($args->{id} !~ /\.$user_id$/) {
-				$args->{id} .= '.'.$user_id; 
-			}
-			$self->{_fullId} = $args->{id};
-		}
-		# Determining if model is public
-		my $public = 1;
-		if($args->{owner} ne "master") {
-			$public = 0;
-		}
-		#Checking to see if a model with the same ID doesnt already exist
-		$modelObj = $figmodel->database()->get_object("model",{id => $args->{id}});
-		ModelSEED::FIGMODEL::FIGMODELERROR("A model called ".$args->{id}." already exists.") if (defined($modelObj));
-		#Adding model to the database
-		$modelObj = $figmodel->database()->create_object("model",{  
-			id => $args->{id},
-			owner => $args->{owner},
-			public => $public,
-			genome => $args->{genome},
-			source => $args->{source},
-			modificationDate => time(),
-			builtDate => time(),
-			autocompleteDate => -1,
-			status => -2,
-			version => 0,
-			message => "Model reconstruction queued",
-			cellwalltype => $args->{cellwalltype},
-			autoCompleteMedia => $args->{autocompleteMedia},
-			biomassReaction => $args->{biomassReaction},
-			growth => 0,
-			name => $args->{name}
-		});
-		print "Adding new model ",$args->{id}," for ",$args->{owner}," into database\n";
-		$self->ppo($modelObj);
-		$self->create_model_rights();
-		$self->GenerateModelProvenance({
-			biochemSource => $args->{biochemSource}
-		});
-		if ($args->{runPreliminaryReconstruction} eq "1") {
-			if ($args->{queue} eq "NONE") {
-				$self->preliminary_reconstruction({
-					runGapfilling => $args->{gapfilling},	
-				});	
-			} else {
-				my $RunGapFilling = "";
-				if ($args->{gapfilling} eq "1") {
-					$RunGapFilling = "?1";
-				}
-				$self->figmodel()->add_job_to_queue({
-					command => "preliminaryreconstruction?".$args->{id}.$RunGapFilling,
-					queue => $args->{queue},
-					user => $args->{owner}
-				});
-			}
-		}
-		$id = $args->{id};
+	#If the init argument is provided, we attempt to build a new model
+	if (defined($args->{init})) {
+		#This function actually creates the model object in the database
+		$self->initializeModel($args->{init});
+		return $self;
+	} elsif (!defined($args->{id})) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot load a model object without specifying an ID!");
+	} else {
+		#Setting and parsing the model ID
+		$self->setIDandVersion($args->{id});
 	}
-	my $id_parts = $self->parseId($self->fullId());  
-	# if the model isn't the current version, the ppo is in model_version
-	if (!defined($modelObj)) {
-        $modelObj = $self->db()->get_object("model", {id => $args->{id}});
-		if (!defined($modelObj)) {
-		    $modelObj = $self->db()->get_object("model_version", { id => $id_parts->{full} });
-		 	if (!defined($modelObj)) {
-		 		$modelObj = $self->db()->get_object("model", {id => $id_parts->{canonical}});
-		 	}
-		}
-        ModelSEED::FIGMODEL::FIGMODELERROR("Model not found!") if (!defined($modelObj));
-		$self->ppo($modelObj);
+	#Validating the object
+	$self->loadData();
+	#Creating the model specific database object
+	$self->buildDBInterface();
+	return $self;
+}
+
+=head3 id
+Definition:
+	string = FIGMODELmodel->id();
+Description:
+	Getter for model id
+=cut
+sub id {
+	my ($self) = @_;
+	return $self->{_id};
+}
+
+=head3 baseid
+Definition:
+	string = FIGMODELmodel->baseid();
+Description:
+	Getter for model baseid, which is the ID without any version information appended
+=cut
+sub baseid {
+	my ($self) = @_;
+	return $self->{_baseid};
+}
+
+=head3 selectedVersion
+Definition:
+	string = FIGMODELmodel->selectedVersion();
+Description:
+	Getter for currently selected model version
+=cut
+sub selectedVersion {
+	my ($self) = @_;
+	return $self->{_selectedVersion};
+}
+
+=head3 setIDandVersion
+Definition:
+	void FIGMODELmodel->setIDandVersion();
+Description:
+	Setting the ID and version of the model. Version will only be sett if the input ID has a version included in it.
+=cut
+sub setIDandVersion {
+	my ($self,$id) = @_;
+	$self->{_id} = $id;
+	$self->{_baseid} = $id;
+	if ($id =~ m/^(.+)\.v(\w+)$/) {
+		$self->{_baseid} = $1;
+		$self->{_selectedVersion} = $2;
 	}
-	# need to make a copy of this, otherwise we're actually MODIFYING parent FIGMODEL which is BAD
+}
+
+=head3 loadData
+Definition:
+	void FIGMODELmodel->loadData();
+Description:
+	Loads the database object for the model
+=cut
+sub loadData {
+	my ($self) = @_;
+	$self->{_data} = $self->db()->get_object("model", {id => $self->baseid()});
+	if (!defined($self->{_data})) {
+		my $obj = $self->db()->sudo_get_object("model",{id => $self->baseid()});
+		if (defined($obj)) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("You do not have the privelages to view the model ".$self->baseid()."!");
+		}
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->baseid()." could not be found in database!");
+	}
+	#Checking if the user has selected an nonstandard version of the model
+	if (defined($self->selectedVersion())) {
+		if ($self->selectedVersion() ne $self->{_data}->version()) {
+			$self->{_data} = $self->db()->get_object("model_version", {id => $self->id()});
+			if (!defined($self->{_data})) {
+				ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->baseid()." does not have the selected version ".$self->selectedVersion()."!");
+			}
+		} else {
+			#If you have selected the canonical model, by default, selectedVersion should be undef, and ID should be the baseid
+			$self->{_id} = $self->baseid();
+		}	
+	} else {
+		$self->{_selectedVersion} = $self->{_data}->version();
+	}
+}
+
+=head3 buildDBInterface
+Definition:
+	void FIGMODELmodel->buildDBInterface(string::key);
+Description:
+	Build the database inteface object for the model.
+=cut
+sub buildDBInterface {
+	my ($self) = @_;
+	#Creating model specific database object
 	my $configurationFiles = [@{$self->{_figmodel}->{_configSettings}}];
 	# Build default configuration based on files in model->directory()
 	push(@$configurationFiles, $self->build_default_model_config());
@@ -135,17 +146,129 @@ sub new {
 		push(@$configurationFiles, $self->directory().'.figmodel_config');
 	}
 	# Rebuild FIGMODEL with new configuration
-	my $model_figmodel = ModelSEED::FIGMODEL->new({ userObj => $figmodel->userObj(),
-							configFiles => $configurationFiles,
-						      });
-	$self->{_figmodel} = $model_figmodel; # strong ref intentional
-	ModelSEED::FIGMODEL::FIGMODELERROR("id must be defined to create a model object") if (!defined($id));
+	$self->{_figmodel} = ModelSEED::FIGMODEL->new({
+		userObj => $self->{_figmodel}->userObj(),
+		configFiles => $configurationFiles,
+	}); # strong ref intentional
 	# Here the model has the "strong" reference to figmodel, while
 	# figmodel has the weak one to the model. So the figmodel will
 	# stick around as long as the model stays around.
-	$self->figmodel()->{_models}->{$self->fullId()} = $self; 
-	Scalar::Util::weaken($self->figmodel()->{_models}->{$self->fullId()});
-	return $self;
+	$self->figmodel()->{_models}->{$self->id()} = $self; 
+	Scalar::Util::weaken($self->figmodel()->{_models}->{$self->id()});
+}
+
+=head3 initializeModel
+Definition:
+	void FIGMODELmodel->initializeModel({
+		
+		
+	});
+Description:
+	Initializes a new model in the database from the input data hash
+=cut
+sub initializeModel {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args, ["genome"], {
+		id => undef,
+		owner => "master",
+		public => undef,
+		biochemSource => undef,
+		biomassReaction => "NONE",
+		autocompleteMedia => "Complete",
+		cellwalltype => "Unknown",
+		name => "Unknown",
+		source => "Unknown",
+		reconstruction => 0,
+		gapfilling => 0,
+		usequeue => 0,
+		overwrite => 0,
+		queue => undef
+	});
+	if (!defined($args->{id})) {
+		$args->{id} = "Seed".$args->{genome};
+	} elsif ($args->{id} =~ m/^(.+)\.v(\w+)$/) {
+		$args->{id} = $1;
+	}
+	if(defined($args->{owner}) && $args->{owner} ne "master") {
+		my $user = $self->db()->get_object("user",{login=>$args->{owner}});
+		if(!defined($user)) {
+			ModelSEED::FIGMODEL::FIGMODELERROR("No valid user for ".$args->{owner}.", failed to create model!");
+		}
+		if ($args->{id} =~ m/Seed\d+\.\d+/) {
+			if ($args->{id} =~ m/(Seed\d+\.\d+)\.\d+$/) {
+				$args->{id} = $1;
+			}
+		} elsif ($args->{id} =~ m/([^\.]+)\.(\d+)$/) {
+			$args->{id} = $1;
+		}
+		$args->{id} .= ".".$user->_id();
+	}
+	if (!defined($args->{queue})) {
+		if ($self->figmodel()->config("Database version")->[0] eq "DevModelDB") {
+			$args->{queue} = "development";
+		} else {
+			$args->{queue} = "fast";
+		}
+	}
+	if(!defined($args->{public})) {
+		$args->{public} = 1;
+		if ($args->{owner} ne "master") {
+			$args->{public} = 0;
+		}
+	}
+	my $mdlObj = $self->db()->sudo_get_object("model",{id => $args->{id}});
+	if (defined($mdlObj)) {
+		if ($args->{overwrite} == 1 && $mdlObj->owner() eq $args->{owner}) {
+			$mdlObj->delete();
+		} else {
+			ModelSEED::FIGMODEL::FIGMODELERROR("A model called ".$args->{id}." already exists.");
+		}
+	}
+	$self->db()->create_object("model",{ 
+		id => $args->{id},
+		owner => $args->{owner},
+		public => $args->{public},
+		genome => $args->{genome},
+		source => $args->{source},
+		modificationDate => time(),
+		builtDate => time(),
+		autocompleteDate => -1,
+		status => -2,
+		version => 0,
+		message => "Model created",
+		cellwalltype => $args->{cellwalltype},
+		autoCompleteMedia => $args->{autocompleteMedia},
+		biomassReaction => $args->{biomassReaction},
+		growth => 0,
+		name => $args->{name}
+	});
+	$self->setIDandVersion($args->{id});
+	$self->changeRight({
+		permission => "admin",
+		username => $args->{owner},
+		force => 1
+	});
+	$self->loadData();
+	$self->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+	});
+	$self->buildDBInterface();
+	if ($args->{reconstruction} eq "1") {
+		if ($args->{usequeue} == 1) {
+			$self->figmodel()->add_job_to_queue({
+				command => "mdlreconstruction?".$self->id()."?".$args->{gapfilling}."?0?".$args->{usequeue}."?".$args->{queue},
+				queue => $args->{queue},
+				user => $args->{owner}
+			});
+		} else {
+			$self->reconstruction({
+				checkpoint => 0,
+				gapfilling => $args->{gapfilling},
+				usequeue => $args->{usequeue},
+				queue => $args->{queue}
+			});
+		}
+	}	
 }
 
 =head3 config
@@ -160,27 +283,6 @@ sub config {
 	return $self->figmodel()->config($key);
 }
 
-=head3 error_message
-Definition:
-	{}:Output = FIGMODELmodel->new_error_message({
-		function => "?",
-		message => "",
-		args => {}
-	})
-	Output = {
-		error => string:error message,
-		msg => string:error message,
-		success => 0
-	}
-Description:
-=cut
-sub error_message {
-	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		package => "FIGMODELmodel(".$self->id().")",
-	});
-	return $self->figmodel()->new_error_message($args);
-}
 =head3 debug_message
 Definition:
 	{}:Output = FIGMODELmodel->debug_message({
@@ -314,8 +416,11 @@ sub copyModel {
 	# Configuration needed for new() itself
 	$model_init_hash->{runPreliminaryReconstrution} = 0;
 	$model_init_hash->{gapfilling} = 0;
-	
-	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self->figmodel(), $args->{newid}, $model_init_hash);
+	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
+		figmodel => $self->figmodel(),
+		id => $args->{newid},
+		init => $model_init_hash
+	});
 	# Give the current user temporary admin rights 
 #	$self->changeRight($self->figmodel()->user(), "admin", "force");
 	ModelSEED::FIGMODEL::FIGMODELERROR("Error constructing new model ".$args->{newid}) if(!defined($mdl));
@@ -415,24 +520,6 @@ sub ppo {
 		$self->{_data} = $object;
 	}
 	return $self->{_data};
-}
-
-=head3 id
-Definition:
-	string = FIGMODELmodel->id();
-Description:
-	Returns model id
-=cut
-sub id {
-	my ($self) = @_;
-	if(not defined($self->ppo()) && defined($self->{_id})) {
-		my $parse = $self->parseId($self->{_fullId});
-		return $self->{_id} = $parse->{canonical}; 
-	}
-	   if (defined($self->ppo()->attributes()->{canonicalID})) {
-		   return $self->ppo()->canonicalID();
-	   }	
-	return $self->ppo()->id();
 }
 
 =head33 fullId
@@ -557,7 +644,7 @@ sub users {
 	}
 	# Add a "view" right to PUBLIC for public models
 	if(!defined($self->ppo())) {
-		Carp::cluck "no ppo here!";
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot check model rights without a defined PPO object!");
 	}
 	if($self->ppo()->public() eq 1) {
 		$obj->{PUBLIC} = "view";
@@ -567,44 +654,36 @@ sub users {
 
 =head3 changeRight
 Definition:
-	string:error message = FIGMODELmodel->changeRight(string:username,string right);
+	string:error message = FIGMODELmodel->changeRight({
+		permission => string,
+		username => string,
+		force => 0/1
+	});
 =cut
 sub changeRight {
-	my ($self, $user, $permission, $force) = @_;
-	return unless($self->isAdministrable() || $force eq "force");
-	my $model_hash = {
-		id => $self->id(),
-		type => "model",
-		user => $user 
-	};
-	my $biomass_hash = {
-		id => $self->biomassReaction(),
-		type => "bof",
-		user => $user
-	};
-	if($permission eq "" || $permission eq "none") {
-		my $mdl = $self->db()->get_object("permissions", $model_hash);
-		my $bio = $self->db()->get_object("permissions", $biomass_hash);
-		$mdl->delete() if defined($mdl);
-		$bio->delete() if defined($bio);
-		return;
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["permission"],{
+		username => 0,
+		force => 0
+	});
+	if (!defined($args->{username})) {
+		$args->{username} = $self->owner(); #I cannot set this as a default argument, because sometime owner is not defined
 	}
-	# give the user the permission on the model object
-	my $existing_mdl = $self->db()->get_object("permissions", $model_hash);
-	if(defined($existing_mdl)) {
-		$existing_mdl->permission($permission);
-	} else {
-		$model_hash->{permission} = $permission;
-		$self->db()->create_object("permissions", $model_hash);
+	if ($args->{force} ne 1 && !$self->isAdministrable()) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("User ".$self->figmodel()->user()." lacks privelages to change rights of model ".$self->id());
 	}
-	# give the user the permission on the biomass reaction
-	my $existing_bio = $self->db()->get_object("permissions", $biomass_hash);
-	if(defined($existing_bio)) {
-	   	$existing_bio->permission($permission);
-	} else {
-		$biomass_hash->{permission} = $permission;
-		$self->db()->create_object("permissions", $biomass_hash);
-	}
+	$self->db()->change_permissions({
+		objectID => $self->id(),
+		permission => $args->{permission},
+		user => $args->{username},
+		type => "model"
+	});
+	$self->db()->change_permissions({
+		objectID => $self->id(),
+		permission => $args->{permission},
+		user => $args->{username},
+		type => "bof"
+	});	
 }
 
 =head3 rights
@@ -643,7 +722,11 @@ sub create_model_rights {
 	} else {
 		$self->ppo()->public(0);
 		# Give the model owner admin rights over the model, biomass
-		$self->changeRight($self->owner(), "admin","force");
+		$self->changeRight({
+			permission => "admin",
+			username => $self->owner(),
+			force => 1
+		});
 	}
 }
 =head3 transfer_genome_rights_to_model
@@ -840,11 +923,11 @@ sub get_reaction_data {
 		} elsif ($args =~ m/[rb][ix][no]\d\d\d\d\d/) {
 			$args = {-id => $args};
 		} else {
-			return $self->error_message({function => "get_reaction_data",args => $args,message=>"No ID or index specified!"});
+			ModelSEED::FIGMODEL::FIGMODELERROR("No ID or index specified!");
 		}
 	}
 	if (!defined($args->{-id}) && !defined($args->{-index})) {
-		return $self->error_message({function => "get_reaction_data",args => $args,message=>"No ID or index specified!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("No ID or index specified!");
 	}
 	my $rxnTbl = $self->reaction_table();
 	if (!defined($rxnTbl)) {
@@ -868,7 +951,6 @@ Description:
 sub role_table {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{create=>0});
-	if (defined($args->{error})) {return $self->error_message({function => "role_table",args => $args});}
 	if (!defined($self->getCache("roletable"))) {
 		my $tbl;
 		if ($args->{create} == 1 || !-e $self->directory()."Roles.tbl") {
@@ -947,7 +1029,6 @@ Description:
 sub get_reaction_flux {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["id","fluxobj"]);
-	if (defined($args->{error})) {return $self->error_message({function => "get_reaction_flux",args => $args});}
 	if (!defined($self->{_fluxes}->{$args->{fluxobj}->_id()})) {
 		if ($args->{fluxobj}->flux() eq "none") {
 			return "None";	
@@ -1000,7 +1081,7 @@ sub get_reaction_equation {
 		$obj = $self->figmodel()->database()->get_object("bof",{id => $1});
 	}
 	if (!defined($obj)) {
-		return $self->error_message({function => "get_reaction_equation",args => $args,message => "can't find reaction ".$rxnData->{LOAD}->[0]." in database!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("can't find reaction ".$rxnData->{LOAD}->[0]." in database!");
 	}
 	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $equation = $obj->equation();
@@ -1073,12 +1154,12 @@ sub load_model_table {
 		if (defined($tbldef->{filename_suffix}->[0])) {
 			$suffix = $tbldef->{filename_suffix}->[0];
 		}
-		my $filename = $self->directory().$name."-".$self->id().$self->selected_version().$suffix;
+		my $filename = $self->directory().$name."-".$self->id().$self->selectedVersion().$suffix;
 		if (defined($tbldef->{filename_prefix}->[0])) {
 			if ($tbldef->{filename_prefix}->[0] eq "NONE") {
-				$filename = $self->directory().$self->id().$self->selected_version().$suffix;
+				$filename = $self->directory().$self->id().$self->selectedVersion().$suffix;
 			} else {
-				$filename = $self->directory().$tbldef->{filename_prefix}->[0]."-".$self->id().$self->selected_version().$suffix;
+				$filename = $self->directory().$tbldef->{filename_prefix}->[0]."-".$self->id().$self->selectedVersion().$suffix;
 			}
 		}
 		if (-e $filename) {
@@ -1109,11 +1190,11 @@ sub create_table_prototype {
 	#Checking if the table definition exists in the FIGMODELconfig file
 	my $tbldef = $self->figmodel()->config($TableName);
 	if (!defined($tbldef)) {
-		return $self->error_message({function => "create_table_prototype",message => "Definition not found for ".$TableName});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Definition not found for ".$TableName);
 	}
 	#Checking that this is a database table
 	if (!defined($tbldef->{tabletype}) || $tbldef->{tabletype}->[0] ne "ModelTable") {
-		return $self->error_message({function => "create_table_prototype",message => $TableName." is not a model table!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR($TableName." is not a model table!");
 	}
 	#Setting default values for table parameters
 	my $prefix;
@@ -1138,12 +1219,12 @@ sub create_table_prototype {
 	if (defined($tbldef->{filename_suffix}->[0])) {
 		$suffix = $tbldef->{filename_suffix}->[0];
 	}
-	my $filename = $self->directory().$TableName."-".$self->id().$self->selected_version().$suffix;
+	my $filename = $self->directory().$TableName."-".$self->id().$self->selectedVersion().$suffix;
 	if (defined($tbldef->{filename_prefix}->[0])) {
 		if ($tbldef->{filename_prefix}->[0] eq "NONE") {
-			$filename = $self->directory().$self->id().$self->selected_version().$suffix;
+			$filename = $self->directory().$self->id().$self->selectedVersion().$suffix;
 		} else {
-			$filename = $self->directory().$tbldef->{filename_prefix}->[0]."-".$self->id().$self->selected_version().$suffix;
+			$filename = $self->directory().$tbldef->{filename_prefix}->[0]."-".$self->id().$self->selectedVersion().$suffix;
 		}
 	}
 	#Creating the table prototype
@@ -1211,7 +1292,7 @@ sub featureHash {
 	if (!defined($self->{_featurehash})) {
 		my $rxnTable = $self->reaction_table();
 		if (!defined($rxnTable)) {
-			return $self->error_message({function => "featureHash",message => "Could not get reaction table!"});
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not get reaction table!");
 		}
 		for (my $i=0; $i < $rxnTable->size(); $i++) {
 			my $Row = $rxnTable->get_row($i);
@@ -1255,7 +1336,13 @@ Description:
 =cut
 sub reaction_class_table {
 	my ($self,$clear) = @_;
-	return $self->load_model_table("ModelReactionClasses",$clear);
+	if (defined($clear) && $clear == 1) {
+		delete $self->{_reaction_class_table};
+	}
+	if (!defined($self->{_reaction_class_table})) {
+		 $self->create_model_class_tables();
+	}
+	return $self->{_reaction_class_table}
 }
 
 =head3 compound_class_table
@@ -1266,7 +1353,76 @@ Description:
 =cut
 sub compound_class_table {
 	my ($self,$clear) = @_;
-	return $self->load_model_table("ModelCompoundClasses",$clear);
+	if (defined($clear) && $clear == 1) {
+		delete $self->{_compound_class_table};
+	}
+	if (!defined($self->{_compound_class_table})) {
+		 $self->create_model_class_tables();
+	}
+	return $self->{_compound_class_table}
+}
+
+=head3 create_model_class_tables
+Definition:
+	FIGMODELTable = FIGMODELmodel->create_model_class_tables();
+Description:
+	Creates FIGMODELTables with the compound and reaction class data pulled from the database
+=cut
+sub create_model_class_tables {
+	my ($self) = @_;
+	my $rxnTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["REACTION","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-ReactionClasses.txt",["REACTION","MEDIA","CLASS"],"\t","\|",undef);;
+	my $cpdTable = ModelSEED::FIGMODEL::FIGMODELTable->new(["COMPOUND","MEDIA","CLASS","MAX","MIN"],$self->directory().$self->id()."-CompoundClasses.txt",["COMPOUND","MEDIA","CLASS"],"\t","\|",undef);;
+	my $objs = $self->db()->get_objects("mdlfva",{parameters => "FG;",MODEL => $self->id()});
+	my $classHash = {
+		inactive => "Blocked",
+		positive => "Positive",
+		negative => "Negative",
+		negvar => "Negative variable",
+		posvar => "Positive variable",
+		dead => "Dead",
+		variable => "Variable"
+	};
+	my $class = [keys(%{$classHash})];
+	for (my $i=0;$i < @{$objs};$i++) {
+		for (my $j=0;$j < @{$class};$j++) {
+			my $function = $class->[$j];
+			my $varArray = [split(/;/,$objs->[$i]->$function())];
+			my $boundArray;
+			if ($function ne "inactive" && $function ne "dead") {
+				$function .= "Bounds";
+				$boundArray = [split(/;/,$objs->[$i]->$function())];
+			}
+			for (my $k;$k < @{$varArray};$k++) {
+				my $bounds = [0,0];
+				if ($class->[$j] eq "posvar") {
+					$bounds->[1] = $boundArray->[$k];
+				} elsif ($class->[$j] eq "negvar") {
+					$bounds->[0] = $boundArray->[$k];
+				} elsif ($class->[$j] eq "positive" || $class->[$j] eq "negative" || $class->[$j] eq "variable") {
+					$bounds = [split(/:/,$boundArray->[$k])];
+				}
+				if ($varArray->[$k] =~ m/rxn\d+/) {
+					$rxnTable->add_row({
+						"REACTION" => [$varArray->[$k]],
+						"MEDIA" => [$objs->[$i]->MEDIA()],
+						"CLASS" => [$classHash->{$class->[$j]}],
+						"MAX" => [$bounds->[1]],
+						"MIN" => [$bounds->[0]]
+					});
+				} elsif ($varArray->[$k] =~ m/cpd\d+/) {
+					$cpdTable->add_row({
+						"COMPOUND" => [$varArray->[$k]],
+						"MEDIA" => [$objs->[$i]->MEDIA()],
+						"CLASS" => [$classHash->{$class->[$j]}],
+						"MAX" => [$bounds->[1]],
+						"MIN" => [$bounds->[0]]
+					});
+				}
+			}
+		}
+	}
+	$self->{_reaction_class_table} = $rxnTable;
+	$self->{_compound_class_table} = $cpdTable;
 }
 
 =head3 get_essential_genes
@@ -1344,31 +1500,10 @@ sub directory {
 	my ($self, $newDir) = @_;
 	if(defined($newDir)) {
 		$self->{_directory} = $newDir;
-	} 
-	my $owner;
-	# disabling caching, as this seems to lead to stale-state at times
-	#unless(defined($self->{_directory})) {
-		my $parts = $self->parseId($self->fullId());
-		if(defined($parts->{owner}) && $parts->{owner} ne 'master') {
-			my $user_obj = $self->figmodel()->database()->get_object("user", {_id => $parts->{owner}});
-			$owner = $user_obj->login() if(defined($user_obj));
-		} else {
-			$owner = "master";
-		}
-		my $path = (defined($owner)) ? $owner."/" : "";
-		$path .= $parts->{canonical}."/".$parts->{version}."/";
-		my $model_dirs = $self->figmodel()->config('model directory');
-		foreach my $model_dir (@$model_dirs) {
-            $model_dir =~ s/\/$//;
-			if(-d "$model_dir/$path") {
-				$self->{_directory} = "$model_dir/$path";
-				last;
-			}
-		}
-		if(!defined($self->{_directory}) && defined($self->ppo())) {
-			$self->{_directory} = "$model_dirs->[0]/$path";
-		}
-	#}
+	}
+	if (!defined($self->{_directory})) {
+		$self->{_directory} = $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/".$self->selectedVersion()."/";
+	}
 	return $self->{_directory};
 }
 
@@ -1414,7 +1549,7 @@ Description:
 sub filename {
 	my ($self) = @_;
 
-	return $self->directory().$self->id().$self->selected_version().".txt";
+	return $self->directory().$self->id().$self->selectedVersion().".txt";
 }
 
 =head3 version
@@ -1499,22 +1634,6 @@ sub isAdministrable {
 	my $users = $self->users();
 	return 0 unless(defined($users->{$user}) && $users->{$user} eq "admin");
 	return 1;
-}
-	
-
-=head3 selected_version
-Definition:
-	string = FIGMODELmodel->selected_version();
-Description:
-	Returns the selected version of the model
-=cut
-sub selected_version {
-	my ($self) = @_;
-
-	if (!defined($self->{_selectedversion})) {
-		return "";
-	}
-	return $self->{_selectedversion};
 }
 
 =head3 modification_time
@@ -1907,7 +2026,6 @@ sub printInactiveReactions {
 		unorderedList => undef,
 		priorityList => undef
 	});
-	if (defined($args->{error})) {return $self->error_message({function => "printInactiveReactions",args => $args});}
 	#Loading the unordered list if one has not been provided
 	if (!defined($args->{unorderedList})) {
 		my $obj = $self->figmodel()->database()->get_object("mdlfva",{MODEL=>$self->id(),MEDIA=>"Complete",parameters=>"NG;DR:bio00001;"});
@@ -2147,13 +2265,13 @@ sub integrateGapfillingSolution {
 			}
 		}
 	}
-	return $self->error_message({message => $args->{gapfillResults}->{error},function => "completeGapfilling",args => $args}) if (defined($args->{gapfillResults}->{error}));
 	#Loading the reaction table located in the problem directory and adjusting based on the gapfilling solution
 	my $rxns = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{directory}."/".$self->id().".tbl",
         ";","|",1,["LOAD","ASSOCIATED PEG","COMPARTMENT"]);
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	foreach my $rxn (keys(%{$solutionHash})) {
 		if ($rxn ne "rxn12985") {
-			my $rev = $self->figmodel()->reversibility_of_reaction($rxn);
+			my $rev = $rxnRevHash->{$rxn};
 			if ($solutionHash->{$rxn}->{sign} ne $rev) {
 				$solutionHash->{$rxn}->{sign} = "<=>";
 			}
@@ -2241,10 +2359,11 @@ sub GapFillModel {
 	#Clearing the table
 	$self->reaction_table(1);
 	#Removing any gapfilling reactions that may be currently present in the model
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	if (!defined($donotclear) || $donotclear != 1) {
 		my $ModelTable = $self->reaction_table();
 		for (my $i=0; $i < $ModelTable->size(); $i++) {
-			$ModelTable->get_row($i)->{"DIRECTIONALITY"}->[0] = $self->figmodel()->reversibility_of_reaction($ModelTable->get_row($i)->{"LOAD"}->[0]);
+			$ModelTable->get_row($i)->{"DIRECTIONALITY"}->[0] = $rxnRevHash->{$ModelTable->get_row($i)->{"LOAD"}->[0]};
 			if (!defined($ModelTable->get_row($i)->{"ASSOCIATED PEG"}->[0]) || $ModelTable->get_row($i)->{"ASSOCIATED PEG"}->[0] eq "AUTOCOMPLETION" || $ModelTable->get_row($i)->{"ASSOCIATED PEG"}->[0] eq "GAP FILLING" || $ModelTable->get_row($i)->{"ASSOCIATED PEG"}->[0] =~ m/BIOLOG/ || $ModelTable->get_row($i)->{"ASSOCIATED PEG"}->[0] =~ m/GROWMATCH/) {
 				$ModelTable->delete_row($i);
 				$i--;
@@ -2290,7 +2409,7 @@ sub GapFillModel {
 
 	#Looking for gapfilling report
 	if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingReport.txt") {
-		$self->error_message({function => "GapFillModel",message => "no gapfilling solution found!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("no gapfilling solution found!");
 		system($self->figmodel()->config("Model driver executable")->[0]." \"setmodelstatus?".$self->id()."?1?Autocompletion___failed___to___find___solution\"");
 		return $self->figmodel()->fail();
 	}
@@ -2313,7 +2432,7 @@ sub GapFillModel {
 					if (defined($rxnRow)) {
 						$rxnRow->{"DIRECTIONALITY"}->[0] = "<=>";
 					} else {
-						my $direction = $self->figmodel()->reversibility_of_reaction($reaction);
+						my $direction = $rxnRevHash->{$reaction};
 						if ($direction ne "<=>") {
 							if ($sign eq "-" && $direction eq "=>") {
 								 $direction = "<=>";
@@ -2405,6 +2524,7 @@ sub load_scip_gapfill_results {
 	my $ReactionList;
 	my $DirectionList;
 	my $fileLines = $self->figmodel()->database()->load_single_column_file($filename);
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < @{$fileLines}; $i++) {
 		if ($fileLines->[$i] =~ m/^\s*(\d+)m\|.+\s(.+)%/) {
 			$time = 60*$1;
@@ -2434,7 +2554,7 @@ sub load_scip_gapfill_results {
 					$ID = $1;
 				}
 				if ($ID ne "") {
-					if ($self->figmodel()->reversibility_of_reaction($ID) ne $Sign) {
+					if ($rxnRevHash->{$ID} ne $Sign) {
 						$Sign = "<=>";
 					}
 					push(@{$DirectionList},$Sign);
@@ -2566,7 +2686,7 @@ sub calculate_model_changes {
 	my ($self,$originalReactions,$cause,$tbl,$version,$filename) = @_;
 	my $modTime = time();
 	if (!defined($version)) {
-		$version = $self->selected_version();
+		$version = $self->selectedVersion();
 	}
 	if (defined($filename) && !defined($originalReactions) && -e $self->directory()."OriginalModel-".$self->id()."-".$filename.".txt") {
 		$originalReactions = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
@@ -2704,14 +2824,14 @@ sub GapGenModel {
 	my $Filename = $self->figmodel()->filename();
 
 	#Running the gap generation
-	system($self->figmodel()->GenerateMFAToolkitCommandLineCall($Filename,$self->id().$self->selected_version(),$Media,["GapGeneration"],{"Recursive MILP solution limit" => $SolutionLimit ,"Reactions that should always be active" => join(";",@{$NoKOList}),"Reactions to knockout" => join(";",@{$KOList}),"Reactions that are always blocked" => "none"},"Gapgeneration-".$self->id().$self->selected_version()."-".$Filename.".log",undef,undef));
+	system($self->figmodel()->GenerateMFAToolkitCommandLineCall($Filename,$self->id().$self->selectedVersion(),$Media,["GapGeneration"],{"Recursive MILP solution limit" => $SolutionLimit ,"Reactions that should always be active" => join(";",@{$NoKOList}),"Reactions to knockout" => join(";",@{$KOList}),"Reactions that are always blocked" => "none"},"Gapgeneration-".$self->id().$self->selectedVersion()."-".$Filename.".log",undef,undef));
 	my $ProblemReport = $self->figmodel()->LoadProblemReport($Filename);
 	if (!defined($ProblemReport)) {
-		return $self->error_message({function => "GapGenModel",message => "No problem report;".$Filename.";".$self->id().$self->selected_version().";".$Media.";".$KOList.";".$NoKOList});
+		ModelSEED::FIGMODEL::FIGMODELERROR("No problem report;".$Filename.";".$self->id().$self->selectedVersion().";".$Media.";".$KOList.";".$NoKOList);
 	}
 	
 	#Clearing the output folder and log file
-	$self->figmodel()->clearing_output($Filename,"Gapgeneration-".$self->id().$self->selected_version()."-".$Filename.".log");
+	$self->figmodel()->clearing_output($Filename,"Gapgeneration-".$self->id().$self->selectedVersion()."-".$Filename.".log");
 	
 	#Saving the solution
 	$self->aquireModelLock();
@@ -2744,24 +2864,24 @@ sub datagapfill {
 	my ($self,$GapFillingRunSpecs,$TansferFileSuffix) = @_;
 	my $UniqueFilename = $self->figmodel()->filename();
 	if (defined($GapFillingRunSpecs) && @{$GapFillingRunSpecs} > 0) {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id().$self->selected_version(),"NoBounds",["GapFilling"],{"Reactions to knockout" => $self->config("permanently knocked out reactions")->[0],"Gap filling runs" => join(";",@{$GapFillingRunSpecs})},"GapFilling-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,undef));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id().$self->selectedVersion(),"NoBounds",["GapFilling"],{"Reactions to knockout" => $self->config("permanently knocked out reactions")->[0],"Gap filling runs" => join(";",@{$GapFillingRunSpecs})},"GapFilling-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,undef));
 		#Checking that the solution exists
 		if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt") {
-			$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selected_version()."-GFS.txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
-			return $self->error_message({function => "datagapfill",message => "Could not find MFA output file!"});
+			$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selectedVersion()."-GFS.txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find MFA output file!");
 		}
 		my $GapFillResultTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
             $self->config("MFAToolkit output directory")->[0]."$UniqueFilename/GapFillingSolutionTable.txt",";","",0,undef);
 		if (defined($TansferFileSuffix)) {
-			system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt ".$self->directory().$self->id().$self->selected_version()."-".$TansferFileSuffix.".txt");
+			system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt ".$self->directory().$self->id().$self->selectedVersion()."-".$TansferFileSuffix.".txt");
 		}
 		#If the system is not configured to preserve all logfiles, then the mfatoolkit output folder is deleted
 		print $self->config("MFAToolkit output directory")->[0].$UniqueFilename."\n";
-		$self->figmodel()->clearing_output($UniqueFilename,"GapFilling-".$self->id().$self->selected_version()."-".$UniqueFilename.".log");
+		$self->figmodel()->clearing_output($UniqueFilename,"GapFilling-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log");
 		return $GapFillResultTable;
 	}
 	if (defined($TansferFileSuffix)) {
-		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selected_version()."-".$TansferFileSuffix.".txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
+		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selectedVersion()."-".$TansferFileSuffix.".txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
 	}
 	return undef;
 }
@@ -2824,7 +2944,7 @@ sub TestSolutions {
 			push(@{$DirectionArray},$SolutionHash{$ReactionList[$k]});
 		}
 		print "Integrating solution!\n";
-		$self->figmodel()->IntegrateGrowMatchSolution($self->id().$self->selected_version(),$self->directory().$self->id().$TempVersion.".txt",$ReactionArray,$DirectionArray,"Gapfilling ".$GapFillResultTable->get_row($i)->{"Experiment"}->[0],1,1);
+		$self->figmodel()->IntegrateGrowMatchSolution($self->id().$self->selectedVersion(),$self->directory().$self->id().$TempVersion.".txt",$ReactionArray,$DirectionArray,"Gapfilling ".$GapFillResultTable->get_row($i)->{"Experiment"}->[0],1,1);
 		$self->PrintModelLPFile();
 		#Running the model against all available experimental data
 		print "Running test model!\n";
@@ -2870,11 +2990,12 @@ sub generate_fulldb_model {
 	}
 	#Regenerating all reactions
 	my $rxn = $self->db()->get_objects("reaction");
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < @{$rxn}; $i++) {
 		$self->db()->create_object("rxnmdl",{
 			MODEL => $self->id(),
 			REACTION => $rxn->[$i]->id(),
-			directionality => $self->figmodel()->reversibility_of_reaction($rxn->[$i]->id()),
+			directionality => $rxnRevHash->{$rxn->[$i]->id()},
 			compartment => "c",
 			pegs => "UNKNOWN",
 			reference => "NONE",
@@ -2897,32 +3018,40 @@ sub generate_fulldb_model {
 	return {success => 1};
 }
 
-=head3 preliminary_reconstruction
+
+
+=head3 reconstruction
 Definition:
-	FIGMODELmodel->preliminary_reconstruction({
+	FIGMODELmodel->reconstruction({
 		runGapfilling => 1,	
 	});
 Description:
 =cut
-sub preliminary_reconstruction {
+sub reconstruction {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
-		runGapfilling => 1
+		checkpoint => 1,
+		gapfilling => 1,
+		usequeue => 0,
+		queue => undef
 	});
-	#If the genome is "Complete", then we build the model for the entire database
-	if ($self->genome() =~ m/Complete/) {
-		return $self->generate_fulldb_model();
+	if (!defined($args->{queue})) {
+		if ($self->figmodel()->config("Database version")->[0] eq "DevModelDB") {
+			$args->{queue} = "development";
+		} else {
+			$args->{queue} = "fast";
+		}
 	}
 	#Getting genome data and feature table
 	my $genomeObj = $self->genomeObj();
 	if (!defined($genomeObj)) {
 		$self->set_status(-2,"Could not create genome object!");
-		return $self->error_message({function => "preliminary_reconstruction",message => "Could not create genome object!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not create genome object!");
 	}
 	my $ftrTbl = $genomeObj->feature_table();
 	if (!defined($ftrTbl)) {
 		$self->set_status(-2,"Could not obtain feature table for genome!");
-		return $self->error_message({function => "preliminary_reconstruction",message => "Could not obtain feature table!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not obtain feature table!");
 	}
 	#Checking that the number of genes exceeds the minimum size
 	if ($ftrTbl->size() < $self->config("minimum genome size for modeling")->[0]) {
@@ -2931,11 +3060,11 @@ sub preliminary_reconstruction {
 	#Checking that a directory exists for the model (should have been created in "new" function)
 	my $directory = $self->directory();
 	if (!-d $directory) {
-		return $self->error_message({function => "preliminary_reconstruction",message => "Model directory does not exist!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model directory does not exist!");
 	}
 	#Reseting status so model is built twice at the same time
 	if ($self->status() == 0) {
-		return $self->error_message({function => "preliminary_reconstruction",message => "model is already being built. Canceling current build."});
+		ModelSEED::FIGMODEL::FIGMODELERROR("model is already being built. Canceling current build.");
 	}elsif ($self->status() == 1) {
 		$self->set_status(0,"Rebuilding preliminary reconstruction");
 	} else {
@@ -2977,10 +3106,11 @@ sub preliminary_reconstruction {
 		locations => $locations
 	});
 	if (!defined($ReactionHash)) {
-		return $self->error_message({function => "preliminary_reconstruction",message => "Could not generate reaction GPR!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not generate reaction GPR!");
 	}
 	#Creating the model reaction table
 	my $newRxnRowHash;
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	foreach my $rxn (keys(%{$ReactionHash})) {
 		my $reference = $genomeObj->source();
 		if (defined($escores->{$rxn})) {
@@ -2989,7 +3119,7 @@ sub preliminary_reconstruction {
 		$newRxnRowHash->{$rxn} = {
 			MODEL => $self->id(),
 			REACTION => $rxn,
-			directionality => $self->figmodel()->reversibility_of_reaction($rxn),
+			directionality => $rxnRevHash->{$rxn},
 			compartment => "c",
 			pegs => join("|",@{$ReactionHash->{$rxn}}),
 			reference => $reference,
@@ -3003,7 +3133,7 @@ sub preliminary_reconstruction {
 			$newRxnRowHash->{$rxn} = {
 				MODEL => $self->id(),
 				REACTION => $rxn,
-				directionality => $self->figmodel()->reversibility_of_reaction($rxn),
+				directionality => $rxnRevHash->{$rxn},
 				compartment => "c",
 				pegs => "SPONTANEOUS",
 				reference => "NONE",
@@ -3017,7 +3147,7 @@ sub preliminary_reconstruction {
 			$newRxnRowHash->{$rxn} = {
 				MODEL => $self->id(),
 				REACTION => $rxn,
-				directionality => $self->figmodel()->reversibility_of_reaction($rxn),
+				directionality => $rxnRevHash->{$rxn},
 				compartment => "c",
 				pegs => "UNIVERSAL",
 				reference => "NONE",
@@ -3036,7 +3166,7 @@ sub preliminary_reconstruction {
 						$newRxnRowHash->{$Reaction} = {
 							MODEL => $self->id(),
 							REACTION => $Reaction,
-							directionality => $self->figmodel()->reversibility_of_reaction($Reaction),
+							directionality => $rxnRevHash->{$rxn},
 							compartment => "c",
 							pegs => "UNIVERSAL",
 							reference => "NONE",
@@ -3056,14 +3186,14 @@ sub preliminary_reconstruction {
 		$biomassID = $self->BuildSpecificBiomassReaction();
 		if ($biomassID !~ m/bio\d\d\d\d\d/) {
 			$self->set_status(-2,"Preliminary reconstruction failed: could not generate biomass reaction");
-			return $self->error_message({function => "CreateMetabolicModel",message => "Could not generate biomass reaction!"});
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not generate biomass reaction!");
 		}
 	}
 	#Getting the biomass reaction PPO object
 	my $bioRxn = $self->figmodel()->database()->get_object("bof",{id=>$biomassID});
 	if (!defined($bioRxn)) {
 		 $self->set_status(-2,"Preliminary reconstruction failed: could not find biomass reaction ".$biomassID);
-		return $self->error_message({function => "CreateMetabolicModel",message => "Could not find biomass reaction ".$biomassID});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass reaction ".$biomassID);
 	}
 	#Getting the list of essential reactions for biomass reaction
 	my $ReactionList;
@@ -3085,7 +3215,7 @@ sub preliminary_reconstruction {
 				$pegs = "BIOMASS";
 				$confidence = 1;
 			} else {
-				$direction = $self->figmodel()->reversibility_of_reaction($BOFReaction);
+				$direction = $rxnRevHash->{$BOFReaction};
 				$pegs = "BIOMASS AUTOCOMPLETION";
 				$confidence = 5;
 			}
@@ -3117,7 +3247,9 @@ sub preliminary_reconstruction {
 				if ($rxnMdl->[$i]->$heading() ne $newRxnRowHash->{$rxnMdl->[$i]->REACTION()}->{$heading}) {
 					if ($checkpointed == 0) {
 						$checkpointed = 1;
-						$self->checkpoint();
+						if ($args->{checkpoint} == 1) {
+							$self->checkpoint();
+						}
 					}
 					$rxnMdl->[$i]->$heading($newRxnRowHash->{$rxnMdl->[$i]->REACTION()}->{$heading});
 					$changed = 1;	
@@ -3130,7 +3262,9 @@ sub preliminary_reconstruction {
 		} elsif ($rxnMdl->[$i]->pegs() !~ m/AUTOCOMPLETION/) {#Keeping previous autocompletion results
 			if ($checkpointed == 0) {
 				$checkpointed = 1;
-				$self->checkpoint();
+				if ($args->{checkpoint} == 1) {
+					$self->checkpoint();
+				}
 			}
 			$rxnMdl->[$i]->delete();
 			$changed = 1;
@@ -3140,7 +3274,9 @@ sub preliminary_reconstruction {
 		if (!defined($newRxnRowHash->{$rxn}->{found})) {
 			if ($checkpointed == 0) {
 				$checkpointed = 1;
-				$self->checkpoint();
+				if ($args->{checkpoint} == 1) {
+					$self->checkpoint();
+				}
 			}
 			$changed = 1;
 			$self->figmodel()->database()->create_object("rxnmdl",$newRxnRowHash->{$rxn});	
@@ -3176,7 +3312,6 @@ sub generate_model_gpr {
 	$args = $self->figmodel()->process_arguments($args,["roles","genes"],{
 		locations => undef,
 	});
-	return $self->error_message({function => "generate_model_gpr",args=>$args}) if (defined($args->{error}));
    	#Creating a hash of gene locations
    	my $locations;
 	if (defined($args->{locations})) {
@@ -3403,7 +3538,7 @@ sub ArchiveModel {
 
 	#Checking that the model file exists
 	if (!(-e $self->filename())) {
-		return $self->error_message({function => "ArchiveModel",message => "Model file ".$self->filename()." not found!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model file ".$self->filename()." not found!");
 	}
 
 	#Copying the model file
@@ -3423,7 +3558,6 @@ sub printModelFileForMFAToolkit {
 		removeGapfilling => 0,
 		filename => $self->directory().$self->id().".tbl"
 	});
-	return $self->error_message({function => "printModelFileForMFAToolkit",args => $args}) if (defined($args->{error}));
 	my $output = ["REACTIONS","LOAD;DIRECTIONALITY;COMPARTMENT;ASSOCIATED PEG;SUBSYSTEM;CONFIDENCE;REFERENCE;NOTES"];
 	my $objs = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL=>$self->id()});
 	for (my $i=0; $i < @{$objs}; $i++) {
@@ -3454,11 +3588,11 @@ sub PrintModelDataToFile {
 	system($Command);
 
 	#Copying the model file printed by the toolkit out of the output directory and into the model directory
-	if (!-e $self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selected_version().".txt") {
-		return $self->error_message({function => "PrintModelDataToFile",message => "New model file not created due to an error. Check that the input modelfile exists."});
+	if (!-e $self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selectedVersion().".txt") {
+		ModelSEED::FIGMODEL::FIGMODELERROR("New model file not created due to an error. Check that the input modelfile exists.");
 	}
 
-	$Command = 'cp "'.$self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selected_version().'.txt" "'.$self->directory().$self->id().$self->selected_version().'Data.txt"';
+	$Command = 'cp "'.$self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selectedVersion().'.txt" "'.$self->directory().$self->id().$self->selectedVersion().'Data.txt"';
 	system($Command);
 	$Command = 'cp "'.$self->config("MFAToolkit output directory")->[0].$OutputIndex.'/ErrorLog0.txt" "'.$self->directory().'ModelErrors.txt"';
 	system($Command);
@@ -3475,6 +3609,7 @@ sub GenerateModelProvenance {
 		targetDirectory => $self->directory(),
 		clearCurrentProvenance => 1
 	});
+	print "Directory:".$args->{targetDirectory}."\n";
 	# Current directory structure:
 	# biochemistry/
 	#	 reaction.txt
@@ -3631,8 +3766,6 @@ sub GenerateModelProvenance {
 			}
 		}
 	}
-	return $self->figmodel()->success() 
-
 }
 =head3 InspectModelState
 Definition:
@@ -3658,6 +3791,7 @@ sub InspectModelState {
 		1,
 		["LOAD","COMPARTMENT"]
 	);
+	$self->globalMessage({thread => "warning",msg => "Loaded ".$tbl->size()." reaction in original model!"});
 	#Checking that the model is properly loaded into PPO
 	my $rxnmdl = $self->rxnmdl();
 	my $rxnMdlHash;
@@ -3671,7 +3805,7 @@ sub InspectModelState {
 	for (my $i=0; $i < $tbl->size(); $i++) {
 		my $row = $tbl->get_row($i);
 		if (!defined($rxnMdlHash->{$row->{LOAD}->[0]}) || !defined($rxnMdlHash->{$row->{LOAD}->[0]}->{$row->{COMPARTMENT}->[0]})) {
-			if (@{$rxnmdl} == 0 || (defined($row->{"ASSOCIATED PEG"}->[0]) && $row->{"ASSOCIATED PEG"}->[0] =~ m/peg\./)) {
+			#if (@{$rxnmdl} == 0 || (defined($row->{"ASSOCIATED PEG"}->[0]) && $row->{"ASSOCIATED PEG"}->[0] =~ m/peg\./)) {
 				my $pegs = "UNKNOWN";
 				if (defined($row->{"ASSOCIATED PEG"}->[0])) {
 					$pegs = join("|",@{$row->{"ASSOCIATED PEG"}});
@@ -3685,10 +3819,10 @@ sub InspectModelState {
 					confidence => $row->{CONFIDENCE}->[0],
 					notes => $row->{NOTES}->[0],
 					reference => $row->{REFERENCE}->[0]
-				});
-			} else {
+				});	
+			#} else {
 				$self->globalMessage({thread => "warning",msg => $row->{LOAD}->[0]." not found in ppo!"});
-			}
+			#}
 		}
 	}
 	#Making sure all reactions in model are listed in provenance DB
@@ -3750,26 +3884,26 @@ sub InspectModelState {
 						}
 						$self->globalMessage({thread => "warning",msg => $rxnmdl->[$i]->REACTION()." added to PPO!"});
 						my $rxn = $self->figmodel()->database()->create_object("reaction",$rxnhash);
-						$self->globalMessage({thread => "masterdb",msg => 
-							$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
-							."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
-							."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
-							."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
-							."!".$rxn->thermoReversibility()
-						});
+						#$self->globalMessage({thread => "masterdb",msg => 
+						#	$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
+						#	."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
+						#	."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
+						#	."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
+						#	."!".$rxn->thermoReversibility()
+						#});
 					}
 				}
 			}
-		} elsif (defined($rxnHash->{$rxnmdl->[$i]->REACTION()})) {
-			my $rxn = $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0];
-			$self->globalMessage({thread => "masterdb",msg => 
-				$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
-				."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
-				."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
-				."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
-				."!".$rxn->thermoReversibility()
-			});	
-		}
+		} #elsif (defined($rxnHash->{$rxnmdl->[$i]->REACTION()})) {
+			#my $rxn = $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0];
+			#$self->globalMessage({thread => "masterdb",msg => 
+			#	$self->id()."!".$rxnmdl->[$i]->REACTION()."!".$rxn->name()
+			#	."!".$rxn->abbrev()."!".$rxn->enzyme()."!".$rxn->code()
+			#	."!".$rxn->equation()."!".$rxn->definition()."!".$rxn->deltaG()
+			#	."!".$rxn->deltaGErr()."!".$rxn->structuralCues()."!".$rxn->reversibility()
+			#	."!".$rxn->thermoReversibility()
+			#});	
+		#}
 	}
 }
 =head3 add_reaction
@@ -3804,19 +3938,19 @@ sub add_reactions {
 		user => $self->figmodel()->user(),
 		adjustmentOnly => 1,
 	});	
-	if (defined($args->{error})) {return $self->error_message({function => "add_reactions",args => $args});}
 	$self->aquireModelLock();
 	my $rxnTable = $self->reaction_table(1);
+	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < @{$args->{ids}}; $i++) {
 		my $id = $args->{ids}->[$i];
-		my $sign = $self->figmodel()->reversibility_of_reaction($id);
+		my $sign = $rxnRevHash->{$id};
 		if ($args->{ids}->[$i] =~ m/(.)(rxn\d+)/) {
 			$id = $2;
 			$sign = $1;
 			if ($sign eq "-") {
 				$sign = "<=";
 			} elsif ($sign eq "+") {
-				$sign = "=>";	
+				$sign = "=>";
 			}
 		}
 		if (defined($args->{directionality}->[$i])) {
@@ -3934,8 +4068,7 @@ sub removeReactions {
 		trackChanges=>1,
 	});
 	# check editability, parsing of arguments
-	return $self->error_message("Model ".$self->id()." is not editable!") if(not $self->isEditable());
-	return $self->error_message({function=>"removeReactions",args=>$args}) if(defined($args->{error}));
+	ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->id()." is not editable!") if(not $self->isEditable());
 	# generate hash of id.compartment => 1
 	my $id_compartment_hash = {
 		map { $args->{ids}->[$_].($args->{compartments}->[$_] || 'c') => 1 }
@@ -3967,7 +4100,7 @@ sub validateModelDirectory {
 	my ($self, $dir) = @_;
 	my $errF = sub {
 		my $msg = shift @_;
-		return $self->error_message({function => 'validateModelDirectory', message => $msg});
+		ModelSEED::FIGMODEL::FIGMODELERROR($msg);
 	};
 	$dir = $self->directory() unless defined($dir);
 	return $errF->("base directory $dir missing") unless -d $dir; # no directory == fail
@@ -4018,7 +4151,7 @@ sub revert {
 	$version = $self->id().".".$version if ($version =~ /^v\d+$/);
 	my $test = $self->figmodel()->get_model($version);
 	unless(defined($test)) {
-		return $self->figmodel()->error_message({message => "Unable to find model version $version! Doing nothing."});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Unable to find model version $version! Doing nothing.");
 	}
     if(!-d $self->config("database root directory")->[0]."tmp/") {
         mkdir $self->config("database root directory")->[0]."tmp/";
@@ -4038,7 +4171,7 @@ sub revert {
 sub copyProvenanceFrom {
 	my ($self, $source) = @_;
 	unless(-d $source) {
-		return $self->error_message({ message => "Cannont find directory $source"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannont find directory $source");
 	}
 	my $target = $self->directory();
 	if(!-d $target) {
@@ -4098,7 +4231,7 @@ sub increment {
 	$self->fullId($self->id()); # update id to unversioned copy (otherwise directory() will be wrong   
 	delete $self->{_directory}; # reset directory cache
 	unless(defined($obj)) {
-		return $self->error_message({message => "Unable to create entry in model_version table!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Unable to create entry in model_version table!");
 	}
 }
 
@@ -4107,7 +4240,7 @@ sub restore {
 	return ModelSEED::FIGMODEL::FIGMODELERROR("Model is not editable!") if(!$self->isEditable());
 	my $mdl = $self->figmodel()->get_model($versionToRestore);
 	if(!defined($mdl)) {
-		return $self->error_message({message => "Model to restore $versionToRestore could not be found!", function => "restore"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model to restore $versionToRestore could not be found!");
 	}
 	# do Model row object
 	my $new_ppo = { map { $_ => $mdl->ppo()->$_() } keys %{$mdl->ppo()->attributes()} };
@@ -4140,7 +4273,7 @@ sub run_microarray_analysis {
 	$genecall =~ s/_/:/g;
 	$genecall =~ s/\//;/g;
 	my $uniqueFilename = $self->figmodel()->filename();
-	my $command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($uniqueFilename,$self->id(),$media,["ProductionMFA","ShewenellaExperiment"],{"Microarray assertions" => $label.";".$index.";".$genecall,"MFASolver" => "CPLEX","Network output location" => "/scratch/"},"MicroarrayAnalysis-".$uniqueFilename.".txt",undef,$self->selected_version());
+	my $command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($uniqueFilename,$self->id(),$media,["ProductionMFA","ShewenellaExperiment"],{"Microarray assertions" => $label.";".$index.";".$genecall,"MFASolver" => "CPLEX","Network output location" => "/scratch/"},"MicroarrayAnalysis-".$uniqueFilename.".txt",undef,$self->selectedVersion());
 	system($command);
 	my $filename = $self->figmodel()->config("MFAToolkit output directory")->[0].$uniqueFilename."/MicroarrayOutput-".$index.".txt";
 	if (-e $filename) {
@@ -4248,9 +4381,9 @@ sub find_minimal_pathways {
 	my $filename = $self->figmodel()->filename();
 	my $command;
 	if (defined($AllReversible) && $AllReversible == 1) {
-		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"Make all reactions reversible in MFA"=>1, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "CPLEX","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selected_version().".txt",undef,$self->selected_version());
+		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"Make all reactions reversible in MFA"=>1, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "CPLEX","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selectedVersion().".txt",undef,$self->selectedVersion());
 	} else {
-		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"Make all reactions reversible in MFA"=>0, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "CPLEX","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selected_version().".txt",undef,$self->selected_version());
+		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"Make all reactions reversible in MFA"=>0, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "CPLEX","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selectedVersion().".txt",undef,$self->selectedVersion());
 	}
 	system($command);
 
@@ -4272,7 +4405,7 @@ sub find_minimal_pathways {
 	}
 	
 	#Writing output to file
-	$self->figmodel()->database()->print_array_to_file($self->directory()."MinimalPathways-".$media."-".$objective."-".$self->id()."-".$AllReversible."-".$self->selected_version().".txt",[join("|",@Array)]);
+	$self->figmodel()->database()->print_array_to_file($self->directory()."MinimalPathways-".$media."-".$objective."-".$self->id()."-".$AllReversible."-".$self->selectedVersion().".txt",[join("|",@Array)]);
 }
 
 =head3 find_minimal_pathways
@@ -4365,9 +4498,9 @@ sub find_minimal_pathways_two {
 	my $filename = $self->figmodel()->filename();
 	my $command;
 	if (defined($AllReversible) && $AllReversible == 1) {
-		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"use simple variable and constraint names"=>1,"Make all reactions reversible in MFA"=>1, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "SCIP","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selected_version().".txt",undef,$self->selected_version());
+		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"use simple variable and constraint names"=>1,"Make all reactions reversible in MFA"=>1, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "SCIP","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selectedVersion().".txt",undef,$self->selectedVersion());
 	} else {
-		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"use simple variable and constraint names"=>1,"Make all reactions reversible in MFA"=>0, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "SCIP","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selected_version().".txt",undef,$self->selected_version());
+		$command = $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,$self->id(),$media,["ProductionMFA"],{"use simple variable and constraint names"=>1,"Make all reactions reversible in MFA"=>0, "Recursive MILP solution limit" => $solutionnum,"Generate pathways to objective" => 1,"MFASolver" => "SCIP","objective" => $objectivestring,"exchange species" => $additionalexchange},"MinimalPathways-".$media."-".$self->id().$self->selectedVersion().".txt",undef,$self->selectedVersion());
 	}
 	print $command."\n";
 	system($command);
@@ -4390,17 +4523,17 @@ sub find_minimal_pathways_two {
 	}
 	
 	#Writing output to file
-	$self->figmodel()->database()->print_array_to_file($self->directory()."MinimalPathways-".$media."-".$objective."-".$self->id()."-".$AllReversible."-".$self->selected_version().".txt",[join("|",@Array)]);
+	$self->figmodel()->database()->print_array_to_file($self->directory()."MinimalPathways-".$media."-".$objective."-".$self->id()."-".$AllReversible."-".$self->selectedVersion().".txt",[join("|",@Array)]);
 }
 
 sub combine_minimal_pathways {
 	my ($self) = @_;
 	
 	my $tbl;
-	if (-e $self->directory()."MinimalPathwayTable-".$self->id().$self->selected_version().".tbl") {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."MinimalPathwayTable-".$self->id().$self->selected_version().".tbl",";","|",0,["Objective","Media","Reversible"]);
+	if (-e $self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl") {
+		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl",";","|",0,["Objective","Media","Reversible"]);
 	} else {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Objective","Media","Reactions","Reversible","Shortest path","Number of essentials","Essentials","Length"],$self->directory()."MinimalPathwayTable-".$self->id().$self->selected_version().".tbl",["Objective","Media","Reversible"],";","|");
+		$tbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Objective","Media","Reactions","Reversible","Shortest path","Number of essentials","Essentials","Length"],$self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl",["Objective","Media","Reversible"],";","|");
 	}
 	my @files = glob($self->directory()."MinimalPathways-*");
 	for (my $i=0; $i < @files;$i++) {
@@ -4487,8 +4620,8 @@ sub GetSimulationJobTable {
 			$JobTable->get_row($i)->{"RUNTYPE"}->[0] = "GROWTH";
 			$JobTable->get_row($i)->{"SAVE NONESSENTIALS"}->[0] = 0;
 		}
-		$JobTable->get_row($i)->{"LP FILE"}->[0] = $self->directory()."FBA-".$self->id().$self->selected_version();
-		$JobTable->get_row($i)->{"MODEL"}->[0] = $self->directory().$self->id().$self->selected_version().".txt";
+		$JobTable->get_row($i)->{"LP FILE"}->[0] = $self->directory()."FBA-".$self->id().$self->selectedVersion();
+		$JobTable->get_row($i)->{"MODEL"}->[0] = $self->directory().$self->id().$self->selectedVersion().".txt";
 		$JobTable->get_row($i)->{"SAVE FLUXES"}->[0] = 0;
 	}
 
@@ -4506,7 +4639,7 @@ sub EvaluateSimulationResults {
 	my ($self,$Results,$ExperimentalDataTable) = @_;
 
 	#Comparing experimental results with simulation results
-	my $SimulationResults = ModelSEED::FIGMODEL::FIGMODELTable->new(["Run result","Experiment type","Media","Experiment ID","Reactions knocked out"],$self->directory()."SimulationOutput".$self->id().$self->selected_version().".txt",["Experiment ID","Media"],"\t",",",undef);
+	my $SimulationResults = ModelSEED::FIGMODEL::FIGMODELTable->new(["Run result","Experiment type","Media","Experiment ID","Reactions knocked out"],$self->directory()."SimulationOutput".$self->id().$self->selectedVersion().".txt",["Experiment ID","Media"],"\t",",",undef);
 	my $FalsePostives = 0;
 	my $FalseNegatives = 0;
 	my $CorrectNegatives = 0;
@@ -4679,18 +4812,18 @@ sub GapFillingAlgorithm {
 	my $UniqueFilename = $self->figmodel()->filename();
 
 	#Printing the original performance vector
-	$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selected_version()."-OPEM".".txt",[$HeadingVector,$Errorvector]);
+	$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selectedVersion()."-OPEM".".txt",[$HeadingVector,$Errorvector]);
 
 	my $PreviousGapFilling;
-	if (-e $self->directory().$self->id().$self->selected_version()."-GFS.txt") {
+	if (-e $self->directory().$self->id().$self->selectedVersion()."-GFS.txt") {
 		#Backing up the old solution file
-		system("cp ".$self->directory().$self->id().$self->selected_version()."-GFS.txt ".$self->directory().$self->id().$self->selected_version()."-OldGFS.txt");
-		unlink($self->directory().$self->id().$self->selected_version()."-GFS.txt");
+		system("cp ".$self->directory().$self->id().$self->selectedVersion()."-GFS.txt ".$self->directory().$self->id().$self->selectedVersion()."-OldGFS.txt");
+		unlink($self->directory().$self->id().$self->selectedVersion()."-GFS.txt");
 	}
-	if (-e $self->directory().$self->id().$self->selected_version()."-OldGFS.txt") {
+	if (-e $self->directory().$self->id().$self->selectedVersion()."-OldGFS.txt") {
 		#Reading in the solution file from the previous gap filling if it exists
 		$PreviousGapFilling = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
-            $self->directory().$self->id().$self->selected_version()."-OldGFS.txt",";",",",0,["Experiment"]);
+            $self->directory().$self->id().$self->selectedVersion()."-OldGFS.txt",";",",",0,["Experiment"]);
 	}
 
 	#Now we use the simulation output to make the gap filling run data
@@ -4775,7 +4908,7 @@ sub GapFillingAlgorithm {
 
 	if (defined($RescuedPreviousResults) && @{$RescuedPreviousResults} > 0) {
 		#Printing previous solutions to GFS file
-		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selected_version()."-GFS.txt",$RescuedPreviousResults,1);
+		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selectedVersion()."-GFS.txt",$RescuedPreviousResults,1);
 		$SolutionsFound = 1;
 	}
 
@@ -4786,9 +4919,9 @@ sub GapFillingAlgorithm {
 
 	if ($SolutionsFound == 1) {
 		#Scheduling solution testing
-		$self->figmodel()->add_job_to_queue({command => "testsolutions?".$self->id().$self->selected_version()."?-1?GF",user => $self->owner(),queue => "short"});
+		$self->figmodel()->add_job_to_queue({command => "testsolutions?".$self->id().$self->selectedVersion()."?-1?GF",user => $self->owner(),queue => "short"});
 	} else {
-		$self->error_message({function => "GapFillingAlgorithm",message => "No false negative predictions found. Data gap filling not necessary!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("No false negative predictions found. Data gap filling not necessary!");
 	}
 
 	return $self->figmodel()->success();
@@ -4810,11 +4943,11 @@ sub SolutionReconciliation {
 	my $OutputFilename;
 	my $OutputFilenameTwo;
 	if ($GapFill == 1) {
-		$OutputFilename = $self->directory().$self->id().$self->selected_version()."-GFReconciliation.txt";
-		$OutputFilenameTwo = $self->directory().$self->id().$self->selected_version()."-GFSRS.txt";
+		$OutputFilename = $self->directory().$self->id().$self->selectedVersion()."-GFReconciliation.txt";
+		$OutputFilenameTwo = $self->directory().$self->id().$self->selectedVersion()."-GFSRS.txt";
 	} else {
-		$OutputFilename = $self->directory().$self->id().$self->selected_version()."-GGReconciliation.txt";
-		$OutputFilenameTwo = $self->directory().$self->id().$self->selected_version()."-GGSRS.txt";
+		$OutputFilename = $self->directory().$self->id().$self->selectedVersion()."-GGReconciliation.txt";
+		$OutputFilenameTwo = $self->directory().$self->id().$self->selectedVersion()."-GGSRS.txt";
 	}
 
 	#In stage one, we run the reconciliation and create a test file to check combined solution performance
@@ -4830,41 +4963,41 @@ sub SolutionReconciliation {
 
 		#Copying over the necessary files
 		if ($GapFill == 1) {
-			if (!-e $self->directory().$self->id().$self->selected_version()."-GFEM.txt") {
-				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selected_version()."-GFEM.txt file not found. Could not reconcile!";
+			if (!-e $self->directory().$self->id().$self->selectedVersion()."-GFEM.txt") {
+				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selectedVersion()."-GFEM.txt file not found. Could not reconcile!";
 				return 0;
 			}
-			if (!-e $self->directory().$self->id().$self->selected_version()."-OPEM.txt") {
-				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selected_version()."-OPEM.txt file not found. Could not reconcile!";
+			if (!-e $self->directory().$self->id().$self->selectedVersion()."-OPEM.txt") {
+				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selectedVersion()."-OPEM.txt file not found. Could not reconcile!";
 				return 0;
 			}
-			system("cp ".$self->directory().$self->id().$self->selected_version()."-GFEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-GFEM.txt");
-			system("cp ".$self->directory().$self->id().$self->selected_version()."-OPEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-OPEM.txt");
+			system("cp ".$self->directory().$self->id().$self->selectedVersion()."-GFEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-GFEM.txt");
+			system("cp ".$self->directory().$self->id().$self->selectedVersion()."-OPEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-OPEM.txt");
 			#Backing up and deleting the existing reconciliation file
 			if (-e $OutputFilename) {
-				system("cp ".$OutputFilename." ".$self->directory().$self->id().$self->selected_version()."-OldGFReconciliation.txt");
+				system("cp ".$OutputFilename." ".$self->directory().$self->id().$self->selectedVersion()."-OldGFReconciliation.txt");
 				unlink($OutputFilename);
 			}
 		} else {
-			if (!-e $self->directory().$self->id().$self->selected_version()."-GGEM.txt") {
-				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selected_version()."-GGEM.txt file not found. Could not reconcile!";
+			if (!-e $self->directory().$self->id().$self->selectedVersion()."-GGEM.txt") {
+				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selectedVersion()."-GGEM.txt file not found. Could not reconcile!";
 				return 0;
 			}
-			if (!-e $self->directory().$self->id().$self->selected_version()."-GGOPEM.txt") {
-				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selected_version()."-GGOPEM.txt file not found. Could not reconcile!";
+			if (!-e $self->directory().$self->id().$self->selectedVersion()."-GGOPEM.txt") {
+				print STDERR "FIGMODEL:SolutionReconciliation:".$self->directory().$self->id().$self->selectedVersion()."-GGOPEM.txt file not found. Could not reconcile!";
 				return 0;
 			}
-			system("cp ".$self->directory().$self->id().$self->selected_version()."-GGEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-GGEM.txt");
-			system("cp ".$self->directory().$self->id().$self->selected_version()."-GGOPEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-OPEM.txt");
+			system("cp ".$self->directory().$self->id().$self->selectedVersion()."-GGEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-GGEM.txt");
+			system("cp ".$self->directory().$self->id().$self->selectedVersion()."-GGOPEM.txt ".$self->figmodel()->config("MFAToolkit input files")->[0].$UniqueFilename."-OPEM.txt");
 			#Backing up and deleting the existing reconciliation file
 			if (-e $OutputFilename) {
-				system("cp ".$OutputFilename." ".$self->directory().$self->id().$self->selected_version()."-OldGGReconciliation.txt");
+				system("cp ".$OutputFilename." ".$self->directory().$self->id().$self->selectedVersion()."-OldGGReconciliation.txt");
 				unlink($OutputFilename);
 			}
 		}
 
 		#Running the reconciliation
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NONE",["SolutionReconciliation"],{"Solution data for model optimization" => $UniqueFilename},"Reconciliation".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NONE",["SolutionReconciliation"],{"Solution data for model optimization" => $UniqueFilename},"Reconciliation".$UniqueFilename.".log",undef,$self->selectedVersion()));
 		$GrowMatchTable = $self->figmodel()->database()->LockDBTable("GROWMATCH TABLE");
 		$Row = $GrowMatchTable->get_row_by_key($self->genome(),"ORGANISM",1);
 		$Row->{"GF RECONCILATION TIMING"}->[0] .= time();
@@ -5111,17 +5244,17 @@ sub SolutionReconciliation {
 
 		#Scheduling the solution testing
 		if ($GapFill == 1) {
-			system($self->figmodel()->config("scheduler executable")->[0]." \"add:testsolutions?".$self->id().$self->selected_version()."?-1?GFSR:BACK:fast:QSUB\"");
+			system($self->figmodel()->config("scheduler executable")->[0]." \"add:testsolutions?".$self->id().$self->selectedVersion()."?-1?GFSR:BACK:fast:QSUB\"");
 		} else {
-			system($self->figmodel()->config("scheduler executable")->[0]." \"add:testsolutions?".$self->id().$self->selected_version()."?-1?GGSR:BACK:fast:QSUB\"");
+			system($self->figmodel()->config("scheduler executable")->[0]." \"add:testsolutions?".$self->id().$self->selectedVersion()."?-1?GGSR:BACK:fast:QSUB\"");
 		}
 	} else {
 		#Reading in the solution testing results
 		my $Data;
 		if ($GapFill == 1) {
-			$Data = $self->figmodel()->database()->load_single_column_file($self->directory().$self->id().$self->selected_version()."-GFSREM.txt","");
+			$Data = $self->figmodel()->database()->load_single_column_file($self->directory().$self->id().$self->selectedVersion()."-GFSREM.txt","");
 		} else {
-			$Data = $self->figmodel()->database()->load_single_column_file($self->directory().$self->id().$self->selected_version()."-GGSREM.txt","");
+			$Data = $self->figmodel()->database()->load_single_column_file($self->directory().$self->id().$self->selectedVersion()."-GGSREM.txt","");
 		}
 
 		#Reading in the preliminate reconciliation report
@@ -5162,7 +5295,7 @@ sub DetermineCofactorLipidCellWallComponents {
 	my $Name = $self->name();
 	my $translation = {COFACTOR=>"cofactor",LIPIDS=>"lipid","CELL WALL"=>"cellWall"};
 	#Checking for phoenix variants
-	my $PhoenixVariantTable = $self->figmodel()->database()->get_table("Phoenix variants table");
+	my $PhoenixVariantTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->config("Reaction database directory")->[0]."masterfiles/PhoenixVariantsTable.txt","\t","|",0,["GENOME","SUBSYSTEM"]); 
 	my $Phoenix = 0;
 	my @Rows = $PhoenixVariantTable->get_rows_by_key($self->genome(),"GENOME");
 	my $VariantHash;
@@ -5191,7 +5324,7 @@ sub DetermineCofactorLipidCellWallComponents {
 	}
 	#Scanning through the template item by item and determinine which biomass components should be added
 	my $includedHash;
-	my $BiomassReactionTemplateTable = $self->figmodel()->database()->get_table("BIOMASSTEMPLATE");
+	my $BiomassReactionTemplateTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->config("Reaction database directory")->[0]."masterfiles/TemplateBiomassReaction.txt","\t",";",0,["REACTANT","CLASS","ID"]); 
 	for (my $i=0; $i < $BiomassReactionTemplateTable->size(); $i++) {
 		my $Row = $BiomassReactionTemplateTable->get_row($i); 
 		if (defined($translation->{$Row->{CLASS}->[0]})) {
@@ -5435,13 +5568,13 @@ sub BuildSpecificBiomassReaction {
 			cellWallCoef=>"NONE",cofactorCoef=>"NONE",essentialRxn=>"NONE"
 		});
 		if (!defined($bioObj)) {
-			return $self->error_message({function => "BuildSpecificBiomassReaction",message => "Could not create new biomass reaction ".$biomassID});
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not create new biomass reaction ".$biomassID);
 		}
 	} else {
 		#Getting the biomass DB handler from the database
 		my $objs = $self->figmodel()->database()->get_objects("bof",{id=>$biomassID});
 		if (!defined($objs->[0])) {
-			return $self->error_message({function => "BuildSpecificBiomassReaction",message => "Could not find biomass reaction ".$biomassID." in database!"});
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass reaction ".$biomassID." in database!");
 		}
 		$bioObj = $objs->[0];
 		$bioObj->owner($self->owner());
@@ -5633,7 +5766,6 @@ sub BuildSpecificBiomassReaction {
 	$bioObj->equation($Equation);
 	#Setting the biomass reaction of this model
 	$self->biomassReaction($biomassID);
-	$self->figmodel()->print_biomass_reaction_file($biomassID);
 	#Checking if the biomass reaction remained unchanged
 	if ($originalPackages ne "" && $originalPackages eq $bioObj->cofactorPackage().$bioObj->lipidPackage().$bioObj->cellWallPackage()) {
 		print "UNCHANGED!\n";
@@ -5675,8 +5807,7 @@ Description:
 =cut
 sub PrintSBMLFile {
 	my($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{print => 1});
-	if (defined($args->{error})) {return $self->error_message({function => "PrintSBMLFile",args => $args});}
+	$args = $self->figmodel()->process_arguments($args,[],{});
 	if (-e $self->directory().$self->id().".xml") {
 		unlink($self->directory().$self->id().".xml");	
 	}
@@ -5703,9 +5834,8 @@ sub PrintSBMLFile {
 			}
 		} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
 			$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
-		}
-		if (!defined($rxnObj)) {
-			next;	
+		} else {
+			ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
 		}
 		push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
 		push(@ReactionList,$rxnObj);
@@ -5999,9 +6129,6 @@ sub PrintSBMLFile {
 	push(@{$output},'</listOfReactions>');
 	push(@{$output},'</model>');
 	push(@{$output},'</sbml>');
-	if ($args->{print} == 1) {
-		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().".xml",$output);
-	}
 	return $output;
 }
 =head3 getSBMLFileReactions
@@ -6013,7 +6140,6 @@ Description:
 sub getSBMLFileReactions {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{});
-	if (defined($args->{error})) {return $self->error_message({function => "generate_feature_data_table",args => $args});}
 	my $data = $self->figmodel()->database()->load_single_column_file($self->directory().$self->id().".xml","");
 	my $results;
 	for (my $i=0; $i < @{$data}; $i++) {
@@ -6046,7 +6172,6 @@ Description:
 sub publicTable {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["type"],{});
-	if (defined($args->{error})) {return $self->error_message({function => "publicTable",args => $args});}
 	if ($args->{type} eq "R") {
 		return $self->generate_reaction_data_table($args);
 	} elsif ($args->{type} eq "C") {
@@ -6054,7 +6179,7 @@ sub publicTable {
 	} elsif ($args->{type} eq "F") {
 		   return $self->generate_feature_data_table($args);
 	}
-	return $self->error_message({message=>"Input type not recognized",function => "publicTable",args => $args});
+	ModelSEED::FIGMODEL::FIGMODELERROR("Input type not recognized");
 }
 
 =head3 rxnmdl
@@ -6172,7 +6297,6 @@ sub generate_reaction_data_table {
 		-subsystem => 0,
 		-reference => 0
 	});
-	if (defined($args->{error})) {return $self->error_message({function => "generate_reaction_data_table",args => $args});}
 	my $headingArgHash = {
 		EQUATION => "-id_eq",
 		"ABBREVIATION EQ" => "-abbrev_eq",
@@ -6331,7 +6455,6 @@ sub generate_compound_data_table {
 		-biomass => 1,
 		-compartments => 1
 	});
-	if (defined($args->{error})) {return $self->error_message({function => "generate_compound_data_table",args => $args});}
 	my $headingArgHash = {
 		FORMULA => "-formula",
 		MASS => "-mass",
@@ -6494,7 +6617,6 @@ sub generate_feature_data_table {
 		-reactions => 1,
 		-predictedEssentiality => 1
 	});
-	if (defined($args->{error})) {return $self->error_message({function => "generate_feature_data_table",args => $args});}
 	my $headingArgHash = {
 		START => "-start",
 		STOP => "-stop",
@@ -6554,11 +6676,11 @@ sub PrintModelLPFile {
 	my $UniqueFilename = $self->figmodel()->filename();
 	#Printing the standard FBA file
 	if (defined($exportForm) && $exportForm eq "1") {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NoBounds",["ProdFullFBALP"],{"Make all reactions reversible in MFA"=>0,"use simple variable and constraint names"=>0},$self->id().$self->selected_version()."-LPPrint.log",undef,$self->selected_version()));
-		system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/CurrentProblem.lp ".$self->directory().$self->id().$self->selected_version().".lp");
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NoBounds",["ProdFullFBALP"],{"Make all reactions reversible in MFA"=>0,"use simple variable and constraint names"=>0},$self->id().$self->selectedVersion()."-LPPrint.log",undef,$self->selectedVersion()));
+		system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/CurrentProblem.lp ".$self->directory().$self->id().$self->selectedVersion().".lp");
 	} else {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NoBounds",["ProdFullFBALP"],undef,$self->id().$self->selected_version()."-LPPrint.log",undef,$self->selected_version()));
-		system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/CurrentProblem.lp ".$self->directory()."FBA-".$self->id().$self->selected_version().".lp");
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),"NoBounds",["ProdFullFBALP"],undef,$self->id().$self->selectedVersion()."-LPPrint.log",undef,$self->selectedVersion()));
+		system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/CurrentProblem.lp ".$self->directory()."FBA-".$self->id().$self->selectedVersion().".lp");
 	}
 	my $KeyTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->config("MFAToolkit output directory")->[0].$UniqueFilename."/VariableKey.txt",";","|",0,undef);
 	if (!defined($KeyTable)) {
@@ -6566,9 +6688,9 @@ sub PrintModelLPFile {
 		return 0;
 	}
 	$KeyTable->headings(["Variable type","Variable ID"]);
-	$KeyTable->save($self->directory()."FBA-".$self->id().$self->selected_version().".key");
-	unlink($self->config("database message file directory")->[0].$self->id().$self->selected_version()."-LPPrint.log");
-	$self->figmodel()->clearing_output($UniqueFilename,"FBA-".$self->id().$self->selected_version().".lp");
+	$KeyTable->save($self->directory()."FBA-".$self->id().$self->selectedVersion().".key");
+	unlink($self->config("database message file directory")->[0].$self->id().$self->selectedVersion()."-LPPrint.log");
+	$self->figmodel()->clearing_output($UniqueFilename,"FBA-".$self->id().$self->selectedVersion().".lp");
 }
 
 =head3 patch_model
@@ -6632,18 +6754,18 @@ Description:
 sub integrateUploadedChanges {
 	my ($self,$username) = @_;
 	if (!-e $self->directory().$self->id()."-uploadtable.tbl") {
-		return $self->error_message({function => "integrateUploadedChanges",message => "uploaded file not found for model!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("uploaded file not found for model!");
 	}
 	my $tbl = $self->load_model_table("ModelReactionUpload",1);
 	if (!defined($tbl)) {
-		return $self->error_message({function => "integrateUploadedChanges",message => "could not load uploaded reaction table!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("could not load uploaded reaction table!");
 	}
 	if (substr($tbl->prefix(),0,length($self->id())) ne $self->id()) {
-		return $self->error_message({function => "integrateUploadedChanges",message => "model labeled in uploaded file does not match reference model!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("model labeled in uploaded file does not match reference model!");
 	}
 	my $newrxntbl = $self->reaction_table(1);
 	if (!defined($newrxntbl)) {
-		return $self->error_message({function => "integrateUploadedChanges",message => "could not load reaction table!"});
+		ModelSEED::FIGMODEL::FIGMODELERROR("could not load reaction table!");
 	}
 	for (my $i=0; $i < $newrxntbl->size(); $i++) {
 		my $row = $newrxntbl->get_row($i);
@@ -6879,9 +7001,9 @@ sub run_geneKO_slow {
 	my $output;
 	my $UniqueFilename = $self->figmodel()->filename();
 	if (defined($maxGrowth) && $maxGrowth == 1) {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"perform single KO experiments" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.999},"SlowGeneKO-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"perform single KO experiments" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.999},"SlowGeneKO-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	} else {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"perform single KO experiments" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.1},"SlowGeneKO-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"perform single KO experiments" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.1},"SlowGeneKO-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	}	
 	if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."DeletionStudyResults.txt") {
 		print "Deletion study file not found!.\n";
@@ -6919,9 +7041,9 @@ sub run_gene_minimization {
 	#Running the MFAToolkit
 	my $UniqueFilename = $self->figmodel()->filename();
 	if (defined($maxGrowth) && $maxGrowth == 1) {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"optimize organism genes" => 1,"MFASolver" => "CPLEX","Constrain objective to this fraction of the optimal value" => 0.999},"MinimizeGenes-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"optimize organism genes" => 1,"MFASolver" => "CPLEX","Constrain objective to this fraction of the optimal value" => 0.999},"MinimizeGenes-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	} else {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"optimize organism genes" => 1,"MFASolver" => "CPLEX","Constrain objective to this fraction of the optimal value" => 0.1},"MinimizeGenes-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"optimize organism genes" => 1,"MFASolver" => "CPLEX","Constrain objective to this fraction of the optimal value" => 0.1},"MinimizeGenes-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	}
 	my $tbl = $self->figmodel()->LoadProblemReport($UniqueFilename);
 	if (!defined($tbl)) {
@@ -6966,9 +7088,9 @@ sub identify_inactive_genes {
 	#Running the MFAToolkit
 	my $UniqueFilename = $self->figmodel()->filename();
 	if (defined($maxGrowth) && $maxGrowth == 1) {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"find tight bounds" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.999},"Classify-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"find tight bounds" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.999},"Classify-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	} else {
-		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"find tight bounds" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.1},"Classify-".$self->id().$self->selected_version()."-".$UniqueFilename.".log",undef,$self->selected_version()));
+		system($self->figmodel()->GenerateMFAToolkitCommandLineCall($UniqueFilename,$self->id(),$media,["ProductionMFA"],{"find tight bounds" => 1,"MFASolver" => "GLPK","Constrain objective to this fraction of the optimal value" => 0.1},"Classify-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log",undef,$self->selectedVersion()));
 	}
 	#Reading in the output bounds file
 	my $ReactionTB;
@@ -6977,11 +7099,11 @@ sub identify_inactive_genes {
             $self->config("MFAToolkit output directory")->[0]."$UniqueFilename/MFAOutput/TightBoundsReactionData0.txt",";","|",1,["DATABASE ID"]);
 	}
 	if (!defined($ReactionTB)) {
-		print STDERR "FIGMODEL:ClassifyModelReactions: Classification file not found when classifying reactions in ".$self->id().$self->selected_version()." with ".$media." media. Most likely the model did not grow.\n";
+		print STDERR "FIGMODEL:ClassifyModelReactions: Classification file not found when classifying reactions in ".$self->id().$self->selectedVersion()." with ".$media." media. Most likely the model did not grow.\n";
 		return undef;
 	}
 	#Clearing output
-	$self->figmodel()->clearing_output($UniqueFilename,"Classify-".$self->id().$self->selected_version()."-".$UniqueFilename.".log");
+	$self->figmodel()->clearing_output($UniqueFilename,"Classify-".$self->id().$self->selectedVersion()."-".$UniqueFilename.".log");
 	my $geneHash;
 	my $activeGeneHash;
 	for (my $i=0; $i < $ReactionTB->size(); $i++) {
@@ -7390,112 +7512,21 @@ sub fbaFVA {
 	});
 	#Checking that results were returned
 	ModelSEED::FIGMODEL::FIGMODELERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
-	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$args->{directory}."Reactions-".$args->{filename},["Reaction"],";","|");
-	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$args->{directory}."Compounds-".$args->{filename},["Compound"],";","|");
-	my $varAssoc = {
-		FLUX => "reaction",
-		DELTAG => "reaction",
-		SDELTAG => "reaction",
-		UPTAKE => "compound",
-		SDELTAGF => "compound",
-		POTENTIAL => "compound",
-		CONC => "compound"
-	};
-	my $varHeading = {
-		FLUX => "",
-		DELTAG => " DELTAG",
-		SDELTAG => " SDELTAG",
-		UPTAKE => "",
-		SDELTAGF => " SDELTAGF",
-		POTENTIAL => " POTENTIAL",
-		CONC => " CONC"
-	};
-	for (my $i=0; $i < @{$args->{variables}}; $i++) {
-		if (defined($varAssoc->{$args->{variables}->[$i]})) {
-			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "UPTAKE") {
-					$cpdtbl->add_headings(("Class"));
-				}
-			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "FLUX") {
-					$rxntbl->add_headings(("Class"));
-				}
-			}
-		}
-	}
-	foreach my $obj (keys(%{$results->{tb}})) {
-		my $newRow;
-		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Reaction"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			#$newRow->{"Direction"} = [$rxnObj->directionality()];
-			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			#print Data::Dumper->Dump([$newRow]);
-			$rxntbl->add_row($newRow);
-		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Compound"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			$cpdtbl->add_row($newRow);
-		}
-	}
-	#Saving data to file
-	if ($args->{saveformat} eq "EXCEL") {
-		$self->figmodel()->make_xls({
-			filename => $args->{directory}.$args->{filename},
-			sheetnames => ["Compound Bounds","Reaction Bounds"],
-			sheetdata => [$cpdtbl,$rxntbl]
-		});
-	} elsif ($args->{saveformat} eq "TEXT") {
-		$cpdtbl->save();
-		$rxntbl->save();
-	}
 	#Loading data into database if requested
 	if ($args->{saveFVAResults} == 1) {
 		my $parameters = "";
-		if (defined($args->{fbaStartParameters}->{forceGrowth}) && $args->{fbaStartParameters}->{forceGrowth} == 1) {
+		if (defined($args->{fbaStartParameters}->{options}->{forceGrowth}) && $args->{fbaStartParameters}->{options}->{forceGrowth} == 1) {
 			$parameters .= "FG;";
-		} elsif (defined($args->{fbaStartParameters}->{noGrowth}) && $args->{fbaStartParameters}->{noGrowth} == 1) {
+		} elsif (defined($args->{fbaStartParameters}->{options}->{noGrowth}) && $args->{fbaStartParameters}->{options}->{noGrowth} == 1) {
 			$parameters .= "NG;";
 		}
-		if (defined($args->{fbaStartParameters}->{drnRxn})) {
+		if (defined($args->{fbaStartParameters}->{drnRxn}) && @{$args->{fbaStartParameters}->{drnRxn}} > 0) {
 			$parameters .= "DR:".join("|",@{$args->{fbaStartParameters}->{drnRxn}}).";";
 		}
-		if (defined($args->{fbaStartParameters}->{rxnKO})) {
+		if (defined($args->{fbaStartParameters}->{rxnKO}) && @{$args->{fbaStartParameters}->{rxnKO}} > 0) {
 			$parameters .= "RK:".join("|",@{$args->{fbaStartParameters}->{rxnKO}}).";";
 		}
-		if (defined($args->{fbaStartParameters}->{geneKO})) {
+		if (defined($args->{fbaStartParameters}->{geneKO}) && @{$args->{fbaStartParameters}->{geneKO}} > 0) {
 			$parameters .= "GK:".join("|",@{$args->{fbaStartParameters}->{geneKO}}).";";
 		}
 		if (length($parameters) == 0) {
@@ -7701,7 +7732,6 @@ sub fbaTestGapfillingSolution {
 		fbaStartParameters => undef,
 		problemDirectory => undef
 	});
-	if (defined($args->{error})) {return $self->error_message({function=>"fbaTestGapfillingSolution",args=>$args});}
 	if (!defined($args->{fbaStartParameters}->{drnRxn})) {
 		$args->{fbaStartParameters}->{drnRxn} = ["bio00001"];
 	}
@@ -7791,7 +7821,6 @@ Description:
 sub fbaBiomassPrecursorDependancy {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{media=>$self->autocompleteMedia()});
-	if (defined($args->{error})) {return $self->error_message({function=>"fbaBiomassPrecursorDependancy",args=>$args});}
 	my ($media,$label,$list);
 	my $rxnTbl = $self->reaction_table(1);
 	$rxnTbl->add_headings(("NOTES"));
@@ -8019,7 +8048,7 @@ sub remove_reaction {
 	my ($self, $rxnId, $compartment) = @_;
 	my $result = $self->removeReactions({ids=>[$rxnId],compartments=>[$compartment],reason=>"Model controls",user=>$self->owner(),trackChanges=>1});
 	if (defined($result->{error})) {
-		return $self->error_message({function => "remove_reaction",message => $result->{error}});
+		ModelSEED::FIGMODEL::FIGMODELERROR($result->{error});
 	}
 	return {};
 }

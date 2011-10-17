@@ -38,6 +38,36 @@ sub figmodel {
 	my ($self) = @_;
 	return $self->{_figmodel};
 }
+=head3 ws
+Definition:
+	FIGMODEL = driver->ws();
+Description:
+	Returns a workspace object
+=cut
+sub ws {
+	my ($self) = @_;
+	return $self->figmodel()->ws();
+}
+=head3 db
+Definition:
+	FIGMODEL = driver->db();
+Description:
+	Returns a database object
+=cut
+sub db {
+	my ($self) = @_;
+	return $self->figmodel()->database();
+}
+=head3 config
+Definition:
+	{}/[] = driver->config(string);
+Description:
+	Returns a requested configuration object
+=cut
+sub config {
+	my ($self,$key) = @_;
+	return $self->figmodel()->config($key);
+}
 =head3 check
 Definition:
 	FIGMODEL = driver->check([string]:expected data,(string):supplied arguments);
@@ -57,6 +87,9 @@ sub check {
 	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
 		$args = $data->[1];
 		delete $data->[1];
+	}
+	if (defined($args->{"usage"}) || defined($args->{"help"}) || defined($args->{"man"})) {
+		print STDERR $self->usage($function,$array);
 	}
 	for (my $i=0; $i < @{$array}; $i++) {
 		if (!defined($args->{$array->[$i]->[0]})) {
@@ -1324,20 +1357,6 @@ sub copymodel {
 	my $mdl = $self->figmodel()->get_model($Data[1]);
 	if (defined($mdl)) {
 		$mdl->copyModel({newid=>$Data[3],owner=>$Data[2]});
-	}
-	return "SUCCESS";	
-}
-
-sub addright {
-	my($self,@Data) = @_;
-    #Checking the argument to ensure all required parameters are present
-    if (@Data < 3) {
-        print "Syntax for this command: copymodel?model?new user .\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-	my $mdl = $self->figmodel()->get_model($Data[1]);
-	if (defined($mdl)) {
-		$mdl->changeRight($Data[2],"admin", "force");
 	}
 	return "SUCCESS";	
 }
@@ -4562,96 +4581,6 @@ sub parsesbml {
 	$self->figmodel()->parseSBMLtoTabTable({file => $args->{file}});	
 }
 
-sub printsbmlfiles {
-    my($self,@Data) = @_;
-    my $args = $self->check([["model IDs",1],["queue",0,"fast"],["output folder",0,""]],[@Data]);
-    my $output = $self->figmodel()->processIDList({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {owner => "chenry",source => "PUBSEED"},
-		input => $args->{"model IDs"}
-	});
-    if (@{$output} == 1) {
-    	my $mdl = $self->figmodel()->get_model($output->[0]);
-    	return "FAIL:could not find model ".$output->[0] if (!defined($mdl));
-    	$mdl->PrintSBMLFile();
-    	return "FAIL:could not find SBML file for model ".$output->[0] if (!-e $mdl->directory().$mdl->id().".xml");
-    	if (length($args->{"output folder"}) > 0) {
-    		system("cp ".$mdl->directory().$mdl->id().".xml ".$args->{"output folder"});
-    	}
-    } else {
-    	for (my $i=0; $i < @{$output}; $i++) {
-	    	$self->figmodel()->add_job_to_queue({
-	    		command => "printsbmlfiles?".$output->[$i]."?".$args->{queue}."?".$args->{"output folder"},
-	    		user => $self->figmodel()->user(),
-	    		queue => $args->{queue}
-	    	});
-    	}
-    }
-    return "SUCCESS";
-}
-
-sub preliminaryreconstruction {
-    my($self,@Data) = @_;
-    my $args = $self->check([["model id",1],["run gapfilling",0,1]],[@Data]);
-	my $model = $self->figmodel()->get_model($args->{"model id"});
-	if (defined($model)) {
-		$model->preliminary_reconstruction({
-			runGapfilling => $args->{"run gapfilling"}	
-		});
-	}
-    return "SUCCESS";
-}
-
-sub createmodel {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["genome",1],
-		["id",0,undef],
-		["biomass",0,undef],
-		["owner",0,$self->figmodel()->user()],
-		["biochemSource",0,undef],
-		["preliminary reconstruction",0,1],
-		["run gapfilling",0,1],
-		["queue",0,"fast"],
-	],[@Data]);
-    my $output = $self->figmodel()->processIDList({
-		objectType => "genome",
-		delimiter => ",",
-		input => $args->{genome}
-	});
-    if (@{$output} == 1) {
-    	my $mdl = $self->figmodel()->create_model({
-			genome => $output->[0],
-			id => $args->{id},
-			owner => $args->{owner},
-			gapfilling => $args->{"run gapfilling"},
-			runPreliminaryReconstruction  => $args->{"preliminary reconstruction"},
-			biochemSource => $args->{"biochemSource"},
-			queue => $args->{"queue"},
-			biomassReaction => $args->{"biomass"}
-		});
-		return "FAIL:model creation failed for genome:".$output->[0] if (!defined($mdl));
-	} else {
-		for (my $i=0; $i < @{$output}; $i++) {
-	    	$self->figmodel()->add_job_to_queue({
-	    		command => "createmodel?"
-	    			.$output->[$i]."??"
-	    			.$args->{"biomass"}
-	    			.$args->{"owner"}."?"
-	    			.$args->{"biochemSource"}."?"
-	    			.$args->{"preliminary reconstruction"}."?"
-	    			.$args->{"run gapfilling"}."?"
-	    			.$args->{"queue"}."?",
-	    		user => $self->figmodel()->user(),
-	    		queue => $args->{queue}
-	    	});
-    	}
-	}
-    return "SUCCESS";
-}
-
 sub printroleclass {
 	my($self,@Data) = @_;
 	my $args = $self->check([["roles",1],["filename",0,$self->outputdirectory()."RoleClasses.txt"]],[@Data]);
@@ -4691,32 +4620,6 @@ sub printrolecpxrxn {
 	my($self,@Data) = @_;
 	my $args = $self->check([["filename",0,$self->outputdirectory()."RoleCpxRxn.txt"]],[@Data]);
 	$self->figmodel()->mapping()->print_role_cpx_rxn_table({filename => $args->{filename}});
-}
-
-sub importmodel {
-    my($self,@Data) = @_;
-    my $args = $self->check([
-    	["name",1],
-    	["genome",1],
-    	["owner",0,$self->figmodel()->user()],
-    	["path",0,undef],
-    	["overwrite",0,0],
-    	["biochemsource",0,undef]
-    ],[@Data]);
-	my $public = 0;
-	if ($args->{"owner"} eq "master") {
-		$public = 1;
-	}
-	$self->figmodel()->import_model({
-		baseid => $args->{"name"},
-		genome => $args->{"genome"},
-		owner => $args->{"owner"},
-		path => $args->{"path"},
-		public => $public,
-		overwrite => $args->{"overwrite"},
-		biochemSource => $args->{"biochemsource"}
-	});
-	return "SUCCESS";
 }
 
 sub rxnppotofile {
@@ -4957,35 +4860,6 @@ sub completegapfillmodel {
     return "SUCCESS";
 }
 
-sub inspectmodelstate {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1]
-	],[@Data]);
-	my $results = $self->figmodel()->processIDList({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => $args->{"model"}
-	});
-	if (@{$results} == 1) {
-		my $mdl = $self->figmodel()->get_model($results->[0]);
- 		if (!defined($mdl)) {
- 			return "FAIL:Model not found!";	
- 		}
- 		$mdl->InspectModelState({});
-	} else {
-		for (my $i=0; $i < @{$results}; $i++) {
-			$self->figmodel()->add_job_to_queue({
-	    		command => "inspectmodelstate?".$results->[$i],
-	    		user => $self->figmodel()->user(),
-	    		queue => "chenry"
-	    	});
-		}
-	}
-    return "SUCCESS";
-}
 #Configuration functions
 sub configuredatabase {
     my($self,@Data) = @_;
@@ -5051,16 +4925,30 @@ sub printgapfilledreactions {
 				$mdlCpdTbl->{$results->[$i]}->{$array[$k]} = 0;
 				if (!defined($modelCpd->{$array[$k]})) {
 					$modelCpd->{$array[$k]} = 0;
+					$modelCpdGap->{$array[$k]} = 0;
 				}
 				$modelCpd->{$array[$k]}++;
 			}
 			#Calculating model gapfilling stats
 			my $tempGapRxnHash;
 			my $tempRxnGapHash;
+			my $tempGapCpdHash;
 			$modelStats->{$results->[$i]}->{reactions} = 0;
 			$modelStats->{$results->[$i]}->{gaps} = 0;
 			my $rxns = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $results->[$i]});
+			my $gapfilledHash;
 			for (my $j=0; $j < @{$rxns}; $j++) {
+				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
+					next;
+				}
+				if (lc($rxns->[$j]->pegs()) eq "autocompletion" || lc($rxns->[$j]->pegs()) eq "universal") {
+					$gapfilledHash->{$rxns->[$j]->REACTION()} = 1;
+				}
+			}
+			for (my $j=0; $j < @{$rxns}; $j++) {
+				if ($rxns->[$j]->REACTION() =~ m/bio/) {
+					next;
+				}
 				if (defined($rxns->[$j]->notes()) && $rxns->[$j]->notes() eq "Autocompletion analysis(DELETE)") {
 					next;
 				}
@@ -5085,6 +4973,7 @@ sub printgapfilledreactions {
 								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 							}
 							$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
+							$tempGapCpdHash->{$array[$k]} = 1;
 						}
 						$_ = $rxns->[$j]->notes();
 						@array = /(rxn\d+)/g;
@@ -5093,15 +4982,17 @@ sub printgapfilledreactions {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
-								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+							if (!defined($gapfilledHash->{$array[$k]})) {
+								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
+									$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
+								}
+								$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
+								if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
+									$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
+								}
+								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
 							}
-							$tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
-							if (!defined($tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
-								$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
-							}
-							$tempGapRxnHash->{$rxns->[$j]->REACTION()}->{$array[$k]}++;
-						}	
+						}
 						if ($rxns->[$j]->notes() =~ m/DELETED/) {
 							if (!defined($actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED})) {
 								$actRxnTbl->{$rxns->[$j]->REACTION()}->{DELETED} = 0;
@@ -5114,8 +5005,12 @@ sub printgapfilledreactions {
 					$nactMdlTbl->{$rxns->[$j]->REACTION()}->{$results->[$i]} = 0;
 				}
 			}
+			foreach my $gapcpd (keys(%{$tempGapCpdHash})) {
+				$modelCpdGap->{$gapcpd}++;
+			}
 			foreach my $rxn (keys(%{$tempGapRxnHash})) {
 				my $count = keys(%{$tempGapRxnHash->{$rxn}});
+				print $rxn."\t".$count."\n";
 				foreach my $actrxn (keys(%{$tempGapRxnHash->{$rxn}})) {
 					if (defined($actMdlTbl->{$actrxn}->{$results->[$i]})) {
 						$actMdlTbl->{$actrxn}->{$results->[$i]}++;
@@ -5263,8 +5158,12 @@ sub printgapfilledreactions {
 	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
-#Creates a new local user account in the ModelSEED user table
-sub createlocaluser {
+
+
+=head2 MODELSEED ENVIRONMENT CONFIGURATION FUNCTIONS
+=cut
+
+sub mscreateuser {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["login",1],
@@ -5291,8 +5190,7 @@ sub createlocaluser {
     return "SUCCESS";
 }
 
-#Deletes an account from the local database
-sub deleteaccount {
+sub msdeleteuser {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["username",0,$ENV{FIGMODEL_USER}],
@@ -5307,8 +5205,44 @@ sub deleteaccount {
 	return "SUCCESS";
 }
 
-#Function for logging into the Model Driver
-sub login {
+sub msswitchworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+		["clear",0,0],
+		["copy",0,undef],
+	],[@Data]);
+	my $id = $self->figmodel()->ws()->id();
+	$self->figmodel()->switchWorkspace({
+		name => $args->{name},
+		copy => $args->{copy},
+		clear => $args->{clear}
+	});
+	return "Switched from workspace ".$id." to workspace ".$self->figmodel()->ws()->id()."!";
+}
+
+sub msworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["verbose",0,0]
+	],[@Data]);
+	return $self->figmodel()->ws()->printWorkspace({
+		verbose => $args->{verbose}
+	});
+}
+
+sub mslistworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["user",0,$self->figmodel->user()]
+	],[@Data]);
+	my $list = $self->figmodel()->ws()->workspaceList({
+		owner => $args->{user}
+	});
+	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
+}
+
+sub mslogin {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["username",1],
@@ -5330,12 +5264,13 @@ sub login {
 			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
 		}
 	}
+	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
 	$self->figmodel()->authenticate($args);
 	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Authentication failed! Try new password!");
 	}
-	print "Authentication Successful! You will now remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n";
+	$self->figmodel()->loadWorkspace();
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
     my ($addedPWD, $addedUSR) = (0,0);
 	for (my $i=0; $i < @{$data};$i++) {
@@ -5355,14 +5290,24 @@ sub login {
         push(@$data, '$ENV{FIGMODEL_USER} = "'.$args->{username}.'";');
     } 
 	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
-	return "SUCCESS";
+	return "Authentication Successful!\n".
+		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n".
+		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
 
-#Removes user account data from Model SEED environment.
-sub logout {
+sub mslogout {
     my($self,@Data) = @_;
 	my $args = $self->check([],[@Data]);
-	print "Logout Successful! You will not be able to access user-associated data anywhere unless you log in again.\n";
+	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
+	#Authenticating
+	$self->figmodel()->authenticate({
+		username => "public",
+		password => "public"
+	});
+	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Logout failed! No public account is available!");
+	}
+	$self->figmodel()->loadWorkspace();
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
 	for (my $i=0; $i < @{$data};$i++) {
 		if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
@@ -5373,105 +5318,14 @@ sub logout {
 		}
 	}
 	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
-	return "SUCCESS";
+	return "Logout Successful!\n".
+		"You will not be able to access user-associated data anywhere unless you log in again.\n".
+		"You have switched from workspace \"".$oldws."\" to workspace \"public:".$self->figmodel()->ws()->id()."\"!\n";
 }
 
-sub printmodelfiles {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1],
-		["filename",0,undef],
-		["biomassFilename",0,undef]
-	],[@Data]);
-	my $mdl = $self->figmodel()->get_model($args->{model});
-	if (!defined($mdl)) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
-	}
-	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
-		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
-	}
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
-	}
-	if (!defined($args->{biomassFilename})) {
-		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
-	}
-	$mdl->printModelFileForMFAToolkit({
-		filename => $args->{filename}
-	});
-	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
-		filename => $args->{biomassFilename}
-	});
-	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
-}
+=head2 SEQUENCE ANALYSIS METHODS
+=cut
 
-sub loadmodelfromfile {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["name",1],
-    	["genome",1],
-    	["filename",0,undef],
-    	["biomassFile",0,undef],
-    	["owner",0,$self->figmodel()->user()],
-    	["provenance",0,undef],
-    	["overwrite",0,0],
-    	["public",0,0]
-	],[@Data]);
-	my $modelObj = $self->figmodel()->import_model_file({
-		baseid => $args->{"name"},
-		genome => $args->{"genome"},
-		filename => $args->{"filename"},
-		biomassFile => $args->{"biomassFile"},
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
-	});
-	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
-}
-
-sub loadbiomassfromfile {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-	    ["biomass",1],
-	    ["model",0,undef],
-	    ["equation",0,undef],
-	    ["overwrite",0,0]
-	],[@Data]);
-	#Load the file if no equation was specified
-	if (!defined($args->{equation})) {
-		#Setting the filename if only an ID was specified
-		if ($args->{biomass} =~ m/^bio\d+$/) {
-			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
-		}
-		#Loading the biomass reaction
-		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
-		#Loading biomass reaction file
-		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
-		$args->{equation} = $obj->{EQUATION}->[0];
-		$args->{biomass} = $obj->{DATABASE}->[0];
-	}
-	#Loading the biomass into the database
-	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
-	if (defined($bio) && $args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
-	}
-	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
-		equation => $args->{equation},
-		biomassID => $args->{biomass}
-	});
-	print "Successfully loaded biomass reaction ".$args->{biomass}.".\n";
-	#Adjusting the model if a model was specified
-	if (defined($args->{model})) {
-		my $mdl = $self->figmodel()->get_model($args->{model});
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
-    	$mdl->biomassReaction($args->{biomass});
-    	print "Successfully changed biomass reaction in model ".$args->{model}.".\n";
-	}
-	return "SUCCESS";
-}
-
-#Blasts specified sequences against the specified genomes
 sub blastgenomesequences {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -5523,76 +5377,8 @@ sub blastgenomesequences {
 	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
 }
 
-#Prints the specified media formulations in tabular form
-sub printmedia {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["media",1],
-		["filename",1]
-	],[@Data]);
-    my $mediaIDs = $self->figmodel()->processIDList({
-		objectType => "media",
-		delimiter => ",",
-		column => "id",
-		parameters => undef,
-		input => $args->{"media"}
-	});
-	my $mediaHash = $self->figmodel()->database()->get_object_hash({
-		type => "mediacpd",
-		attribute => "MEDIA",
-		parameters => {}
-	});
-	my $compoundHash;
-	for (my $i=0; $i < @{$mediaIDs}; $i++) {
-		if (defined($mediaHash->{$mediaIDs->[$i]})) {
-			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
-				if ($mediaHash->{$mediaIDs->[$i]}->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->type() eq "COMPOUND") {
-					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->maxFlux();
-				}
-			}
-		}
-	}
-	my $output = ["Compounds\t".join("\t",@{$mediaIDs})];
-	foreach my $compound (keys(%{$compoundHash})) {
-		my $line = $compound;
-		for (my $i=0; $i < @{$mediaIDs}; $i++) {
-			$line .= "\t".$compoundHash->{$compound}->{$mediaIDs->[$i]};
-		}
-		push(@{$output},$line);
-	}
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
-}
-
-#Prints the specified media formulations in tabular form
-sub createmedia {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["name",1],
-		["filename",0,undef],
-		["compounds",0,undef],
-		["public",0,1],
-		["owner",0,($self->figmodel()->user())],
-		["overwrite",0,0]
-	],[@Data]);
-    if (defined($args->{compounds})) {
-    	$args->{compounds} = $self->figmodel()->processIDList({
-			objectType => "compound",
-			delimiter => ";",
-			column => "id",
-			parameters => undef,
-			input => $args->{compounds}
-		});	
-    }
-    my $media = $self->figmodel()->get_media()->create({
-    	id => $args->{name},
-    	filename => $args->{filename},
-		compounds => $args->{compounds},
-		public => $args->{public},
-		owner => $args->{owner},
-		overwrite => $args->{overwrite}
-    });
-	print "Media successfully created!\n";
-}
+=head2 MODEL FLUX BALANCE ANALYSIS FUNCTIONS
+=cut
 
 sub fbacheckgrowth {
     my($self,@Data) = @_;
@@ -5680,21 +5466,184 @@ sub fbafva {
    		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
    		$fbaStartParameters->{options}->{forceGrowth} = 1;
    	}
+   	$args->{variables} = [split(/\;/,$args->{variables})];
     my $results = $mdl->fbaFVA({
-	   	variables => [split(/\;/,$args->{variables})],
+	   	variables => $args->{variables},
 	   	fbaStartParameters => $fbaStartParameters,
-	   	saveformat => $args->{saveformat},
-	   	filename => $args->{filename},
 		saveFVAResults=>$args->{savetodb},
-		directory => $self->outputdirectory()
 	});
 	if (!defined($results) || defined($results->{error})) {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
+	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->outputdirectory()."Reactions-".$args->{filename},["Reaction"],";","|");
+	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->outputdirectory()."Compounds-".$args->{filename},["Compound"],";","|");
+	my $varAssoc = {
+		FLUX => "reaction",
+		DELTAG => "reaction",
+		SDELTAG => "reaction",
+		UPTAKE => "compound",
+		SDELTAGF => "compound",
+		POTENTIAL => "compound",
+		CONC => "compound"
+	};
+	my $varHeading = {
+		FLUX => "",
+		DELTAG => " DELTAG",
+		SDELTAG => " SDELTAG",
+		UPTAKE => "",
+		SDELTAGF => " SDELTAGF",
+		POTENTIAL => " POTENTIAL",
+		CONC => " CONC"
+	};
+	for (my $i=0; $i < @{$args->{variables}}; $i++) {
+		if (defined($varAssoc->{$args->{variables}->[$i]})) {
+			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+				if ($args->{variables}->[$i] eq "UPTAKE") {
+					$cpdtbl->add_headings(("Class"));
+				}
+			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+				if ($args->{variables}->[$i] eq "FLUX") {
+					$rxntbl->add_headings(("Class"));
+				}
+			}
+		}
+	}
+	foreach my $obj (keys(%{$results->{tb}})) {
+		my $newRow;
+		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Reaction"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
+			}
+			$newRow->{"Compartment"} = [$compartment];
+			#$newRow->{"Direction"} = [$rxnObj->directionality()];
+			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
+					}
+				}
+			}
+			#print Data::Dumper->Dump([$newRow]);
+			$rxntbl->add_row($newRow);
+		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
+			$newRow->{"Compound"} = [$1];
+			my $compartment = $2;
+			if (!defined($compartment) || $compartment eq "") {
+				$compartment = "c";
+			}
+			$newRow->{"Compartment"} = [$compartment];
+			for (my $i=0; $i < @{$args->{variables}}; $i++) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+						if ($args->{variables}->[$i] eq "FLUX") {
+							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+						}
+					}
+				}
+			}
+			$cpdtbl->add_row($newRow);
+		}
+	}
+	#Saving data to file
+	if ($args->{saveformat} eq "EXCEL") {
+		$self->figmodel()->make_xls({
+			filename => $args->{directory}.$args->{filename},
+			sheetnames => ["Compound Bounds","Reaction Bounds"],
+			sheetdata => [$cpdtbl,$rxntbl]
+		});
+	} elsif ($args->{saveformat} eq "TEXT") {
+		$cpdtbl->save();
+		$rxntbl->save();
+	}
 	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->outputdirectory().$args->{filename}.".";
 }
 
-sub gapfillmodel {
+#Prints the specified media formulations in tabular form
+sub printmedia {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["media",1],
+		["filename",1]
+	],[@Data]);
+    my $mediaIDs = $self->figmodel()->processIDList({
+		objectType => "media",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{"media"}
+	});
+	my $mediaHash = $self->figmodel()->database()->get_object_hash({
+		type => "mediacpd",
+		attribute => "MEDIA",
+		parameters => {}
+	});
+	my $compoundHash;
+	for (my $i=0; $i < @{$mediaIDs}; $i++) {
+		if (defined($mediaHash->{$mediaIDs->[$i]})) {
+			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
+				if ($mediaHash->{$mediaIDs->[$i]}->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->type() eq "COMPOUND") {
+					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->maxFlux();
+				}
+			}
+		}
+	}
+	my $output = ["Compounds\t".join("\t",@{$mediaIDs})];
+	foreach my $compound (keys(%{$compoundHash})) {
+		my $line = $compound;
+		for (my $i=0; $i < @{$mediaIDs}; $i++) {
+			$line .= "\t".$compoundHash->{$compound}->{$mediaIDs->[$i]};
+		}
+		push(@{$output},$line);
+	}
+	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+}
+
+#Prints the specified media formulations in tabular form
+sub createmedia {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+		["filename",0,undef],
+		["compounds",0,undef],
+		["public",0,1],
+		["owner",0,($self->figmodel()->user())],
+		["overwrite",0,0]
+	],[@Data]);
+    if (defined($args->{compounds})) {
+    	$args->{compounds} = $self->figmodel()->processIDList({
+			objectType => "compound",
+			delimiter => ";",
+			column => "id",
+			parameters => undef,
+			input => $args->{compounds}
+		});	
+    }
+    my $media = $self->figmodel()->get_media()->create({
+    	id => $args->{name},
+    	filename => $args->{filename},
+		compounds => $args->{compounds},
+		public => $args->{public},
+		owner => $args->{owner},
+		overwrite => $args->{overwrite}
+    });
+	print "Media successfully created!\n";
+}
+
+=head2 MODEL INTERFACE FUNCTIONS
+=cut
+
+sub mdlautocomplete {
     my($self,@Data) = @_;
     my $args = $self->check([
 		["model",1],
@@ -5706,10 +5655,11 @@ sub gapfillmodel {
 		["testsolution",0,0],
 		["printdbmessage",0,0],
 		["coefficientfile",0,undef],
-		["queue",0,0],
 		["rungapfilling",0,1],
 		["problemdirectory",0,undef],
-		["startfresh",0,1]
+		["startfresh",0,1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
 	],[@Data]);
     #Getting model list
     my $models = $self->figmodel()->processIDList({
@@ -5723,7 +5673,7 @@ sub gapfillmodel {
 	if (@{$models} > 1 || $args->{queue} == 1) {
 	    for (my $i=0; $i < @{$models}; $i++) {
 	    	$self->figmodel()->add_job_to_queue({
-	    		command => "completegapfillmodel".
+	    		command => "mdlautocomplete".
 	    			"?".$models->[$i]->id().
 	    			"?".$args->{"media"}.
 	    			"?".$args->{"removegapfilling"}.
@@ -5744,7 +5694,6 @@ sub gapfillmodel {
    	if (!defined($model)) {
    		ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$models->[0]." not found in database!");
    	}
-
    	$model->completeGapfilling({
 		startFresh => $args->{startfresh},
 		problemDirectory => $args->{problemdirectory},
@@ -5761,6 +5710,417 @@ sub gapfillmodel {
 		globalmessage => $args->{printdbmessage}
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
+}
+
+sub mdlreconstruction {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["gapfilling",0,0],
+		["checkpoint",0,1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
+	],[@Data]);
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+    }
+    $mdl->reconstruction({
+    	checkpoint => $args->{"checkpoint"},
+		gapfilling => $args->{"gapfilling"},
+		usequeue => $args->{"usequeue"},
+		queue => $args->{"queue"},
+	});
+    return "Generated model from genome annotations";
+}
+
+sub mdlmakedbmodel {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+	],[@Data]);
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+    }
+    $mdl->generate_fulldb_model();
+	return "Set model reaction list to entire biochemistry database";
+}
+
+sub mdladdright {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",1],
+		["user",1],
+		["right",0,"view"]
+	],[@Data]);
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+    }
+    $mdl->changeRight({
+    	permission => "admin",
+		username => $Data[2],
+		force => 1
+    });
+	return "Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!\n";	
+}
+
+sub mdlcreatemodel {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1],
+		["id",0,undef],
+		["biomass",0,undef],
+		["owner",0,$self->figmodel()->user()],
+		["biochemSource",0,undef],
+		["reconstruction",0,0],
+		["gapfilling",0,0],
+		["overwrite",0,0],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
+	],[@Data]);
+    my $output = $self->figmodel()->processIDList({
+		objectType => "genome",
+		delimiter => ",",
+		input => $args->{genome}
+	});
+	my $message = "";
+    if (@{$output} == 1 || $args->{usequeue} eq 0) {
+    	for (my $i=0; $i < @{$output}; $i++) {
+    		my $mdl = $self->figmodel()->create_model({
+				genome => $output->[0],
+				id => $args->{id},
+				owner => $args->{owner},
+				biochemSource => $args->{"biochemSource"},
+				biomassReaction => $args->{"biomass"},
+				reconstruction => $args->{"reconstruction"},
+				gapfilling => $args->{"gapfilling"},
+				overwrite => $args->{"overwrite"},
+				usequeue => $args->{"usequeue"},
+				queue => $args->{"queue"}
+			});
+			if (defined($mdl)) {
+				$message .= "Successfully created model ".$mdl->id()."!\n";
+			} else {
+				$message .= "Failed to create model ".$mdl->id()."!\n";
+			}
+    	}
+	} else {
+		for (my $i=0; $i < @{$output}; $i++) {
+	    	$self->figmodel()->add_job_to_queue({
+	    		command => "mdlcreatemodel".
+	    			"?".$output->[$i]."?".
+	    			"?".$args->{"biomass"}.
+	    			"?".$args->{"owner"}.
+	    			"?".$args->{"biochemSource"}.
+	    			"?".$args->{"reconstruction"}.
+	    			"?".$args->{"gapfilling"}.
+	    			"?".$args->{"overwrite"}.
+	    			"?".$args->{"usequeue"}.
+	    			"?".$args->{"queue"},
+	    		user => $self->figmodel()->user(),
+	    		queue => $args->{"queue"}
+	    	});
+    	}
+	}
+    return $message;
+}
+sub mdlinspectstate {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
+	],[@Data]);
+	my $results = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {},
+		input => $args->{"model"}
+	});
+	if (@{$results} == 1 || $args->{usequeue} == 0) {
+		for (my $i=0;$i < @{$results}; $i++) {
+			my $mdl = $self->figmodel()->get_model($results->[$i]);
+	 		if (!defined($mdl)) {
+	 			ModelSEED::FIGMODEL::FIGMODELWARNING("Model not valid ".$results->[$i]);	
+	 		} else {
+	 			$mdl->InspectModelState({});
+	 		}
+		}
+	} else {
+		for (my $i=0; $i < @{$results}; $i++) {
+			$self->figmodel()->add_job_to_queue({
+	    		command => "inspectmodelstate?".$results->[$i],
+	    		user => $self->figmodel()->user(),
+	    		queue => $args->{queue}
+	    	});
+		}
+	}
+    return "SUCCESS";
+}
+
+sub mdlprintsbml {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
+	],[@Data]);
+	my $results = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {},
+		input => $args->{"model"}
+	});
+	my $message;
+	if (@{$results} == 1 || $args->{usequeue} == 0) {
+		for (my $i=0;$i < @{$results}; $i++) {
+			print "Now processing ".$results->[$i]."\n";
+			my $mdl = $self->figmodel()->get_model($results->[$i]);
+	 		if (!defined($mdl)) {
+	 			ModelSEED::FIGMODEL::FIGMODELWARNING("Model not valid ".$args->{model});
+	 			$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
+	 		} else {
+				my $sbml = $mdl->PrintSBMLFile();
+				$self->db()->print_array_to_file($self->ws()->directory().$results->[$i].".xml",$sbml);
+	 			$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
+	 		}
+		}
+	} else {
+		for (my $i=0; $i < @{$results}; $i++) {
+			$self->figmodel()->mdlprintsbml({
+	    		command => "mdlprintsbml?".$results->[$i],
+	    		user => $self->figmodel()->user().":".$self->ws()->id().":".$self->ws()->path(),
+	    		queue => $args->{queue}
+	    	});
+		}
+	}
+    return $message;
+}
+
+sub mdlprintmodel {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["filename",0,undef],
+		["biomassFilename",0,undef]
+	],[@Data]);
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+	}
+	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
+		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
+	}
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
+	}
+	if (!defined($args->{biomassFilename})) {
+		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+	}
+	$mdl->printModelFileForMFAToolkit({
+		filename => $args->{filename}
+	});
+	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+		filename => $args->{biomassFilename}
+	});
+	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
+}
+
+sub mdlloadmodel {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+    	["genome",1],
+    	["filename",0,undef],
+    	["biomassFile",0,undef],
+    	["owner",0,$self->figmodel()->user()],
+    	["provenance",0,undef],
+    	["overwrite",0,0],
+    	["public",0,0]
+	],[@Data]);
+	my $modelObj = $self->figmodel()->import_model_file({
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
+		filename => $args->{"filename"},
+		biomassFile => $args->{"biomassFile"},
+		owner => $args->{"owner"},
+		public => $args->{"public"},
+		overwrite => $args->{"overwrite"},
+		provenance => $args->{"provenance"}
+	});
+	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
+}
+
+sub mdlloadbiomass {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["biomass",1],
+    	["model",0,undef],
+    	["equation",0,undef],
+    	["overwrite",0,0]
+	],[@Data]);
+	#Load the file if no equation was specified
+	if (!defined($args->{equation})) {
+		#Setting the filename if only an ID was specified
+		if ($args->{biomass} =~ m/^bio\d+$/) {
+			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
+		}
+		#Loading the biomass reaction
+		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
+		#Loading biomass reaction file
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
+		$args->{equation} = $obj->{EQUATION}->[0];
+		$args->{biomass} = $obj->{DATABASE}->[0];
+	}
+	#Loading the biomass into the database
+	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
+	if (defined($bio) && $args->{overwrite} == 0) {
+		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
+	}
+	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
+		equation => $args->{equation},
+		biomassID => $args->{biomass}
+	});
+	my $msg = "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
+	#Adjusting the model if a model was specified
+	if (defined($args->{model})) {
+		my $mdl = $self->figmodel()->get_model($args->{model});
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
+    	$mdl->biomassReaction($args->{biomass});
+    	$msg .= "Successfully changed biomass reaction in model ".$args->{model}.".\n";
+	}
+	return $msg;
+}
+
+sub mdlimportmodel {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+    	["name",1],
+    	["genome",1],
+    	["owner",0,$self->figmodel()->user()],
+    	["path",0,undef],
+    	["overwrite",0,0],
+    	["biochemsource",0,undef]
+    ],[@Data]);
+	my $public = 0;
+	if ($args->{"owner"} eq "master") {
+		$public = 1;
+	}
+	$self->figmodel()->import_model({
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
+		owner => $args->{"owner"},
+		path => $args->{"path"},
+		public => $public,
+		overwrite => $args->{"overwrite"},
+		biochemSource => $args->{"biochemsource"}
+	});
+	return "SUCCESS";
+}
+
+=head2 UTILITY FUNCTIONS
+=cut
+
+sub mathmatdist {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["matrixfile",1],
+		["binsize",0,1],
+		["startcol",0,1],
+		["endcol",0,undef],
+		["startrow",0,1],
+		["endrow",0,undef],
+		["delimiter",0,"\\t"]
+	],[@Data]);
+    #Checking that file exists
+    if (!-e $self->outputdirectory().$args->{matrixfile}) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find matrix file ".$self->outputdirectory().$args->{matrixfile}."!");
+    }
+    #Loading the file
+    print "Loading...\n";
+    my $distribData;
+    my $data = $self->figmodel()->database()->load_single_column_file($self->outputdirectory().$args->{matrixfile});
+    if (!defined($args->{endrow})) {
+    	$args->{endrow} = @{$data};
+    }
+    print "Calculating...\n";
+    #Calculating the distribution for each row as well as the overall distribution
+    for (my $i=$args->{startrow}; $i < $args->{endrow}; $i++) {
+    	my $rowData = [split($args->{delimiter},$data->[$i])];
+    	print "Processing row ".$i.":".$rowData->[0]."\n";
+    	if (!defined($args->{endcol})) {
+	    	$args->{endcol} = @{$rowData};
+	    }
+    	for (my $j=$args->{startcol}; $j < $args->{endcol}; $j++) {
+    		if ($rowData->[$j] =~ m/^\d+\.*\d*$/) {
+    			my $bin = ModelSEED::FIGMODEL::floor($rowData->[$j]/$args->{binsize});
+    			if (!defined($distribData->{$rowData->[0]}->[$bin])) {
+    				$distribData->{$rowData->[0]}->[$bin] = 0;
+    			}
+    			$distribData->{$rowData->[0]}->[$bin]++;
+    			if (!defined($distribData->{"total"}->[$bin])) {
+    				$distribData->{"total"}->[$bin] = 0;
+    			}
+    			$distribData->{"total"}->[$bin]++;
+    		}
+    	}
+    	delete $data->[$i];
+    }
+    #Normalizing distrubtions
+    my $largestBin = 0;
+    my $normDistribData;
+    print "Normalizing\n";
+    foreach my $label (keys(%{$distribData})) {
+    	if (@{$distribData->{$label}} > $largestBin) {
+    		$largestBin = @{$distribData->{$label}};
+    	}
+    	my $total = 0;
+    	for (my $j=0; $j < @{$distribData->{$label}}; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$total += $distribData->{$label}->[$j];
+    		}
+    	}
+    	for (my $j=0; $j < @{$distribData->{$label}}; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$normDistribData->{$label}->[$j] = $distribData->{$label}->[$j]/$total;
+    		}
+    	}
+    }
+    #Printing distributions
+    print "Printing...\n";
+    my $bins = [];
+    for (my $i=0; $i < $largestBin; $i++) {
+    	$bins->[$i] = $i*$args->{binsize}."-".($i+1)*$args->{binsize};
+    }
+    my $fileData = {
+    	"Distributions.txt" => ["Label\t".join("\t",@{$bins})],
+    	"NormDistributions.txt" => ["Label\t".join("\t",@{$bins})]
+    };
+    foreach my $label (keys(%{$distribData})) {
+		my $line = $label;
+		my $normline = $label;
+		for (my $j=0; $j < $largestBin; $j++) {
+    		if (defined($distribData->{$label}->[$j])) {
+    			$line .= "\t".$distribData->{$label}->[$j];
+    			$normline .= "\t".$normDistribData->{$label}->[$j];
+    		} else {
+    			$line .= "\t0";
+    			$normline .= "\t0";
+    		}
+    	}
+		push(@{$fileData->{"Distributions.txt"}},$line);
+		push(@{$fileData->{"NormDistributions.txt"}},$normline);
+	}
+	my $message = "";
+	foreach my $filename (keys(%{$fileData})) {
+		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
+		$message .= "Printed distributions to ".$self->outputdirectory().$filename."\n";
+	}
+	return $message;
 }
 
 1;

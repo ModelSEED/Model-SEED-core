@@ -31,7 +31,7 @@ sub new {
 			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->id()});
 		} else {
 			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
-		}
+		}		
 		if(!defined($self->{_ppo})){
 		    return undef;
 		}
@@ -351,16 +351,18 @@ sub processReactionWithMFAToolkit {
     
     my $filename = $fbaObj->filename();
     print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
-    
-    return {};
-    
-    #Backing up the old file
+ 
+   return {};
+
+}
+
+#    #Backing up the old file
 #    system("cp ".$self->figmodel()->config("reaction directory")->[0].$self->id()." ".$self->figmodel()->config("database root directory")->[0]."ReactionDB/oldreactions/".$self->id());
-    #Getting unique directory for output
+#    #Getting unique directory for output
 #    my $filename = $self->figmodel()->filename();
     #Eliminating the mfatoolkit errors from the compound and reaction files
 #    my $data = $self->file();
-
+#
 #    if (defined($self->ppo()) && $args->{loadEquationFromPPO} == 1) {
 #	$data->{EQUATION}->[0] = $self->ppo()->equation();
 #    }
@@ -369,10 +371,10 @@ sub processReactionWithMFAToolkit {
 #    $data->remove_heading("TRANSATOMS");
 #    $data->remove_heading("DBLINKS");
 #    $data->save();
-    #Running the mfatoolkit
+#    #Running the mfatoolkit
 #    print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
 #    system($self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log"));
-	#Copying in the new file
+#	#Copying in the new file
 #	print $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()."\n";
 #	if (-e $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()) {
 #		my $newData = $self->file({filename=>$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()});
@@ -394,7 +396,7 @@ sub processReactionWithMFAToolkit {
 #	}
 #	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
 #	return {};
-}
+#}
 
 =head3 get_neighboring_reactions
 Definition:
@@ -594,7 +596,6 @@ sub build_complete_biomass_reaction {
     $reactants = substr($reactants,0,length($reactants)-2);
     $products = substr($products,2);
     $bioObj->equation($reactants."=>".$products);
-	$self->figmodel()->print_biomass_reaction_file("bio00001");
 	if ($bioObj->equation() ne $oldEquation) {
 		$bioObj->essentialRxn("NONE");
 		$self->figmodel()->add_job_to_queue({command => "runfigmodelfunction?determine_biomass_essential_reactions?bio00001",user => $self->figmodel()->user(),queue => "fast"});
@@ -1400,4 +1401,34 @@ sub replacesReaction {
     }
     return 1;
 }
+
+=head3 get_reaction_reversibility_hash
+Definition:
+	Output = FIGMODELreaction->get_reaction_reversibility_hash();
+	Output: {
+		string:reaction ID => string:reversibility
+	}
+Description:
+	This function returns a hash of all reactions with their reversiblities.
+=cut
+sub get_reaction_reversibility_hash {
+	my ($self) = @_;
+	my $objs = $self->db->get_objects("reaction");
+	my $revHash;
+	for (my $i=0; $i < @{$objs};$i++) {
+		my $rev = "<=>";
+		if ($objs->[$i]->id() =~ m/^bio/ || defined($self->figmodel()->{"forward only reactions"}->{$objs->[$i]->id()})) {
+			$rev = "=>";
+		} elsif (defined($self->figmodel()->{"reverse only reactions"}->{$objs->[$i]->id()})) {
+			$rev = "<=";
+		} elsif (defined($self->figmodel()->{"reversibility corrections"}->{$objs->[$i]->id()})) {
+			$rev = "<=>";
+		} else {
+			$rev = $objs->[$i]->reversibility();
+		}
+		$revHash->{$objs->[$i]->id()} = $rev;
+	}
+	return $revHash;
+}
+
 1;

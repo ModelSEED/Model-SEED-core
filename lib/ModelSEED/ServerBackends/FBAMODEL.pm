@@ -171,39 +171,27 @@ Example:
 
 =cut
 sub get_reaction_id_list {
-	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#List of IDs to be returned will be stored here
-	my $ids;
-	#First checking that the "id" key exists
-	if (!defined($args->{id})) {
-		$ids = ["ALL"];
-	} else {
-		#Checking if the hash contains a single ID instead of a reference to an array of IDs
-		if (ref($args->{id}) ne "ARRAY") {
-			push(@{$ids},$args->{id});
-		} else {
-			push(@{$ids},@{$args->{id}});
-		}
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		id => ["ALL"]
+	});
+	if (ref($args->{id}) ne "ARRAY") {
+		$args->{id} = [split(/[;,]/,$args->{id})];
 	}
-	#If IDs is ["ALL"], we return an array of all reaction objects
 	my $output;
-	for (my $i=0; $i < @{$ids}; $i++) {
-		if ($ids->[$i] eq "ALL") {
+	for (my $i=0; $i < @{$args->{id}}; $i++) {
+		if ($args->{id}->[$i] eq "ALL") {
 			my $objects = $self->figmodel()->database()->get_objects("reaction");
 			for (my $j=0; $j < @{$objects}; $j++) {
-				push(@{$output->{$ids->[$i]}},$objects->[$j]->id());
+				push(@{$output->{$args->{id}->[$i]}},$objects->[$j]->id());
 			}
-		} elsif (defined($self->figmodel()->get_model($ids->[$i]))) {
-			my $tbl = $self->figmodel()->get_model($ids->[$i])->reaction_table();
-			if (defined($tbl)) {
-				for (my $j=0; $j < $tbl->size(); $j++) {
-					push(@{$output->{$ids->[$i]}},$tbl->get_row($j)->{LOAD}->[0]);
-				}
+		} else {
+			my $objects = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}->[$i]});
+			for (my $j=0; $j < @{$objects}; $j++) {
+				push(@{$output->{$args->{id}->[$i]}},$objects->[$j]->REACTION());
 			}
 		}
 	}
-	#Returning the output
 	return $output;
 }
 
@@ -253,84 +241,104 @@ Example:
 =cut
 sub get_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Getting all reactions from the database
+	$args = $self->figmodel()->process_arguments($args,[],{
+		id => ["ALL"],
+		model => undef
+	});
+	if (ref($args->{id}) ne "ARRAY") {
+		$args->{id} = [split(/[;,]/,$args->{id})];
+	}
+	#Loading all reactions from database into id hash
 	my $idHash;
 	my $objects = $self->figmodel()->database()->get_objects("reaction");
 	for (my $i=0; $i < @{$objects}; $i++) {
 		$idHash->{$objects->[$i]->id()} = $objects->[$i];
 	}
-	#Checking id list
-	my $ids;
-	if (!defined($args->{id})) {
-		$args->{id}->[0] = "ALL";
-	} elsif (ref($args->{id}) ne "ARRAY") {
-		push(@{$ids},$args->{id});
-	} else {
-		push(@{$ids},@{$args->{id}});
-	}
+	#Setting ID list of "ALL" selected
 	if ($args->{id}->[0] eq "ALL") {
-		push(@{$ids},keys(%{$idHash}));
+		$args->{id} = [keys(%{$idHash})];
+	}
+	#Getting model data
+	my $modelhash;
+	if (defined($args->{model})) {
+		for (my $j=0; $j < @{$args->{model}}; $j++) {
+			my $model = $self->figmodel()->get_model($args->{model}->[$j]);
+			if (defined($model)) {
+				my $rxnmdl = $model->rxnmdl();
+				for (my $k=0; $k < @{$rxnmdl}; $k++) {
+					$modelhash->{$model->id()}->{$rxnmdl->[$k]->REACTION()} = $rxnmdl->[$k];
+				}
+			}
+		}
 	}
 	#Collecting reaction data for ID list
 	my $output;
-	for (my $i=0; $i < @{$ids}; $i++) {
+	for (my $i=0; $i < @{$args->{id}}; $i++) {
 		my $row;
-		if ($ids->[$i] =~ m/rxn\d\d\d\d\d/ && defined($idHash->{$ids->[$i]})) {
-			my $obj = $idHash->{$ids->[$i]};
-			$row = {DATABASE => [$ids->[$i]],
-					NAME => [$obj->name()],
-					EQUATION => [$obj->equation()],
-					CODE => [$obj->equation()],
-					"MAIN EQUATION" => [$obj->equation()],
-					REVERSIBILITY => [$obj->thermoReversibility()],
-					DELTAG => [$obj->deltaG()],
-				        DELTAGERR => [$obj->deltaGErr()]};
+		if ($args->{id}->[$i] =~ m/rxn\d+/ && defined($idHash->{$args->{id}->[$i]})) {
+			my $obj = $idHash->{$args->{id}->[$i]};
+			$row = {
+				DATABASE => [$args->{id}->[$i]],
+				NAME => [$obj->name()],
+				EQUATION => [$obj->equation()],
+				CODE => [$obj->equation()],
+				"MAIN EQUATION" => [$obj->equation()],
+				REVERSIBILITY => [$obj->thermoReversibility()],
+				DELTAG => [$obj->deltaG()],
+				DELTAGERR => [$obj->deltaGErr()]
+			};
 			#Adding KEGG map data
-			my $mapHash = $self->figmodel()->get_map_hash($args);
-			if (defined($mapHash->{$ids->[$i]})) {
-				foreach my $diagram (keys(%{$mapHash->{$ids->[$i]}})) {
-					push(@{$row->{"PATHWAY"}},$mapHash->{$ids->[$i]}->{$diagram}->name());
-					push(@{$row->{"KEGG MAPS"}},"map".$mapHash->{$ids->[$i]}->{$diagram}->altid());
+			my $mapHash = $self->figmodel()->get_map_hash({type => "reaction"});
+			if (defined($mapHash->{$args->{id}->[$i]})) {
+				foreach my $diagram (keys(%{$mapHash->{$args->{id}->[$i]}})) {
+					push(@{$row->{"PATHWAY"}},$mapHash->{$args->{id}->[$i]}->{$diagram}->name());
+					push(@{$row->{"KEGG MAPS"}},"map".$mapHash->{$args->{id}->[$i]}->{$diagram}->altid());
 				}
 			}
 			#Adding KEGG data
-			my $keggobjs = $self->figmodel()->database()->get_objects("rxnals",{REACTION => $ids->[$i],type => "KEGG"});
+			my $keggobjs = $self->figmodel()->database()->get_objects("rxnals",{REACTION => $args->{id}->[$i],type => "KEGG"});
 			for (my $j=0; $j < @{$keggobjs}; $j++) {
 				push(@{$row->{KEGGID}},$keggobjs->[$j]->alias());
 			}
 			if (defined($obj->enzyme()) && length($obj->enzyme()) > 0) {
 			    if (index($obj->enzyme(), '|') == 0) {
-				my $enzyme = substr($obj->enzyme(),1,length($obj->enzyme())-2);
-				push(@{$row->{ENZYME}},split(/\|/,$enzyme));	
+					my $enzyme = substr($obj->enzyme(),1,length($obj->enzyme())-2);
+					push(@{$row->{ENZYME}},split(/\|/,$enzyme));	
 			    }
 			    else {
-				push(@{$row->{ENZYME}},split(/\|/,$obj->enzyme()));
+					push(@{$row->{ENZYME}},split(/\|/,$obj->enzyme()));
 			    }
 			}
 			if (defined($obj->abstractReaction())) {
 			    push(@{$row->{"ABSTRACT REACTION"}},$obj->abstractReaction());
 			}
-		} elsif ($ids->[$i] =~ m/bio\d\d\d\d\d/) {
-			my $obj = $self->figmodel()->database()->get_object("bof",{id=>$ids->[$i]});
-			$row = {DATABASE => [$ids->[$i]],
-					NAME => ["Biomass"],
-					EQUATION => [$obj->equation()],
-					CODE => [$obj->equation()],
-					"MAIN EQUATION" => [$obj->equation()],
-					PATHWAY => ["Macromolecule biosynthesis"],
-					REVERSIBILITY => ["=>"]};
+		} elsif ($args->{id}->[$i] =~ m/bio\d\d\d\d\d/) {
+			my $obj = $self->figmodel()->database()->get_object("bof",{id=>$args->{id}->[$i]});
+			$row = {
+				DATABASE => [$args->{id}->[$i]],
+				NAME => ["Biomass"],
+				EQUATION => [$obj->equation()],
+				CODE => [$obj->equation()],
+				"MAIN EQUATION" => [$obj->equation()],
+				PATHWAY => ["Macromolecule biosynthesis"],
+				REVERSIBILITY => ["=>"]
+			};
 		}
 		if (defined($row)) {
-			$output->{$ids->[$i]} = $row;
+			$output->{$args->{id}->[$i]} = $row;
 			if (defined($args->{model})) {
 				for (my $j=0; $j < @{$args->{model}}; $j++) {
-					my $model = $self->figmodel()->get_model($args->{model}->[$j]);
-					if (defined($model)) {
-						my $data = $model->get_reaction_data($ids->[$i]);
-						if (defined($data)) {
-							$output->{$ids->[$i]}->{$args->{model}->[$j]} = $data;
-						}
+					if (defined($modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]})) {
+						$output->{$args->{id}->[$i]}->{$args->{model}->[$j]} = {
+							LOAD => [$args->{id}->[$i]],
+							DIRECTIONALITY => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->directionality()],
+							COMPARTMENT => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->compartment()],
+							"ASSOCIATED PEG" => [split(/\|/,$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->pegs())],
+							SUBSYSTEM => ["NONE"],
+							CONFIDENCE => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->confidence()],
+							REFERENCE => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->reference()],
+							NOTES => [$modelhash->{$args->{model}->[$j]}->{$args->{id}->[$i]}->notes()],
+						};
 					}
 				}
 			}
@@ -551,9 +559,10 @@ sub get_compound_data {
 			my $obj = $idHash->{$ids->[$i]};
 			my $names = [$obj->name()];
 			if (defined($cpdAlsHash->{$ids->[$i]})) {
-				$names = [];
 				for (my $j=0; $j < @{$cpdAlsHash->{$ids->[$i]}}; $j++) {
-					push(@{$names},$cpdAlsHash->{$ids->[$i]}->[$j]->alias());
+					if ($cpdAlsHash->{$ids->[$i]}->[$j]->alias() ne $obj->name()) {
+						push(@{$names},$cpdAlsHash->{$ids->[$i]}->[$j]->alias());
+					}
 				}	
 			}
 			$row = {DATABASE => [$ids->[$i]],
@@ -1291,15 +1300,7 @@ classification data.
 
 sub get_model_reaction_classification_table {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Checking that some model ID has been submitted
-	if (!defined($args->{model})) {
-		return undef;
-	}
-	
-	#First logging in the user if a username is provided
-	$self->figmodel()->authenticate_user($args->{username},$args->{password});
-	
+	$args = $self->figmodel()->process_arguments($args,["model"]);
 	#Now retreiving the specified models from the database
 	my $output;
 	for (my $i=0; $i < @{$args->{model}}; $i++) {
@@ -1384,24 +1385,28 @@ sub get_complex_to_reaction {
 
 Definition:
 
-    [ { id      => string,
-        media   => string,
-        reactionKO  => string,
-        geneKO      => string,
-        entities    => [ string::reaction and transportable compounds ids],
-        classes => [string::classes],
-        "min flux" => [float::minimum flux],
-        "max flux" => [float::maximum flux]
-    } ] = FBAMODEL->classify_model_entities(
-        { "parameters" => [ { id         => string,
-                              media      => string,
-                              reactionKO => [string::reaction ids],
-                              geneKO     => [string::gene ids],
-                              archiveResults => [0|1],
-                          } ],
-           "user" => string,
-           "password" => string
-    });
+   Output = FBAMODEL->classify_model_entities({
+		parameters => [{
+			id => string,
+			media => string,
+			reactionKO => [string::reaction ids],
+			geneKO => [string::gene ids],
+			archiveResults => 0|1,
+		}],
+		user => string,
+		password => string
+    })
+    
+    Output: [{
+		id      => string,
+		media   => string,
+		reactionKO  => [string],
+		geneKO      => [string],
+		entities    => [ string::reaction and transportable compounds ids],
+		classes => [string::classes],
+		"min flux" => [float::minimum flux],
+		"max flux" => [float::maximum flux]
+    }]
 
 Description:
 
@@ -1431,75 +1436,46 @@ minimum possible flux through each reaction/compound)
 If the	"entities" key is undefined in the output, this means
 the specified model did not grow in the specified conditions.
 
-Example:
-
-    my $ConfigHashRef = {"model" => [{"id" => "Seed83333.1",
-                                      "media" => "Carbon-D-Glucose",
-                                      "reactionKO" => "rxn00001;rxn00002",
-                                      "geneKO" => "peg.1,peg.2"}],
-                         "user" => "reviewer",
-                         "password" => "eval"};
-    my $retValArrayRef = $FBAModel->classify_model_entities($ConfigHashRef);
-    $retValArrayRef == [{ "id" => "Seed83333.1",
-                          "media" => "Carbon-D-Glucose",
-                          "reactionKO" => "rxn00001;rxn00002",
-                          "geneKO" => "peg.1,peg.2",
-                          "reactions" => ["rxn00001","rxn00002"....],
-                          "classes" => ["essential =>","essential<=",...],
-                          "max flux" => [100,-10...],
-                          "min flux" => [10,-100...],
-                       }]
-
 =cut
 sub classify_model_entities {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
-	#Checking that at least one parameter was input
-	if (!defined($args->{parameters})) {
-		return undef;
-	}
-	#Getting parameter array
-	my $parameters;
+	$args = $self->figmodel()->process_arguments($args,["parameters"],{});
 	if (ref($args->{parameters}) ne "ARRAY") {
-		$parameters = [$args->{parameters}];
-	} else {
-		$parameters = $args->{parameters};
+		$args->{parameters} = [$args->{parameters}];
 	}
 	#Cycling through parameters and running fba studies
 	my $output;
-	for (my $i=0; $i < @{$parameters}; $i++) {
-		if (defined($parameters->[$i]->{id})) {
-			if (!defined($parameters->[$i]->{media})) {
-				$parameters->[$i]->{media} = "Complete";
-			}
-			my $modelobj = $self->figmodel()->get_model($parameters->[$i]->{id});
+	for (my $i=0; $i < @{$args->{parameters}}; $i++) {
+		if (defined($args->{parameters}->[$i]->{id})) {		
+			my $modelobj = $self->figmodel()->get_model($args->{parameters}->[$i]->{id});
 			if (defined($modelobj)) {
+				my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args->{parameters}->[$i]});
+				if (!defined($fbaStartParameters->{media})) {
+					$fbaStartParameters->{media} = "Complete";
+				}
+				if (!defined($fbaStartParameters->{options}->{forceGrowth})
+			   		&& !defined($fbaStartParameters->{options}->{forceGrowth}) 
+			   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
+			   		$fbaStartParameters->{options}->{forceGrowth} = 1;
+			   	}
 				my $archiveResults = 0;
-				if (defined($parameters->[$i]->{archiveResults}) && !defined($parameters->[$i]->{reactionKO}) && !defined($parameters->[$i]->{geneKO})) {
-					$archiveResults = 1;
+				if (defined($args->{parameters}->[$i]->{archiveResults})) {
+					$archiveResults = $args->{parameters}->[$i]->{archiveResults}
 				}
-				my ($rxnclasstable,$cpdclasstable) = $modelobj->classify_model_reactions($parameters->[$i]->{media},$archiveResults,$parameters->[$i]->{reactionKO},$parameters->[$i]->{geneKO});
-				if (defined($rxnclasstable)) {
-					for (my $j=0; $j < $rxnclasstable->size();$j++) {
-						my $row = $rxnclasstable->get_row($j);
-						push(@{$parameters->[$i]->{entities}},$row->{REACTION}->[0]);
-						push(@{$parameters->[$i]->{classes}},$row->{CLASS}->[0]);
-						push(@{$parameters->[$i]->{"min flux"}},$row->{MIN}->[0]);
-						push(@{$parameters->[$i]->{"max flux"}},$row->{MAX}->[0]);
-					}
+				my $results = $modelobj->fbaFVA({
+				   	fbaStartParameters => $fbaStartParameters,
+					saveFVAResults=>$archiveResults
+				});
+				if (!defined($results) || defined($results->{error})) {
+					return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 				}
-				if (defined($cpdclasstable)) {
-					for (my $j=0; $j < $cpdclasstable->size();$j++) {
-						my $row = $cpdclasstable->get_row($j);
-						if ($row->{CLASS}->[0] ne "Unknown") {
-							push(@{$parameters->[$i]->{entities}},$row->{COMPOUND}->[0]);
-							push(@{$parameters->[$i]->{classes}},$row->{CLASS}->[0]);
-							push(@{$parameters->[$i]->{"min flux"}},$row->{MIN}->[0]);
-							push(@{$parameters->[$i]->{"max flux"}},$row->{MAX}->[0]);
-						}
-					}
+				foreach my $obj (keys(%{$results->{tb}})) {
+					push(@{$args->{parameters}->[$i]->{entities}},$obj);
+					push(@{$args->{parameters}->[$i]->{classes}},$results->{tb}->{$obj}->{class});
+					push(@{$args->{parameters}->[$i]->{"min flux"}},$results->{tb}->{$obj}->{min});
+					push(@{$args->{parameters}->[$i]->{"max flux"}},$results->{tb}->{$obj}->{max});
 				}
-				push(@{$output},$parameters->[$i]);
+				push(@{$output},$args->{parameters}->[$i]);
 			}
 		}
 	}
@@ -1640,6 +1616,65 @@ sub subsystems_of_reaction {
 			if (defined($rxnSubsysHash->{$args->{reactions}->[$i]})) {
 				push(@{$output->{$args->{reactions}->[$i]}},keys(%{$rxnSubsysHash->{$args->{reactions}->[$i]}}));
 			}
+		}
+	}
+	return $output;
+}
+
+=head3 get_subsystem_data
+
+=item Definition:
+
+	Output = FBAMODEL->get_subsystem_data->({
+		ids => [string]:subsystem IDs
+	})
+	
+	Output: {
+		string:subsystem ID => {
+			ID => string,
+			NAME => string,
+			CLASS => string,
+			SUBCLASS => string,
+			STATUS => string,
+			TYPE => string
+		}
+	}
+	
+=item Description:	
+
+	Returns a list of the subsystems the reaction is involved in
+
+=cut
+
+sub get_subsystem_data {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		ids => ["ALL"],
+	});
+	if (ref($args->{ids}) ne "ARRAY") {
+		$args->{ids} = [split(/[;,]/,$args->{ids})];
+	}
+	#Loading all subsystems from database into id hash
+	my $idHash;
+	my $objects = $self->figmodel()->database()->get_objects("subsystem");
+	for (my $i=0; $i < @{$objects}; $i++) {
+		$idHash->{$objects->[$i]->id()} = $objects->[$i];
+	}
+	#Setting ID list of "ALL" selected
+	if ($args->{ids}->[0] eq "ALL") {
+		$args->{ids} = [keys(%{$idHash})];
+	}
+	#Collecting subsystem data for ID list
+	my $output;
+	for (my $i=0; $i < @{$args->{ids}}; $i++) {
+		if ($args->{ids}->[$i] =~ m/ss\d+/ && defined($idHash->{$args->{ids}->[$i]})) {
+			$output->{$args->{ids}->[$i]} = {
+				ID => [$idHash->{$args->{ids}->[$i]}->id()],
+				NAME => [$idHash->{$args->{ids}->[$i]}->name()],
+				CLASS => [$idHash->{$args->{ids}->[$i]}->classOne()],
+				SUBCLASS => [$idHash->{$args->{ids}->[$i]}->classTwo()],
+				STATUS => [$idHash->{$args->{ids}->[$i]}->status()],
+			};
 		}
 	}
 	return $output;
@@ -2054,30 +2089,54 @@ sub set_abstract_compound_group {
 
 =head3 model_build
 Definition:
-    FIGMODEL->model_build({id => string:genomeID,
-                              source => string:source,
-                              username => string:username,
-                              password => string:password,
-                              owner => string:owner,
-                              gapfilling => 0/1,
-                            });
+    Output = FIGMODEL->model_build({
+    	id => (required string):ID of model or ID of genome
+    	genome => (optional string):if a model ID was provided, a separate genome ID must be provided here
+    	biomass => (optional string):if of biomass reaction the model should be used,
+    	biochemSource => (optional string):id of biochemistry database to be used as a backend,
+    	reconstruction => (optional 0/1):set this to "1" to automatically queue up reconstruction of model - default is "1",
+    	gapfilling => (optional 0/1):set this to "1" to automatically queue up gapfilling of model - default is "1",
+    	overwrite => (optional 0/1):set this to "1" to overwrite the model if it already exists - default is "1",
+    });
+    Output: {
+    	string:genome ID => string:success message
+    }
 Description:
     Constructs a new model for owner
 =cut
 sub model_build {
     my ($self, $args) = @_;
-    my $id = $args->{id};
-    delete $args->{id};
-    if(defined($args->{username}) && defined($args->{password})) {
-        $self->figmodel()->authenticate($args);
+    $args = $self->figmodel()->process_arguments($args, ['id'],{
+    	genome => undef,
+    	biomass => undef,
+    	biochemSource => undef,
+    	reconstruction => 1,
+    	gapfilling => 1,
+    	overwrite => 1
+    });
+    if (!defined($self->figmodel()->userObj())) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("You must log in in order to build a model!");
     }
-    if(defined($self->figmodel()->get_genome($id))) {
-        $args->{genome} = $id;
-    } elsif(defined($self->figmodel()->get_model($id))) {
-        my $model = $self->figmodel()->get_model($id);
-        $args->{genome} = $model->genome();
+    $args->{owner} = $self->figmodel()->user();
+    if ($args->{id} =~ m/^\d+\.\d+$/) {
+    	$args->{genome} = $args->{id};
+    	$args->{id} = undef;
+    } elsif (!defined($args->{genome})) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("If the genome is not specified in the ID, then the genome argument must be provided.");
     }
-    return $self->figmodel()->create_model($args);
+    my $mdl = $self->figmodel()->create_model({
+		genome => $args->{genome},
+		id => $args->{id},
+		owner => $args->{owner},
+		biochemSource => $args->{"biochemSource"},
+		biomassReaction => $args->{"biomass"},
+		reconstruction => $args->{"reconstruction"},
+		gapfilling => $args->{"gapfilling"},
+		overwrite => $args->{"overwrite"},
+		usequeue => 1,
+		queue => "fast"
+	});
+	return {$args->{genome} => "Successfully queued ".$mdl->id()." for reconstruction"};
 }
 
 =head 3 model_status

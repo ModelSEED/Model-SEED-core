@@ -2,7 +2,7 @@ use strict;
 use ModelSEED::FIGMODEL::FIGMODELdata;
 use File::Path qw(make_path);
 use File::NFSLock;
-use CHI;
+#use CHI;
 use DBMaster;
 use Storable;
 
@@ -81,6 +81,7 @@ sub _cache {
     return $self->{_cache} if(defined($self->{_cache}));
     my $settings = ($self->config('CacheSettings')) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
+    ModelSEED::FIGMODEL::FIGMODELERROR("Cannot call _cache right now. The feature is broken!");
     return $self->{_cache} = CHI->new(%$settings);
 }
 
@@ -282,7 +283,8 @@ sub get_objects {
 	# By default, the cache behavior is not to use the cache;
 	# cache is used if cacheBehavior = 1; cache is reset if
 	# cacheBehavior = 2; ONLY cache is used if cacheBehavior = 3;
-    $cacheBehavior = $self->config("CacheBehavior") || 0 unless(defined($cacheBehavior));
+    $cacheBehavior = $self->config("CacheSettings") || 0 unless(defined($cacheBehavior));
+    $cacheBehavior = 0;#Will fix once we got CHI working properly.
     $query = {} unless(defined($query));
     my %queryCpy = %$query;
 	my $cacheKey = "type:$type".
@@ -337,7 +339,7 @@ sub change_permissions {
 			permission => $args->{permission},
 			type => $args->{type}
 		});
-	} elsif (lc($args->{permission}) eq "none") {
+	} elsif (lc($args->{permission}) eq "none" || $args->{permission} eq "") {
 		$permObj->delete();
 	} else {
 		$permObj->permission($args->{permission});
@@ -401,8 +403,9 @@ sub get_object_hash {
 	my ($self,$args) = @_;
     $args = $self->figmodel()->process_arguments($args,["type","attribute"],{
     	parameters => {},
-    	useCache => $self->config("CacheBehavior") || 0,
+    	useCache => $self->config("CacheSettings") || 0,
     });
+    $args->{useCache} = 0;#TODO change this once caching is fixed
 	my $hash;
     my @paramKeysCopy = keys %{$args->{parameters}};
     my $cacheKey = "type:".$args->{type}.":method:get_object_hash:attribute:";

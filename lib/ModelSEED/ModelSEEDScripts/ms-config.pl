@@ -102,7 +102,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 }
 #Creating missing directories
 {
-	my $directories = [qw( bin config data lib logs software )];
+	my $directories = [qw( bin config data lib logs software workspace )];
     foreach my $dir (@$directories) {
 		if (!-d "$directoryRoot/".$dir) {
 			File::Path::mkpath "$directoryRoot/".$dir;
@@ -193,9 +193,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 sub run {
     if (defined($ARGV[0])) {
     	my $prog = shift(@ARGV);
-    	if (defined($ARGV[1]) && ($ARGV[1] eq "-usage" || $ARGV[1] eq "-h" || $ARGV[1] eq "-help")) {
-    		@ARGV = ("usage?".$ARGV[0]);
-    	}
     	local @ARGV = @ARGV;
     	do $prog;
     }
@@ -222,7 +219,17 @@ BOOTSTRAP
     close($fh);
     chmod 0775, $directoryRoot."/bin/source-me.sh";
 }
-
+#Creating update scripts
+{
+	my $data = [
+		"cd ".$directoryRoot,
+		"git pull",
+		"source bin/source-me.sh",
+		"./bin/ms-config load"
+	];	
+	printFile($directoryRoot."/bin/ms-update",$data);
+	chmod 0775,$directoryRoot."/bin/ms-update";
+}
 #Creating shell scripts for individual perl scripts
 {
 	my $mfatoolkitScript = "/lib/ModelSEED/ModelSEEDScripts/configureMFAToolkit.pl\" -p \"".$directoryRoot;
@@ -267,21 +274,45 @@ SCRIPT
 }
 #Creating shell scripts for select model driver functions
 {
-	my $functionList = [
+	my $obsoleteList = [
 		"loadmodelfromfile",
 		"loadbiomassfromfile",
-		"blastgenomesequences",
 		"printmodelfiles",
 		"logout",
 		"login",
 		"deleteaccount",
 		"importmodel",
 		"createlocaluser",
+		"gapfillmodel"
+	];
+	my $functionList = [
+		"mscreateuser",
+		"msdeleteuser",
+		"msswitchworkspace",
+		"msworkspace",
+		"mslistworkspace",
+		"mslogin",
+		"mslogout",
+		"blastgenomesequences",
+		"printmedia",
 		"createmedia",
 		"fbacheckgrowth",
 		"fbafva",
-		"gapfillmodel"
+		"mdlautocomplete",
+		"mdlreconstruction",
+		"mdlmakedbmodel",
+		"mdladdright",
+		"mdlcreatemodel",
+		"mdlprintsbml",
+		"mdlloadmodel",
+		"mdlloadbiomass",
+		"mdlimportmodel"
 	];
+	foreach my $function (@{$obsoleteList}) {
+		if (-e $directoryRoot."/bin/".$function.$extension) {
+			unlink $directoryRoot."/bin/".$function.$extension;
+		}
+	}
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
 			unlink $directoryRoot."/bin/".$function.$extension;

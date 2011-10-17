@@ -1,14 +1,12 @@
 use strict;
 use warnings;
-use Data::Dumper;
-use lib "../../../../config/";
+use FIG_Config;
 use ModelSEEDbootstrap;
-use ModelSEED::FIGMODEL;
-use ModelSEED::TestingHelpers;
 use Test::More qw(no_plan);
-use MSSeedSupportClient;
+use Data::Dumper;
+use MSSeedSupport;
 
-my $mss = MSSeedSupportClient->new();
+my $mss = MSSeedSupport->new();
 
 #Testing each server function
 {
