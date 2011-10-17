@@ -5834,7 +5834,8 @@ sub PrintSBMLFile {
 			}
 		} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
 			$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
-		} else {
+		}
+		if (!defined($rxnObj)) {
 			ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
 		}
 		push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
