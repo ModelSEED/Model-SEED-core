@@ -348,19 +348,21 @@ sub processReactionWithMFAToolkit {
     $fbaObj->makeOutputDirectory({deleteExisting => $args->{overwrite}});    
     print "Writing reaction to file\n";
     $self->print_file_from_ppo({filename=>$fbaObj->directory()."/reactions/".$self->id()});
-
+    
     my $filename = $fbaObj->filename();
     print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
  
    return {};
+
 }
-    #Backing up the old file
+
+#    #Backing up the old file
 #    system("cp ".$self->figmodel()->config("reaction directory")->[0].$self->id()." ".$self->figmodel()->config("database root directory")->[0]."ReactionDB/oldreactions/".$self->id());
-    #Getting unique directory for output
+#    #Getting unique directory for output
 #    my $filename = $self->figmodel()->filename();
     #Eliminating the mfatoolkit errors from the compound and reaction files
 #    my $data = $self->file();
-
+#
 #    if (defined($self->ppo()) && $args->{loadEquationFromPPO} == 1) {
 #	$data->{EQUATION}->[0] = $self->ppo()->equation();
 #    }
@@ -369,10 +371,10 @@ sub processReactionWithMFAToolkit {
 #    $data->remove_heading("TRANSATOMS");
 #    $data->remove_heading("DBLINKS");
 #    $data->save();
-    #Running the mfatoolkit
+#    #Running the mfatoolkit
 #    print $self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log")."\n";
 #    system($self->figmodel()->GenerateMFAToolkitCommandLineCall($filename,"processdatabase","NONE",["ArgonneProcessing"],{"load compound structure" => 0,"Calculations:reactions:process list" => "LIST:".$self->id()},"DBProcessing-".$self->id()."-".$filename.".log"));
-	#Copying in the new file
+#	#Copying in the new file
 #	print $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()."\n";
 #	if (-e $self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()) {
 #		my $newData = $self->file({filename=>$self->figmodel()->config("MFAToolkit output directory")->[0].$filename."/reactions/".$self->id()});
