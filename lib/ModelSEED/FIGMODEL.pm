@@ -2689,7 +2689,12 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
+	} elsif (defined($args->{biochemSource})){
+		$modelObj->GenerateModelProvenance({
+		    biochemSource => $args->{biochemSource}
+		});
 	}
+
 	$mdl = $self->get_model($id);
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
@@ -2742,6 +2747,13 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
+
+		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
+		if (defined($cpdals)) {
+		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+		}
+
 		my $newNames;
 		for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
 			if (length($row->{"NAMES"}->[$j]) > 0) {
