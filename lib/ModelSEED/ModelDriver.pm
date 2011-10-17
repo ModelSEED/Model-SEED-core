@@ -6124,8 +6124,8 @@ sub mathmatdist {
     	$bins->[$i] = $i*$args->{binsize}."-".($i+1)*$args->{binsize};
     }
     my $fileData = {
-    	"Distributions.txt" => ["Label\tZeros\tAverage\tStdDev\tMaximum\t".join("\t",@{$bins})],
-    	"NormDistributions.txt" => ["Label\tZeros\tAverage\tStdDev\tMaximum\t".join("\t",@{$bins})]
+    	"Distributions.txt" => ["Label\tZeros\tAverage\tStdDev\tInstances\tMaximum\t".join("\t",@{$bins})],
+    	"NormDistributions.txt" => ["Label\tZeros\tAverage\tStdDev\tInstances\tMaximum\t".join("\t",@{$bins})]
     };
     foreach my $label (keys(%{$distribData})) {
 		my $line = $label."\t".$moreRowData->{$label}->{zeros}."\t".$moreRowData->{$label}->{average}."\t".$moreRowData->{$label}->{stddev}."\t".$moreRowData->{$label}->{instances}."\t".$moreRowData->{$label}->{maximum};
