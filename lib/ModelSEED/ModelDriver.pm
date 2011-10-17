@@ -5182,8 +5182,8 @@ sub mscreateuser {
 	$usr = $self->figmodel()->database()->create_object("user",{
 		login => $args->{login},
 		password => "NONE",
-		firstname => $args->{"first name"},
-		lastname => $args->{"last name"},
+		firstname => $args->{"firstname"},
+		lastname => $args->{"lastname"},
 		email => $args->{email}
 	});
 	$usr->set_password($args->{password});
