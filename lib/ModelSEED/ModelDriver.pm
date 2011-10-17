@@ -6049,14 +6049,30 @@ sub mathmatdist {
     }
     print "Calculating...\n";
     #Calculating the distribution for each row as well as the overall distribution
+    my $moreRowData;
     for (my $i=$args->{startrow}; $i < $args->{endrow}; $i++) {
     	my $rowData = [split($args->{delimiter},$data->[$i])];
+    	$moreRowData->{$rowData->[0]} = {
+    		zeros => 0,
+    		average => 0,
+    		stddev => 0,
+    		instances => 0,
+    		maximum => 0
+    	};
     	print "Processing row ".$i.":".$rowData->[0]."\n";
     	if (!defined($args->{endcol})) {
 	    	$args->{endcol} = @{$rowData};
 	    }
     	for (my $j=$args->{startcol}; $j < $args->{endcol}; $j++) {
     		if ($rowData->[$j] =~ m/^\d+\.*\d*$/) {
+    			if ($rowData->[$j] > $moreRowData->{$rowData->[0]}->{maximum}) {
+    				$moreRowData->{$rowData->[0]}->{maximum} = $rowData->[$j];
+    			}
+    			if ($rowData->[$j] == 0) {
+    				$moreRowData->{$rowData->[0]}->{zeros}++;
+    			}
+    			$moreRowData->{$rowData->[0]}->{average} += $rowData->[$j];
+    			$moreRowData->{$rowData->[0]}->{instances}++;
     			my $bin = ModelSEED::FIGMODEL::floor($rowData->[$j]/$args->{binsize});
     			if (!defined($distribData->{$rowData->[0]}->[$bin])) {
     				$distribData->{$rowData->[0]}->[$bin] = 0;
@@ -6067,6 +6083,17 @@ sub mathmatdist {
     			}
     			$distribData->{"total"}->[$bin]++;
     		}
+    	}
+    	if ($moreRowData->{$rowData->[0]}->{instances} != 0) {
+    		$moreRowData->{$rowData->[0]}->{average} = $moreRowData->{$rowData->[0]}->{average}/$moreRowData->{$rowData->[0]}->{instances};
+    	}
+    	for (my $j=$args->{startcol}; $j < $args->{endcol}; $j++) {
+    		if ($rowData->[$j] =~ m/^\d+\.*\d*$/) {
+    			$moreRowData->{$rowData->[0]}->{stddev} += ($rowData->[$j]-$moreRowData->{$rowData->[0]}->{average})*($rowData->[$j]-$moreRowData->{$rowData->[0]}->{average});		
+    		}
+    	}
+    	if ($moreRowData->{$rowData->[0]}->{instances} != 0) {
+    		$moreRowData->{$rowData->[0]}->{stddev} = sqrt($moreRowData->{$rowData->[0]}->{stddev}/$moreRowData->{$rowData->[0]}->{instances});
     	}
     	delete $data->[$i];
     }
@@ -6097,12 +6124,12 @@ sub mathmatdist {
     	$bins->[$i] = $i*$args->{binsize}."-".($i+1)*$args->{binsize};
     }
     my $fileData = {
-    	"Distributions.txt" => ["Label\t".join("\t",@{$bins})],
-    	"NormDistributions.txt" => ["Label\t".join("\t",@{$bins})]
+    	"Distributions.txt" => ["Label\tZeros\tAverage\tStdDev\tMaximum\t".join("\t",@{$bins})],
+    	"NormDistributions.txt" => ["Label\tZeros\tAverage\tStdDev\tMaximum\t".join("\t",@{$bins})]
     };
     foreach my $label (keys(%{$distribData})) {
-		my $line = $label;
-		my $normline = $label;
+		my $line = $label."\t".$moreRowData->{$label}->{zeros}."\t".$moreRowData->{$label}->{average}."\t".$moreRowData->{$label}->{stddev}."\t".$moreRowData->{$label}->{instances}."\t".$moreRowData->{$label}->{maximum};
+		my $normline = $label."\t".$moreRowData->{$label}->{zeros}."\t".$moreRowData->{$label}->{average}."\t".$moreRowData->{$label}->{stddev}."\t".$moreRowData->{$label}->{instances}."\t".$moreRowData->{$label}->{maximum};
 		for (my $j=0; $j < $largestBin; $j++) {
     		if (defined($distribData->{$label}->[$j])) {
     			$line .= "\t".$distribData->{$label}->[$j];
