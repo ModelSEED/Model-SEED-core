@@ -55,7 +55,7 @@ system("$root/lib/PPO/ppo_generate.pl -xml $root/lib/ModelSEED/ModelDB/ModelDB.x
                                   -host => "bio-app-authdb.mcs.anl.gov",
                                   -port => 3306, -user => "webappuser");
     my $targetDB = DBMaster->new( -database => $SQLiteTmpDB, -backend => "SQLite" );
-    my $included_tables = [qw( MESSAGE MEDIA_COMPOUND MEDIA
+    my $included_tables = [qw( MEDIA_COMPOUND MEDIA
     COMPOUND COMPOUND_ALIAS COMPOUND_GROUPING REACTION COMPOUND_REACTION
     REACTION_ALIAS REACTION_GROUPING ROLE SUBSYSTEM_ROLE SUBSYSTEM 
     COMPLEX COMPLEX_ROLE REACTION_COMPLEX CURRENTID 
