@@ -2410,7 +2410,6 @@ sub GapFillModel {
 	#Copying gapfilling report to model directory
 	system("cp ".$self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingReport.txt ".$self->directory()."GapFillingReport.txt");
 	#Adding gapfilling solution to model
-	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < $gapTbl->size(); $i++) {
 		my $row = $gapTbl->get_row($i);
 		if (defined($row->{Solutions}->[0])) {
@@ -5800,7 +5799,7 @@ Description:
 =cut
 sub PrintSBMLFile {
 	my($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{print => 1});
+	$args = $self->figmodel()->process_arguments($args,[],{});
 	if (-e $self->directory().$self->id().".xml") {
 		unlink($self->directory().$self->id().".xml");	
 	}
@@ -5820,6 +5819,7 @@ sub PrintSBMLFile {
 	my $reactionCompartments;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
+		print $rxnmdl->[$i]->REACTION()."\n";
 		my $rxnObj;
 		if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
 			if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
@@ -5827,9 +5827,8 @@ sub PrintSBMLFile {
 			}
 		} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
 			$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
-		}
-		if (!defined($rxnObj)) {
-			next;	
+		} else {
+			ModelSEED::FIGMODEL::FIGMODELERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
 		}
 		push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
 		push(@ReactionList,$rxnObj);
@@ -6123,9 +6122,6 @@ sub PrintSBMLFile {
 	push(@{$output},'</listOfReactions>');
 	push(@{$output},'</model>');
 	push(@{$output},'</sbml>');
-	if ($args->{print} == 1) {
-		$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().".xml",$output);
-	}
 	return $output;
 }
 =head3 getSBMLFileReactions

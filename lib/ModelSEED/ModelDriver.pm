@@ -38,6 +38,36 @@ sub figmodel {
 	my ($self) = @_;
 	return $self->{_figmodel};
 }
+=head3 ws
+Definition:
+	FIGMODEL = driver->ws();
+Description:
+	Returns a workspace object
+=cut
+sub ws {
+	my ($self) = @_;
+	return $self->figmodel()->ws();
+}
+=head3 db
+Definition:
+	FIGMODEL = driver->db();
+Description:
+	Returns a database object
+=cut
+sub db {
+	my ($self) = @_;
+	return $self->figmodel()->database();
+}
+=head3 config
+Definition:
+	{}/[] = driver->config(string);
+Description:
+	Returns a requested configuration object
+=cut
+sub config {
+	my ($self,$key) = @_;
+	return $self->figmodel()->config($key);
+}
 =head3 check
 Definition:
 	FIGMODEL = driver->check([string]:expected data,(string):supplied arguments);
@@ -4524,36 +4554,6 @@ sub parsesbml {
 	$self->figmodel()->parseSBMLtoTabTable({file => $args->{file}});	
 }
 
-sub printsbmlfiles {
-    my($self,@Data) = @_;
-    my $args = $self->check([["model IDs",1],["queue",0,"fast"],["output folder",0,""]],[@Data]);
-    my $output = $self->figmodel()->processIDList({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {owner => "chenry",source => "PUBSEED"},
-		input => $args->{"model IDs"}
-	});
-    if (@{$output} == 1) {
-    	my $mdl = $self->figmodel()->get_model($output->[0]);
-    	return "FAIL:could not find model ".$output->[0] if (!defined($mdl));
-    	$mdl->PrintSBMLFile();
-    	return "FAIL:could not find SBML file for model ".$output->[0] if (!-e $mdl->directory().$mdl->id().".xml");
-    	if (length($args->{"output folder"}) > 0) {
-    		system("cp ".$mdl->directory().$mdl->id().".xml ".$args->{"output folder"});
-    	}
-    } else {
-    	for (my $i=0; $i < @{$output}; $i++) {
-	    	$self->figmodel()->add_job_to_queue({
-	    		command => "printsbmlfiles?".$output->[$i]."?".$args->{queue}."?".$args->{"output folder"},
-	    		user => $self->figmodel()->user(),
-	    		queue => $args->{queue}
-	    	});
-    	}
-    }
-    return "SUCCESS";
-}
-
 sub printroleclass {
 	my($self,@Data) = @_;
 	my $args = $self->check([["roles",1],["filename",0,$self->outputdirectory()."RoleClasses.txt"]],[@Data]);
@@ -5201,8 +5201,48 @@ sub deleteaccount {
 	return "SUCCESS";
 }
 
-#Function for logging into the Model Driver
-sub login {
+
+=head2 MODELSEED ENVIRONMENT CONFIGURATION FUNCTIONS
+=cut
+
+sub msswitchworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+		["clear",0,0],
+		["copy",0,undef],
+	],[@Data]);
+	my $id = $self->figmodel()->ws()->id();
+	$self->figmodel()->switchWorkspace({
+		name => $args->{name},
+		copy => $args->{copy},
+		clear => $args->{clear}
+	});
+	return "Switched from workspace ".$id." to workspace ".$self->figmodel()->ws()->id()."!";
+}
+
+sub msworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["verbose",0,0]
+	],[@Data]);
+	return $self->figmodel()->ws()->printWorkspace({
+		verbose => $args->{verbose}
+	});
+}
+
+sub mslistworkspace {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["user",0,$self->figmodel->user()]
+	],[@Data]);
+	my $list = $self->figmodel()->ws()->workspaceList({
+		owner => $args->{user}
+	});
+	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
+}
+
+sub mslogin {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["username",1],
@@ -5224,12 +5264,13 @@ sub login {
 			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
 		}
 	}
+	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
 	$self->figmodel()->authenticate($args);
 	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Authentication failed! Try new password!");
 	}
-	print "Authentication Successful! You will now remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n";
+	$self->figmodel()->loadWorkspace();
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
     my ($addedPWD, $addedUSR) = (0,0);
 	for (my $i=0; $i < @{$data};$i++) {
@@ -5249,14 +5290,24 @@ sub login {
         push(@$data, '$ENV{FIGMODEL_USER} = "'.$args->{username}.'";');
     } 
 	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
-	return "SUCCESS";
+	return "Authentication Successful!\n".
+		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n".
+		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
 
-#Removes user account data from Model SEED environment.
-sub logout {
+sub mslogout {
     my($self,@Data) = @_;
 	my $args = $self->check([],[@Data]);
-	print "Logout Successful! You will not be able to access user-associated data anywhere unless you log in again.\n";
+	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
+	#Authenticating
+	$self->figmodel()->authenticate({
+		username => "public",
+		password => "public"
+	});
+	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Logout failed! No public account is available!");
+	}
+	$self->figmodel()->loadWorkspace();
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
 	for (my $i=0; $i < @{$data};$i++) {
 		if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
@@ -5267,105 +5318,14 @@ sub logout {
 		}
 	}
 	$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
-	return "SUCCESS";
+	return "Logout Successful!\n".
+		"You will not be able to access user-associated data anywhere unless you log in again.\n".
+		"You have switched from workspace \"".$oldws."\" to workspace \"public:".$self->figmodel()->ws()->id()."\"!\n";
 }
 
-sub printmodelfiles {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1],
-		["filename",0,undef],
-		["biomassFilename",0,undef]
-	],[@Data]);
-	my $mdl = $self->figmodel()->get_model($args->{model});
-	if (!defined($mdl)) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
-	}
-	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
-		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
-	}
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
-	}
-	if (!defined($args->{biomassFilename})) {
-		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
-	}
-	$mdl->printModelFileForMFAToolkit({
-		filename => $args->{filename}
-	});
-	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
-		filename => $args->{biomassFilename}
-	});
-	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
-}
+=head2 SEQUENCE ANALYSIS METHODS
+=cut
 
-sub loadmodelfromfile {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["name",1],
-    	["genome",1],
-    	["filename",0,undef],
-    	["biomassFile",0,undef],
-    	["owner",0,$self->figmodel()->user()],
-    	["provenance",0,undef],
-    	["overwrite",0,0],
-    	["public",0,0]
-	],[@Data]);
-	my $modelObj = $self->figmodel()->import_model_file({
-		baseid => $args->{"name"},
-		genome => $args->{"genome"},
-		filename => $args->{"filename"},
-		biomassFile => $args->{"biomassFile"},
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
-	});
-	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
-}
-
-sub loadbiomassfromfile {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["biomass",1],
-    	["model",0,undef],
-    	["equation",0,undef],
-    	["overwrite",0,0]
-	],[@Data]);
-	#Load the file if no equation was specified
-	if (!defined($args->{equation})) {
-		#Setting the filename if only an ID was specified
-		if ($args->{biomass} =~ m/^bio\d+$/) {
-			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
-		}
-		#Loading the biomass reaction
-		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
-		#Loading biomass reaction file
-		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
-		$args->{equation} = $obj->{EQUATION}->[0];
-		$args->{biomass} = $obj->{DATABASE}->[0];
-	}
-	#Loading the biomass into the database
-	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
-	if (defined($bio) && $args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
-	}
-	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
-		equation => $args->{equation},
-		biomassID => $args->{biomass}
-	});
-	print "Successfully loaded biomass reaction ".$args->{biomass}.".\n";
-	#Adjusting the model if a model was specified
-	if (defined($args->{model})) {
-		my $mdl = $self->figmodel()->get_model($args->{model});
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
-    	$mdl->biomassReaction($args->{biomass});
-    	print "Successfully changed biomass reaction in model ".$args->{model}.".\n";
-	}
-	return "SUCCESS";
-}
-
-#Blasts specified sequences against the specified genomes
 sub blastgenomesequences {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -5487,6 +5447,9 @@ sub createmedia {
     });
 	print "Media successfully created!\n";
 }
+
+=head2 MODEL FLUX BALANCE ANALYSIS FUNCTIONS
+=cut
 
 sub fbacheckgrowth {
     my($self,@Data) = @_;
@@ -5689,10 +5652,11 @@ sub gapfillmodel {
 		["testsolution",0,0],
 		["printdbmessage",0,0],
 		["coefficientfile",0,undef],
-		["queue",0,0],
 		["rungapfilling",0,1],
 		["problemdirectory",0,undef],
-		["startfresh",0,1]
+		["startfresh",0,1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
 	],[@Data]);
     #Getting model list
     my $models = $self->figmodel()->processIDList({
@@ -5851,8 +5815,8 @@ sub mdlreconstruction {
 		["model",1],
 		["gapfilling",0,0],
 		["checkpoint",0,1],
-		["usequeue",0,0],
-		["queue",0,0]
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
 	],[@Data]);
     my $mdl =  $self->figmodel()->get_model($args->{"model"});
     if (!defined($mdl)) {
@@ -5910,8 +5874,8 @@ sub mdlcreate {
 		["reconstruction",0,0],
 		["gapfilling",0,0],
 		["overwrite",0,0],
-		["usequeue",0,0],
-		["queue",0,0]
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
 	],[@Data]);
     my $output = $self->figmodel()->processIDList({
 		objectType => "genome",
@@ -5963,8 +5927,8 @@ sub mdlinspectstate {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["model",1],
-		["usequeue",0,0],
-		["queue",0,"fast"]
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
 	],[@Data]);
 	my $results = $self->figmodel()->processIDList({
 		objectType => "model",
@@ -5992,6 +5956,140 @@ sub mdlinspectstate {
 		}
 	}
     return "SUCCESS";
+}
+
+sub mdlprintsbml {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["usequeue",0,$self->config("Use queue")->[0]],
+		["queue",0,$self->config("Default queue")->[0]]
+	],[@Data]);
+	my $results = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => {},
+		input => $args->{"model"}
+	});
+	my $message;
+	if (@{$results} == 1 || $args->{usequeue} == 0) {
+		for (my $i=0;$i < @{$results}; $i++) {
+			my $mdl = $self->figmodel()->get_model($results->[$i]);
+	 		if (!defined($mdl)) {
+	 			ModelSEED::FIGMODEL::FIGMODELWARNING("Model not valid ".$args->{model});
+	 			$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
+	 		} else {
+				my $sbml = $mdl->PrintSBMLFile();
+				$self->db()->print_array_to_file($self->ws()->directory().$results->[$i].".xml",$sbml);
+	 			$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
+	 		}
+		}
+	} else {
+		for (my $i=0; $i < @{$results}; $i++) {
+			$self->figmodel()->mdlprintsbml({
+	    		command => "mdlprintsbml?".$results->[$i],
+	    		user => $self->figmodel()->user().":".$self->ws()->id().":".$self->ws()->path(),
+	    		queue => $args->{queue}
+	    	});
+		}
+	}
+    return $message;
+}
+
+sub printmodelfiles {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1],
+		["filename",0,undef],
+		["biomassFilename",0,undef]
+	],[@Data]);
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+	}
+	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
+		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
+	}
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
+	}
+	if (!defined($args->{biomassFilename})) {
+		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+	}
+	$mdl->printModelFileForMFAToolkit({
+		filename => $args->{filename}
+	});
+	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+		filename => $args->{biomassFilename}
+	});
+	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
+}
+
+sub loadmodelfromfile {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["name",1],
+    	["genome",1],
+    	["filename",0,undef],
+    	["biomassFile",0,undef],
+    	["owner",0,$self->figmodel()->user()],
+    	["provenance",0,undef],
+    	["overwrite",0,0],
+    	["public",0,0]
+	],[@Data]);
+	my $modelObj = $self->figmodel()->import_model_file({
+		baseid => $args->{"name"},
+		genome => $args->{"genome"},
+		filename => $args->{"filename"},
+		biomassFile => $args->{"biomassFile"},
+		owner => $args->{"owner"},
+		public => $args->{"public"},
+		overwrite => $args->{"overwrite"},
+		provenance => $args->{"provenance"}
+	});
+	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
+}
+
+sub loadbiomassfromfile {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["biomass",1],
+    	["model",0,undef],
+    	["equation",0,undef],
+    	["overwrite",0,0]
+	],[@Data]);
+	#Load the file if no equation was specified
+	if (!defined($args->{equation})) {
+		#Setting the filename if only an ID was specified
+		if ($args->{biomass} =~ m/^bio\d+$/) {
+			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
+		}
+		#Loading the biomass reaction
+		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
+		#Loading biomass reaction file
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
+		$args->{equation} = $obj->{EQUATION}->[0];
+		$args->{biomass} = $obj->{DATABASE}->[0];
+	}
+	#Loading the biomass into the database
+	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
+	if (defined($bio) && $args->{overwrite} == 0) {
+		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
+	}
+	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
+		equation => $args->{equation},
+		biomassID => $args->{biomass}
+	});
+	print "Successfully loaded biomass reaction ".$args->{biomass}.".\n";
+	#Adjusting the model if a model was specified
+	if (defined($args->{model})) {
+		my $mdl = $self->figmodel()->get_model($args->{model});
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
+    	$mdl->biomassReaction($args->{biomass});
+    	print "Successfully changed biomass reaction in model ".$args->{model}.".\n";
+	}
+	return "SUCCESS";
 }
 
 1;

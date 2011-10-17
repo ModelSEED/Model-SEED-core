@@ -37,6 +37,7 @@ use ModelSEED::FIGMODEL::FIGMODELgenome;
 use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
+use ModelSEED::FIGMODEL::workspace;
 
 =head1 Model database interaction module
 
@@ -125,6 +126,7 @@ sub new {
 			$self->authenticate_user($username,$password);
 		}
 	}
+	$self->loadWorkspace();
 	return $self;
 }
 
@@ -762,6 +764,58 @@ sub web {
 	return $self->{"_figmodelweb"}->[0];
 }
 
+=head3 workspace
+Definition:
+	FIGMODELweb = FIGMODEL->workspace();
+Description:
+	Function returns a workspace object.
+=cut
+sub ws {
+	my($self) = @_;
+	if (!defined($self->{_workspace}->[0])) {
+		$self->loadWorkspace();
+	}
+	return $self->{"_workspace"}->[0];
+}
+=head3 loadWorkspace
+Definition:
+	FIGMODELweb = FIGMODEL->loadWorkspace();
+Description:
+	Loads the current workspace when FIGMODEL->new() is called
+=cut
+sub loadWorkspace {
+	my ($self) = @_;
+	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+		figmodel => $self,
+		owner => $self->user(),
+		clear => 0,
+		copy => undef
+	});
+}
+=head3 switchWorkspace
+Definition:
+	FIGMODELweb = FIGMODEL->switchWorkspace({
+		name => string:new workspace name
+		copy => string:name of an existing workspace to replicate
+		clear => 0/1:clears the workspace directory before using it
+	});
+Description:
+	Switches and creates a new workspace
+=cut
+sub switchWorkspace {
+	my ($self,$args) = @_;
+	$self->process_arguments($args,["name"],{
+		clear => 0,
+		copy => undef
+	});
+	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+		id => $args->{name},
+		owner => $self->user(),
+		clear => $args->{clear},
+		copy => $args->{copy}
+	});
+	$self->{_workspace}->[0]->setAsCurrentWorkspace();
+}
 =head3 mapping
 Definition:
 	FIGMODELmapping = FIGMODEL->mapping();
@@ -8694,8 +8748,14 @@ sub processIDList {
 		parameters => {},
 		column => "id"
 	});
-	if (defined($args->{error})) {return $self->error_message({function=>"processIDList",args=>$args});}
-	if ($args->{input} eq "ALL") {
+	if ($args->{input} =~ m/\.lst$/) {
+		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
+			return $self->database()->load_single_column_file($args->{input},"");
+		} elsif (-e $self->ws()->direcotry().$args->{input}) {
+			return $self->database()->load_single_column_file($self->ws()->direcotry().$args->{input},"");
+		}
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction");
+	} elsif ($args->{input} eq "ALL") {
 		my $objects = $self->database()->get_objects($args->{objectType},$args->{parameters});
 		my $function = $args->{column};
 		my $results;
@@ -8705,10 +8765,6 @@ sub processIDList {
 			}
 		}
 		return $results;
-	} elsif ($args->{input} =~ m/FILE-(.+)$/) {
-		my $filename = $1;
-		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction") if (!-e $filename);
-		return $self->database()->load_single_column_file($filename,"");
 	} else {
 		return [split($args->{delimiter},$args->{input})];
 	}

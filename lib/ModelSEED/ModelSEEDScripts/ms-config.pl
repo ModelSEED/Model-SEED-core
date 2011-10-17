@@ -102,7 +102,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 }
 #Creating missing directories
 {
-	my $directories = [qw( bin config data lib logs software )];
+	my $directories = [qw( bin config data lib logs software workspace )];
     foreach my $dir (@$directories) {
 		if (!-d "$directoryRoot/".$dir) {
 			File::Path::mkpath "$directoryRoot/".$dir;

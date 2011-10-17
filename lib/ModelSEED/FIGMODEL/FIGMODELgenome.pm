@@ -531,7 +531,7 @@ sub active_subsystems {
 			});
 			if (defined($output->{$self->genome()})) {
 				for (my $i=0; $i < @{$output->{$self->genome()}}; $i++) {
-					$self->{_active_subsystems}->{$output->{$self->genome()}->[$i]->[0]};
+					$self->{_active_subsystems}->{$output->{$self->genome()}->[$i]} = 1;
 				}	
 			}
 		} else {
