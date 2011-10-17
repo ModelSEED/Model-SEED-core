@@ -5975,6 +5975,7 @@ sub mdlprintsbml {
 	my $message;
 	if (@{$results} == 1 || $args->{usequeue} == 0) {
 		for (my $i=0;$i < @{$results}; $i++) {
+			print "Now processing ".$results->[$i]."\n";
 			my $mdl = $self->figmodel()->get_model($results->[$i]);
 	 		if (!defined($mdl)) {
 	 			ModelSEED::FIGMODEL::FIGMODELWARNING("Model not valid ".$args->{model});
