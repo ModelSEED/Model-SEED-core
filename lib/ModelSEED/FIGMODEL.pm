@@ -8751,8 +8751,8 @@ sub processIDList {
 	if ($args->{input} =~ m/\.lst$/) {
 		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
 			return $self->database()->load_single_column_file($args->{input},"");
-		} elsif (-e $self->ws()->direcotry().$args->{input}) {
-			return $self->database()->load_single_column_file($self->ws()->direcotry().$args->{input},"");
+		} elsif (-e $self->ws()->directory().$args->{input}) {
+			return $self->database()->load_single_column_file($self->ws()->directory().$args->{input},"");
 		}
 		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction");
 	} elsif ($args->{input} eq "ALL") {
