@@ -275,19 +275,27 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
-		"loadmodelfromfile",
-		"loadbiomassfromfile",
+		"mscreateuser",
+		"msdeleteuser",
+		"msswitchworkspace",
+		"msworkspace",
+		"mslistworkspace",
+		"mslogin",
+		"mslogout",
 		"blastgenomesequences",
-		"printmodelfiles",
-		"logout",
-		"login",
-		"deleteaccount",
-		"importmodel",
-		"createlocaluser",
+		"printmedia",
 		"createmedia",
 		"fbacheckgrowth",
 		"fbafva",
-		"gapfillmodel"
+		"mdlautocomplete",
+		"mdlreconstruction",
+		"mdlmakedbmodel",
+		"mdladdright",
+		"mdlcreatemodel",
+		"mdlprintsbml",
+		"mdlloadmodel",
+		"mdlloadbiomass",
+		"mdlimportmodel"
 	];
 	foreach my $function (@{$functionList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
