@@ -26,9 +26,9 @@ Example:
 =cut
 
 sub new {
-	my $ObjectType = shift @_;
-	my $args = shift @_;
-	my ($headings,$filename,$hash_headings,$delimiter,$itemdelimiter,$prefix) = undef;
+    my $ObjectType = shift @_;
+    my $args = shift @_;
+    my ($headings,$filename,$hash_headings,$delimiter,$itemdelimiter,$prefix) = undef;
     if(ref($args) eq 'HASH') {
         $headings = $args->{headings};
         $filename = $args->{filename};
@@ -40,33 +40,38 @@ sub new {
         $headings = $args;
         ($filename,$hash_headings,$delimiter,$itemdelimiter,$prefix) = @_;
     }
-	my $self;
-	if (!defined($filename) || !defined($headings)) {
-		print STDERR "FIGMODELTable:new: cannot create table without a list of headings and a filename\n";
-		return undef;
+    my $self;
+    if (!defined($filename) || !defined($headings)) {
+	print STDERR "FIGMODELTable:new: cannot create table without a list of headings and a filename\n";
+	return undef;
+    }
+    $self->{"file IO settings"}->{"filename"}->[0] = $filename;
+    $self->{"file IO settings"}->{"orderedkeys"} = $headings;
+    #Dealing with optional arguments
+    if (defined($hash_headings)) {
+	for (my $i=0; $i < @{$hash_headings}; $i++) {
+	    $self->{"hash columns"}->{$hash_headings->[$i]} = {};
 	}
-	$self->{"file IO settings"}->{"filename"}->[0] = $filename;
-	$self->{"file IO settings"}->{"orderedkeys"} = $headings;
-	#Dealing with optional arguments
-	if (defined($hash_headings)) {
-		for (my $i=0; $i < @{$hash_headings}; $i++) {
-			$self->{"hash columns"}->{$hash_headings->[$i]} = {};
-		}
+    }else{
+	for (my $i=0; $i < @{$headings}; $i++) {
+	    $self->{"hash columns"}->{$headings->[$i]} = {};
 	}
-	if (!defined($delimiter)) {
-		$delimiter = ";";
-	}
-	$self->{"file IO settings"}->{"delimiter"}->[0] = $delimiter;
-	if (!defined($itemdelimiter)) {
-		$itemdelimiter = "|";
-	}
-	$self->{"file IO settings"}->{"item delimiter"}->[0] = $itemdelimiter;
-	if (!defined($prefix)) {
-		$prefix = "";
-	}
-	$self->{"file IO settings"}->{"file prefix"}->[0] = $prefix;
+    }
 
-	return bless $self;
+    if (!defined($delimiter)) {
+	$delimiter = ";";
+    }
+    $self->{"file IO settings"}->{"delimiter"}->[0] = $delimiter;
+    if (!defined($itemdelimiter)) {
+	$itemdelimiter = "|";
+    }
+    $self->{"file IO settings"}->{"item delimiter"}->[0] = $itemdelimiter;
+    if (!defined($prefix)) {
+	$prefix = "";
+    }
+    $self->{"file IO settings"}->{"file prefix"}->[0] = $prefix;
+    
+    return bless $self;
 }
 
 =head2 TABLE Methods
@@ -226,9 +231,7 @@ Example:
 sub get_row_by_key {
 	my ($self,$Key,$HashColumn,$AddRow) = @_;
 
-	if (defined($self->{"hash columns"}->{$HashColumn}) && 
-	    defined($self->{"hash columns"}->{$HashColumn}->{$Key}) && 
-	    defined($self->{"hash columns"}->{$HashColumn}->{$Key}->[0])) {
+	if (defined($self->{"hash columns"}->{$HashColumn}->{$Key}->[0])) {
 		return $self->{"hash columns"}->{$HashColumn}->{$Key}->[0];
 	} elsif (defined($AddRow) && $AddRow == 1) {
 		my $NewRow = {$HashColumn => [$Key]};
@@ -249,7 +252,6 @@ Example:
 
 sub get_rows_by_key {
 	my ($self,$Key,$HashColumn) = @_;
-
 	if (defined($self->{"hash columns"}->{$HashColumn}->{$Key})) {
 		return @{$self->{"hash columns"}->{$HashColumn}->{$Key}};
 	}
@@ -426,6 +428,38 @@ sub add_data {
 	my $Index = (@{$RowObject->{$Heading}}-1);
 
 	return $Index;
+}
+
+=head3 update_data
+Definition:
+	$TableObj->update_data($Row,"TEST",1,2);
+Description:
+    Updates a row in the table, effectively requires previous and new data records
+    and overwrites previous with new
+=cut
+
+sub update_data {
+	my ($self,$RowObject,$Heading,$Old_Data,$New_Data) = @_;
+
+	#First checking that the input row exists
+	if (!defined($RowObject) || !defined($Old_Data) || !defined($New_Data)) {
+	    return -1;
+	}
+
+	#Now checking if the heading and old_data exist and overwrite
+	if (defined($RowObject->{$Heading})) {
+	    for (my $i=0; $i < @{$RowObject->{$Heading}}; $i++) {
+		if ($RowObject->{$Heading}->[$i] eq $Old_Data) {
+		    $RowObject->{$Heading}->[$i] = $New_Data;
+		}
+	    }
+	}
+
+	if (defined($self->{"hash columns"}->{$Heading})){
+	    delete($self->{"hash columns"}->{$Heading}->{$Old_Data});
+	    push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$RowObject);
+	}
+	return;
 }
 
 =head3 remove_data
