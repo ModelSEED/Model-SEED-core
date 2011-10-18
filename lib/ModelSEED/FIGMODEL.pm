@@ -37,6 +37,7 @@ use ModelSEED::FIGMODEL::FIGMODELgenome;
 use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
+use ModelSEED::FIGMODEL::workspace;
 
 =head1 Model database interaction module
 
@@ -125,6 +126,7 @@ sub new {
 			$self->authenticate_user($username,$password);
 		}
 	}
+	$self->loadWorkspace();
 	return $self;
 }
 
@@ -762,6 +764,58 @@ sub web {
 	return $self->{"_figmodelweb"}->[0];
 }
 
+=head3 workspace
+Definition:
+	FIGMODELweb = FIGMODEL->workspace();
+Description:
+	Function returns a workspace object.
+=cut
+sub ws {
+	my($self) = @_;
+	if (!defined($self->{_workspace}->[0])) {
+		$self->loadWorkspace();
+	}
+	return $self->{"_workspace"}->[0];
+}
+=head3 loadWorkspace
+Definition:
+	FIGMODELweb = FIGMODEL->loadWorkspace();
+Description:
+	Loads the current workspace when FIGMODEL->new() is called
+=cut
+sub loadWorkspace {
+	my ($self) = @_;
+	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+		figmodel => $self,
+		owner => $self->user(),
+		clear => 0,
+		copy => undef
+	});
+}
+=head3 switchWorkspace
+Definition:
+	FIGMODELweb = FIGMODEL->switchWorkspace({
+		name => string:new workspace name
+		copy => string:name of an existing workspace to replicate
+		clear => 0/1:clears the workspace directory before using it
+	});
+Description:
+	Switches and creates a new workspace
+=cut
+sub switchWorkspace {
+	my ($self,$args) = @_;
+	$self->process_arguments($args,["name"],{
+		clear => 0,
+		copy => undef
+	});
+	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+		id => $args->{name},
+		owner => $self->user(),
+		clear => $args->{clear},
+		copy => $args->{copy}
+	});
+	$self->{_workspace}->[0]->setAsCurrentWorkspace();
+}
 =head3 mapping
 Definition:
 	FIGMODELmapping = FIGMODEL->mapping();
@@ -1049,7 +1103,10 @@ sub get_model {
 	# if cache miss:
     my $mdl = undef;
     eval {
-	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$id);
+	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
+			figmodel => $self,
+			id => $id
+		});
         if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
             $self->setCache({key => $mdl->fullId(), data => $mdl});
         }
@@ -1933,22 +1990,6 @@ sub add_reaction_role_mapping {
 	}
 }
 
-=head3 print_biomass_reaction_file
-Definition:
-	FIGMODEL->print_biomass_reaction_file(string:biomass id);
-Description:
-	Prints a flatfile with data on the specified biomass reaction for the MFAToolkit
-=cut
-
-sub print_biomass_reaction_file {
-	my($self,$biomassID) = @_;
-	my $bioMgr = $self->database()->get_object_manager("bof");
-	my $objs = $bioMgr->get_objects({id=>$biomassID});
-	if (defined($objs->[0])) {
-		$self->database()->print_array_to_file($self->config("reaction directory")->[0].$biomassID,["DATABASE\t".$biomassID,"EQUATION\t".$objs->[0]->equation(),"NAME\t".$objs->[0]->name()]);
-	}
-}
-
 =head3 printReactionDBTable
 Definition:
 	void FIGMODEL->printReactionDBTable(optional string:output directory);
@@ -2011,10 +2052,7 @@ Description:
 =cut
 sub get_map_hash {
 	my($self,$args) = @_;
-	$args = $self->process_arguments($args,["type"]);
-	if (defined($args->{error})) {
-		$args->{type} = "reaction";
-	}
+	$args = $self->process_arguments($args,["type"],{});
 	if (!defined($self->{_maphash}->{$args->{type}})) {
 		my $objs = $self->database()->get_objects("diagram",{type => "KEGG"});
 		my $mapHash;
@@ -2689,13 +2727,19 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	} elsif (defined($args->{biochemSource})){
-		$modelObj->GenerateModelProvenance({
-		    biochemSource => $args->{biochemSource}
-		});
-	}
+	} 
 
 	$mdl = $self->get_model($id);
+
+	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
+	    print "Overwriting provenance\n";
+	    $mdl->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+					  });
+	}
+
+	
+
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
@@ -2750,8 +2794,8 @@ sub import_model {
 
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
-		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		}
 
 		my $newNames;
@@ -3310,34 +3354,6 @@ sub reactions_of_scenario {
 	return $FinalReactionList;
 }
 
-=head3 reversibility_of_reaction
-Definition:
-	$Reversibility = $model->reversibility_of_reaction($ReactionID);
-Description:
-	This function takes into account a number of criteria to determine the reversibility of a reaction.
-	It is the definative function to use to determine reaction reversibility.
-=cut
-sub reversibility_of_reaction {
-	my ($self,$rxn) = @_;
-	if ($rxn =~ m/^bio/ || defined($self->{"forward only reactions"}->{$rxn})) {
-		return "=>";
-	} elsif (defined($self->{"reverse only reactions"}->{$rxn})) {
-		return "<=";
-	} elsif (defined($self->{"reversibility corrections"}->{$rxn})) {
-		return "<=>";
-	}
-	my $rev = "<=>";
-	my $rxnHash = $self->database()->get_object_hash({
-		type => "reaction",
-		attribute => "id",
-		useCache => 1
-	});
-	if (defined($rxnHash->{$rxn}->[0])) {
-		$rev = $rxnHash->{$rxn}->[0]->reversibility();
-	}
-	return $rev;
-}
-
 =head3 colocalized_genes
 Definition:
 	(1/0) = FIGMODEL->colocalized_genes(string:gene one,string:gene two,string:genome ID);
@@ -3629,17 +3645,25 @@ sub OptimizeAnnotation {
 =head3 create_model
 Definition:
 	FIGMODELmodel FIGMODEL->create_model({
-		genome => string:genomeID,
+		genome => string:genome ID,
+		id => string:model ID,
 		owner => string:owner,
+		biochemSource => string:directory where biochemistry for new model should be pulled from,
+		biomassReaction => string:biomass ID,
+		reconstruction => 0/1,
 		gapfilling => 0/1,
-		runPreliminaryReconstruction => 0/1,
-		biochemSource => string:directory where biochemistry for new model should be pulled from
+		usequeue => 0/1,
+		queue => string:queue name
 	});
 Description:
 =cut
 sub create_model {
 	my ($self,$args) = @_;
-	return ModelSEED::FIGMODEL::FIGMODELmodel->new($self,$args->{id}, $args);
+	return ModelSEED::FIGMODEL::FIGMODELmodel->new({
+			figmodel => $self,
+			id => $args->{id},
+			init => $args
+	});
 }
 
 =head3 compareManyModels
@@ -8754,8 +8778,14 @@ sub processIDList {
 		parameters => {},
 		column => "id"
 	});
-	if (defined($args->{error})) {return $self->error_message({function=>"processIDList",args=>$args});}
-	if ($args->{input} eq "ALL") {
+	if ($args->{input} =~ m/\.lst$/) {
+		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
+			return $self->database()->load_single_column_file($args->{input},"");
+		} elsif (-e $self->ws()->directory().$args->{input}) {
+			return $self->database()->load_single_column_file($self->ws()->directory().$args->{input},"");
+		}
+		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction");
+	} elsif ($args->{input} eq "ALL") {
 		my $objects = $self->database()->get_objects($args->{objectType},$args->{parameters});
 		my $function = $args->{column};
 		my $results;
@@ -8765,10 +8795,6 @@ sub processIDList {
 			}
 		}
 		return $results;
-	} elsif ($args->{input} =~ m/FILE-(.+)$/) {
-		my $filename = $1;
-		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction") if (!-e $filename);
-		return $self->database()->load_single_column_file($filename,"");
 	} else {
 		return [split($args->{delimiter},$args->{input})];
 	}
