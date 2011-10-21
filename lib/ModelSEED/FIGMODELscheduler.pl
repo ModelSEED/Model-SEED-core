@@ -16,7 +16,7 @@ $|=1;
 
 #Creating the error message printed whenever the user input makes no sense
 my $Error = "Scheduler must be called with the following syntax:\n".
-			"monitor:(Number of processors):(single run)\n".
+			"monitor:(queue)\n".
 			"add:(Filename/Command):(FRONT/BACK):(Queue):(User)\n".
 			"delete:(Job filename)\n".
 			"freeze\n".

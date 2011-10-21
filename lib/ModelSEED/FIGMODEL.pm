@@ -3666,6 +3666,17 @@ sub create_model {
 	});
 }
 
+=head3 createNewModel
+Legacy interface for ModelViewer construction
+#LEGACY-SEEDWEB
+=cut
+sub createNewModel {
+    my ($self, $args) = @_;
+    $args->{genome} = $args->{'-genome'};
+    delete $args->{'-genome'};
+    return $self->create_model($args);
+}
+
 =head3 compareManyModels
 Definition:
 	FIGMODEL->compareManyModels({ids => [string]:model IDs})

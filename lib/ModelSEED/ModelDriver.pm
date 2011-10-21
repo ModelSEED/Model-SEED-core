@@ -20,7 +20,7 @@ Definition:
 Description:
 	Returns a driver object
 =cut
-sub new {
+sub new { 
 	my $self = {_figmodel => ModelSEED::FIGMODEL->new(),_finishedfile => "NONE"};
 	$self->{_outputdirectory} = $self->{_figmodel}->config("database message file directory")->[0];
 	if (defined($ENV{"FIGMODEL_OUTPUT_DIRECTORY"})) {
@@ -4048,6 +4048,33 @@ sub printdatatables {
             }
         }
 	    $self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionRole.txt",$output);
+    }
+    { 
+        my $output = ["RoleID\tName\tExemplarID\tExemplarMD5"];
+        my $keys = join(", ", qw(id name exemplarId exemplarmd5));
+        my $objs = $get_objs_array->("role", "SELECT $keys FROM ROLE");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/Role.txt", $output);
+    }
+    { 
+        my $output = ["RoleID\tComplexID\ttype"];
+        my $keys = join(", ", qw(ROLE COMPLEX type));
+        my $objs = $get_objs_array->("cpxrole", "SELECT $keys FROM COMPLEX_ROLE");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ComplexRole.txt", $output);
+    }
+    { 
+        my $output = ["ReactionID\tComplexID"];
+        my $keys = join(", ", qw(REACTION COMPLEX));
+        my $objs = $get_objs_array->("rxncpx", "SELECT $keys FROM REACTION_COMPLEX");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionComplex.txt", $output);
     }
     {
 	    my $output = ["ReactionID\tSubsystem\tRole"];
