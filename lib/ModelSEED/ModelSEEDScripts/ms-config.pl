@@ -30,7 +30,9 @@ pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 # Reading the settings file
 my $command = shift @ARGV;
-unless(defined($command) && ($command eq "unload" || $command eq "load" || $command eq "reload")) {
+unless(defined($command) && 
+    ($command eq "unload" || $command eq "load" ||
+     $command eq "reload" || $command eq "clean")) {
     pod2usage(2);
 }
 if($command eq "unload" || $command eq "clean") {
