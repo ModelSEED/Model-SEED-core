@@ -183,6 +183,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         $bootstrap .= "use lib '$lib';\n";
     }
     foreach my $key (keys %$envSettings) {
+        next unless(defined($key) && defined($envSettings->{$key}));
         if($key eq "PATH") {
             $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
             next;
@@ -208,6 +209,7 @@ BOOTSTRAP
     }
     $source_script .= "export PERL5LIB;\n";
     foreach my $key (keys %$envSettings) {
+        next unless(defined($key) && defined($envSettings->{$key}));
         if($key eq "PATH") {
             $source_script .= "export $key=\${$key}$delim".$envSettings->{$key}.";\n";
         } else {
