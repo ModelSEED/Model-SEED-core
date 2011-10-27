@@ -5158,7 +5158,14 @@ sub printgapfilledreactions {
 	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
-
+sub parsesbml {
+	my($self,@Data) = @_;
+	my $args = $self->check([["file",1]],[@Data]);
+	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	foreach my $table(keys %$List){
+	    $List->{$table}->save();
+	}
+}
 
 =head2 MODELSEED ENVIRONMENT CONFIGURATION FUNCTIONS
 =cut

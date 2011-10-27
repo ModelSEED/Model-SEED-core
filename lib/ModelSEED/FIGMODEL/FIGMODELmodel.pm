@@ -3627,6 +3627,7 @@ sub GenerateModelProvenance {
 	if(!-d $model_directory) {
 		File::Path::mkpath $model_directory;
 	}
+
 	my $db = $self->figmodel()->database();
 	{
 		my $biochemd = $model_directory."biochemistry/";
@@ -3639,8 +3640,15 @@ sub GenerateModelProvenance {
 			unlink $biochemd.'compound.txt';
 			unlink $biochemd.'cpdals.txt';
 		}
-		if (defined($args->{biochemSource}) && -d $args->{biochemSource}) {
+
+		if (defined($args->{biochemSource})){
+		    print "Copying biochemistry from ",$args->{biochemSource},"\n";
+		    if(! -d $args->{biochemSource}){
+			ModelSEED::FIGMODEL::FIGMODELERROR("Biochemistry source is not a directory! ".$args->{biochemSource});
+			return $self->figmodel()->fail();
+		    }else{
 			system("cp ".$args->{biochemSource}."* ".$biochemd);
+		    }
 		}
 		if (!-e $biochemd.'reaction.txt') {
 			my $rxn_config = {
