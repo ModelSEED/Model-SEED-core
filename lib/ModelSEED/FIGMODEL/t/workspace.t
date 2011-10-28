@@ -17,6 +17,7 @@ system('touch '.$ws->directory().'foo.txt');
 my $ws2 = ModelSEED::FIGMODEL::workspace->new(
     {owner => 'alice', root => $root, copy => $ws, id => 'two'});
 ok -f $ws2->directory."foo.txt", "copy initialization should work";
+ok $ws2->id eq 'two', "should be able to set different workspace id";
 $ws2->clear();
 ok !-f $ws2->directory."foo.txt", "clear() should work";
 ok -f $ws->directory."foo.txt", "clear() on other workspace should not affect me";
