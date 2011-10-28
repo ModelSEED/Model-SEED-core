@@ -118,7 +118,7 @@ This command is used to login as a user in the Model SEED environment. If you ha
 
 == Biochemistry Operations ==
 
-==== ''bccreatemedia'': Creates (or alters) a media condition in the Model SEED database ====
+==== ''bcloadmedia'': Creates (or alters) a media condition in the Model SEED database ====
 
 '''Description'''
 
@@ -140,7 +140,7 @@ This function is used to create or alter a media condition in the Model SEED dat
 
 '''Example'''
 
-./bccreatemedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
+./bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
 
 ----
 
@@ -163,6 +163,22 @@ This function is used to print a media formulation to the current workspace.
 ----
 
 == Metabolic Model Operations ==
+
+==== ''mdlparsesbml'': parsing SBML file into compound and reaction tables ====
+
+'''Description'''
+
+This function parses the input SBML file into compound and reaction tables needed for import into the Model SEED.
+
+'''Arguments'''
+
+* file: The name of the SBML file to be parsed. It is assumed the file is present in the workspace.
+
+'''Example'''
+
+./mdlparsesbml -file iJR904.sbml
+
+----
 
 ==== ''mdlloadmodel'': reload a model from a flatfile ====
 
@@ -350,7 +366,7 @@ NOTE: currently this function is the only mechanism for moving models from the C
 
 ----
 
-==== ''mdlprintmodelgenes'' ====
+==== ''mdlprintmodelgenes'': print all genes in model ====
 
 '''Description'''
 

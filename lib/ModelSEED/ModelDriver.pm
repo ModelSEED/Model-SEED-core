@@ -6198,7 +6198,7 @@ sub mdlprintmodelgenes {
 	my $args = $self->check([
 		["model",1,undef,"Name of the model for which the genes should be printed."],
 		["filename",0,undef,"Name of the file in the current workspace where the genes should be printed."]
-	],[@Data], "print all genes in model");
+	],[@Data],"print all genes in model");
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
@@ -6295,7 +6295,7 @@ sub mdlloadbiomass {
 }
 
 =CATEGORY
-Workspace Operations
+Metabolic Model Operations
 =DESCRIPTION
 This function parses the input SBML file into compound and reaction tables needed for import into the Model SEED.
 =EXAMPLE

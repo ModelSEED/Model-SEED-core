@@ -401,6 +401,13 @@ SCRIPT
 		}
 	}
 }
+#Printing success message
+{
+	if ($os ne "windows" && !e $directoryRoot."/software/mfatoolkit/bin/mfatoolkit")  {
+		print "Model SEED Configuration Failed. MFAToolkit compilation failed!"
+	}
+	print "Model SEED Configuration Successful!"
+}
 
 1;
 #Utility functions used by the configuration script

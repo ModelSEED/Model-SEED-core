@@ -911,12 +911,12 @@ sub authenticate {
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			return $self->error_message("No user account found with name: ".$args->{username}."!");
+			ModelSEED::FIGMODEL::FIGMODELERROR("No user account found with name: ".$args->{username}."!");
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
 		} else {
-			return $self->error_message("Input password does not match user account!");	
+			ModelSEED::FIGMODEL::FIGMODELERROR("Input password does not match user account!");
 		}
 	}
 	return undef;
