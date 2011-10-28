@@ -56,6 +56,7 @@ for (my $i=0; $i < @ARGV; $i++) {
         #Splitting argument
         my @Data = split(/\?/,$ARGV[$i]);
         my $FunctionName = $Data[0];
+        $FunctionName =~ s/\-//g;
 		if (@Data == 1) {
 			if (defined($ARGV[$i+1]) && $ARGV[$i+1] =~ m/\?/) {
 				push(@Data,split(/\?/,$ARGV[$i+1]));
