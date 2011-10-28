@@ -785,16 +785,16 @@ Description:
 =cut
 sub loadWorkspace {
 	my ($self) = @_;
-	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
-		figmodel => $self,
+	$self->{_workspace} = [ ModelSEED::FIGMODEL::workspace->new({
+        root => $self->config("Workspace directory")->[0],
 		owner => $self->user(),
 		clear => 0,
 		copy => undef
-	});
+	})];
 }
 =head3 switchWorkspace
 Definition:
-	FIGMODELweb = FIGMODEL->switchWorkspace({
+    FIGMODEL->switchWorkspace({
 		name => string:new workspace name
 		copy => string:name of an existing workspace to replicate
 		clear => 0/1:clears the workspace directory before using it
@@ -808,15 +808,56 @@ sub switchWorkspace {
 		clear => 0,
 		copy => undef
 	});
-	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
-		figmodel => $self,
+	my $ws = ModelSEED::FIGMODEL::workspace->new({
+        root => $self->config("Workspace directory")->[0],
 		id => $args->{name},
 		owner => $self->user(),
 		clear => $args->{clear},
 		copy => $args->{copy}
 	});
-	$self->{_workspace}->[0]->setAsCurrentWorkspace();
+    # Updating local cache and current.txt file
+    $self->{_workspace}->[0] = $ws;
+    $self->database()->print_array_to_file(
+        $ws->root.$ws->user."current.txt", [$ws->id]);
 }
+
+=head3 listWorkspaces
+Definition:
+    string = FIGMODEL->listWorkspaces({
+        owner => username
+    });
+Description:
+    Return a list of all workspaces owned by username.
+    Default username is currently logged in user.
+    
+=cut
+sub listWorkspaces {
+    my ($self,$args) = @_;
+    $self->process_arguments($args,[],{
+        owner => $self->user()
+    },0);
+    my $owners = [$args->{owner}];
+    if ($args->{owner} eq "ALL") {
+        $owners = [glob($self->config("Workspace directory")->[0]."*")];
+        for (my $i=0; $i < @{$owners}; $i++) {
+            if ($owners->[$i] =~ m/\/([^\/]+)$/) {
+                $owners->[$i] = $1;
+            }
+        }
+    }
+    my $list;
+    for (my $i=0; $i < @{$owners};$i++) {
+        my $tempList = [glob($self->config("Workspace directory")->[0].$owners->[$i]."/*")];
+        for (my $j=0; $j < @{$tempList}; $j++) {
+            if ($tempList->[$j] !~ m/current\.txt$/ && $tempList->[$j] =~ m/\/([^\/]+)$/) {
+                push(@{$list},$owners->[$i].".".$1);
+            }
+        }
+    }
+    return $list;
+}
+
+
 =head3 mapping
 Definition:
 	FIGMODELmapping = FIGMODEL->mapping();
@@ -1622,16 +1663,16 @@ sub clusterModels {
 	} while ($currentSize > 0);
 	$self->database()->print_array_to_file($args->{directory}."ModelClusters.txt",$output);
 }
-=head3 parseSBMLtoTable
+=head3 parseSBMLToTable
 Definition:
-	{} = FIGMODEL->parseSBMLtoTabTable({
+	{} = FIGMODEL->parseSBMLToTable({
 		directory => "",
 		file => "" 
 	});
 Description:
 	Translates SBML file to tab delimited table
 =cut
-sub parseSBMLtoTable {
+sub parseSBMLToTable {
     my ($self,$args) = @_;
     #Seaver 07/07/11
     #Processing file or directory

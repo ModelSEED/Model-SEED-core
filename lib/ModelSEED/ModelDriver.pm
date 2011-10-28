@@ -5347,9 +5347,9 @@ Prints a list of all workspaces owned by the specified or currently logged user.
 sub mslistworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["user",0,$self->figmodel->user(),"The username for which workspaces should be printed."]
-	],[@Data],"list all workspaces for user");
-	my $list = $self->figmodel()->ws()->workspaceList({
+		["user",0,$self->figmodel->user()]
+	],[@Data]);
+	my $list = $self->figmodel()->listWorkspaces({
 		owner => $args->{user}
 	});
 	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
@@ -5659,7 +5659,7 @@ sub fbafva {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
 	if (!defined($args->{filename})) {
-		$args->{filename} = $mdl->id()."-fbafvaResults";
+		$args->{filename} = $mdl->id()."-fbafvaResults-".$args->{media};
 	}
 	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
 	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
@@ -5752,7 +5752,7 @@ sub fbafva {
 		$cpdtbl->save();
 		$rxntbl->save();
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".";
+	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 }
 
 =CATEGORY
@@ -6236,7 +6236,7 @@ sub mdlloadmodel {
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
 	],[@Data],"reload a model from a flatfile");
 	my $modelObj = $self->figmodel()->import_model_file({
-		baseid => $args->{"name"},
+		id => $args->{"name"},
 		genome => $args->{"genome"},
 		filename => $args->{"filename"},
 		biomassFile => $args->{"biomassFile"},

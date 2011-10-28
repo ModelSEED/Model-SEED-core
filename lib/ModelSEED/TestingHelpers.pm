@@ -216,6 +216,8 @@ sub getTestConfig {
             }
         }
     }
+    # Create temporary workspace directory
+    $rtv->{"Workspace directory"} = [File::Temp::tempdir()];
     return $rtv;
 } 
 1;

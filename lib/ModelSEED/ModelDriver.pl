@@ -42,7 +42,6 @@ for (my $i=0; $i < @ARGV; $i++) {
     $ARGV[$i] =~ s/___/ /g;
     $ARGV[$i] =~ s/\.\.\./(/g;
     $ARGV[$i] =~ s/,,,/)/g;
-    print "\nProcessing argument: ".$ARGV[$i]."\n";
     if ($ARGV[$i] =~ m/^finish\?(.+)/) {
         $driv->{_finishedfile} = $1;
     } elsif ($ARGV[$i] =~ m/\^finish$/ && defined($ARGV[$i+1])) {
@@ -57,6 +56,7 @@ for (my $i=0; $i < @ARGV; $i++) {
         #Splitting argument
         my @Data = split(/\?/,$ARGV[$i]);
         my $FunctionName = $Data[0];
+        $FunctionName =~ s/\-//g;
 		if (@Data == 1) {
 			if (defined($ARGV[$i+1]) && $ARGV[$i+1] =~ m/\?/) {
 				push(@Data,split(/\?/,$ARGV[$i+1]));

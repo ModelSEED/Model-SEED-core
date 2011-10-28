@@ -30,7 +30,9 @@ pod2usage(1) if $args->{"help"};
 pod2usage(-exitstatus => 0, -verbose => 2) if $args->{"man"};
 # Reading the settings file
 my $command = shift @ARGV;
-unless(defined($command) && ($command eq "unload" || $command eq "load" || $command eq "reload")) {
+unless(defined($command) && 
+    ($command eq "unload" || $command eq "load" ||
+     $command eq "reload" || $command eq "clean")) {
     pod2usage(2);
 }
 if($command eq "unload" || $command eq "clean") {
@@ -292,33 +294,33 @@ SCRIPT
 		"createmedia"
 	];
 	my $functionList = [
-		"mscreateuser",
-		"msdeleteuser",
-		"msswitchworkspace",
-		"msworkspace",
-		"mslistworkspace",
-		"mslogin",
-		"mslogout",
-		"sqblastgenomes",
-		"fbacheckgrowth",
-		"fbasingleko",
-		"fbafva",
-		"bcprintmedia",
-		"bcloadmedia",
-		"mdlautocomplete",
-		"mdlreconstruction",
-		"mdlmakedbmodel",
-		"mdladdright",
-		"mdlcreatemodel",
-		"mdlinspectstate",
-		"mdlprintsbml",
-		"mdlprintmodel",
-		"mdlprintmodelgenes",
-		"mdlloadmodel",
-		"mdlloadbiomass",
-		"mdlparsesbml",
-		"mdlimportmodel",
-		"utilmatrixdist"
+		"ms-createuser",
+		"ms-deleteuser",
+		"ms-switchworkspace",
+		"ms-workspace",
+		"ms-listworkspace",
+		"ms-login",
+		"ms-logout",
+		"sq-blastgenomes",
+		"fba-checkgrowth",
+		"fba-singleko",
+		"fba-fva",
+		"bc-printmedia",
+		"bc-loadmedia",
+		"mdl-autocomplete",
+		"mdl-reconstruction",
+		"mdl-makedbmodel",
+		"mdl-addright",
+		"mdl-createmodel",
+		"mdl-inspectstate",
+		"mdl-printsbml",
+		"mdl-printmodel",
+		"mdl-printmodelgenes",
+		"mdl-loadmodel",
+		"mdl-loadbiomass",
+		"mdl-parsesbml",
+		"mdl-importmodel",
+		"util-matrixdist"
 	];
 	foreach my $function (@{$obsoleteList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
@@ -403,7 +405,7 @@ SCRIPT
 }
 #Printing success message
 {
-	if ($os ne "windows" && !e $directoryRoot."/software/mfatoolkit/bin/mfatoolkit")  {
+	if ($os ne "windows" && !-e $directoryRoot."/software/mfatoolkit/bin/mfatoolkit")  {
 		print "Model SEED Configuration Failed. MFAToolkit compilation failed!"
 	}
 	print "Model SEED Configuration Successful!"
