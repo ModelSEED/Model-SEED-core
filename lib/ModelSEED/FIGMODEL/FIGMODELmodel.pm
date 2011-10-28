@@ -3025,17 +3025,10 @@ sub reconstruction {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 		checkpoint => 1,
-		gapfilling => 1,
+		autocompletion => 1,
 		usequeue => 0,
 		queue => undef
-	});
-	if (!defined($args->{queue})) {
-		if ($self->figmodel()->config("Database version")->[0] eq "DevModelDB") {
-			$args->{queue} = "development";
-		} else {
-			$args->{queue} = "fast";
-		}
-	}
+	});	
 	#Getting genome data and feature table
 	my $genomeObj = $self->genomeObj();
 	if (!defined($genomeObj)) {
@@ -3288,9 +3281,11 @@ sub reconstruction {
 		$self->set_status(1,"Reconstruction complete. Genome too small for gapfilling.");
 	}
 	#Adding model to gapfilling queue
-	if ($args->{runGapfilling} == 1) {
+	if ($args->{autocompletion} == 1) {
 		$self->set_status(1,"Autocompletion queued");
-		$self->figmodel()->add_job_to_queue({command => "gapfillmodel?".$self->id(),user => $self->owner(),queue => "cplex"});
+		if (defined($args->{queue}) && $args->{usequeue} == 1) {
+			$self->figmodel()->add_job_to_queue({command => "gapfillmodel?".$self->id(),user => $self->owner(),queue => "cplex"});
+		}
 	}
 	$self->processModel();
 	return {success => 1};

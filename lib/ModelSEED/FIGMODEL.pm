@@ -2577,7 +2577,7 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["baseid","genome"],{
+	$args = $self->process_arguments($args,["id","genome"],{
 		filename => undef,
 		biomassFile => undef,
 		owner => $args->{"owner"},
@@ -2585,21 +2585,29 @@ sub import_model_file {
 		overwrite => $args->{"overwrite"},
 		provenance => $args->{"provenance"}
 	});
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
+	}
+	if (!-e $args->{filename}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");		
+	}
 	#Calculating the full ID of the model
-	my $id = $args->{baseid};
-	my $suffix = "";
+	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
+		$args->{id} = $1;
+	} elsif ($args->{id} =~ m/^(.+)\.(\d+)$/) {
+		$args->{id} = $1;
+	}
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
 		ModelSEED::FIGMODEL::FIGMODELERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
-		$suffix = ".".$usr->_id();
-		$id .= ".".$usr->_id();
+		$args->{id} .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
-	my $modelObj = $self->database()->sudo_get_object("model",{id => $id});
+	my $modelObj = $self->database()->sudo_get_object("model",{id => $args->{id}});
 	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
-			id => $id,
+			id => $args->{id},
 			owner => $args->{owner},
 			genome => $args->{genome},
 			gapfilling => 0,
@@ -2608,33 +2616,23 @@ sub import_model_file {
 		});
 		$modelObj = $mdl->ppo();
 	} elsif ($args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL::FIGMODELERROR($id." already exists and overwrite request was not provided. Import halted.".$args->{owner});
+		ModelSEED::FIGMODEL::FIGMODELERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
 			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter model object");
 		}
 	}
-	$mdl = $self->get_model($id);
+	$mdl = $self->get_model($args->{id});
 	if (!-defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not load/create model ".$mdl."!");
 	}
 	#Clearing current model data in the database
-	if (defined($id) && length($id) > 0 && defined($mdl)) {
-		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
+	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
+		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
-	}
-	#Loading model rxnmdl table
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".tbl";
-		if (!-e $args->{filename}) {
-			$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".txt";
-		}
-	}
-	if (!-e $args->{filename}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
 	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
 	my $biomassID;
@@ -2645,13 +2643,13 @@ sub import_model_file {
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
-			MODEL => $id,
+			MODEL => $args->{id},
 			compartment => $row->{COMPARTMENT}->[0]
 		});
 		if (!defined($rxnObj)) {
 			$self->database()->create_object("rxnmdl",{
 				REACTION => $row->{LOAD}->[0],
-				MODEL => $id,
+				MODEL => $args->{id},
 				directionality => $row->{DIRECTIONALITY}->[0],
 				compartment => $row->{COMPARTMENT}->[0],
 				pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
@@ -2668,7 +2666,7 @@ sub import_model_file {
 	}
 	#Loading biomass reaction file
 	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->config("model file load directory")->[0].$biomassID.".txt";
+		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	

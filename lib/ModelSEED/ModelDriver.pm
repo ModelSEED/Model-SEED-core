@@ -118,18 +118,21 @@ sub usage {
 		$self->$function();
 		return undef;
 	}
-	my $output = "Usage:".$function;
-	for (my $i=0; $i < @{$array}; $i++) {
-		$output .= "?".$array->[$i]->[0];
+	my $output = $function." function usage:\n./".$function." ";
+ 	for (my $i=0; $i < @{$array}; $i++) {
+		if ($i > 0) {
+			$output .= "?";
+		}
+		$output .= $array->[$i]->[0];
 		if ($array->[$i]->[1] == 0) {
 			if (!defined($array->[$i]->[2])) {
 				$output .= "(undef)";
 			} else {
 				$output .= "(".$array->[$i]->[2].")";
 			}
-		}
-	}
-	$output .= "\n";
+ 		}
+ 	}
+ 	$output .= "\n";
 	return $output;
 }
 =head3 finish
@@ -5926,7 +5929,7 @@ sub mdlreconstruction {
 	my $args = $self->check([
 		["model",1,undef,"The name of an existing model in the Model SEED database that should be reconstructed from scratch from genome annotations."],
 		["autocompletion",0,0,"Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete."],
-		["checkpoint",0,1,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
+		["checkpoint",0,0,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
 		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in oder to use the job queue rather than running the entire job in the current process."],
 		["queue",0,$self->config("Default queue")->[0],"This is the name of the queue that the job should be submitted to."]
 	],[@Data],"run model reconstruction from genome annotations");
@@ -5936,7 +5939,7 @@ sub mdlreconstruction {
     }
     $mdl->reconstruction({
     	checkpoint => $args->{"checkpoint"},
-		gapfilling => $args->{"autocompletion"},
+		autocompletion => $args->{"autocompletion"},
 		usequeue => $args->{"usequeue"},
 		queue => $args->{"queue"},
 	});
@@ -6004,7 +6007,7 @@ sub mdlcreatemodel {
 		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
 		["owner",0,$self->figmodel()->user(),"The login of the user account that should own the new model."],
 		["biochemSource",0,undef,"Path to an existing biochemistry provenance database that should be used for provenance in the new model."],
-		["reconstruction",0,0,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
+		["reconstruction",0,1,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
 		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
 		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
 		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue to create many models at once."],
@@ -6168,26 +6171,20 @@ sub mdlprintmodel {
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
 	}
-	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
-		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
-	}
 	if (!defined($args->{filename})) {
-		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
+		$args->{filename} = $self->figmodel()->ws()->directory().$args->{model}.".mdl";
 	}
-
 	if($mdl->biomassReaction() ne "NONE"){
 	    if (!defined($args->{biomassFilename})){
-		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$mdl->biomassReaction().".bof";
 	    }
 	    $self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
-		filename => $args->{biomassFilename}
+			filename => $args->{biomassFilename}
 	    });
 	}
-
 	$mdl->printModelFileForMFAToolkit({
 		filename => $args->{filename}
 	});
-
 	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
@@ -6270,7 +6267,7 @@ sub mdlloadbiomass {
 	if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
 		if ($args->{biomass} =~ m/^bio\d+$/) {
-			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
+			$args->{biomass} = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
 		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
@@ -6339,7 +6336,7 @@ sub mdlimportmodel {
 		$public = 1;
 	}
 	$self->figmodel()->import_model({
-		baseid => $args->{"name"},
+		id => $args->{"name"},
 		genome => $args->{"genome"},
 		owner => $args->{"owner"},
 		path => $args->{"path"},
