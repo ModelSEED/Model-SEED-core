@@ -7560,6 +7560,7 @@ sub fbaCalculateGrowth {
 		$args->{fbaStartParameters}->{media} = "Complete";
 	}
 	$args->{fbaStartParameters}->{parameters}->{"optimize metabolite production if objective is zero"} = 1;
+	$args->{fbaStartParameters}->{parameters}->{"MFASolver"} = "GLPK";
 	my $result = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
