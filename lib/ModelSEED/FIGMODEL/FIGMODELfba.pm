@@ -745,8 +745,11 @@ sub setOptionParameters {
 		if (defined($options->{thermoerror})) {
 			$self->parameters()->{"Account for error in delta G"} = 1;
 		}
+		$self->parameters()->{"MFASolver"} = "CPLEX";
 	} elsif (defined($options->{simplethermo})) {
+		$self->parameters()->{"Thermodynamic constraints"} = 1;
 		$self->parameters()->{"simple thermo constraints"} = 1;
+		$self->parameters()->{"MFASolver"} = "CPLEX";
 	}
 	if (defined($options->{allreversible})) {
 		$self->parameters()->{"Make all reactions reversible in MFA"} = 1;
