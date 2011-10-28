@@ -785,12 +785,12 @@ Description:
 =cut
 sub loadWorkspace {
 	my ($self) = @_;
-	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+	$self->{_workspace} = [ ModelSEED::FIGMODEL::workspace->new({
         root => $self->config("Workspace directory")->[0],
 		owner => $self->user(),
 		clear => 0,
 		copy => undef
-	});
+	})];
 }
 =head3 switchWorkspace
 Definition:
