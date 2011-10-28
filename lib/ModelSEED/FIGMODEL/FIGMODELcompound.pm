@@ -185,6 +185,8 @@ sub convert_to_search_name {
 	$InName =~ s/_//g;
 	$InName =~ s/\(//g;
 	$InName =~ s/\)//g;
+	$InName =~ s/\{//g;
+	$InName =~ s/\}//g;
 	$InName =~ s/\[//g;
 	$InName =~ s/\]//g;
 	$InName =~ s/\://g;

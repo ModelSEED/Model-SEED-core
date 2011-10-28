@@ -2733,10 +2733,6 @@ sub import_model {
 
         $mdl = $self->get_model($id);
 
-        if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-            $mdl->GenerateModelProvenance({biochemSource => $args->{biochemSource}});
-        }
-
 	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
 	    print "Overwriting provenance\n";
 	    $mdl->GenerateModelProvenance({
@@ -2798,6 +2794,7 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
+		print "Testing ",$row->{ID}->[0],"\n";
 
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
@@ -2880,7 +2877,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
 			if (!defined($row->{"MASS"}->[0])) {
 				$row->{"MASS"}->[0] = 10000000;	
 			}
