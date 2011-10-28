@@ -19,7 +19,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MFAToolkit.h"
-#include <io.h>
 
 string itoaString;
 
@@ -322,10 +321,8 @@ void MakeDirectory(const char* InFilename) {
 		findandreplace(Filename,One,Two);
 	}
 	strout << "mkdir " << Filename;
-	cout << strout.str() << endl;
-	if ( access( Filename.data(), 0 ) == 0 ) {
-		system(strout.str().data());
-	}
+	//cout << strout.str() << endl;
+	system(strout.str().data());
 }
 
 bool OpenInput(ifstream& Input, string Filename) {

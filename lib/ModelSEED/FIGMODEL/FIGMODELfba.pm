@@ -319,6 +319,7 @@ sub printJobParametersToFile {
 	$self->setDrainRxnParameters();
 	$self->setConstrainParameters();
 	$self->setMediaParameters();
+	$self->setOptionParameters();
 	$self->parameters()->{"output folder"} = $self->filename()."/";
 	$self->parameters()->{"Network output location"} = "/scratch/" if ($args->{printToScratch} == 1);
 	$self->makeOutputDirectory() if (!-d $self->directory());
@@ -726,6 +727,33 @@ sub setMediaParameters {
 		}
 	}
 	return {success=>1,msg=>undef,error=>undef};
+}
+
+=head3 setOptionParameters
+Definition:
+	{success,msg,error} = FIGMODELfba->setOptionParameters();
+Description:
+	Creates the parameters for the specified FBA options
+=cut
+sub setOptionParameters {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{});
+	my $options = $self->options();
+	if (defined($options->{thermo})) {
+		$self->parameters()->{"Thermodynamic constraints"} = 1;
+		$self->parameters()->{"Account for error in delta G"} = 0;
+		if (defined($options->{thermoerror})) {
+			$self->parameters()->{"Account for error in delta G"} = 1;
+		}
+	} elsif (defined($options->{simplethermo})) {
+		$self->parameters()->{"simple thermo constraints"} = 1;
+	}
+	if (defined($options->{allreversible})) {
+		$self->parameters()->{"Make all reactions reversible in MFA"} = 1;
+	}
+	if (defined($options->{writelp})) {
+		$self->parameters()->{"write LP file"} = 1;
+	}
 }
 
 =head3 add_parameter_files
