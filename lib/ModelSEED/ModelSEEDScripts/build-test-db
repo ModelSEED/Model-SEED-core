@@ -103,10 +103,12 @@ $hash->{public} = 0;
 $db->MODEL->create($hash);
 
 # and the rxnmdl rows
-my $rxnmdls = $figmodel->database()->get_objects("rxnmdl", { MODEL => "Seed83333.1"});
+my $rxnmdls = $figmodel->database()->get_objects("rxnmdl", { MODEL => "Seed83333.1.796"});
+# FIXME using chris's model until default is working again
 foreach my $rxnmdl (@$rxnmdls) {
     my $hash = { map { $_ => $rxnmdl->$_() } keys %{$rxnmdl->attributes()} };   
     delete $hash->{_id};
+    $hash->{MODEL} = "Seed83333.1";
     $db->REACTION_MODEL->create($hash);
     $hash->{MODEL} = "Seed83333.1." . $alice->_id();
     $db->REACTION_MODEL->create($hash);

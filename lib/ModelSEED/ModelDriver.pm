@@ -20,7 +20,7 @@ Definition:
 Description:
 	Returns a driver object
 =cut
-sub new {
+sub new { 
 	my $self = {_figmodel => ModelSEED::FIGMODEL->new(),_finishedfile => "NONE"};
 	$self->{_outputdirectory} = $self->{_figmodel}->config("database message file directory")->[0];
 	if (defined($ENV{"FIGMODEL_OUTPUT_DIRECTORY"})) {
@@ -3963,82 +3963,153 @@ sub printdatatables {
         print "Syntax for this command: printdatatables?(output directory)\n\n";
         return "ARGUMENT SYNTAX FAIL";
     }
-	my $output = ["ModelID\tName\tGenomeID\tGrowth\tGenes\tReactions\tGapfilled reactions"];
-	my $objs = $self->figmodel()->database()->get_objects("model",{public => 1});
-	for (my $i=0; $i < @{$objs}; $i++) {
-		push(@{$output},$objs->[$i]->id()."\t".$objs->[$i]->name()."\t".$objs->[$i]->genome()."\t".$objs->[$i]->growth()."\t".$objs->[$i]->associatedGenes()."\t".$objs->[$i]->reactions()."\t".$objs->[$i]->autoCompleteReactions());
+    # Glorious hack to get the data without touching PPO
+    my $get_dbh = sub {
+        my ($type) = @_;
+        my $handle = $self->figmodel()->database()->get_object_manager($type);
+        if(defined($handle)) {
+            return $handle->{_master}->db_handle;
+        } else {
+            return undef;
+        }
+    };
+    my $get_objs_array = sub {
+        my ($objs, $query) = @_;
+        my $dbh = $get_dbh->($objs);
+        my $sth = $dbh->prepare($query);
+        $sth->execute() || die($@." $query");
+        return $sth->fetchall_arrayref();
+    };
+    
+    $Data[1] =~ s/\/$//; # remove trailing slash
+    {
+	    my $output = ["ModelID\tName\tGenomeID\tGrowth\tGenes\tReactions\tGapfilled reactions"];
+        my $keys = join(", ", qw(id name genome growth associatedGenes reactions autoCompleteReactions ));
+        my $objs = $get_objs_array->("model", "SELECT $keys FROM MODEL");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/ModelGenome.txt",$output);
+        print "Done ModelGenome.txt\n"; 
+    }
+    {
+	    my $output = ["ModelID\tReactionID\tPegs"];
+        my $keys = join(", ", qw(MODEL REACTION pegs));
+        my $objs = $get_objs_array->("rxnmdl", "SELECT $keys FROM REACTION_MODEL");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ModelReaction.txt",$output);
+        print "Done ModelReaction.txt\n"; 
+    }
+    {
+	    my $output = ["CompoundID\tName"];
+        my $keys = join(", ", qw(COMPOUND alias));
+        my $objs = $get_objs_array->("cpdals", "SELECT $keys FROM COMPOUND_ALIAS");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundName.txt",$output);
+        print "Done CompoundName.txt\n"; 
+    }
+    {
+	    my $output = ["Reaction\tEquation\tName"];
+        my $keys = join(", ", qw(id equation name));
+        my $objs = $get_objs_array->("reaction", "SELECT $keys FROM REACTION");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/Reactions.txt",$output);
 	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/ModelGenome.txt",$output);
-	$output = ["ModelID\tReactionID\tPegs"];
-	for (my $i=0; $i < @{$objs}; $i++) {
-		my $mdl = $self->figmodel()->get_model($objs->[$i]->id());
-		my $reactionTbl = $mdl->reaction_table();
-		for (my $j=0; $j < $reactionTbl->size(); $j++) {
-			my $row = $reactionTbl->get_row($j);
-			push(@{$output},$objs->[$i]->id()."\t".$row->{LOAD}->[0]."\t".join("|",@{$row->{"ASSOCIATED PEG"}}));	
-		}
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/ModelReaction.txt",$output);
-	$output = ["CompoundID\tName"];
-	$objs = $self->figmodel()->database()->get_objects("cpdals",{type => "name"});
-	for (my $i=0; $i < @{$objs}; $i++) {
-		push(@{$output},$objs->[$i]->COMPOUND()."\t".$objs->[$i]->alias());
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundName.txt",$output);
-	$output = ["Reaction\tEquation\tName"];
-	$objs = $self->figmodel()->database()->get_objects("reaction");
-	for (my $i=0; $i < @{$objs}; $i++) {
-		#if ($objs->[$i]->id() le "rxn13784") {
-			push(@{$output},$objs->[$i]->id()."\t".$objs->[$i]->equation()."\t".$objs->[$i]->name());
-		#}
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/Reactions.txt",$output);
-	$output = ["CompoundID\tReactionID\tStoichiometry\tCofactor"];
-	my $hash;
-	$objs = $self->figmodel()->database()->get_objects("cpdrxn");
-	for (my $i=0; $i < @{$objs}; $i++) {
-		if ($objs->[$i]->compartment() eq "e") {
-			$hash->{$objs->[$i]->COMPOUND()} = 1;	
-		}
-		push(@{$output},$objs->[$i]->COMPOUND()."\t".$objs->[$i]->REACTION()."\t".$objs->[$i]->coefficient()."\t".$objs->[$i]->cofactor());
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundReaction.txt",$output);
-	$output = ["Transported CompoundID"];
-	push(@{$output},keys(%{$hash}));
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/TransportedCompounds.txt",$output);
-	$output = ["ReactionID\tRole"];
-	my $roleHash = $self->figmodel()->mapping()->get_role_rxn_hash();
-	foreach my $rxn (keys(%{$roleHash})) {
-		foreach my $role (keys(%{$roleHash->{$rxn}})) {
-			push(@{$output},$rxn."\t".$roleHash->{$rxn}->{$role}->name());
-		}
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionRole.txt",$output);
-	$output = ["ReactionID\tSubsystem\tRole"];
-	my $subsysHash = $self->figmodel()->mapping()->get_subsy_rxn_hash();
-	my $subsysHashTwo = $self->figmodel()->mapping()->{_subsysrolerxnhash};
-	foreach my $rxn (keys(%{$subsysHash})) {
-		foreach my $subsys (keys(%{$subsysHash->{$rxn}})) {
-			foreach my $role (keys(%{$subsysHashTwo->{$rxn}->{$subsys}})) {
-				push(@{$output},$rxn."\t".$subsysHash->{$rxn}->{$subsys}->name()."\t".$role);
-			}
-		}
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionSubsys.txt",$output);
-	$output = ["Role\tSubsystem\tClass 1\tClass 2\tStatus"];
-	$objs = $self->figmodel()->database()->get_objects("subsystem");
-	my $roleObjs = $self->figmodel()->database()->get_objects("role");
-	my $newroleHash;
-	for (my $i=0; $i < @{$roleObjs}; $i++) {
-		$newroleHash->{$roleObjs->[$i]->id()} = $roleObjs->[$i];
-	}
-	for (my $i=0; $i < @{$objs}; $i++) {
-		my $ssroleobjs = $self->figmodel()->database()->get_objects("ssroles",{SUBSYSTEM => $objs->[$i]->id()});
-		for (my $j=0; $j < @{$ssroleobjs}; $j++) {
-			push(@{$output},$newroleHash->{$ssroleobjs->[$j]->ROLE()}->name()."\t".$objs->[$i]->name()."\t".$objs->[$i]->classOne()."\t".$objs->[$i]->classTwo()."\t".$objs->[$i]->status());	
-		}
-	}
-	$self->figmodel()->database()->print_array_to_file($Data[1]."/SubsystemClass.txt",$output);
+	{
+        my $output = ["CompoundID\tReactionID\tStoichiometry\tCofactor"];
+        my $transportedCompounds = {};
+        my $keys = join(", ", qw(COMPOUND REACTION coefficient cofactor compartment));
+        my $objs = $get_objs_array->("cpdrxn", "SELECT $keys FROM COMPOUND_REACTION");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+            if($objs->[$i]->[4] eq "e") {
+                $transportedCompounds->{$objs->[$i]->[0]} = 1;	
+            }
+        }
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/CompoundReaction.txt",$output);
+        print "Done CompoundReaction.txt\n"; 
+	    $output = ["Transported CompoundID"];
+	    push(@{$output},keys(%{$transportedCompounds}));
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/TransportedCompounds.txt",$output);
+        print "Done TransportedCompounds.txt\n"; 
+    }
+    {
+        my $output = ["ReactionID\tRole"];
+	    my $roleHash = $self->figmodel()->mapping()->get_role_rxn_hash();
+        foreach my $rxn (keys(%{$roleHash})) {
+            foreach my $role (keys(%{$roleHash->{$rxn}})) {
+                push(@{$output},$rxn."\t".$roleHash->{$rxn}->{$role}->name());
+            }
+        }
+	    $self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionRole.txt",$output);
+    }
+    { 
+        my $output = ["RoleID\tName\tExemplarID\tExemplarMD5"];
+        my $keys = join(", ", qw(id name exemplarId exemplarmd5));
+        my $objs = $get_objs_array->("role", "SELECT $keys FROM ROLE");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/Role.txt", $output);
+    }
+    { 
+        my $output = ["RoleID\tComplexID\ttype"];
+        my $keys = join(", ", qw(ROLE COMPLEX type));
+        my $objs = $get_objs_array->("cpxrole", "SELECT $keys FROM COMPLEX_ROLE");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ComplexRole.txt", $output);
+    }
+    { 
+        my $output = ["ReactionID\tComplexID"];
+        my $keys = join(", ", qw(REACTION COMPLEX));
+        my $objs = $get_objs_array->("rxncpx", "SELECT $keys FROM REACTION_COMPLEX");
+        for(my $i=0; $i<@$objs; $i++) {
+            push(@$output, join("\t", @{$objs->[$i]}));
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionComplex.txt", $output);
+    }
+    {
+	    my $output = ["ReactionID\tSubsystem\tRole"];
+        my $subsysHash = $self->figmodel()->mapping()->get_subsy_rxn_hash();
+        my $subsysHashTwo = $self->figmodel()->mapping()->{_subsysrolerxnhash};
+        foreach my $rxn (keys(%{$subsysHash})) {
+            foreach my $subsys (keys(%{$subsysHash->{$rxn}})) {
+                foreach my $role (keys(%{$subsysHashTwo->{$rxn}->{$subsys}})) {
+                    push(@{$output},$rxn."\t".$subsysHash->{$rxn}->{$subsys}->name()."\t".$role);
+                }
+            }
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/ReactionSubsys.txt",$output);
+        print "Done ReactionSubsys.txt\n"; 
+    }
+    {
+        my $output = ["Role\tSubsystem\tClass 1\tClass 2\tStatus"];
+        my $objs = $self->figmodel()->database()->sudo_get_objects("subsystem");
+        my $roleObjs = $self->figmodel()->database()->sudo_get_objects("role");
+        my $newroleHash;
+        for (my $i=0; $i < @{$roleObjs}; $i++) {
+            $newroleHash->{$roleObjs->[$i]->id()} = $roleObjs->[$i];
+        }
+        for (my $i=0; $i < @{$objs}; $i++) {
+            my $ssroleobjs = $self->figmodel()->database()->sudo_get_objects("ssroles",{SUBSYSTEM => $objs->[$i]->id()});
+            for (my $j=0; $j < @{$ssroleobjs}; $j++) {
+                next unless defined($newroleHash->{$ssroleobjs->[$j]->ROLE()});
+                push(@{$output}, join("\t", ($newroleHash->{$ssroleobjs->[$j]->ROLE()}->name(),
+                                             $objs->[$i]->name(), $objs->[$i]->classOne(),
+                                             $objs->[$i]->classTwo(), $objs->[$i]->status())));	
+            }
+        }
+        $self->figmodel()->database()->print_array_to_file($Data[1]."/SubsystemClass.txt",$output);
+        print "Done SubsystemClass.txt\n"; 
+    }
 	return "SUCCESS";
 }
 
@@ -4578,7 +4649,10 @@ sub clustermodels {
 sub parsesbml {
 	my($self,@Data) = @_;
 	my $args = $self->check([["file",1]],[@Data]);
-	$self->figmodel()->parseSBMLtoTabTable({file => $args->{file}});	
+	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	foreach my $table(keys %$List){
+	    $List->{$table}->save();
+	}
 }
 
 sub printroleclass {
@@ -5188,8 +5262,8 @@ sub mscreateuser {
 	$usr = $self->figmodel()->database()->create_object("user",{
 		login => $args->{login},
 		password => "NONE",
-		firstname => $args->{"first name"},
-		lastname => $args->{"last name"},
+		firstname => $args->{"firstname"},
+		lastname => $args->{"lastname"},
 		email => $args->{email}
 	});
 	$usr->set_password($args->{password});
@@ -6218,6 +6292,24 @@ sub mdlloadbiomass {
     	$msg .= "Successfully changed biomass reaction in model ".$args->{model}.".\n";
 	}
 	return $msg;
+}
+
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+This function parses the input SBML file into compound and reaction tables needed for import into the Model SEED.
+=EXAMPLE
+./mdlparsesbml -file iJR904.sbml
+=cut
+sub mdlparsesbml {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["file",1]
+	],[@Data],"parsing SBML file into compound and reaction tables");
+	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	foreach my $table(keys %$List){
+		$List->{$table}->save();
+	}
 }
 
 =CATEGORY

@@ -1644,9 +1644,9 @@ sub parseSBMLtoTable {
 	    $args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
 	}
 	
-	
 	my $dir = $args->{directory};
 	my $name = $args->{model_name};
+	$name = "ModelData" if !$name;
 	$name.="-";
 	
 	$args = $self->process_arguments($args,["directory"],{
@@ -1663,8 +1663,9 @@ sub parseSBMLtoTable {
     }elsif(defined($args->{file})){
 	my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
 	my $name = $args->{model_name};
+	$name = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1) if !$name;
 	$name.="-";
-	
+
 	$args = $self->process_arguments($args,["file"],{
 	    SBMLFile => $args->{file},
 	    compartmentFiles => $dir.$name."compartments.tbl",
@@ -2728,9 +2729,13 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	} 
+	}
 
-	$mdl = $self->get_model($id);
+        $mdl = $self->get_model($id);
+
+        if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
+            $mdl->GenerateModelProvenance({biochemSource => $args->{biochemSource}});
+        }
 
 	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
 	    print "Overwriting provenance\n";
@@ -2743,6 +2748,7 @@ sub import_model {
 
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
+	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
 		for (my $i=0; $i < @{$importTables}; $i++) {
 			$mdl->figmodel()->database()->freezeFileSyncing($importTables->[$i]);
@@ -2806,7 +2812,6 @@ sub import_model {
 				for (my $k=0; $k < @{$searchNames}; $k++) {
 				    #Look for searchname in original 'searchname' type
 				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
-
 				  
 				    #if not, look for it in previous imports
 				    if (!defined($cpdals)) {
@@ -2821,8 +2826,18 @@ sub import_model {
 					    $cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 					}
 				    } else {
-					$newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+					#prevent use of names that being with cpd, for obvious confusion
+					#with ModelSEED identifiers
+					next if substr($searchNames->[$k],0,3) eq "cpd";
+
+					#stopgap to prevent names being inserted that are too close
+					#this occurs because the database doesn't recognize upper/lower case when
+					#using indexes
+					if(!exists($newNames->{search}->{$searchNames->[$k]})){
+					    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+					}
 					$newNames->{search}->{$searchNames->[$k]} = 1;
+
 				    }
 				}
 			}
@@ -3665,6 +3680,17 @@ sub create_model {
 			id => $args->{id},
 			init => $args
 	});
+}
+
+=head3 createNewModel
+Legacy interface for ModelViewer construction
+#LEGACY-SEEDWEB
+=cut
+sub createNewModel {
+    my ($self, $args) = @_;
+    $args->{genome} = $args->{'-genome'};
+    delete $args->{'-genome'};
+    return $self->create_model($args);
 }
 
 =head3 compareManyModels
