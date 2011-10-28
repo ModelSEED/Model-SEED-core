@@ -182,6 +182,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     foreach my $lib (@$perl5Libs) {
         $bootstrap .= "use lib '$lib';\n";
     }
+    $bootstrap .= "use ModelSEED::ModelDriver;\n";
     foreach my $key (keys %$envSettings) {
         if($key eq "PATH") {
             $bootstrap .= '$ENV{'.$key.'} .= $ENV{PATH}."'.$delim.$envSettings->{$key}."\";\n";
@@ -283,7 +284,10 @@ SCRIPT
 		"deleteaccount",
 		"importmodel",
 		"createlocaluser",
-		"gapfillmodel"
+		"gapfillmodel",
+		"printmedia",
+		"blastgenomesequences",
+		"createmedia"
 	];
 	my $functionList = [
 		"mscreateuser",
@@ -293,20 +297,25 @@ SCRIPT
 		"mslistworkspace",
 		"mslogin",
 		"mslogout",
-		"blastgenomesequences",
-		"printmedia",
-		"createmedia",
+		"sqblastgenomes",
 		"fbacheckgrowth",
+		"fbasingleko",
 		"fbafva",
+		"bcprintmedia",
+		"bcloadmedia",
 		"mdlautocomplete",
 		"mdlreconstruction",
 		"mdlmakedbmodel",
 		"mdladdright",
 		"mdlcreatemodel",
+		"mdlinspectstate",
 		"mdlprintsbml",
+		"mdlprintmodel",
+		"mdlprintmodelgenes",
 		"mdlloadmodel",
 		"mdlloadbiomass",
-		"mdlimportmodel"
+		"mdlimportmodel",
+		"utilmatrixdist"
 	];
 	foreach my $function (@{$obsoleteList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
@@ -354,17 +363,19 @@ SCRIPT
 }
 #Configuring MFAToolkit
 {	
-    my $output = [
-    'cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"',
-	'if [ "$1" == "clean" ]',
-	'    then make clean',
-	'fi',
-	'make'
-    ];
-    printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$output);
-    chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
-    unless($args->{fast}) {
-    	system($directoryRoot."/bin/makeMFAToolkit");
+    if ($os ne "windows") {
+	    my $output = [
+	    'cd "'.$directoryRoot.'/software/mfatoolkit/Linux/"',
+		'if [ "$1" == "clean" ]',
+		'    then make clean',
+		'fi',
+		'make'
+	    ];
+	    printFile($directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh",$output);
+	    chmod 0775,$directoryRoot."/software/mfatoolkit/bin/makeMFAToolkit.sh";
+	    unless($args->{fast}) {
+	    	system($directoryRoot."/bin/makeMFAToolkit");
+	    }
     }
 }
 #Creating public useraccount

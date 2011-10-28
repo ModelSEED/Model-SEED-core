@@ -1,0 +1,622 @@
+[[Model SEED Homepage]]
+
+== Workspace Operations ==
+
+==== ''mscreateuser'': creating a new local account for a model SEED installation ====
+
+'''Description'''
+
+Sometimes rather than importing an account from the SEED (which you would do using the ''mslogin'' command), you want to create a stand-alone account in the local Model SEED database only. To do this, use the ''createlocaluser'' binary. Once the local account exists, you can use the ''login'' binary to log into your local Model SEED account. This allows you to access, create, and manipulate private data in your local database. HOWEVER, because this is a local account only, you will not be able to use the account to access any private data in the SEED system. For this reason, we recommend importing a SEED account using the ''login'' binary rather than making local accounts with no SEED equivalent. If you require a SEED account, please go to the registration page: [http://pubseed.theseed.org/seedviewer.cgi?page=Register SEED account registration].
+
+'''Arguments'''
+
+* email: Email of the new proposed user.
+
+* firstname: First name of the new proposed user.
+
+* password: "Password for the new user account
+
+* lastname: Last name of the new proposed user.
+
+* login: Login name of the new user account.
+
+'''Example'''
+
+./mscreateuser -login "username" -password "password" -firstname "my firstname" -lastname "my lastname" -email "my email"
+
+----
+
+==== ''msswitchworkspace'': switch to a new workspace ====
+
+'''Description'''
+
+This function is used to switch to a new workspace in the Model SEED environment. Workspaces are used to organize input and output files created and used during interactions with the Model SEED.
+
+'''Arguments'''
+
+* copy (optional): The name of an existing workspace that should be copied into the new specified workspace. Default: 'undef'
+
+* clear (optional): Indicates that the workspace should be cleared upon switching to it. Default: '0'
+
+* name: Name of a new or existing workspace you want to switch to.
+
+'''Example'''
+
+./msswitchworkspace -name MyNewWorkspace
+
+----
+
+==== ''mslistworkspace'': list all workspaces for user ====
+
+'''Description'''
+
+Prints a list of all workspaces owned by the specified or currently logged user.
+
+'''Arguments'''
+
+* user (optional): The username for which workspaces should be printed. Default: '$self->figmodel->user()'
+
+'''Example'''
+
+./mslistworkspace
+
+----
+
+==== ''msworkspace'': prints workspace data ====
+
+'''Description'''
+
+Prints data on the contents and metadata of the current workspace.
+
+'''Arguments'''
+
+* verbose (optional): Set this FLAG to '1' to print more details about workspace contents and metadata. Default: '0'
+
+'''Example'''
+
+./msworkspace
+
+----
+
+==== ''msdeleteuser'': deleting the local instantiation of the specified user account ====
+
+'''Description'''
+
+This function deletes the local copy of the specified user account from the local Model SEED distribution. This function WILL NOT delete accounts from the centralized SEED database.
+
+'''Arguments'''
+
+* password (optional): Password of the useraccount to be deleted. Default: '$ENV{FIGMODEL_PASSWORD}'
+
+* login (optional): Login of the useraccount to be deleted. Default: '$ENV{FIGMODEL_USER}'
+
+'''Example'''
+
+./msdeleteuser -login "username" -password "password"
+
+----
+
+==== ''mslogin'': login as new user and import user account from SEED ====
+
+'''Description'''
+
+This command is used to login as a user in the Model SEED environment. If you have a SEED account already, use those credentials to log in here. Your account information will automatically be imported and used locally. You will remain logged in until you use either the '''mslogin''' or '''mslogout''' command. Once you login, you will automatically switch to the current workspace for the account you log into.
+
+'''Arguments'''
+
+* password: password of user account you wish to log into or import from the SEED
+
+* noimport (optional): undef Default: 'username of user account you wish to log into'
+
+* username: username of user account you wish to log into or import from the SEED
+
+'''Example'''
+
+./mslogin -username public -password public
+
+----
+
+== Biochemistry Operations ==
+
+==== ''bccreatemedia'': Creates (or alters) a media condition in the Model SEED database ====
+
+'''Description'''
+
+This function is used to create or alter a media condition in the Model SEED database given either a list of compounds in the media or a file specifying the media compounds and minimum and maximum uptake rates.
+
+'''Arguments'''
+
+* owner (optional): Login of the user account who will own this media condition. Default: '($self->figmodel()->user())'
+
+* filename (optional): The full path and name to access a file specifying the media components. [[Example media file]]. Default: 'undef'
+
+* overwrite (optional): "If you set this parameter to '1' Default: ' any existing media with the same input name will be overwritten."'
+
+* public (optional): Set directory in which FBA problem output files will be stored. Default: '1'
+
+* compounds (optional): " As an alternative to specifying a filename Default: ' you can specify a ';' delimited list of the compound proposed to be present in the media. Either compound names or cpd##### ids must be supplied."'
+
+* name: The name of the media formulation being created or altered.
+
+'''Example'''
+
+./bccreatemedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
+
+----
+
+==== ''bcprintmedia'': print Model SEED media formulation ====
+
+'''Description'''
+
+This function is used to print a media formulation to the current workspace.
+
+'''Arguments'''
+
+* filename (optional): Name of the file where the media formulation should be printed. Default: 'undef'
+
+* media: Name of the media formulation to be printed.
+
+'''Example'''
+
+./bcprintmedia -media Carbon-D-glucose
+
+----
+
+== Metabolic Model Operations ==
+
+==== ''mdlloadmodel'': reload a model from a flatfile ====
+
+'''Description'''
+
+This function is used to load a model reaction table and biomass reaction back into a Model SEED database. At least the model base ID and genome ID must be provided. If no filenames are provided, the system assumes the files are located in the following locations:
+
+* Model reaction table: Model-SEED-core/data/MSModelFiles/''Model ID''.tbl [[Example model file]]
+
+* Biomass reaction file: Model-SEED-core/data/MSModelFiles/''Model Biomass reaction ID''.txt [[Example biomass file]]
+
+This function is designed to be used in conjunction with ''printmodelfiles'' to print model data to flatfiles, allow hand-curation of these flatfiles, and then load model data back into the Model SEED from these flatfiles.
+
+'''Arguments'''
+
+* owner (optional): The login name of the user that should own the loaded model Default: '$self->figmodel()->user()'
+
+* biomassFile (optional): The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]. Default: 'undef'
+
+* provenance (optional): "The full path to a model directory that contains a provenance database for the model to be imported. If not provided Default: ' the Model SEED will generate a new provenance database from scratch using current system data."'
+
+* name: "The base name of the model to be loaded (do not append your user index
+
+* genome: The SEED genome ID associated with the model to be loaded.
+
+* filename (optional): The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]. Default: 'undef'
+
+* overwrite (optional): "If you are attempting to load a model that already exists in the database Default: ' you MUST set this argument to '1'."'
+
+* public (optional): "If you want the loaded model to be publicly viewable to all Model SEED users Default: ' you MUST set this argument to '1'."'
+
+'''Example'''
+
+./mdlloadmodel -'''name''' "iJR904" -'''genome''' "83333.1"
+
+----
+
+==== ''mdladdright'': add rights to a model to another user ====
+
+'''Description'''
+
+This function is used to provide rights to view or edit a model to another Model SEED user. Use this function to share a model.
+
+'''Arguments'''
+
+* right (optional):  Default: 'view""Type of right that should be added. Possibilities include 'view' and 'admin'.'
+
+* user: Login of the user account for which rights should be added.
+
+* model: ID of the model for which rights should be added.
+
+'''Example'''
+
+./mdladdright -model Seed83333.1.796 -user reviewer -right view
+
+----
+
+==== ''mdlimportmodel'': import a model into the Model SEED environment ====
+
+'''Description'''
+
+Imports a models from other databases into the Model SEED environment.
+
+'''Arguments'''
+
+* owner (optional): Name of the user account that will own the imported model. Default: '$self->figmodel()->user()'
+
+* biochemsource (optional): The path to the directory where the biochemistry database that the model should be imported into is located. Default: 'undef'
+
+* overwrite (optional): Set this FLAG to '1' to overwrite an existing model with the same name. Default: '0'
+
+* name: "The ID in the Model SEED that the imported model should have
+
+* path (optional): The path where the compound and reaction files containing the model data to be imported are located. Default: 'undef'
+
+* genome: SEED ID of the genome the imported model should be associated with.
+
+'''Example'''
+
+./mdlimportmodel -name iJR904 -genome 83333.1
+
+----
+
+==== ''mdlprintsbml'': prints model(s) in SBML format ====
+
+'''Description'''
+
+Prints the specified model(s) in SBML format.
+
+'''Arguments'''
+
+* usequeue (optional): Set this FLAG to '1' in order to use the job queue to print SBML files for many models at once. Default: '$self->config("Use queue")->[0]'
+
+* model: "A '
+
+* queue (optional): The name of the job queue that jobs should be submitted to. Default: '$self->config("Default queue")->[0]'
+
+'''Example'''
+
+./mdlprintsbml -model iJR904
+
+----
+
+==== ''mdlloadbiomass'': Loads a model biomass reaction into the database from a flatfile ====
+
+'''Description'''
+
+This function creates (or alters) a biomass reaction in the Model SEED database given an input file or biomass ID that points to an input file.
+
+'''Arguments'''
+
+* biomass: "The ID (e.g. bio00001) or filename of the biomass reaction to be loaded. If only an ID is specified
+
+* overwrite (optional): "If you are attempting to alter and existing biomass reaction Default: ' you MUST set this argument to '1'"'
+
+* model (optional): The name of the FBA model the biomass reaction will be added to. Default: 'undef'
+
+* equation (optional): The stoichiometric equation for the biomass reaction. Default: 'undef'
+
+'''Example'''
+
+./mdlloadbiomass -'''biomass''' bio00001
+
+----
+
+==== ''mdlcreatemodel'': create new Model SEED models ====
+
+'''Description'''
+
+This function is used to create new models in the Model SEED database.
+
+'''Arguments'''
+
+* owner (optional): The login of the user account that should own the new model. Default: '$self->figmodel()->user()'
+
+* usequeue (optional): Set this FLAG to '1' in order to use the job queue to create many models at once. Default: '$self->config("Use queue")->[0]'
+
+* biochemSource (optional): Path to an existing biochemistry provenance database that should be used for provenance in the new model. Default: 'undef'
+
+* biomass (optional): ID of the biomass reaction the new model should have in the Model SEED database. Default: 'undef'
+
+* reconstruction (optional): Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created. Default: '0'
+
+* genome: "A '
+
+* autocompletion (optional): Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created. Default: '0'
+
+* overwrite (optional): Set this FLAG to '1' to overwrite any model that has the same specified ID in the database. Default: '0'
+
+* id (optional): ID that the new model should have in the Model SEED database. Default: 'undef'
+
+* queue (optional): The name of the job queue that jobs should be submitted to. Default: '$self->config("Default queue")->[0]'
+
+'''Example'''
+
+./mdlcreatemodel -genome 83333.1
+
+----
+
+==== ''mdlprintmodel'': prints a model to flatfile for alteration and reloading ====
+
+'''Description'''
+
+This is a useful function for printing model data to simple flatfiles that may be easily altered to facilitate hand-curation of a model. The function accepts a model ID as input, and it creates two flat files for the specified model: 
+
+* a reaction table file that lists the id, directionality,
+
+* a biomass reaction file that lists the equation of the biomass reaction
+
+By default, the flatfiles are printed in the "Model-SEED-core/data/MSModelFiles/" directory, but you can specify where the files will be printed using the "filename" and "biomassFilename" input arguments.
+
+NOTE: currently this function is the only mechanism for moving models from the Central Model SEED database into a local Model SEED database. This will soon change.
+
+'''Arguments'''
+
+* filename (optional): The full path and name of the file where the model reaction table should be printed. Default: 'undef'
+
+* biomassFilename (optional): The full path and name of the file where the biomass reaction should be printed. Default: 'undef'
+
+* model: The full Model SEED ID of the model to be printed.
+
+'''Example'''
+
+./mdlprintmodel -'''model''' "iJR904"
+
+----
+
+==== ''mdlprintmodelgenes'' ====
+
+'''Description'''
+
+This function prints a list of all genes included in the specified model to a file in the workspace.
+
+'''Arguments'''
+
+* filename (optional): Name of the file in the current workspace where the genes should be printed. Default: 'undef'
+
+* model: Name of the model for which the genes should be printed.
+
+'''Example'''
+
+./mdlprintmodelgenes -model iJR904
+
+----
+
+==== ''mdlinspectstate'': inspect that model consistency with biochemistry database ====
+
+'''Description'''
+
+Inspects that the specified model(s) are consistent with their associated biochemistry databases", and modifies the database if not.
+
+'''Arguments'''
+
+* usequeue (optional): Set this FLAG to '1' in order to use the job queue to inspect many models at once. Default: '$self->config("Use queue")->[0]'
+
+* model: "A '
+
+* queue (optional): The name of the job queue that jobs should be submitted to. Default: '$self->config("Default queue")->[0]'
+
+'''Example'''
+
+./mdlinspectstate -model iJR904
+
+----
+
+==== ''mdlreconstruction'': run model reconstruction from genome annotations ====
+
+'''Description'''
+
+This command uses the Model SEED pipeline to reconstruct an existing SEED model from scratch based on SEED genome annotations.
+
+'''Arguments'''
+
+* usequeue (optional): Set this FLAG to '1' in oder to use the job queue rather than running the entire job in the current process. Default: '$self->config("Use queue")->[0]'
+
+* model: The name of an existing model in the Model SEED database that should be reconstructed from scratch from genome annotations.
+
+* queue (optional): This is the name of the queue that the job should be submitted to. Default: '$self->config("Default queue")->[0]'
+
+* checkpoint (optional): Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved. Default: '1'
+
+* autocompletion (optional): Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete. Default: '0'
+
+'''Example'''
+
+./mdlreconstruction -model Seed83333.1
+
+----
+
+==== ''mdlmakedbmodel'': construct a model with all database reactions ====
+
+'''Description'''
+
+This function creates a model that includes all reactions in the current database. Such a model is useful to determine the capabilities of the current biochemistry database.
+
+'''Arguments'''
+
+* model: The name of the model that will contain all the database reactions.
+
+'''Example'''
+
+./mdlmakedbmodel -model ModelSEED
+
+----
+
+==== ''mdlautocomplete'': adds reactions to the model to eliminate inactive reactions ====
+
+'''Description'''
+
+This function is used to add a minimal number of reactions to a model from the biochemistry database such that one or more inactive reactions is eliminated.
+
+'''Arguments'''
+
+* usequeue (optional): Set this FLAG to '1' in order to use the job queue rather than run the job directly. Default: '$self->config("Use queue")->[0]'
+
+* testsolution (optional): Set this FLAG to '1' in order to test the gapfilling solution to assess the reason for addition of each gapfilled solution. Default: '0'
+
+* coefficientfile (optional): Name of a flat file specifying coefficients for gapfilled reactions in objective function. Default: 'undef'
+
+* model: The full Model SEED ID of the model to be gapfilled.
+
+* iterative (optional): "All inactive reactions in the model will be identified Default: ' and they will be iteratively gapfilled one at a time if this flag is set to '1'."'
+
+* rungapfilling (optional): The gapfilling will not be run unless you set this flag to '1'. Default: '1'
+
+* inactivecoef (optional): The coefficient on the inactive reactions in the gapfilling objective function. Default: '100'
+
+* adddrains (optional): Drain fluxes will be added for all intracellular metabolites and minimized if this flag is set to '1'. Default: '0'
+
+* startfresh (optional): Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'. Default: '1'
+
+* problemdirectory (optional):  "The name of the job directory where the intermediate gapfilling output will be stored." Default: 'undef'
+
+* media (optional):  Default: 'Complete""The media condition the model will be gapfilled in.'
+
+* printdbmessage (optional): Set this FLAG to '1' in order to print a message about gapfilling results to the database. Default: '0'
+
+* queue (optional): "If this flag is set to '1' Default: ' the gapfilling job will be queued rather than run."'
+
+* removegapfilling (optional): All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'. Default: '1'
+
+'''Example'''
+
+./mdlautocomplete '''-model''' iJR904"
+
+----
+
+== Flux Balance Analysis Operations ==
+
+==== ''fbafva'': performs FVA (Flux Variability Analysis) studies ====
+
+'''Description'''
+
+This function performs FVA analysis, calculating minimal and maximal flux through the reactions (range of fluxes) consistent with maximal theoretical growth rate.
+
+'''Arguments'''
+
+* options (optional):  (ii) 'nogrowth' means biomass is constrained to zero Default: ' and (iii) 'freegrowth' means biomass is left unconstrained."'
+
+* model: Full ID of the model to be analyzed
+
+* saveformat (optional):  Default: 'EXCEL""The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'.'
+
+* variables (optional):  Default: 'FLUX;UPTAKE""A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]].'
+
+* savetodb (optional): "If set to '1' Default: ' this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."'
+
+* geneKO (optional): "A ' Default: '' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* filename (optional): The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included. Default: 'undef'
+
+* media (optional):  Default: 'Complete""Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension.'
+
+* rxnKO (optional): "A ' Default: '' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* drainRxn (optional): "A ' Default: '' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."'
+
+'''Example'''
+
+./fbafva '''-model''' iJR904
+
+----
+
+==== ''fbasingleko'': simulate knockout of all combinations of one or more genes ====
+
+'''Description'''
+
+This function is used to simulate the knockout of all combinations of one or more genes in a SEED metabolic model.
+
+'''Arguments'''
+
+* options (optional):  Default: 'forcedGrowth""A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]].'
+
+* model: Full ID of the model to be analyzed
+
+* savetodb (optional): A FLAG that indicates that results should be saved to the database if set to '1'. Default: '0'
+
+* geneKO (optional): "A ' Default: '' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* maxDeletions (optional): A number specifying the maximum number of simultaneous knockouts to be simulated. We donot recommend specifying more than 2. Default: '1'
+
+* filename (optional): The filename to which the list of gene knockouts that resulted in reduced growth should be printed. Default: 'undef'
+
+* media (optional):  Default: 'Complete""Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension.'
+
+* rxnKO (optional): "A ' Default: '' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* drainRxn (optional): "A ' Default: '' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."'
+
+'''Example'''
+
+./fbasingleko -model iJR904
+
+----
+
+==== ''fbacheckgrowth'': tests if a model is growing under a specific media ====
+
+'''Description'''
+
+This function is used to test if a model grows under a specific media, Complete media is used as default. Users can set the specific media to test model growth and set parameters for the FBA run. The FBA problem can be managed via optional parameters to set the problem directory and save the linear problem associated with the FBA run.
+
+'''Arguments'''
+
+* geneKO (optional): "A ' Default: '' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* options (optional):  Default: 'forcedGrowth""A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]].'
+
+* media (optional):  Default: 'Complete""Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension.'
+
+* fbajobdir (optional): Set directory in which FBA problem output files will be stored. Default: 'undef'
+
+* rxnKO (optional): "A ' Default: '' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."'
+
+* model: Full ID of the model to be analyzed
+
+* savelp (optional): User can choose to save the linear problem associated with the FBA run. Default: '0'
+
+* drainRxn (optional): "A ' Default: '' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."'
+
+'''Example'''
+
+./bin/ModelDriver '''fbacheckgrowth''' '''-model''' iJR904
+
+----
+
+== Sequence Analysis Operations ==
+
+==== ''sqblastgenomes'': blast sequences against genomes ====
+
+'''Description'''
+
+This function will blast one or more specified sequences against one or more specified genomes. Results will be printed in a file in the current workspace.
+
+'''Arguments'''
+
+* filename (optional):  Default: 'sqblastgenomes.out""The name of the file where the output from the blast should be saved.'
+
+* genomes: "A '
+
+* sequences: "A '
+
+'''Example'''
+
+./sqblastgenomes -sequences CCGAGACGGGGACGAG -genomes 83333.1
+
+----
+
+== Utility Functions ==
+
+==== ''utilmatrixdist'': binning numerical matrix data into a histogram ====
+
+'''Description'''
+
+This function loads a table of numerical data from your workspace and determines how the data values are distributed into bins.
+
+'''Arguments'''
+
+* matrixfile: "Filename of table with numerical data you want to calculate the distribution of. Unless a full path is specified
+
+* binsize (optional): Size of bins into which data should be distributed. Default: '1'
+
+* endcol (optional): Column of the input data table where the numerical data ends.""Defaults to the number of columns in the input file. Default: 'undef'
+
+* delimiter (optional):  Default: '\\t""Delimiter used in the input data table.'
+
+* startcol (optional): Column of the input data table where the numerical data begins. Default: '1'
+
+* endrow (optional): Row of the input data table where the numerical data ends.""Defaults to the number of rows in the input file. Default: 'undef'
+
+* startrow (optional): Row of the input data table where the numerical data begins. Default: '1'
+
+'''Example'''
+
+./utilmatrixdist -matrix [[MyData.tbl]] -binsize 1
+
+----
+

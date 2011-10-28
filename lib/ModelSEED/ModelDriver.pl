@@ -7,7 +7,6 @@
 # Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 9/6/2011
 ########################################################################
-
 use strict;
 use ModelSEED::ModelDriver;
 use Try::Tiny;

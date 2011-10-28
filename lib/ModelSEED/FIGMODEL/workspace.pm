@@ -33,7 +33,7 @@ sub new {
 	my $self = {_figmodel => $args->{figmodel}, _owner => $args->{owner}};
 	Scalar::Util::weaken($self->{_figmodel});
 	bless $self;
-	if (!defined($self->{_id})) {
+	if (!defined($args->{id})) {
 		$self->loadCurrentWorkspace();
 	} else {
 		$self->{_id} = $args->{id};

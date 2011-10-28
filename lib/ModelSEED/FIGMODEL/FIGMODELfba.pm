@@ -1014,6 +1014,28 @@ sub loadProblemReport {
 	}
 	return $self->error_message({message=>"Could not find problem report file",function => "loadProblemReport",args => $args});;
 }
+=head3 loadMetaboliteProduction
+=item Definition:
+	FIGMODELTable:problem report = FIGMODELfba->loadMetaboliteProduction();
+=item Description:
+=cut
+sub loadMetaboliteProduction {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
+	$self->filename($args->{filename});
+	my $output;
+	if (-e $self->directory()."/MFAOutput/MetaboliteProduction.txt") {
+		my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/MFAOutput/MetaboliteProduction.txt","");
+		for (my $i=1; $i < @{$data}; $i++) {
+			my $temp = [split(/;/,$data->[$i])];
+			if (defined($temp->[1])) {
+				$output->{$temp->[0]} = -1*$temp->[1];
+			}
+		}
+	}
+	return $output;
+}
+
 =head3 loadFluxData
 =item Definition:
 	{string:entity id => double:flux} = FIGMODELfba->loadFluxData();
@@ -1241,10 +1263,13 @@ sub parseSingleGrowthStudy {
 	$self->filename($args->{filename});
 	my $report = $self->loadProblemReport();
 	if (defined($report->{error}) || !defined($report->get_row(0)) || !defined($report->get_row(0)->{"Objective"}->[0])) {return $self->error_message({message => $report->{error},function => "parseSingleGrowthStudy",args => $args});}
-	my $results = {growth => 0,noGrowthCompounds => "NONE"};
+	my $results = {growth => 0,noGrowthCompounds => []};
 	if ($report->get_row(0)->{"Objective"}->[0] < 0.00000001 || $report->get_row(0)->{"Objective"}->[0] == 1e7) {
-		if (defined($report->get_row(0)->{"Individual metabolites with zero production"}->[0]) && $report->get_row(0)->{"Individual metabolites with zero production"}->[0] =~ m/cpd\d\d\d\d\d/) {
-			$results->{noGrowthCompounds} = $report->get_row(0)->{"Individual metabolites with zero production"}->[0];
+		my $metProd = $self->loadMetaboliteProduction();
+		foreach my $cpd (keys(%{$metProd})) {
+			if ($metProd->{$cpd} < 0.00000001) {
+				push(@{$results->{noGrowthCompounds}},$cpd);
+			}
 		}
 	} else {
 		$results->{growth} = $report->get_row(0)->{"Objective"}->[0];

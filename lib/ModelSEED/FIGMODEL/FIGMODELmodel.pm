@@ -1290,25 +1290,19 @@ Description:
 sub featureHash {
 	my ($self) = @_;
 	if (!defined($self->{_featurehash})) {
-		my $rxnTable = $self->reaction_table();
-		if (!defined($rxnTable)) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("Could not get reaction table!");
-		}
-		for (my $i=0; $i < $rxnTable->size(); $i++) {
-			my $Row = $rxnTable->get_row($i);
-			if (defined($Row) && defined($Row->{"ASSOCIATED PEG"})) {
-				foreach my $GeneSet (@{$Row->{"ASSOCIATED PEG"}}) {
-					my $temp = $GeneSet;
-					$temp =~ s/\+/|/g;
-					  $temp =~ s/\sAND\s/|/gi;
-					  $temp =~ s/\sOR\s/|/gi;
-					  $temp =~ s/[\(\)\s]//g;
-					  my @GeneList = split(/\|/,$temp);
-					  foreach my $Gene (@GeneList) {
-						  $self->{_featurehash}->{$Gene}->{reactions}->{$Row->{"LOAD"}->[0]} = 1;
-					  }
+		my $rxnmdl = $self->rxnmdl();
+		for (my $i=0; $i < @{$rxnmdl}; $i++) {
+			if (defined($rxnmdl->[$i]->pegs())) {
+				my $temp = $rxnmdl->[$i]->pegs();
+				$temp =~ s/\+/|/g;
+				$temp =~ s/\sAND\s/|/gi;
+				$temp =~ s/\sOR\s/|/gi;
+				$temp =~ s/[\(\)\s]//g;
+				my $geneArray = [split(/\|/,$temp)];
+				for (my $j = 0; $j < @{$geneArray}; $j++) {
+					$self->{_featurehash}->{$geneArray->[$j]}->{reactions}->{$rxnmdl->[$i]->REACTION()} = 1;
 				}
-			  }
+			}
 		}
 		#Loading predictions
 		my $esstbl = $self->essentials_table();
@@ -6535,7 +6529,7 @@ sub feature_table {
 	my ($self) = @_;
 	if (!defined($self->{_feature_data})) {
 		#Getting the genome feature list
-		my $FeatureTable = $self->figmodel()->GetGenomeFeatureTable($self->genome());
+		my $FeatureTable = $self->genomeObj()->feature_table();
 		if (!defined($FeatureTable)) {
 			print STDERR "FIGMODELmodel:feature_table:Could not get features for genome ".$self->genome()." in database!";
 			return undef;
@@ -7450,10 +7444,6 @@ sub fbaComboDeletions {
 		}
 	}
 	if ($args->{saveKOResults} == 1) {
-		my $tbl = $self->essentials_table();
-		my $row = $tbl->get_row_by_key($self->{media},"MEDIA",1);
-		$row->{"ESSENTIAL GENES"} = $output->{essentialGenes};
-		$tbl->save();
 		my $obj = $self->figmodel()->database()->get_object("mdless",{parameters => "NONE",MODEL => $self->id(),MEDIA => $args->{media}});
 		if (!defined($obj)) {
 			$obj = $self->figmodel()->database()->create_object("mdless",{parameters => "NONE",MODEL => $self->id(),MEDIA => $args->{media}});	
@@ -7550,7 +7540,7 @@ sub fbaFVA {
 Definition:
 	{}:Output = FIGMODELmodel->fbaCalculateGrowth({
 		growth => double,
-		noGrowthCompounds => string:compound list	
+		noGrowthCompounds => [string]:compound list	
 	});
 Description:
 	Calculating growth in the input media
@@ -7581,7 +7571,7 @@ sub fbaCalculateGrowth {
 		runProblem=>1
 	});
 	$self->ppo()->growth($result->{growth});
-	$self->ppo()->noGrowthCompounds($result->{noGrowthCompounds});
+	$self->ppo()->noGrowthCompounds(join(",",@{$result->{noGrowthCompounds}}));
 	if (-d $args->{outputDirectory} && $result->{growth} > 0.00000001 && -e $result->{fbaObj}->directory()."/MFAOutput/SolutionReactionData0.txt") {
 		system("cp ".$result->{fbaObj}->directory()."/MFAOutput/SolutionReactionData0.txt ".$args->{outputDirectory}."Fluxes-".$self->id()."-".$args->{fbaStartParameters}->{media}.".txt");
 		system("cp ".$result->{fbaObj}->directory()."/MFAOutput/SolutionCompoundData0.txt ".$args->{outputDirectory}."CompoundFluxes-".$self->id()."-".$args->{fbaStartParameters}->{media}.".txt");  
@@ -8031,7 +8021,7 @@ sub calculate_growth {
 	if (defined($result->{growth}) && $result->{growth} > 0) {
 		return $result->{growth};
 	} else {
-		return "NOGROWTH:".$result->{noGrowthCompounds};
+		return "NOGROWTH:".join(",",@{$result->{noGrowthCompounds}});
 	}
 	return "";
 }

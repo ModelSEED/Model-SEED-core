@@ -1,8 +1,0 @@
-LB
-old_LB
-NMS
-NMS_folate
-old_NMS
-old_NMS_folate
-GMM_nh4
-GMM_gln

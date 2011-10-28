@@ -2782,7 +2782,7 @@ sub loadppo {
         return "ARGUMENT SYNTAX FAIL";
     }
     my $db = $self->figmodel()->database();
-    my $object = @Data[1];
+    my $object = $Data[1];
 	if ($object eq "media") {
 		my $mediaTbl = $db->figmodel()->database()->get_table("MEDIA");
 		for (my $i=0; $i < $mediaTbl->size(); $i++) {
@@ -4703,10 +4703,10 @@ sub simulatekomedialist {
 	my($self,@Data) = @_;
 	my $args = $self->check([
 		["model",1],
-		["ko",0,undef],
+		["ko",0,"NONE"],
 		["media",1],
 		["kolabel",0,undef],
-		["filename",0,"PhenotypeOutput.txt"]
+		["filename",0,undef]
 	],[@Data]);
 	my $medias = $self->figmodel()->processIDList({
 		objectType => "media",
@@ -4784,7 +4784,11 @@ sub simulatekomedialist {
 		}
 		push(@{$output},$line);
 	}
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+	if (!defined($args->{"filename"})) {
+		$args->{"filename"} = $mdl->id()."-komedialist.tbl";
+	}
+	
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
 }
 
 sub printmfatoolkitdata {
@@ -5158,20 +5162,22 @@ sub printgapfilledreactions {
 	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
-
-
-=head2 MODELSEED ENVIRONMENT CONFIGURATION FUNCTIONS
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+Sometimes rather than importing an account from the SEED (which you would do using the ''mslogin'' command), you want to create a stand-alone account in the local Model SEED database only. To do this, use the ''createlocaluser'' binary. Once the local account exists, you can use the ''login'' binary to log into your local Model SEED account. This allows you to access, create, and manipulate private data in your local database. HOWEVER, because this is a local account only, you will not be able to use the account to access any private data in the SEED system. For this reason, we recommend importing a SEED account using the ''login'' binary rather than making local accounts with no SEED equivalent. If you require a SEED account, please go to the registration page: [http://pubseed.theseed.org/seedviewer.cgi?page=Register SEED account registration].
+=EXAMPLE
+./mscreateuser -login "username" -password "password" -firstname "my firstname" -lastname "my lastname" -email "my email"
 =cut
-
 sub mscreateuser {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["login",1],
-		["password",1],
-		["firstname",1],
-		["lastname",1],
-		["email",1]
-	],[@Data]);
+		["login",1,undef,"Login name of the new user account."],
+		["password",1,undef,"Password for the new user account, which will be stored in encryted form."],
+		["firstname",1,undef,"First name of the new proposed user."],
+		["lastname",1,undef,"Last name of the new proposed user."],
+		["email",1,undef,"Email of the new proposed user."]
+	],[@Data],"creating a new local account for a model SEED installation");
 	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot use this function to add user to any database except ModelDB");
 	}
@@ -5190,28 +5196,44 @@ sub mscreateuser {
     return "SUCCESS";
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+This function deletes the local copy of the specified user account from the local Model SEED distribution. This function WILL NOT delete accounts from the centralized SEED database.
+=EXAMPLE
+./msdeleteuser -login "username" -password "password"
+=cut
 sub msdeleteuser {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["username",0,$ENV{FIGMODEL_USER}],
-		["password",0,$ENV{FIGMODEL_PASSWORD}],
-	],[@Data]);
+		["login",0,$ENV{FIGMODEL_USER},"Login of the useraccount to be deleted."],
+		["password",0,$ENV{FIGMODEL_PASSWORD},"Password of the useraccount to be deleted."],
+	],[@Data],"deleting the local instantiation of the specified user account");
+	if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov") {
+		ModelSEED::FIGMODEL::FIGMODELERROR("This function cannot be used in the centralized SEED database!");
+	}
 	$self->figmodel()->authenticate($args);
 	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("No account found that matches the input credentials!");
 	}
 	$self->figmodel()->userObj()->delete();
-	print "Account successfully deleted!\n";
-	return "SUCCESS";
+	return "Account successfully deleted!\n";
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+This function is used to switch to a new workspace in the Model SEED environment. Workspaces are used to organize input and output files created and used during interactions with the Model SEED.
+=EXAMPLE
+./msswitchworkspace -name MyNewWorkspace
+=cut
 sub msswitchworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1],
-		["clear",0,0],
-		["copy",0,undef],
-	],[@Data]);
+		["name",1,undef,"Name of a new or existing workspace you want to switch to."],
+		["clear",0,0,"Indicates that the workspace should be cleared upon switching to it."],
+		["copy",0,undef,"The name of an existing workspace that should be copied into the new specified workspace."],
+	],[@Data],"switch to a new workspace");
 	my $id = $self->figmodel()->ws()->id();
 	$self->figmodel()->switchWorkspace({
 		name => $args->{name},
@@ -5221,34 +5243,55 @@ sub msswitchworkspace {
 	return "Switched from workspace ".$id." to workspace ".$self->figmodel()->ws()->id()."!";
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+Prints data on the contents and metadata of the current workspace.
+=EXAMPLE
+./msworkspace
+=cut
 sub msworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["verbose",0,0]
-	],[@Data]);
+		["verbose",0,0,"Set this FLAG to '1' to print more details about workspace contents and metadata."]
+	],[@Data],"prints workspace data");
 	return $self->figmodel()->ws()->printWorkspace({
 		verbose => $args->{verbose}
 	});
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+Prints a list of all workspaces owned by the specified or currently logged user.
+=EXAMPLE
+./mslistworkspace
+=cut
 sub mslistworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["user",0,$self->figmodel->user()]
-	],[@Data]);
+		["user",0,$self->figmodel->user(),"The username for which workspaces should be printed."]
+	],[@Data],"list all workspaces for user");
 	my $list = $self->figmodel()->ws()->workspaceList({
 		owner => $args->{user}
 	});
 	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+This command is used to login as a user in the Model SEED environment. If you have a SEED account already, use those credentials to log in here. Your account information will automatically be imported and used locally. You will remain logged in until you use either the '''mslogin''' or '''mslogout''' command. Once you login, you will automatically switch to the current workspace for the account you log into.
+=EXAMPLE
+./mslogin -username public -password public
+=cut
 sub mslogin {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["username",1],
-		["password",1],
-		["noimport",0,0]
-	],[@Data]);
+		["username",1,undef,"username of user account you wish to log into or import from the SEED"],
+		["password",1,undef,"password of user account you wish to log into or import from the SEED"],
+		["noimport",0,0,undef,"username of user account you wish to log into"]
+	],[@Data],"login as new user and import user account from SEED");
 	#Checking for existing account in local database
 	my $usrObj = $self->figmodel()->database()->get_object("user",{login => $args->{username}});
 	if (!defined($usrObj) && $self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
@@ -5295,9 +5338,17 @@ sub mslogin {
 		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
 
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+This function is used to log a user out of the Model SEED environment. Effectively, this switches the currently logged user to the "public" account and switches to the current workspace for the public account.
+=EXAMPLE
+./mslogout
+=cut
 sub mslogout {
     my($self,@Data) = @_;
-	my $args = $self->check([],[@Data]);
+	my $args = $self->check([
+	],[@Data],"logout of the Model SEED environment");
 	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
 	$self->figmodel()->authenticate({
@@ -5323,16 +5374,20 @@ sub mslogout {
 		"You have switched from workspace \"".$oldws."\" to workspace \"public:".$self->figmodel()->ws()->id()."\"!\n";
 }
 
-=head2 SEQUENCE ANALYSIS METHODS
+=CATEGORY
+Sequence Analysis Operations
+=DESCRIPTION
+This function will blast one or more specified sequences against one or more specified genomes. Results will be printed in a file in the current workspace.
+=EXAMPLE
+./sqblastgenomes -sequences CCGAGACGGGGACGAG -genomes 83333.1
 =cut
-
-sub blastgenomesequences {
+sub sqblastgenomes {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["sequences",1],
-		["genomes",1],
-		["filename",1]
-	],[@Data]);
+		["sequences",1,undef,"A ',' delimited list of nucelotide sequences that should be blasted against the specified genome sequences. You may also provide the name of a file in the workspace where sequences have been listed. The file must have the '.lst' extension."],
+		["genomes",1,undef,"A ',' delimited list of the genome IDs that the input sequence should be blasted against. You may also provide the name of a file in the workspace where genome IDs have been listed. The file must have the '.lst' extension."],
+		["filename",0,"sqblastgenomes.out","The name of the file where the output from the blast should be saved."]
+	],[@Data],"blast sequences against genomes");
 	my $genomes = $self->figmodel()->processIDList({
 		objectType => "genome",
 		delimiter => ",",
@@ -5374,24 +5429,28 @@ sub blastgenomesequences {
     		push(@{$output},$line);
     	}
     }
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+	$self->figmodel()->database()->print_array_to_file($self->ws->directory().$args->{"filename"},$output);
 }
 
-=head2 MODEL FLUX BALANCE ANALYSIS FUNCTIONS
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function is used to test if a model grows under a specific media, Complete media is used as default. Users can set the specific media to test model growth and set parameters for the FBA run. The FBA problem can be managed via optional parameters to set the problem directory and save the linear problem associated with the FBA run.
+=EXAMPLE
+./bin/ModelDriver '''fbacheckgrowth''' '''-model''' iJR904
 =cut
-
 sub fbacheckgrowth {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-		["media",0,"Complete"],
-		["rxnKO",0,undef],
-		["geneKO",0,undef],
-		["drainRxn",0,undef],
-		["options",0,undef],
-		["fbajobdir",0,undef],
-		["savelp",0,0]
-	],[@Data]);
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
+	],[@Data],"tests if a model is growing under a specific media");
 	my $models = $self->figmodel()->processIDList({
 		objectType => "model",
 		delimiter => ",",
@@ -5432,27 +5491,74 @@ sub fbacheckgrowth {
 		$message .= $args->{model}." grew in ".$fbaStartParameters->{media}." media with rate:".$results->{growth}." gm biomass/gm CDW hr.\n"
 	} else {
 		$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n";
-		if (defined($results->{noGrowthCompounds}) && $results->{noGrowthCompounds} ne "NONE") {
-			$message .= $args->{model}." failed to grow in ".$fbaStartParameters->{media}." media.\n"
+		if (defined($results->{noGrowthCompounds}->[0])) {
+			$message .= "Biomass compounds ".join(",",@{$results->{noGrowthCompounds}})." could not be generated!\n";
 		}
 	}
 	return $message;
 }
 
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function is used to simulate the knockout of all combinations of one or more genes in a SEED metabolic model.
+=EXAMPLE
+./fbasingleko -model iJR904
+=cut
+sub fbasingleko {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["maxDeletions",0,1,"A number specifying the maximum number of simultaneous knockouts to be simulated. We donot recommend specifying more than 2."],
+		["savetodb",0,0,"A FLAG that indicates that results should be saved to the database if set to '1'."],
+		["filename",0,undef,"The filename to which the list of gene knockouts that resulted in reduced growth should be printed."]
+	],[@Data],"simulate knockout of all combinations of one or more genes");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!defined($args->{filename})) {
+    	$args->{filename} = $mdl->id()."-EssentialGenes.lst"; 
+    }
+    my $results = $mdl->fbaComboDeletions({
+	   	maxDeletions => $args->{maxDeletions},
+	   	fbaStartParameters => $fbaStartParameters,
+		saveKOResults=>$args->{savetodb},
+	});
+	if (!defined($results) || !defined($results->{essentialGenes})) {
+		return "Single gene knockout failed for ".$args->{model}." in ".$args->{media}." media.";
+	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$results->{essentialGenes});
+	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{"filename"}.".";
+}
+
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function performs FVA analysis, calculating minimal and maximal flux through the reactions (range of fluxes) consistent with maximal theoretical growth rate.
+=EXAMPLE
+./fbafva '''-model''' iJR904
+=cut
 sub fbafva {
     my($self,@Data) = @_;
     my $args = $self->check([
-		["model",1],
-		["media",0,"Complete"],
-		["rxnKO",0,undef],
-		["geneKO",0,undef],
-		["drainRxn",0,undef],
-		["options",0,"forcedGrowth"],
-		["variables",0,"FLUX;UPTAKE"],	
-		["savetodb",0,0],
-		["filename",0,"FBAFVA_model ID.xls"],
-		["saveformat",0,"EXCEL"],
-	],[@Data]);
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained."],
+		["variables",0,"FLUX;UPTAKE","A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]]."],	
+		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
+		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
+		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
+	],[@Data],"performs FVA (Flux Variability Analysis) studies");
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
@@ -5462,7 +5568,7 @@ sub fbafva {
     	$args->{filename} = undef; 
     }
    	if (!defined($fbaStartParameters->{options}->{forceGrowth})
-   		&& !defined($fbaStartParameters->{options}->{forceGrowth}) 
+   		&& !defined($fbaStartParameters->{options}->{nogrowth}) 
    		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
    		$fbaStartParameters->{options}->{forceGrowth} = 1;
    	}
@@ -5475,8 +5581,11 @@ sub fbafva {
 	if (!defined($results) || defined($results->{error})) {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
-	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->outputdirectory()."Reactions-".$args->{filename},["Reaction"],";","|");
-	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->outputdirectory()."Compounds-".$args->{filename},["Compound"],";","|");
+	if (!defined($args->{filename})) {
+		$args->{filename} = $mdl->id()."-fbafvaResults";
+	}
+	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
+	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
 	my $varAssoc = {
 		FLUX => "reaction",
 		DELTAG => "reaction",
@@ -5558,7 +5667,7 @@ sub fbafva {
 	#Saving data to file
 	if ($args->{saveformat} eq "EXCEL") {
 		$self->figmodel()->make_xls({
-			filename => $args->{directory}.$args->{filename},
+			filename => $self->ws()->directory().$args->{filename}.".xls",
 			sheetnames => ["Compound Bounds","Reaction Bounds"],
 			sheetdata => [$cpdtbl,$rxntbl]
 		});
@@ -5566,16 +5675,22 @@ sub fbafva {
 		$cpdtbl->save();
 		$rxntbl->save();
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->outputdirectory().$args->{filename}.".";
+	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".";
 }
 
-#Prints the specified media formulations in tabular form
-sub printmedia {
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used to print a media formulation to the current workspace.
+=EXAMPLE
+./bcprintmedia -media Carbon-D-glucose
+=cut
+sub bcprintmedia {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["media",1],
-		["filename",1]
-	],[@Data]);
+		["media",1,undef,"Name of the media formulation to be printed."],
+		["filename",0,undef,"Name of the file where the media formulation should be printed."]
+	],[@Data],"print Model SEED media formulation");
     my $mediaIDs = $self->figmodel()->processIDList({
 		objectType => "media",
 		delimiter => ",",
@@ -5583,6 +5698,9 @@ sub printmedia {
 		parameters => undef,
 		input => $args->{"media"}
 	});
+	if (!defined($args->{"filename"})) {
+		$args->{"filename"} = $args->{"media"}.".media";
+	}
 	my $mediaHash = $self->figmodel()->database()->get_object_hash({
 		type => "mediacpd",
 		attribute => "MEDIA",
@@ -5606,20 +5724,26 @@ sub printmedia {
 		}
 		push(@{$output},$line);
 	}
-	$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$args->{"filename"},$output);
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
 }
 
-#Prints the specified media formulations in tabular form
-sub createmedia {
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used to create or alter a media condition in the Model SEED database given either a list of compounds in the media or a file specifying the media compounds and minimum and maximum uptake rates.
+=EXAMPLE
+./bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
+=cut
+sub bcloadmedia {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1],
-		["filename",0,undef],
-		["compounds",0,undef],
-		["public",0,1],
-		["owner",0,($self->figmodel()->user())],
-		["overwrite",0,0]
-	],[@Data]);
+		["name",1,undef,"The name of the media formulation being created or altered."],
+		["filename",0,undef,"The full path and name to access a file specifying the media components. [[Example media file]]."],
+		["compounds",0,undef," As an alternative to specifying a filename, you can specify a ';' delimited list of the compound proposed to be present in the media. Either compound names or cpd##### ids must be supplied."],
+		["public",0,1,"Set directory in which FBA problem output files will be stored."],
+		["owner",0,($self->figmodel()->user()),"Login of the user account who will own this media condition."],
+		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
+	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
     if (defined($args->{compounds})) {
     	$args->{compounds} = $self->figmodel()->processIDList({
 			objectType => "compound",
@@ -5640,27 +5764,31 @@ sub createmedia {
 	print "Media successfully created!\n";
 }
 
-=head2 MODEL INTERFACE FUNCTIONS
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to add a minimal number of reactions to a model from the biochemistry database such that one or more inactive reactions is eliminated.
+=EXAMPLE
+./mdlautocomplete '''-model''' iJR904"
 =cut
-
 sub mdlautocomplete {
     my($self,@Data) = @_;
     my $args = $self->check([
-		["model",1],
-		["media",0,"Complete"],
-		["removegapfilling",0,1],
-		["inactivecoef",0,100],
-		["adddrains",0,0],
-		["iterative",0,1],
-		["testsolution",0,0],
-		["printdbmessage",0,0],
-		["coefficientfile",0,undef],
-		["rungapfilling",0,1],
-		["problemdirectory",0,undef],
-		["startfresh",0,1],
-		["usequeue",0,$self->config("Use queue")->[0]],
-		["queue",0,$self->config("Default queue")->[0]]
-	],[@Data]);
+		["model",1,undef,"The full Model SEED ID of the model to be gapfilled."],
+		["media",0,"Complete","The media condition the model will be gapfilled in."],
+		["removegapfilling",0,1,"All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'."],
+		["inactivecoef",0,100,"The coefficient on the inactive reactions in the gapfilling objective function."],
+		["adddrains",0,0,"Drain fluxes will be added for all intracellular metabolites and minimized if this flag is set to '1'."],
+		["iterative",0,1,"All inactive reactions in the model will be identified, and they will be iteratively gapfilled one at a time if this flag is set to '1'."],
+		["testsolution",0,0,"Set this FLAG to '1' in order to test the gapfilling solution to assess the reason for addition of each gapfilled solution."],
+		["printdbmessage",0,0,"Set this FLAG to '1' in order to print a message about gapfilling results to the database."],
+		["coefficientfile",0,undef,"Name of a flat file specifying coefficients for gapfilled reactions in objective function."],
+		["rungapfilling",0,1,"The gapfilling will not be run unless you set this flag to '1'."],
+		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
+		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
+		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue rather than run the job directly."],
+		["queue",0,$self->config("Default queue")->[0],"If this flag is set to '1', the gapfilling job will be queued rather than run."]
+	],[@Data],"adds reactions to the model to eliminate inactive reactions");
     #Getting model list
     my $models = $self->figmodel()->processIDList({
 		objectType => "model",
@@ -5712,33 +5840,47 @@ sub mdlautocomplete {
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This command uses the Model SEED pipeline to reconstruct an existing SEED model from scratch based on SEED genome annotations.
+=EXAMPLE
+./mdlreconstruction -model Seed83333.1
+=cut
 sub mdlreconstruction {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-		["gapfilling",0,0],
-		["checkpoint",0,1],
-		["usequeue",0,$self->config("Use queue")->[0]],
-		["queue",0,$self->config("Default queue")->[0]]
-	],[@Data]);
+		["model",1,undef,"The name of an existing model in the Model SEED database that should be reconstructed from scratch from genome annotations."],
+		["autocompletion",0,0,"Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete."],
+		["checkpoint",0,1,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
+		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in oder to use the job queue rather than running the entire job in the current process."],
+		["queue",0,$self->config("Default queue")->[0],"This is the name of the queue that the job should be submitted to."]
+	],[@Data],"run model reconstruction from genome annotations");
     my $mdl =  $self->figmodel()->get_model($args->{"model"});
     if (!defined($mdl)) {
     	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
     }
     $mdl->reconstruction({
     	checkpoint => $args->{"checkpoint"},
-		gapfilling => $args->{"gapfilling"},
+		gapfilling => $args->{"autocompletion"},
 		usequeue => $args->{"usequeue"},
 		queue => $args->{"queue"},
 	});
     return "Generated model from genome annotations";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function creates a model that includes all reactions in the current database. Such a model is useful to determine the capabilities of the current biochemistry database.
+=EXAMPLE
+./mdlmakedbmodel -model ModelSEED
+=cut
 sub mdlmakedbmodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-	],[@Data]);
+		["model",1,undef,"The name of the model that will contain all the database reactions."],
+	],[@Data],"construct a model with all database reactions");
     my $mdl =  $self->figmodel()->get_model($args->{"model"});
     if (!defined($mdl)) {
     	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
@@ -5747,39 +5889,53 @@ sub mdlmakedbmodel {
 	return "Set model reaction list to entire biochemistry database";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to provide rights to view or edit a model to another Model SEED user. Use this function to share a model.
+=EXAMPLE
+./mdladdright -model Seed83333.1.796 -user reviewer -right view
+=cut
 sub mdladdright {
 	my($self,@Data) = @_;
     my $args = $self->check([
-		["model",1],
-		["user",1],
-		["right",0,"view"]
-	],[@Data]);
+		["model",1,undef,"ID of the model for which rights should be added."],
+		["user",1,undef,"Login of the user account for which rights should be added."],
+		["right",0,"view","Type of right that should be added. Possibilities include 'view' and 'admin'."]
+	],[@Data],"add rights to a model to another user");
     my $mdl =  $self->figmodel()->get_model($args->{"model"});
     if (!defined($mdl)) {
     	ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
     }
     $mdl->changeRight({
-    	permission => "admin",
-		username => $Data[2],
+    	permission => $args->{right},
+		username => $args->{user},
 		force => 1
     });
 	return "Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!\n";	
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to create new models in the Model SEED database.
+=EXAMPLE
+./mdlcreatemodel -genome 83333.1
+=cut
 sub mdlcreatemodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["genome",1],
-		["id",0,undef],
-		["biomass",0,undef],
-		["owner",0,$self->figmodel()->user()],
-		["biochemSource",0,undef],
-		["reconstruction",0,0],
-		["gapfilling",0,0],
-		["overwrite",0,0],
-		["usequeue",0,$self->config("Use queue")->[0]],
-		["queue",0,$self->config("Default queue")->[0]]
-	],[@Data]);
+		["genome",1,undef,"A ',' delimited list of genomes for which new models should be created."],
+		["id",0,undef,"ID that the new model should have in the Model SEED database."],
+		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
+		["owner",0,$self->figmodel()->user(),"The login of the user account that should own the new model."],
+		["biochemSource",0,undef,"Path to an existing biochemistry provenance database that should be used for provenance in the new model."],
+		["reconstruction",0,0,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
+		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
+		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
+		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue to create many models at once."],
+		["queue",0,$self->config("Default queue")->[0],"The name of the job queue that jobs should be submitted to."]
+	],[@Data],"create new Model SEED models");
     my $output = $self->figmodel()->processIDList({
 		objectType => "genome",
 		delimiter => ",",
@@ -5795,7 +5951,7 @@ sub mdlcreatemodel {
 				biochemSource => $args->{"biochemSource"},
 				biomassReaction => $args->{"biomass"},
 				reconstruction => $args->{"reconstruction"},
-				gapfilling => $args->{"gapfilling"},
+				gapfilling => $args->{"autocompletion"},
 				overwrite => $args->{"overwrite"},
 				usequeue => $args->{"usequeue"},
 				queue => $args->{"queue"}
@@ -5815,7 +5971,7 @@ sub mdlcreatemodel {
 	    			"?".$args->{"owner"}.
 	    			"?".$args->{"biochemSource"}.
 	    			"?".$args->{"reconstruction"}.
-	    			"?".$args->{"gapfilling"}.
+	    			"?".$args->{"autocompletion"}.
 	    			"?".$args->{"overwrite"}.
 	    			"?".$args->{"usequeue"}.
 	    			"?".$args->{"queue"},
@@ -5826,13 +5982,21 @@ sub mdlcreatemodel {
 	}
     return $message;
 }
+
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Inspects that the specified model(s) are consistent with their associated biochemistry databases", and modifies the database if not.
+=EXAMPLE
+./mdlinspectstate -model iJR904
+=cut
 sub mdlinspectstate {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-		["usequeue",0,$self->config("Use queue")->[0]],
-		["queue",0,$self->config("Default queue")->[0]]
-	],[@Data]);
+		["model",1,undef,"A ',' delimited list of the models in the Model SEED that should be inspected."],
+		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue to inspect many models at once."],
+		["queue",0,$self->config("Default queue")->[0],"The name of the job queue that jobs should be submitted to."]
+	],[@Data],"inspect that model consistency with biochemistry database");
 	my $results = $self->figmodel()->processIDList({
 		objectType => "model",
 		delimiter => ",",
@@ -5861,13 +6025,20 @@ sub mdlinspectstate {
     return "SUCCESS";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Prints the specified model(s) in SBML format.
+=EXAMPLE
+./mdlprintsbml -model iJR904
+=cut
 sub mdlprintsbml {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-		["usequeue",0,$self->config("Use queue")->[0]],
-		["queue",0,$self->config("Default queue")->[0]]
-	],[@Data]);
+		["model",1,undef,"A ',' delimited list of the models in the Model SEED for which SBML files should be printed."],
+		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue to print SBML files for many models at once."],
+		["queue",0,$self->config("Default queue")->[0],"The name of the job queue that jobs should be submitted to."]
+	],[@Data],"prints model(s) in SBML format");
 	my $results = $self->figmodel()->processIDList({
 		objectType => "model",
 		delimiter => ",",
@@ -5901,13 +6072,24 @@ sub mdlprintsbml {
     return $message;
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This is a useful function for printing model data to simple flatfiles that may be easily altered to facilitate hand-curation of a model. The function accepts a model ID as input, and it creates two flat files for the specified model: 
+* a reaction table file that lists the id, directionality,
+* a biomass reaction file that lists the equation of the biomass reaction
+By default, the flatfiles are printed in the "Model-SEED-core/data/MSModelFiles/" directory, but you can specify where the files will be printed using the "filename" and "biomassFilename" input arguments.
+NOTE: currently this function is the only mechanism for moving models from the Central Model SEED database into a local Model SEED database. This will soon change.
+=EXAMPLE
+./mdlprintmodel -'''model''' "iJR904"
+=cut
 sub mdlprintmodel {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1],
-		["filename",0,undef],
-		["biomassFilename",0,undef]
-	],[@Data]);
+		["model",1,undef,"The full Model SEED ID of the model to be printed."],
+		["filename",0,undef,"The full path and name of the file where the model reaction table should be printed."],
+		["biomassFilename",0,undef,"The full path and name of the file where the biomass reaction should be printed."]
+	],[@Data],"prints a model to flatfile for alteration and reloading");
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
@@ -5927,21 +6109,56 @@ sub mdlprintmodel {
 	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
 		filename => $args->{biomassFilename}
 	});
-	print "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
+	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function prints a list of all genes included in the specified model to a file in the workspace.
+=EXAMPLE
+./mdlprintmodelgenes -model iJR904
+=cut
+sub mdlprintmodelgenes {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Name of the model for which the genes should be printed."],
+		["filename",0,undef,"Name of the file in the current workspace where the genes should be printed."]
+	],[@Data], "print all genes in model");
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
+	}
+	if (!defined($args->{filename})) {
+		$args->{filename} = $mdl->id()."-GeneList.lst";
+	}
+	my $ftrHash = $mdl->featureHash();
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{filename},[keys(%{$ftrHash})]);
+	return "Successfully printed genelist for ".$args->{model}." in ".$self->ws()->directory().$args->{filename}."!\n";
+}
+
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to load a model reaction table and biomass reaction back into a Model SEED database. At least the model base ID and genome ID must be provided. If no filenames are provided, the system assumes the files are located in the following locations:
+* Model reaction table: Model-SEED-core/data/MSModelFiles/''Model ID''.tbl [[Example model file]]
+* Biomass reaction file: Model-SEED-core/data/MSModelFiles/''Model Biomass reaction ID''.txt [[Example biomass file]]
+This function is designed to be used in conjunction with ''printmodelfiles'' to print model data to flatfiles, allow hand-curation of these flatfiles, and then load model data back into the Model SEED from these flatfiles.
+=EXAMPLE
+./mdlloadmodel -'''name''' "iJR904" -'''genome''' "83333.1"
+=cut
 sub mdlloadmodel {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1],
-    	["genome",1],
-    	["filename",0,undef],
-    	["biomassFile",0,undef],
-    	["owner",0,$self->figmodel()->user()],
-    	["provenance",0,undef],
-    	["overwrite",0,0],
-    	["public",0,0]
-	],[@Data]);
+		["name",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
+    	["genome",1,undef,"The SEED genome ID associated with the model to be loaded."],
+    	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
+    	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
+    	["owner",0,$self->figmodel()->user(),"The login name of the user that should own the loaded model"],
+    	["provenance",0,undef,"The full path to a model directory that contains a provenance database for the model to be imported. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
+    	["overwrite",0,0,"If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'."],
+    	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
+	],[@Data],"reload a model from a flatfile");
 	my $modelObj = $self->figmodel()->import_model_file({
 		baseid => $args->{"name"},
 		genome => $args->{"genome"},
@@ -5955,14 +6172,21 @@ sub mdlloadmodel {
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function creates (or alters) a biomass reaction in the Model SEED database given an input file or biomass ID that points to an input file.
+=EXAMPLE
+./mdlloadbiomass -'''biomass''' bio00001
+=cut
 sub mdlloadbiomass {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["biomass",1],
-    	["model",0,undef],
-    	["equation",0,undef],
-    	["overwrite",0,0]
-	],[@Data]);
+		["biomass",1,undef,"The ID (e.g. bio00001) or filename of the biomass reaction to be loaded. If only an ID is specified, either the '''equation''' argument must also be set, or the ''Biomass ID''.txt file must exist. [[Example biomass file]]"],
+    	["model",0,undef,"The name of the FBA model the biomass reaction will be added to."],
+    	["equation",0,undef,"The stoichiometric equation for the biomass reaction."],
+    	["overwrite",0,0,"If you are attempting to alter and existing biomass reaction, you MUST set this argument to '1'"]
+	],[@Data],"Loads a model biomass reaction into the database from a flatfile");
 	#Load the file if no equation was specified
 	if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
@@ -5996,16 +6220,23 @@ sub mdlloadbiomass {
 	return $msg;
 }
 
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Imports a models from other databases into the Model SEED environment.
+=EXAMPLE
+./mdlimportmodel -name iJR904 -genome 83333.1
+=cut
 sub mdlimportmodel {
     my($self,@Data) = @_;
     my $args = $self->check([
-    	["name",1],
-    	["genome",1],
-    	["owner",0,$self->figmodel()->user()],
-    	["path",0,undef],
-    	["overwrite",0,0],
-    	["biochemsource",0,undef]
-    ],[@Data]);
+    	["name",1,undef,"The ID in the Model SEED that the imported model should have, or the ID of the model to be overwritten by the imported model."],
+    	["genome",1,undef,"SEED ID of the genome the imported model should be associated with."],
+    	["owner",0,$self->figmodel()->user(),"Name of the user account that will own the imported model."],
+    	["path",0,undef,"The path where the compound and reaction files containing the model data to be imported are located."],
+    	["overwrite",0,0,"Set this FLAG to '1' to overwrite an existing model with the same name."],
+    	["biochemsource",0,undef,"The path to the directory where the biochemistry database that the model should be imported into is located."]
+    ],[@Data],"import a model into the Model SEED environment");
 	my $public = 0;
 	if ($args->{"owner"} eq "master") {
 		$public = 1;
@@ -6022,28 +6253,32 @@ sub mdlimportmodel {
 	return "SUCCESS";
 }
 
-=head2 UTILITY FUNCTIONS
+=CATEGORY
+Utility Functions
+=DESCRIPTION
+This function loads a table of numerical data from your workspace and determines how the data values are distributed into bins.
+=EXAMPLE
+./utilmatrixdist -matrix [[MyData.tbl]] -binsize 1
 =cut
-
-sub mathmatdist {
+sub utilmatrixdist {
     my($self,@Data) = @_;
     my $args = $self->check([
-		["matrixfile",1],
-		["binsize",0,1],
-		["startcol",0,1],
-		["endcol",0,undef],
-		["startrow",0,1],
-		["endrow",0,undef],
-		["delimiter",0,"\\t"]
-	],[@Data]);
+		["matrixfile",1,undef,"Filename of table with numerical data you want to calculate the distribution of. Unless a full path is specified, file is assumed to be located in the current workspace."],
+		["binsize",0,1,"Size of bins into which data should be distributed."],
+		["startcol",0,1,"Column of the input data table where the numerical data begins."],
+		["endcol",0,undef,"Column of the input data table where the numerical data ends.","Defaults to the number of columns in the input file."],
+		["startrow",0,1,"Row of the input data table where the numerical data begins."],
+		["endrow",0,undef,"Row of the input data table where the numerical data ends.","Defaults to the number of rows in the input file."],
+		["delimiter",0,"\\t","Delimiter used in the input data table."]
+	],[@Data],"binning numerical matrix data into a histogram");
     #Checking that file exists
-    if (!-e $self->outputdirectory().$args->{matrixfile}) {
-    	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find matrix file ".$self->outputdirectory().$args->{matrixfile}."!");
+    if (!-e $self->ws()->directory().$args->{matrixfile}) {
+    	ModelSEED::FIGMODEL::FIGMODELERROR("Could not find matrix file ".$self->ws()->directory().$args->{matrixfile}."!");
     }
     #Loading the file
     print "Loading...\n";
     my $distribData;
-    my $data = $self->figmodel()->database()->load_single_column_file($self->outputdirectory().$args->{matrixfile});
+    my $data = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{matrixfile});
     if (!defined($args->{endrow})) {
     	$args->{endrow} = @{$data};
     }
@@ -6144,8 +6379,8 @@ sub mathmatdist {
 	}
 	my $message = "";
 	foreach my $filename (keys(%{$fileData})) {
-		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
-		$message .= "Printed distributions to ".$self->outputdirectory().$filename."\n";
+		$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$filename,$fileData->{$filename});
+		$message .= "Printed distributions to ".$self->ws()->directory().$filename."\n";
 	}
 	return $message;
 }

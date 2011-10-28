@@ -775,7 +775,7 @@ sub ws {
 	if (!defined($self->{_workspace}->[0])) {
 		$self->loadWorkspace();
 	}
-	return $self->{"_workspace"}->[0];
+	return $self->{_workspace}->[0];
 }
 =head3 loadWorkspace
 Definition:
@@ -809,6 +809,7 @@ sub switchWorkspace {
 		copy => undef
 	});
 	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
+		figmodel => $self,
 		id => $args->{name},
 		owner => $self->user(),
 		clear => $args->{clear},
