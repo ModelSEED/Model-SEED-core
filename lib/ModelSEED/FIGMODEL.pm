@@ -1663,16 +1663,16 @@ sub clusterModels {
 	} while ($currentSize > 0);
 	$self->database()->print_array_to_file($args->{directory}."ModelClusters.txt",$output);
 }
-=head3 parseSBMLtoTable
+=head3 parseSBMLToTable
 Definition:
-	{} = FIGMODEL->parseSBMLtoTabTable({
+	{} = FIGMODEL->parseSBMLToTable({
 		directory => "",
 		file => "" 
 	});
 Description:
 	Translates SBML file to tab delimited table
 =cut
-sub parseSBMLtoTable {
+sub parseSBMLToTable {
     my ($self,$args) = @_;
     #Seaver 07/07/11
     #Processing file or directory
