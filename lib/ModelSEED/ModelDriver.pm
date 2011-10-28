@@ -6236,7 +6236,7 @@ sub mdlloadmodel {
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
 	],[@Data],"reload a model from a flatfile");
 	my $modelObj = $self->figmodel()->import_model_file({
-		baseid => $args->{"name"},
+		id => $args->{"name"},
 		genome => $args->{"genome"},
 		filename => $args->{"filename"},
 		biomassFile => $args->{"biomassFile"},
