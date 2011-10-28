@@ -5659,7 +5659,7 @@ sub fbafva {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
 	if (!defined($args->{filename})) {
-		$args->{filename} = $mdl->id()."-fbafvaResults";
+		$args->{filename} = $mdl->id()."-fbafvaResults-".$args->{media};
 	}
 	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
 	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
@@ -5752,7 +5752,7 @@ sub fbafva {
 		$cpdtbl->save();
 		$rxntbl->save();
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".";
+	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 }
 
 =CATEGORY
