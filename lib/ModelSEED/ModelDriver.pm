@@ -6304,9 +6304,9 @@ This function parses the input SBML file into compound and reaction tables neede
 sub mdlparsesbml {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["file",1]
+		["file",1,undef,"The name of the SBML file to be parsed. It is assumed the file is present in the workspace."]
 	],[@Data],"parsing SBML file into compound and reaction tables");
-	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	my $List = $self->figmodel()->parseSBMLtoTable({file => $self->ws()->directory().$args->{file}});
 	foreach my $table(keys %$List){
 		$List->{$table}->save();
 	}
