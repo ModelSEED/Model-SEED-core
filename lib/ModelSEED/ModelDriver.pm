@@ -6174,15 +6174,20 @@ sub mdlprintmodel {
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
 	}
-	if (!defined($args->{biomassFilename})) {
+
+	if($mdl->biomassReaction() ne "NONE"){
+	    if (!defined($args->{biomassFilename})){
 		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+	    }
+	    $self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+		filename => $args->{biomassFilename}
+	    });
 	}
+
 	$mdl->printModelFileForMFAToolkit({
 		filename => $args->{filename}
 	});
-	$self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
-		filename => $args->{biomassFilename}
-	});
+
 	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
