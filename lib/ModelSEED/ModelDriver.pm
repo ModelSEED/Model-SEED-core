@@ -5347,9 +5347,9 @@ Prints a list of all workspaces owned by the specified or currently logged user.
 sub mslistworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["user",0,$self->figmodel->user(),"The username for which workspaces should be printed."]
-	],[@Data],"list all workspaces for user");
-	my $list = $self->figmodel()->ws()->workspaceList({
+		["user",0,$self->figmodel->user()]
+	],[@Data]);
+	my $list = $self->figmodel()->listWorkspaces({
 		owner => $args->{user}
 	});
 	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
