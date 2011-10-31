@@ -818,7 +818,7 @@ sub switchWorkspace {
     # Updating local cache and current.txt file
     $self->{_workspace}->[0] = $ws;
     $self->database()->print_array_to_file(
-        $ws->root.$ws->user."current.txt", [$ws->id]);
+        $ws->root.$ws->owner."/current.txt", [$ws->id]);
 }
 
 =head3 listWorkspaces
