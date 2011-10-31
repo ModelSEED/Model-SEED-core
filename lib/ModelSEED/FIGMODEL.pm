@@ -3021,16 +3021,6 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			$mdl->figmodel()->database()->create_object("rxnmdl",{
-				MODEL => $id,
-				REACTION => $bofobj->id(),
-				pegs => join("|",@{$row->{"PEGS"}}),
-				compartment => "c",
-				directionality => "=>",
-				confidence => "1",
-				reference => join("|",@{$row->{"REFERENCE"}}),
-				notes => join("|",@{$row->{"NOTES"}})
-			});
 			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}

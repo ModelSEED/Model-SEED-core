@@ -6339,7 +6339,7 @@ sub mdlimportmodel {
 		$public = 1;
 	}
 	$self->figmodel()->import_model({
-		id => $args->{"name"},
+		baseid => $args->{"name"},
 		genome => $args->{"genome"},
 		owner => $args->{"owner"},
 		path => $args->{"path"},
