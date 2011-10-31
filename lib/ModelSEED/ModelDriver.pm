@@ -5376,13 +5376,16 @@ sub mslogin {
 	}
 	#If local account was not found, attempting to import account from the SEED
 	if (!defined($usrObj) && $args->{noimport} == 0) {
+        print "Unable to find account locally, trying to obtain login info from theseed.org...\n";
 		$usrObj = $self->figmodel()->import_seed_account({
 			username => $args->{username},
 			password => $args->{password}
 		});
 		if (!defined($usrObj)) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment.".
+                "Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
 		}
+        print "Success! Downloaded user credentials from theseed.org!\n";
 	}
 	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
@@ -5432,7 +5435,7 @@ sub mslogout {
 		username => "public",
 		password => "public"
 	});
-	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+	if (!defined($self->figmodel()->userObj())) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Logout failed! No public account is available!");
 	}
 	$self->figmodel()->loadWorkspace();

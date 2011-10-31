@@ -501,7 +501,7 @@ sub config {
 Definition:
 	{key=>value} = FBAMODEL->process_arguments( {key=>value} );
 Description:
-	Processes arguments to authenticate users and perform other needed tasks
+	Processes arguments with configurable parameters
 =cut
 sub process_arguments {
 	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
@@ -519,9 +519,6 @@ sub process_arguments {
 				$args->{$argument} = $optionalArguments->{$argument};
 			}
 		}	
-	}
-	if (defined($args->{cgi}) || ((defined($args->{user}) || defined($args->{username})) && defined($args->{password}))) {
-		$self->authenticate($args);
 	}
 	return $args;
 }
