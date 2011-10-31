@@ -6177,11 +6177,12 @@ sub mdlprintmodel {
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->figmodel()->ws()->directory().$args->{model}.".mdl";
 	}
-	if($mdl->biomassReaction() ne "NONE"){
+    my $biomass = $mdl->biomassReaction();
+	if( defined($biomass) && $biomass ne "NONE"){
 	    if (!defined($args->{biomassFilename})){
-			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$mdl->biomassReaction().".bof";
+			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$biomass.".bof";
 	    }
-	    $self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+	    $self->figmodel()->get_reaction($biomass)->print_file_from_ppo({
 			filename => $args->{biomassFilename}
 	    });
 	}
