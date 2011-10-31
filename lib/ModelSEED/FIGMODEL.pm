@@ -118,11 +118,14 @@ sub new {
 	if (defined($userObj)) {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
-		if (!defined($username) && defined($ENV{"FIGMODEL_USER"}) && defined($ENV{"FIGMODEL_PASSWORD"})) {
+		if (!defined($username) &&
+            defined($ENV{"FIGMODEL_USER"}) &&
+            defined($ENV{"FIGMODEL_PASSWORD"})) {
 			$username = $ENV{"FIGMODEL_USER"};
 			$password = $ENV{"FIGMODEL_PASSWORD"};
 		}
-		if (defined($username) && defined($password)) {
+		if (defined($username) && length($username) > 0 &&
+            defined($password) && length($password) > 0) {
 			$self->authenticate_user($username,$password);
 		}
 	}
