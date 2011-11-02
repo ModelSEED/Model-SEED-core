@@ -303,14 +303,14 @@ sub getRastGenomeData {
 		$self->error_message("Could not load feature table for rast genome:".$output->{error});
 		return undef;
 	}
-	$output->{features}->{_source} = $output->{source};
-	$output->{features}->{_owner} = $output->{owner};
-	$output->{features}->{_name} = $output->{name};
-	$output->{features}->{_taxonomy} = $output->{taxonomy};
-	$output->{features}->{_size} = $output->{size};
-	$output->{features}->{_active_subsystems} = $output->{activeSubsystems};
+	$self->{_features}->{_source} = $output->{source};
+	$self->{_features}->{_owner} = $output->{owner};
+	$self->{_features}->{_name} = $output->{name};
+	$self->{_features}->{_taxonomy} = $output->{taxonomy};
+	$self->{_features}->{_size} = $output->{size};
+	$self->{_features}->{_active_subsystems} = $output->{activeSubsystems};
 	$self->{_active_subsystems} = $output->{activeSubsystems};
-	$output->{features}->{_gc} = $output->{gc};
+	$self->{_features}->{_gc} = $output->{gc};
 	$self->{_features} = $output->{features};
 	return $output;
 }

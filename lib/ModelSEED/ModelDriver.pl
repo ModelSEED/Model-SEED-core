@@ -11,6 +11,7 @@ use strict;
 use ModelSEED::ModelDriver;
 use Try::Tiny;
 use File::Temp;
+use Cwd;
 
 $|=1;
 #First checking to see if at least one argument has been provided
@@ -42,7 +43,6 @@ for (my $i=0; $i < @ARGV; $i++) {
     $ARGV[$i] =~ s/___/ /g;
     $ARGV[$i] =~ s/\.\.\./(/g;
     $ARGV[$i] =~ s/,,,/)/g;
-    print "\nProcessing argument: ".$ARGV[$i]."\n";
     if ($ARGV[$i] =~ m/^finish\?(.+)/) {
         $driv->{_finishedfile} = $1;
     } elsif ($ARGV[$i] =~ m/\^finish$/ && defined($ARGV[$i+1])) {
@@ -57,6 +57,7 @@ for (my $i=0; $i < @ARGV; $i++) {
         #Splitting argument
         my @Data = split(/\?/,$ARGV[$i]);
         my $FunctionName = $Data[0];
+        $FunctionName =~ s/\-//g;
 		if (@Data == 1) {
 			if (defined($ARGV[$i+1]) && $ARGV[$i+1] =~ m/\?/) {
 				push(@Data,split(/\?/,$ARGV[$i+1]));
@@ -90,6 +91,7 @@ for (my $i=0; $i < @ARGV; $i++) {
         };
     }
 }
+
 #Printing the finish file if specified
 $driv->finish($Status);
 
@@ -99,6 +101,20 @@ sub printErrorLog {
     if($errorMessage =~ /^\"\"(.*)\"\"/) {
         $actualMessage = $1;
     }
+    {
+        # Pad error message with four spaces
+        $errorMessage =~ s/\n/\n    /g;
+        $errorMessage = "    ".$errorMessage; 
+    }
+    my $gitSha = "";
+    {
+        my $cwd = Cwd::getcwd();
+        chdir $ENV{'MODEL_SEED_CORE'};
+        $gitSha = `git show-ref --hash HEAD`;
+        chdir $cwd;
+    }
+    
+    chomp $gitSha;
     my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
@@ -106,6 +122,8 @@ sub printErrorLog {
 > ModelDriver encountered an unrecoverable error:
 
 $errorMessage
+
+> Model-SEED-core revision: $gitSha
 MSG
     my $viewerMessage = <<MSG;
 Whoops! We encountered an unrecoverable error.
@@ -131,5 +149,6 @@ Thanks!
 MSG
     print $viewerMessage;
 }
+
 
 1;

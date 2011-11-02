@@ -321,7 +321,7 @@ void MakeDirectory(const char* InFilename) {
 		findandreplace(Filename,One,Two);
 	}
 	strout << "mkdir " << Filename;
-	cout << strout.str() << endl;
+	//cout << strout.str() << endl;
 	system(strout.str().data());
 }
 

@@ -118,18 +118,21 @@ sub usage {
 		$self->$function();
 		return undef;
 	}
-	my $output = "Usage:".$function;
-	for (my $i=0; $i < @{$array}; $i++) {
-		$output .= "?".$array->[$i]->[0];
+	my $output = $function." function usage:\n./".$function." ";
+ 	for (my $i=0; $i < @{$array}; $i++) {
+		if ($i > 0) {
+			$output .= "?";
+		}
+		$output .= $array->[$i]->[0];
 		if ($array->[$i]->[1] == 0) {
 			if (!defined($array->[$i]->[2])) {
 				$output .= "(undef)";
 			} else {
 				$output .= "(".$array->[$i]->[2].")";
 			}
-		}
-	}
-	$output .= "\n";
+ 		}
+ 	}
+ 	$output .= "\n";
 	return $output;
 }
 =head3 finish
@@ -5344,9 +5347,9 @@ Prints a list of all workspaces owned by the specified or currently logged user.
 sub mslistworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["user",0,$self->figmodel->user(),"The username for which workspaces should be printed."]
-	],[@Data],"list all workspaces for user");
-	my $list = $self->figmodel()->ws()->workspaceList({
+		["user",0,$self->figmodel->user()]
+	],[@Data]);
+	my $list = $self->figmodel()->listWorkspaces({
 		owner => $args->{user}
 	});
 	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
@@ -5373,13 +5376,16 @@ sub mslogin {
 	}
 	#If local account was not found, attempting to import account from the SEED
 	if (!defined($usrObj) && $args->{noimport} == 0) {
+        print "Unable to find account locally, trying to obtain login info from theseed.org...\n";
 		$usrObj = $self->figmodel()->import_seed_account({
 			username => $args->{username},
 			password => $args->{password}
 		});
 		if (!defined($usrObj)) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
+			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find specified user account in the local or SEED environment.".
+                "Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
 		}
+        print "Success! Downloaded user credentials from theseed.org!\n";
 	}
 	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
@@ -5429,7 +5435,7 @@ sub mslogout {
 		username => "public",
 		password => "public"
 	});
-	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+	if (!defined($self->figmodel()->userObj())) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Logout failed! No public account is available!");
 	}
 	$self->figmodel()->loadWorkspace();
@@ -5521,7 +5527,7 @@ sub fbacheckgrowth {
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
-		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
 		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
 	],[@Data],"tests if a model is growing under a specific media");
@@ -5656,7 +5662,7 @@ sub fbafva {
 		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
 	}
 	if (!defined($args->{filename})) {
-		$args->{filename} = $mdl->id()."-fbafvaResults";
+		$args->{filename} = $mdl->id()."-fbafvaResults-".$args->{media};
 	}
 	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
 	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
@@ -5739,17 +5745,20 @@ sub fbafva {
 		}
 	}
 	#Saving data to file
+        my $result = "Unrecognized format: $args->{saveformat}";
 	if ($args->{saveformat} eq "EXCEL") {
 		$self->figmodel()->make_xls({
 			filename => $self->ws()->directory().$args->{filename}.".xls",
 			sheetnames => ["Compound Bounds","Reaction Bounds"],
 			sheetdata => [$cpdtbl,$rxntbl]
 		});
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".xls";
 	} elsif ($args->{saveformat} eq "TEXT") {
 		$cpdtbl->save();
 		$rxntbl->save();
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".";
+        return $result;
 }
 
 =CATEGORY
@@ -5926,7 +5935,7 @@ sub mdlreconstruction {
 	my $args = $self->check([
 		["model",1,undef,"The name of an existing model in the Model SEED database that should be reconstructed from scratch from genome annotations."],
 		["autocompletion",0,0,"Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete."],
-		["checkpoint",0,1,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
+		["checkpoint",0,0,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
 		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in oder to use the job queue rather than running the entire job in the current process."],
 		["queue",0,$self->config("Default queue")->[0],"This is the name of the queue that the job should be submitted to."]
 	],[@Data],"run model reconstruction from genome annotations");
@@ -5936,7 +5945,7 @@ sub mdlreconstruction {
     }
     $mdl->reconstruction({
     	checkpoint => $args->{"checkpoint"},
-		gapfilling => $args->{"autocompletion"},
+		autocompletion => $args->{"autocompletion"},
 		usequeue => $args->{"usequeue"},
 		queue => $args->{"queue"},
 	});
@@ -6004,7 +6013,7 @@ sub mdlcreatemodel {
 		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
 		["owner",0,$self->figmodel()->user(),"The login of the user account that should own the new model."],
 		["biochemSource",0,undef,"Path to an existing biochemistry provenance database that should be used for provenance in the new model."],
-		["reconstruction",0,0,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
+		["reconstruction",0,1,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
 		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
 		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
 		["usequeue",0,$self->config("Use queue")->[0],"Set this FLAG to '1' in order to use the job queue to create many models at once."],
@@ -6168,26 +6177,21 @@ sub mdlprintmodel {
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
 	}
-	if (!-d $self->figmodel()->config("model file load directory")->[0]) {
-		File::Path::mkpath $self->figmodel()->config("model file load directory")->[0];
-	}
 	if (!defined($args->{filename})) {
-		$args->{filename} = $self->figmodel()->config("model file load directory")->[0].$args->{model}.".tbl";
+		$args->{filename} = $self->figmodel()->ws()->directory().$args->{model}.".mdl";
 	}
-
-	if($mdl->biomassReaction() ne "NONE"){
+    my $biomass = $mdl->biomassReaction();
+	if( defined($biomass) && $biomass ne "NONE"){
 	    if (!defined($args->{biomassFilename})){
-		$args->{biomassFilename} = $self->figmodel()->config("model file load directory")->[0].$mdl->biomassReaction().".txt";
+			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$biomass.".bof";
 	    }
-	    $self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
-		filename => $args->{biomassFilename}
+	    $self->figmodel()->get_reaction($biomass)->print_file_from_ppo({
+			filename => $args->{biomassFilename}
 	    });
 	}
-
 	$mdl->printModelFileForMFAToolkit({
 		filename => $args->{filename}
 	});
-
 	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
@@ -6203,7 +6207,7 @@ sub mdlprintmodelgenes {
 	my $args = $self->check([
 		["model",1,undef,"Name of the model for which the genes should be printed."],
 		["filename",0,undef,"Name of the file in the current workspace where the genes should be printed."]
-	],[@Data], "print all genes in model");
+	],[@Data],"print all genes in model");
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	if (!defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Model not valid ".$args->{model});
@@ -6239,7 +6243,7 @@ sub mdlloadmodel {
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
 	],[@Data],"reload a model from a flatfile");
 	my $modelObj = $self->figmodel()->import_model_file({
-		baseid => $args->{"name"},
+		id => $args->{"name"},
 		genome => $args->{"genome"},
 		filename => $args->{"filename"},
 		biomassFile => $args->{"biomassFile"},
@@ -6270,7 +6274,7 @@ sub mdlloadbiomass {
 	if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
 		if ($args->{biomass} =~ m/^bio\d+$/) {
-			$args->{biomass} = $self->figmodel()->config("model file load directory")->[0].$args->{biomass}.".txt";
+			$args->{biomass} = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
 		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
@@ -6300,7 +6304,7 @@ sub mdlloadbiomass {
 }
 
 =CATEGORY
-Workspace Operations
+Metabolic Model Operations
 =DESCRIPTION
 This function parses the input SBML file into compound and reaction tables needed for import into the Model SEED.
 =EXAMPLE

@@ -8,6 +8,7 @@
 # Date of module creation: 2/1/2008
 ########################################################################
 use strict;
+use JSON::Any;
 use ModelSEED::FIGMODEL::FIGMODELTableRow;
 package ModelSEED::FIGMODEL::FIGMODELTable;
 
@@ -1306,6 +1307,16 @@ sub create_object {
 sub create {
     my ($self, $hash) = @_;
     $self->create_object($hash);
+}
+
+sub rows_to_json {
+    my ($self) = @_;
+    my $j = JSON::Any->new;
+    my $obj = [];
+    for(my $i=0; $i<$self->size(); $i++) {
+        $obj->[$i] = $self->get_row($i);
+    }
+    return $j->to_json($obj); 
 }
 
 1;

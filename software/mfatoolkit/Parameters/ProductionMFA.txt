@@ -70,14 +70,14 @@ CPLEX solver time limit|86400|1|MFA parameters
 Mass balance constraints|1|This binary parameter indicates whether or not mass-balance constraints should be used.|MFA parameters
 Thermodynamic constraints|0|This binary parameter indicates whether or not thermodynamic constraints should be used. Using thermodynamic constraints automatically turns on use variables. |MFA parameters
 Make all reactions reversible in MFA|0|This sets every reaction in the model to reversible for the MFA. This should only be done with thermodynamic constraints turned ON.|MFA parameters
-Account for error in delta G|1|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters
+Account for error in delta G|0|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters
 Max deltaG error|DEFAULT|"Indicates the maximum value the error in each reaction delta G can take. If you want to use the uncertainty in the reaction delta G, set this parameter to DEFAULT."|MFA parameters
 include error use variables|0|Set to one to introduce binary use variables for the reaction error. These variables allow you to minimize the number of reactions with error.|MFA parameters
 minimize deltaG error|0|0|MFA parameters
 simple thermo constraints|0|0|MFA parameters
 Add lumped reactions|0|This binary parameter indicates whether or not lumped reactions should be loaded and utilized from a separate file. Lumped reactions are utilized when a portion of the deltaGs in the metabolic network are unknown.|MFA parameters
-write LP file|1|0|MFA parameters
-write variable key|1|0|MFA parameters
+write LP file|0|0|MFA parameters
+write variable key|0|0|MFA parameters
 Reactions to knockout|none|0|MFA parameters
 Genes to knockout|none|0|MFA parameters
 Perform solution reconciliation|0|0|MFA parameters

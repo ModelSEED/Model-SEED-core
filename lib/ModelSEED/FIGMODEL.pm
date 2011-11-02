@@ -118,11 +118,14 @@ sub new {
 	if (defined($userObj)) {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
-		if (!defined($username) && defined($ENV{"FIGMODEL_USER"}) && defined($ENV{"FIGMODEL_PASSWORD"})) {
+		if (!defined($username) &&
+            defined($ENV{"FIGMODEL_USER"}) &&
+            defined($ENV{"FIGMODEL_PASSWORD"})) {
 			$username = $ENV{"FIGMODEL_USER"};
 			$password = $ENV{"FIGMODEL_PASSWORD"};
 		}
-		if (defined($username) && defined($password)) {
+		if (defined($username) && length($username) > 0 &&
+            defined($password) && length($password) > 0) {
 			$self->authenticate_user($username,$password);
 		}
 	}
@@ -498,7 +501,7 @@ sub config {
 Definition:
 	{key=>value} = FBAMODEL->process_arguments( {key=>value} );
 Description:
-	Processes arguments to authenticate users and perform other needed tasks
+	Processes arguments with configurable parameters
 =cut
 sub process_arguments {
 	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
@@ -516,9 +519,6 @@ sub process_arguments {
 				$args->{$argument} = $optionalArguments->{$argument};
 			}
 		}	
-	}
-	if (defined($args->{cgi}) || ((defined($args->{user}) || defined($args->{username})) && defined($args->{password}))) {
-		$self->authenticate($args);
 	}
 	return $args;
 }
@@ -785,16 +785,16 @@ Description:
 =cut
 sub loadWorkspace {
 	my ($self) = @_;
-	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
-		figmodel => $self,
+	$self->{_workspace} = [ ModelSEED::FIGMODEL::workspace->new({
+        root => $self->config("Workspace directory")->[0],
 		owner => $self->user(),
 		clear => 0,
 		copy => undef
-	});
+	})];
 }
 =head3 switchWorkspace
 Definition:
-	FIGMODELweb = FIGMODEL->switchWorkspace({
+    FIGMODEL->switchWorkspace({
 		name => string:new workspace name
 		copy => string:name of an existing workspace to replicate
 		clear => 0/1:clears the workspace directory before using it
@@ -808,15 +808,56 @@ sub switchWorkspace {
 		clear => 0,
 		copy => undef
 	});
-	$self->{_workspace}->[0] = ModelSEED::FIGMODEL::workspace->new({
-		figmodel => $self,
+	my $ws = ModelSEED::FIGMODEL::workspace->new({
+        root => $self->config("Workspace directory")->[0],
 		id => $args->{name},
 		owner => $self->user(),
 		clear => $args->{clear},
 		copy => $args->{copy}
 	});
-	$self->{_workspace}->[0]->setAsCurrentWorkspace();
+    # Updating local cache and current.txt file
+    $self->{_workspace}->[0] = $ws;
+    $self->database()->print_array_to_file(
+        $ws->root.$ws->owner."/current.txt", [$ws->id]);
 }
+
+=head3 listWorkspaces
+Definition:
+    string = FIGMODEL->listWorkspaces({
+        owner => username
+    });
+Description:
+    Return a list of all workspaces owned by username.
+    Default username is currently logged in user.
+    
+=cut
+sub listWorkspaces {
+    my ($self,$args) = @_;
+    $self->process_arguments($args,[],{
+        owner => $self->user()
+    },0);
+    my $owners = [$args->{owner}];
+    if ($args->{owner} eq "ALL") {
+        $owners = [glob($self->config("Workspace directory")->[0]."*")];
+        for (my $i=0; $i < @{$owners}; $i++) {
+            if ($owners->[$i] =~ m/\/([^\/]+)$/) {
+                $owners->[$i] = $1;
+            }
+        }
+    }
+    my $list;
+    for (my $i=0; $i < @{$owners};$i++) {
+        my $tempList = [glob($self->config("Workspace directory")->[0].$owners->[$i]."/*")];
+        for (my $j=0; $j < @{$tempList}; $j++) {
+            if ($tempList->[$j] !~ m/current\.txt$/ && $tempList->[$j] =~ m/\/([^\/]+)$/) {
+                push(@{$list},$owners->[$i].".".$1);
+            }
+        }
+    }
+    return $list;
+}
+
+
 =head3 mapping
 Definition:
 	FIGMODELmapping = FIGMODEL->mapping();
@@ -911,12 +952,12 @@ sub authenticate {
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			return $self->error_message("No user account found with name: ".$args->{username}."!");
+			ModelSEED::FIGMODEL::FIGMODELERROR("No user account found with name: ".$args->{username}."!");
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
 		} else {
-			return $self->error_message("Input password does not match user account!");	
+			ModelSEED::FIGMODEL::FIGMODELERROR("Input password does not match user account!");
 		}
 	}
 	return undef;
@@ -1622,9 +1663,9 @@ sub clusterModels {
 	} while ($currentSize > 0);
 	$self->database()->print_array_to_file($args->{directory}."ModelClusters.txt",$output);
 }
-=head3 parseSBMLtoTable
+=head3 parseSBMLToTable
 Definition:
-	{} = FIGMODEL->parseSBMLtoTabTable({
+	{} = FIGMODEL->parseSBMLToTable({
 		directory => "",
 		file => "" 
 	});
@@ -2579,7 +2620,7 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["baseid","genome"],{
+	$args = $self->process_arguments($args,["id","genome"],{
 		filename => undef,
 		biomassFile => undef,
 		owner => $args->{"owner"},
@@ -2587,21 +2628,29 @@ sub import_model_file {
 		overwrite => $args->{"overwrite"},
 		provenance => $args->{"provenance"}
 	});
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
+	}
+	if (!-e $args->{filename}) {
+		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");		
+	}
 	#Calculating the full ID of the model
-	my $id = $args->{baseid};
-	my $suffix = "";
+	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
+		$args->{id} = $1;
+	} elsif ($args->{id} =~ m/^(.+)\.(\d+)$/) {
+		$args->{id} = $1;
+	}
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
 		ModelSEED::FIGMODEL::FIGMODELERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
-		$suffix = ".".$usr->_id();
-		$id .= ".".$usr->_id();
+		$args->{id} .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
-	my $modelObj = $self->database()->sudo_get_object("model",{id => $id});
+	my $modelObj = $self->database()->sudo_get_object("model",{id => $args->{id}});
 	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
-			id => $id,
+			id => $args->{id},
 			owner => $args->{owner},
 			genome => $args->{genome},
 			gapfilling => 0,
@@ -2610,33 +2659,23 @@ sub import_model_file {
 		});
 		$modelObj = $mdl->ppo();
 	} elsif ($args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL::FIGMODELERROR($id." already exists and overwrite request was not provided. Import halted.".$args->{owner});
+		ModelSEED::FIGMODEL::FIGMODELERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
 			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter model object");
 		}
 	}
-	$mdl = $self->get_model($id);
+	$mdl = $self->get_model($args->{id});
 	if (!-defined($mdl)) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not load/create model ".$mdl."!");
 	}
 	#Clearing current model data in the database
-	if (defined($id) && length($id) > 0 && defined($mdl)) {
-		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
+	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
+		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
-	}
-	#Loading model rxnmdl table
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".tbl";
-		if (!-e $args->{filename}) {
-			$args->{filename} = $self->config("model file load directory")->[0].$mdl->id().".txt";
-		}
-	}
-	if (!-e $args->{filename}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");
 	}
 	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
 	my $biomassID;
@@ -2647,13 +2686,13 @@ sub import_model_file {
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
-			MODEL => $id,
+			MODEL => $args->{id},
 			compartment => $row->{COMPARTMENT}->[0]
 		});
 		if (!defined($rxnObj)) {
 			$self->database()->create_object("rxnmdl",{
 				REACTION => $row->{LOAD}->[0],
-				MODEL => $id,
+				MODEL => $args->{id},
 				directionality => $row->{DIRECTIONALITY}->[0],
 				compartment => $row->{COMPARTMENT}->[0],
 				pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
@@ -2670,7 +2709,7 @@ sub import_model_file {
 	}
 	#Loading biomass reaction file
 	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->config("model file load directory")->[0].$biomassID.".txt";
+		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
 		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
@@ -2978,16 +3017,6 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			$mdl->figmodel()->database()->create_object("rxnmdl",{
-				MODEL => $id,
-				REACTION => $bofobj->id(),
-				pegs => join("|",@{$row->{"PEGS"}}),
-				compartment => "c",
-				directionality => "=>",
-				confidence => "1",
-				reference => join("|",@{$row->{"REFERENCE"}}),
-				notes => join("|",@{$row->{"NOTES"}})
-			});
 			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}
