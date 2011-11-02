@@ -1395,7 +1395,7 @@ sub create_model_class_tables {
 				} elsif ($class->[$j] eq "positive" || $class->[$j] eq "negative" || $class->[$j] eq "variable") {
 					$bounds = [split(/:/,$boundArray->[$k])];
 				}
-				if ($varArray->[$k] =~ m/rxn\d+/) {
+				if ($varArray->[$k] =~ m/rxn\d+/ || $varArray->[$k] =~ m/bio\d+/) {
 					$rxnTable->add_row({
 						"REACTION" => [$varArray->[$k]],
 						"MEDIA" => [$objs->[$i]->MEDIA()],
