@@ -5745,17 +5745,20 @@ sub fbafva {
 		}
 	}
 	#Saving data to file
+        my $result = "Unrecognized format: $args->{saveformat}";
 	if ($args->{saveformat} eq "EXCEL") {
 		$self->figmodel()->make_xls({
 			filename => $self->ws()->directory().$args->{filename}.".xls",
 			sheetnames => ["Compound Bounds","Reaction Bounds"],
 			sheetdata => [$cpdtbl,$rxntbl]
 		});
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".xls";
 	} elsif ($args->{saveformat} eq "TEXT") {
 		$cpdtbl->save();
 		$rxntbl->save();
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
+        return $result;
 }
 
 =CATEGORY
