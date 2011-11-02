@@ -217,6 +217,7 @@ BOOTSTRAP
     print $fh $bootstrap;
     close($fh);
     my $source_script = "#!/bin/sh\n";
+    push(@$perl5Libs, "$directoryRoot/config");
     foreach my $lib (@$perl5Libs) {
         $source_script .= 'PERL5LIB=${PERL5LIB}'.$delim."$lib;\n";
     }
