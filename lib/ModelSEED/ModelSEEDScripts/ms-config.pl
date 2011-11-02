@@ -393,6 +393,13 @@ SCRIPT
 	    }
     }
 }
+#Create database if none exists
+if(lc($Config->{Database}->{type}) eq 'sqlite' &&
+    !-f $Config->{Database}->{filename} ) {
+    system("perl $directoryRoot/lib/ModelSEED/ModelSEEDScripts/ms-install-database".
+        "--dataDir ". $Config->{Options}->{dataDirectory} .
+        "--type sqlite --filename ".$Config->{Database}->{filename} ); 
+}
 #Creating public useraccount
 {	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
