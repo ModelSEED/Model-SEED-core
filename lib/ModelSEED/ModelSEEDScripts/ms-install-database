@@ -4,27 +4,27 @@ use warnings;
 use File::Temp qw(tempfile);
 use Getopt::Long;
 
-my ($type, $filename, $host, $user, $password, $socket, $port);
+my ($data, $type, $filename, $host, $user, $password, $socket, $port);
 my $args = GetOptions(
-    "dataDir=s" => $data,
-    "type=s" => $type,
-    "filename=s" => $filename,
-    "host=s" => $host,
-    "user=s" => $user,
-    "password=s" => $password,
-    "socket=s" => $socket,
-    "port=s" => $port,
+    "dataDir=s" => \$data,
+    "type=s" => \$type,
+    "filename=s" => \$filename,
+    "host=s" => \$host,
+    "user=s" => \$user,
+    "password=s" => \$password,
+    "socket=s" => \$socket,
+    "port=s" => \$port,
 );
 $data =~ s/\/$//;
 
 print "Downloading standard datasets to /data\n";
-my ($fh, $tmp) = tmpfile();
+my ($fh, $tmp) = tempfile();
 system("curl http://bioseed.mcs.anl.gov/~chenry/data.tgz > $tmp");
 system("tar -xzf $tmp -C $data");
 # Download the database
 if(lc($type) eq 'sqlite') {
-    print "Downloading biochemistry database to $filename\n"
-    my ($fh, $tmp) = tmpfile();
+    print "Downloading biochemistry database to $filename\n";
+    my ($fh, $tmp) = tempfile();
     system("curl http://bioseed.mcs.anl.gov/~devoid/ModelDB-sqlite.tgz > $tmp");
     system("tar -xzf $tmp -C $data");
     print "Loading database into sqlite at $data/ModelDB/ModelDB.db\n";

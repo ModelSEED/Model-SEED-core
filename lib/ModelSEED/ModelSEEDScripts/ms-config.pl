@@ -396,9 +396,11 @@ SCRIPT
 #Create database if none exists
 if(lc($Config->{Database}->{type}) eq 'sqlite' &&
     !-f $Config->{Database}->{filename} ) {
-    system("perl $directoryRoot/lib/ModelSEED/ModelSEEDScripts/ms-install-database".
-        "--dataDir ". $Config->{Options}->{dataDirectory} .
-        "--type sqlite --filename ".$Config->{Database}->{filename} ); 
+    my $cmd = "perl $directoryRoot/lib/ModelSEED/ModelSEEDScripts/ms-install-database" .
+        " --dataDir ". $Config->{Optional}->{dataDirectory} .
+        " --type sqlite --filename ".$Config->{Database}->{filename}; 
+    print $cmd;
+    system($cmd);
 }
 #Creating public useraccount
 {	
