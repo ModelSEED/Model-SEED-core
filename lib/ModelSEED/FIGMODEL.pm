@@ -2770,15 +2770,15 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	}
+	}else{
+	    $mdl = $self->get_model($id);
 
-        $mdl = $self->get_model($id);
-
-	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-	    print "Overwriting provenance\n";
-	    $mdl->GenerateModelProvenance({
-		biochemSource => $args->{biochemSource}
-					  });
+	    if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
+		print "Overwriting provenance\n";
+		$mdl->GenerateModelProvenance({
+		    biochemSource => $args->{biochemSource}
+					      });
+	    }
 	}
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
