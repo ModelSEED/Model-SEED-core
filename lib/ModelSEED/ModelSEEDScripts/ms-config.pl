@@ -137,6 +137,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     # Creating config/ModelSEEDbootstrap.pm
     # and bin/source-me.sh
     my $perl5Libs = [
+        "$directoryRoot/local/lib/perl5",
         "$directoryRoot/lib/PPO",
         "$directoryRoot/lib/myRAST",
         "$directoryRoot/lib/FigKernelPackages",
