@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More qw(no_plan);
+use Test::More plan => 8;
 # unit tests for TestingHelpers.pm package, meta-testing ftw
 use ModelSEED::TestingHelpers;
 use Data::Dumper;

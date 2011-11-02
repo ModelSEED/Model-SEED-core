@@ -20,7 +20,7 @@ use lib $ENV{MODEL_SEED_CORE}."/config/";
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
-use Test::More qw(no_plan);
+use Test::More tests => 2;
 use File::Temp qw(tempfile);
 
 my $helper = ModelSEED::TestingHelpers->new();

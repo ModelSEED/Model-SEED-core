@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use ModelSEED::TestingHelpers;
-use Test::More qw(no_plan);
+use Test::More tests => 27;
 use FBAMODELClient;
 
 my $fbamodel = FBAMODELClient->new();

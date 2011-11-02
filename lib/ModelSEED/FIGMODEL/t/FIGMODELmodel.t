@@ -20,7 +20,7 @@ use Data::Dumper;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
 use Try::Tiny;
-use Test::More qw(no_plan);
+use Test::More tests => 49;
 use File::Temp qw(tempfile);
 
 my $helper = ModelSEED::TestingHelpers->new();
@@ -32,7 +32,6 @@ my $fm = $helper->getDebugFIGMODEL();
     ok $public_model->status() eq 2, "Model Seed83333.1 has status other than 1, complete!";
     ok $public_model->genome() eq "83333.1", "Model Seed83333.1 has genome other than 83333.1!";
     ok $public_model->owner() eq "master", "Public model Seed83333.1 has owner other than 'master'!";
-    #ok !defined($public_model->users()), "Public model Seed83333.1 has users with rights to it!"; #FIXME 
     ok $public_model->rights('PUBLIC') eq 'view', "Public model Seed83333.1 does not give 'view' rights to 'PUBLIC'!";
     ok $public_model->directory() =~ m/master\/Seed83333\.1\/\d+\//, "public model doesn't have directory that looks like /master/Seed83333.1/\\d+/!";
 	#Test SBML file printing
@@ -151,7 +150,7 @@ my $fm = $helper->getDebugFIGMODEL();
     $count =~ s/^\s+(\d+)\s.*/$1/;
     $count = $count - 1 if($count > 0);
     my $rxns_count = $mdl->figmodel()->database()->get_objects("rxnmdl", { MODEL => $mdl->id() });
-    #ok $count == scalar(@$rxns_count), "checkpoint should save a copy of the currnet rxnmdls, got: $count, expected: " . scalar(@$rxns_count);
+    ok $count == scalar(@$rxns_count), "checkpoint should save a copy of the currnet rxnmdls, got: $count, expected: " . scalar(@$rxns_count);
     # FIXME TestData does not get rxnmdls because they're not in ModelDB
 
     # testing restore()
@@ -162,8 +161,8 @@ my $fm = $helper->getDebugFIGMODEL();
     $mdl->revert($curr_version);    
     ok $mdl->version() == $curr_version + 1, "revert(i) should retain the current version, not adopt i or something else";
     my $new_rxns_count = $mdl->figmodel()->database()->get_objects("rxnmdl", { MODEL => $mdl->id() });
-    #ok scalar(@$new_rxns_count) == $count, "revert(i) should result in the same number of rxnmdls as i/rxnmdl.txt; got: ".
-    #    scalar(@$new_rxns_count) . ", wanted: $count";
+    ok scalar(@$new_rxns_count) == $count, "revert(i) should result in the same number of rxnmdls as i/rxnmdl.txt; got: ".
+        scalar(@$new_rxns_count) . ", wanted: $count";
     # FIXME TestData does not get rxnmdls because they're not in ModelDB
 }
 # TEST plumbing commands: flatten(), increment(), restore()

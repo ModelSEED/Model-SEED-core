@@ -13,7 +13,7 @@
 use strict;
 use warnings;
 
-use Test::More qw(no_plan);                      # last test to print
+use Test::More plan => 15;
 use File::Temp qw(tempfile);
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use Data::Dumper;

@@ -14,7 +14,7 @@ use ModelSEED::FIGMODEL::FIGMODELdatabase;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
 use File::Temp qw(tempfile);
-use Test::More qw(no_plan);
+use Test::More tests => 17;
 use Try::Tiny;
 
 my $helper = ModelSEED::TestingHelpers->new();
@@ -95,6 +95,7 @@ my $fm = $helper->getDebugFIGMODEL();
 }
 # test cache tools
 TODO: {
+    try {
     local $TODO = "CHI does not like to cache code refs";
     my $config = $fm->_get_FIGMODELdatabase_config();
     my $db = ModelSEED::FIGMODEL::FIGMODELdatabase->new($config, $fm);
@@ -114,4 +115,6 @@ TODO: {
         useCache => 1, attribute => "id"});
     my $hash3 = $db->get_object_hash({ type => "reaction",
         parameters => {}, useCache => 1, attribute => sub { return $_[0]->id(); }});
+    };
 }
+
