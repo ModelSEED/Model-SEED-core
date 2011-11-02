@@ -4649,7 +4649,7 @@ sub clustermodels {
 sub parsesbml {
 	my($self,@Data) = @_;
 	my $args = $self->check([["file",1]],[@Data]);
-	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	my $List = $self->figmodel()->parseSBMLToTable({file => $args->{file}});
 	foreach my $table(keys %$List){
 	    $List->{$table}->save();
 	}
