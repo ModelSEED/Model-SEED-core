@@ -55,6 +55,7 @@ my $builder = Module::Build->new(
         "Spreadsheet::WriteExcel" => 2.37,
         "Storable" => 2.22,
         "Symbol" => 1.07,
+        "TAP::Formatter::JUnit" => "0.08",
         "Test::More" => 0.98,
         "Time::HiRes" => 1.9719,
         "Time::localtime" => 1.02,
