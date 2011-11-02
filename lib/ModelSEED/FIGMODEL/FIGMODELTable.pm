@@ -486,8 +486,25 @@ sub update_data {
 	}
 
 	if (defined($self->{"hash columns"}->{$Heading})){
-	    delete($self->{"hash columns"}->{$Heading}->{$Old_Data});
-	    push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$RowObject);
+	    #if they're the same, still want to double-check hash columns
+	    my @tmp;
+	    if(exists $self->{"hash columns"}->{$Heading}->{$Old_Data}){
+		@tmp=@{$self->{"hash columns"}->{$Heading}->{$Old_Data}};
+		delete($self->{"hash columns"}->{$Heading}->{$Old_Data});
+	    }elsif(exists $self->{"hash columns"}->{$Heading}->{$New_Data}){
+		@tmp=@{$self->{"hash columns"}->{$Heading}->{$New_Data}};
+	    }
+
+
+	    if(scalar(@tmp) == 0){
+		push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$RowObject);
+	    }else{
+		undef($self->{"hash columns"}->{$Heading}->{$New_Data});
+		for(my $i=0;$i<scalar(@tmp);$i++){
+		    $tmp[$i] = $RowObject if($tmp[$i] eq $RowObject);
+		    push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$tmp[$i]);
+		}
+	    }
 	}
 	return;
 }
