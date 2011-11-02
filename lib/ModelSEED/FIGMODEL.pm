@@ -8,7 +8,7 @@
 ########################################################################
 use strict;
 use warnings;
-use 5.012;
+use 5.008;
 use Class::ISA;
 use File::Temp qw(tempfile);
 use Carp qw(cluck);
