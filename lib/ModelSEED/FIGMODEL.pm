@@ -2749,11 +2749,9 @@ sub import_model {
 	my $result = {success => 1};
 	#Calculating the full ID of the model
 	my $id = $args->{baseid};
-	my $suffix = "";
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
 		return $self->new_error_message({message=> "invalid model owner: ".$args->{owner},function => "import_model",args => $args}) if (!defined($usr));
-		$suffix = ".".$usr->_id();
 		$id .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model

@@ -627,8 +627,9 @@ Example:
 sub delete_row {
 	my ($self,$RowIndex) = @_;
 	my @HashHeadings = $self->hash_headings();
+	my $RowObject = $self->get_row($RowIndex);
+
 	foreach my $HashHeading (@HashHeadings) {
-		my $RowObject = $self->get_row($RowIndex);
 		if (defined($RowObject->{$HashHeading})) {
 			for (my $i=0; $i < @{$RowObject->{$HashHeading}}; $i++) {
 				if (defined($self->{$RowObject->{$HashHeading}->[$i]})) {
