@@ -14,7 +14,7 @@ use ModelSEED::FIGMODEL::FIGMODELdatabase;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
 use File::Temp qw(tempfile);
-use Test::More tests => 17;
+use Test::More;
 use Try::Tiny;
 
 my $helper = ModelSEED::TestingHelpers->new();
@@ -118,3 +118,4 @@ TODO: {
     };
 }
 
+done_testing();

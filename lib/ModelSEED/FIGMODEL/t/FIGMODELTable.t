@@ -13,7 +13,7 @@
 use strict;
 use warnings;
 
-use Test::More plan => 15;
+use Test::More tests => 15;
 use File::Temp qw(tempfile);
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use Data::Dumper;
