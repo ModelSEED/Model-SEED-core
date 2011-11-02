@@ -256,33 +256,10 @@ sub get_rows_by_key {
 	if (defined($self->{"hash columns"}->{$HashColumn}->{$Key})) {
 		return @{$self->{"hash columns"}->{$HashColumn}->{$Key}};
 	}elsif($Key =~ m/%/){
-	    my @searchstrings=();
-	    my ($beginning,$end) = (0,0);
-	    while($Key =~ /(.*?)%/g){
-		if($1 ne ""){
-		    push(@searchstrings,$1);
-		}else{
-		    $beginning=1;
-		}
-	    }
-	    #for instance of % at end of string 
-	    $end=1 if $Key =~ /%$/;
-
-	    $searchstrings[0]='^'.$searchstrings[0] if !$beginning;
-	    $searchstrings[$#searchstrings]=$searchstrings[$#searchstrings].'$' if !$end;
-
-	    #iterate through keys of hashcolumn and add them if they match all searchstrings
+	    $Key =~ s/%/.*?/;
 	    my @Results=();
 	    foreach my $tmpkey (keys %{$self->{"hash columns"}->{$HashColumn}}){
-		my $found=1;
-		foreach my $ss (@searchstrings){
-		    if($tmpkey !~ /$ss/){
-			$found=0;
-			last;
-		    }
-		}
-		
-		push(@Results,@{$self->{"hash columns"}->{$HashColumn}->{$tmpkey}}) if $found;
+		push(@Results,@{$self->{"hash columns"}->{$HashColumn}->{$tmpkey}}) if $tmpkey =~ /$Key/;
 	    }
 	    return @Results;
 	}
@@ -417,8 +394,6 @@ Definition:
 	$TableObj->add_data($Row,"TEST",1,1);
 Description:
 	Deletes a row from the table.
-Example:
-	$TableObj->delete_row(1);
 =cut
 
 sub add_data {
