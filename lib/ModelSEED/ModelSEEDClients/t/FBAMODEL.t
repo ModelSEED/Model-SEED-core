@@ -1,8 +1,6 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use lib "../../../../config/";
-use ModelSEEDbootstrap;
 use ModelSEED::TestingHelpers;
 use Test::More qw(no_plan);
 use FBAMODELClient;
@@ -34,6 +32,7 @@ my $fbamodel = FBAMODELClient->new();
         " should return equation for rxn00781 , got ". $rxn->{EQUATION}->[0];
 	$output = $fbamodel->get_biomass_reaction_data({model => [$pubmodel]});
 	$rxn = $output->{$pubmodel};
+	exit();
 	ok defined($rxn->{EQUATION}->[0]), "get_biomass_reaction_data for public model ".$pubmodel.
         " should return equation for biomass reaction , got ". $rxn->{EQUATION}->[0];
 	$output = $fbamodel->get_compound_id_list({id => ["ALL",$pubmodel]});
@@ -72,7 +71,6 @@ my $fbamodel = FBAMODELClient->new();
     $output = $fbamodel->get_model_reaction_classification_table({"model" => [$pubmodel]});
 	ok defined($output->{$pubmodel}->[0]->{class}->[0]), "get_model_reaction_classification_table for model ".$pubmodel.
         " should return classification data for at least one reaction, got ". $output->{$pubmodel}->[0]->{class}->[0];
-	exit();
 	$output = $fbamodel->get_model_essentiality_data({model => [$pubmodel]});
 	ok defined($output->{$pubmodel}->{Complete}->{essential}->[0]), "get_model_essentiality_data for model ".$pubmodel.
         " should return essentiality data for at least one gene, got ". scalar(@{$output->{$pubmodel}->{Complete}->{essential}});
