@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use FIG_Config;
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use FIG;
@@ -341,7 +340,7 @@ sub getRastGenomeData {
 		if (defined($job)) {
 			$output->{source} = "RAST:".$job->id();
 			$directory = "/vol/rast-prod/jobs/".$job->id()."/rp/".$args->{genome};
-			$FIG_Config::rast_jobs = "/vol/rast-prod/jobs";
+			#$FIG_Config::rast_jobs = "/vol/rast-prod/jobs";
 			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-prod/jobs/".$job->id()."/USER","\t")->[0];
 		}
@@ -352,7 +351,7 @@ sub getRastGenomeData {
 		if (defined($job)) {
 			$output->{source} = "TESTRAST:".$job->id();
 			$directory = "/vol/rast-test/jobs/".$job->id()."/rp/".$args->{genome};
-			$FIG_Config::rast_jobs = "/vol/rast-test/jobs";
+			#$FIG_Config::rast_jobs = "/vol/rast-test/jobs";
 			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-test/jobs/".$job->id()."/USER","\t")->[0];
 		}

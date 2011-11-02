@@ -1,6 +1,5 @@
 use strict;
 use warnings;
-use FIG_Config;
 use ModelSEEDbootstrap;
 use Test::More tests => 5;
 use Data::Dumper;
