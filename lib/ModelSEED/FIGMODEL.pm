@@ -1631,7 +1631,7 @@ Definition:
 Description:
 	Translates SBML file to tab delimited table
 =cut
-sub parseSBMLtoTable {
+sub parseSBMLToTable {
     my ($self,$args) = @_;
     #Seaver 07/07/11
     #Processing file or directory
@@ -1693,11 +1693,13 @@ sub parseSBMLtoTable {
     my %cmptAttrs=();
     my $name="";
 
-    foreach my $attr($cmpts[0]->getAttributes()->getValues()){
-	$name=$attr->getName();
-	$HeadingTranslation{$name}=uc($name);
-	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
-	$cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    foreach my $cmpt (@cmpts){
+	foreach my $attr( grep { !exists($HeadingTranslation{$_}) } $cmpt->getAttributes()->getValues()){
+	    $name=$attr->getName();
+	    $HeadingTranslation{$name}=uc($name);
+	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	    $cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+	}
     }
 
     $TableList->{compartment}=ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmptAttrs{$a} <=> $cmptAttrs{$b} } keys %cmptAttrs],
@@ -2739,9 +2741,6 @@ sub import_model {
 		biochemSource => $args->{biochemSource}
 					  });
 	}
-
-	
-
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
