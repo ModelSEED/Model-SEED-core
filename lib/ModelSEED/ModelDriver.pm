@@ -5793,8 +5793,8 @@ sub bcprintmedia {
 	for (my $i=0; $i < @{$mediaIDs}; $i++) {
 		if (defined($mediaHash->{$mediaIDs->[$i]})) {
 			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
-				if ($mediaHash->{$mediaIDs->[$i]}->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->type() eq "COMPOUND") {
-					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->maxFlux();
+				if ($mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->[$j]->type() eq "COMPOUND") {
+					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->[$j]->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux();
 				}
 			}
 		}
@@ -5808,6 +5808,7 @@ sub bcprintmedia {
 		push(@{$output},$line);
 	}
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
+    return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
 }
 
 =CATEGORY
