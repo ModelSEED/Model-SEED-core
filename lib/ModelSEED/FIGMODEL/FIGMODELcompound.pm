@@ -174,6 +174,9 @@ Description:
 =cut
 sub convert_to_search_name {
 	my ($self,$InName) = @_;
+
+	my $OriginalName=$InName;
+
 	my $ending = "";
 	if ($InName =~ m/-$/) {
 		$ending = "-";
@@ -194,14 +197,23 @@ sub convert_to_search_name {
 	$InName =~ s/'//g;
 	$InName =~ s/\;//g;
 	$InName .= $ending;
-	my $NameOne = $InName;
+
+	my $NameOne=$InName;
 	$InName =~ s/icacid/ate/g;
-	if ($NameOne eq $InName) {
-		return ($NameOne);
-	} else {
-		return ($NameOne,$InName);
+
+	my %searchnames=();
+	foreach my $sn ($NameOne,$InName){
+	    $searchnames{$sn}=1;
+	    if($OriginalName =~ /^an? /){
+		$sn =~ s/^an?(.*)$/$1/;
+		print $sn,"<<\n";
+	    }
+	    $searchnames{$sn}=1;
 	}
+
+	return keys %searchnames;
 }
+
 =head3 addNamesToAliasTable
 Definition:
 	{} = FIGMODELcompound->addNamesToAliasTable({
