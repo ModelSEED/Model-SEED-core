@@ -29,4 +29,6 @@ try {
     $caught = 1;
 };
 ok $caught, "should fail when id is bad";
-    
+my $fmOldWs = $fm->ws(); 
+$fm->switchWorkspace({ name => 'two'});
+ok $fmOldWs ne $fm->ws(), "switchWorkspace should work as expected!";

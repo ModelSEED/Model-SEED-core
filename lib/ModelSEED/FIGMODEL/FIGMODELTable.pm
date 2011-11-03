@@ -8,6 +8,7 @@
 # Date of module creation: 2/1/2008
 ########################################################################
 use strict;
+use JSON::Any;
 use ModelSEED::FIGMODEL::FIGMODELTableRow;
 package ModelSEED::FIGMODEL::FIGMODELTable;
 
@@ -255,33 +256,10 @@ sub get_rows_by_key {
 	if (defined($self->{"hash columns"}->{$HashColumn}->{$Key})) {
 		return @{$self->{"hash columns"}->{$HashColumn}->{$Key}};
 	}elsif($Key =~ m/%/){
-	    my @searchstrings=();
-	    my ($beginning,$end) = (0,0);
-	    while($Key =~ /(.*?)%/g){
-		if($1 ne ""){
-		    push(@searchstrings,$1);
-		}else{
-		    $beginning=1;
-		}
-	    }
-	    #for instance of % at end of string 
-	    $end=1 if $Key =~ /%$/;
-
-	    $searchstrings[0]='^'.$searchstrings[0] if !$beginning;
-	    $searchstrings[$#searchstrings]=$searchstrings[$#searchstrings].'$' if !$end;
-
-	    #iterate through keys of hashcolumn and add them if they match all searchstrings
+	    $Key =~ s/%/.*?/;
 	    my @Results=();
 	    foreach my $tmpkey (keys %{$self->{"hash columns"}->{$HashColumn}}){
-		my $found=1;
-		foreach my $ss (@searchstrings){
-		    if($tmpkey !~ /$ss/){
-			$found=0;
-			last;
-		    }
-		}
-		
-		push(@Results,@{$self->{"hash columns"}->{$HashColumn}->{$tmpkey}}) if $found;
+		push(@Results,@{$self->{"hash columns"}->{$HashColumn}->{$tmpkey}}) if $tmpkey =~ /$Key/;
 	    }
 	    return @Results;
 	}
@@ -416,8 +394,6 @@ Definition:
 	$TableObj->add_data($Row,"TEST",1,1);
 Description:
 	Deletes a row from the table.
-Example:
-	$TableObj->delete_row(1);
 =cut
 
 sub add_data {
@@ -486,8 +462,25 @@ sub update_data {
 	}
 
 	if (defined($self->{"hash columns"}->{$Heading})){
-	    delete($self->{"hash columns"}->{$Heading}->{$Old_Data});
-	    push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$RowObject);
+	    #if they're the same, still want to double-check hash columns
+	    my @tmp;
+	    if(exists $self->{"hash columns"}->{$Heading}->{$Old_Data}){
+		@tmp=@{$self->{"hash columns"}->{$Heading}->{$Old_Data}};
+		delete($self->{"hash columns"}->{$Heading}->{$Old_Data});
+	    }elsif(exists $self->{"hash columns"}->{$Heading}->{$New_Data}){
+		@tmp=@{$self->{"hash columns"}->{$Heading}->{$New_Data}};
+	    }
+
+
+	    if(scalar(@tmp) == 0){
+		push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$RowObject);
+	    }else{
+		undef($self->{"hash columns"}->{$Heading}->{$New_Data});
+		for(my $i=0;$i<scalar(@tmp);$i++){
+		    $tmp[$i] = $RowObject if($tmp[$i] eq $RowObject);
+		    push(@{$self->{"hash columns"}->{$Heading}->{$New_Data}},$tmp[$i]);
+		}
+	    }
 	}
 	return;
 }
@@ -634,8 +627,9 @@ Example:
 sub delete_row {
 	my ($self,$RowIndex) = @_;
 	my @HashHeadings = $self->hash_headings();
+	my $RowObject = $self->get_row($RowIndex);
+
 	foreach my $HashHeading (@HashHeadings) {
-		my $RowObject = $self->get_row($RowIndex);
 		if (defined($RowObject->{$HashHeading})) {
 			for (my $i=0; $i < @{$RowObject->{$HashHeading}}; $i++) {
 				if (defined($self->{$RowObject->{$HashHeading}->[$i]})) {
@@ -1289,6 +1283,16 @@ sub create_object {
 sub create {
     my ($self, $hash) = @_;
     $self->create_object($hash);
+}
+
+sub rows_to_json {
+    my ($self) = @_;
+    my $j = JSON::Any->new;
+    my $obj = [];
+    for(my $i=0; $i<$self->size(); $i++) {
+        $obj->[$i] = $self->get_row($i);
+    }
+    return $j->to_json($obj); 
 }
 
 1;

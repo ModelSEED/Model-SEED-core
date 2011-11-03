@@ -119,11 +119,14 @@ sub new {
 	if (defined($userObj)) {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
-		if (!defined($username) && defined($ENV{"FIGMODEL_USER"}) && defined($ENV{"FIGMODEL_PASSWORD"})) {
+		if (!defined($username) &&
+            defined($ENV{"FIGMODEL_USER"}) &&
+            defined($ENV{"FIGMODEL_PASSWORD"})) {
 			$username = $ENV{"FIGMODEL_USER"};
 			$password = $ENV{"FIGMODEL_PASSWORD"};
 		}
-		if (defined($username) && defined($password)) {
+		if (defined($username) && length($username) > 0 &&
+            defined($password) && length($password) > 0) {
 			$self->authenticate_user($username,$password);
 		}
 	}
@@ -488,7 +491,7 @@ sub config {
 Definition:
 	{}:arguments = FIGMODEL->process_arguments({}:arguments,[string]:mandatory arguments,{}:optional arguments);
 Description:
-	Processes arguments to authenticate users and perform other needed tasks
+	Processes arguments with configurable parameters
 =cut
 sub process_arguments {
 	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
@@ -764,7 +767,7 @@ sub switchWorkspace {
     # Updating local cache and current.txt file
     $self->{_workspace}->[0] = $ws;
     $self->database()->print_array_to_file(
-        $ws->root.$ws->user."current.txt", [$ws->id]);
+        $ws->root.$ws->owner."/current.txt", [$ws->id]);
 }
 
 =head3 listWorkspaces
@@ -1607,11 +1610,13 @@ sub parseSBMLToTable {
     my %cmptAttrs=();
     my $name="";
 
-    foreach my $attr($cmpts[0]->getAttributes()->getValues()){
-	$name=$attr->getName();
-	$HeadingTranslation{$name}=uc($name);
-	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
-	$cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    foreach my $cmpt (@cmpts){
+	foreach my $attr( grep { !exists($HeadingTranslation{$_}) } $cmpt->getAttributes()->getValues()){
+	    $name=$attr->getName();
+	    $HeadingTranslation{$name}=uc($name);
+	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	    $cmptAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+	}
     }
 
     $TableList->{compartment}=ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmptAttrs{$a} <=> $cmptAttrs{$b} } keys %cmptAttrs],
@@ -2620,11 +2625,9 @@ sub import_model {
 	my $result = {success => 1};
 	#Calculating the full ID of the model
 	my $id = $args->{baseid};
-	my $suffix = "";
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
 		return $self->new_error_message({message=> "invalid model owner: ".$args->{owner},function => "import_model",args => $args}) if (!defined($usr));
-		$suffix = ".".$usr->_id();
 		$id .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model
@@ -2641,23 +2644,16 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
+	}else{
+	    $mdl = $self->get_model($id);
+
+	    if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
+		print "Overwriting provenance\n";
+		$mdl->GenerateModelProvenance({
+		    biochemSource => $args->{biochemSource}
+					      });
+	    }
 	}
-
-        $mdl = $self->get_model($id);
-
-        if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-            $mdl->GenerateModelProvenance({biochemSource => $args->{biochemSource}});
-        }
-
-	if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-	    print "Overwriting provenance\n";
-	    $mdl->GenerateModelProvenance({
-		biochemSource => $args->{biochemSource}
-					  });
-	}
-
-	
-
 
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
@@ -2710,6 +2706,7 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
+		print "Testing ",$row->{ID}->[0],"\n";
 
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
@@ -2792,7 +2789,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
 			if (!defined($row->{"MASS"}->[0])) {
 				$row->{"MASS"}->[0] = 10000000;	
 			}
@@ -2894,16 +2891,6 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			$mdl->figmodel()->database()->create_object("rxnmdl",{
-				MODEL => $id,
-				REACTION => $bofobj->id(),
-				pegs => join("|",@{$row->{"PEGS"}}),
-				compartment => "c",
-				directionality => "=>",
-				confidence => "1",
-				reference => join("|",@{$row->{"REFERENCE"}}),
-				notes => join("|",@{$row->{"NOTES"}})
-			});
 			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}

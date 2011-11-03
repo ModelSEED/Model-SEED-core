@@ -11,6 +11,7 @@ use strict;
 use ModelSEED::ModelDriver;
 use Try::Tiny;
 use File::Temp;
+use Cwd;
 
 $|=1;
 #First checking to see if at least one argument has been provided
@@ -100,6 +101,20 @@ sub printErrorLog {
     if($errorMessage =~ /^\"\"(.*)\"\"/) {
         $actualMessage = $1;
     }
+    {
+        # Pad error message with four spaces
+        $errorMessage =~ s/\n/\n    /g;
+        $errorMessage = "    ".$errorMessage; 
+    }
+    my $gitSha = "";
+    {
+        my $cwd = Cwd::getcwd();
+        chdir $ENV{'MODEL_SEED_CORE'};
+        $gitSha = `git show-ref --hash HEAD`;
+        chdir $cwd;
+    }
+    
+    chomp $gitSha;
     my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
@@ -107,6 +122,8 @@ sub printErrorLog {
 > ModelDriver encountered an unrecoverable error:
 
 $errorMessage
+
+> Model-SEED-core revision: $gitSha
 MSG
     my $viewerMessage = <<MSG;
 Whoops! We encountered an unrecoverable error.
@@ -132,5 +149,6 @@ Thanks!
 MSG
     print $viewerMessage;
 }
+
 
 1;

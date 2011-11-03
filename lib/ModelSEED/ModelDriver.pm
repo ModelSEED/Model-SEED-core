@@ -4551,7 +4551,7 @@ sub clustermodels {
 sub parsesbml {
 	my($self,@Data) = @_;
 	my $args = $self->check([["file",1]],[@Data]);
-	my $List = $self->figmodel()->parseSBMLtoTable({file => $args->{file}});
+	my $List = $self->figmodel()->parseSBMLToTable({file => $args->{file}});
 	foreach my $table(keys %$List){
 	    $List->{$table}->save();
 	}
@@ -5268,13 +5268,16 @@ sub mslogin {
 	}
 	#If local account was not found, attempting to import account from the SEED
 	if (!defined($usrObj) && $args->{noimport} == 0) {
+        print "Unable to find account locally, trying to obtain login info from theseed.org...\n";
 		$usrObj = $self->figmodel()->import_seed_account({
 			username => $args->{username},
 			password => $args->{password}
 		});
 		if (!defined($usrObj)) {
-			ModelSEED::globals::ERROR("Could not find specified user account in the local or SEED environment. Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
+			ModelSEED::globals::ERROR("Could not find specified user account in the local or SEED environment.".
+                "Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
 		}
+        print "Success! Downloaded user credentials from theseed.org!\n";
 	}
 	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
@@ -5324,7 +5327,7 @@ sub mslogout {
 		username => "public",
 		password => "public"
 	});
-	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
+	if (!defined($self->figmodel()->userObj())) {
 		ModelSEED::globals::ERROR("Logout failed! No public account is available!");
 	}
 	$self->figmodel()->loadWorkspace();
@@ -5632,17 +5635,20 @@ sub fbafva {
 		}
 	}
 	#Saving data to file
+        my $result = "Unrecognized format: $args->{saveformat}";
 	if ($args->{saveformat} eq "EXCEL") {
 		$self->figmodel()->make_xls({
 			filename => $self->ws()->directory().$args->{filename}.".xls",
 			sheetnames => ["Compound Bounds","Reaction Bounds"],
 			sheetdata => [$cpdtbl,$rxntbl]
 		});
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".xls";
 	} elsif ($args->{saveformat} eq "TEXT") {
 		$cpdtbl->save();
 		$rxntbl->save();
+		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 	}
-	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
+        return $result;
 }
 
 =CATEGORY
@@ -5813,8 +5819,8 @@ sub bcprintmedia {
 	for (my $i=0; $i < @{$mediaIDs}; $i++) {
 		if (defined($mediaHash->{$mediaIDs->[$i]})) {
 			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
-				if ($mediaHash->{$mediaIDs->[$i]}->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->type() eq "COMPOUND") {
-					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->maxFlux();
+				if ($mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->[$j]->type() eq "COMPOUND") {
+					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->[$j]->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux();
 				}
 			}
 		}
@@ -5828,6 +5834,7 @@ sub bcprintmedia {
 		push(@{$output},$line);
 	}
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
+    return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
 }
 
 =CATEGORY
@@ -6170,11 +6177,12 @@ sub mdlprintmodel {
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->figmodel()->ws()->directory().$args->{model}.".mdl";
 	}
-	if($mdl->biomassReaction() ne "NONE"){
+    my $biomass = $mdl->biomassReaction();
+	if( defined($biomass) && $biomass ne "NONE"){
 	    if (!defined($args->{biomassFilename})){
-			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$mdl->biomassReaction().".bof";
+			$args->{biomassFilename} = $self->figmodel()->ws()->directory().$biomass.".bof";
 	    }
-	    $self->figmodel()->get_reaction($mdl->biomassReaction())->print_file_from_ppo({
+	    $self->figmodel()->get_reaction($biomass)->print_file_from_ppo({
 			filename => $args->{biomassFilename}
 	    });
 	}
@@ -6332,7 +6340,7 @@ sub mdlimportmodel {
 		$public = 1;
 	}
 	$self->figmodel()->import_model({
-		id => $args->{"name"},
+		baseid => $args->{"name"},
 		genome => $args->{"genome"},
 		owner => $args->{"owner"},
 		path => $args->{"path"},

@@ -405,10 +405,11 @@ SCRIPT
 }
 #Printing success message
 {
-	if ($os ne "windows" && !-e $directoryRoot."/software/mfatoolkit/bin/mfatoolkit")  {
-		print "Model SEED Configuration Failed. MFAToolkit compilation failed!"
+	if (!-e $directoryRoot."/software/mfatoolkit/bin/mfatoolkit" &&
+        !defined($args->{fast}) && $os ne "windows")  {
+		print "MFAToolkit compilation failed!\n"
 	}
-	print "Model SEED Configuration Successful!"
+	print "Model SEED Configuration Successful!\n"
 }
 
 1;
