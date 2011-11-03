@@ -2098,7 +2098,7 @@ sub completeGapfilling {
 				function => "setTightBounds",
 				arguments => {variables => ["FLUX"]}	
 			},
-			problemDirectory => undef,
+			problemDirectory => $args->{problemDirectory},
 			parameterFile => "FVAParameters.txt",
 			startFresh => 0,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
@@ -7276,12 +7276,14 @@ sub runFBAStudy {
 	});	
 	#Setting the problem directory
 	my $fbaObj = $self->fba($args->{fbaStartParameters});
+
 	if (!defined($args->{problemDirectory})) {
 		$args->{problemDirectory} = $fbaObj->filename();
 	}
 	$fbaObj->filename($args->{problemDirectory});
 	#Creating the output directory
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
+
 	#Creating model file
 	print "Creating the model file: ",$fbaObj->directory()."/".$self->id().".tbl\n";
 	if (!-e $fbaObj->directory()."/".$self->id().".tbl" || $args->{forcePrintModel} == 1) {
@@ -7318,11 +7320,13 @@ sub runFBAStudy {
 	if ($args->{runProblem} != 1) {
 		return {success => 1,arguments => $args,fbaObj => $fbaObj};
 	}
+	print "Running FBA\n";
 	$fbaObj->runFBA({
 		printToScratch => $args->{printToScratch},
 		studyType => "LoadCentralSystem",
 		parameterFile => "AddnlFBAParameters.txt"
 	});
+	print "Parsing results\n";
 	my $results = $fbaObj->runParsingFunction();
 	$results->{arguments} = $args;
 	$results->{fbaObj} = $fbaObj;
