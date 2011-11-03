@@ -2098,7 +2098,7 @@ sub completeGapfilling {
 				function => "setTightBounds",
 				arguments => {variables => ["FLUX"]}	
 			},
-			problemDirectory => $args->{problemDirectory},
+			problemDirectory => undef,
 			parameterFile => "FVAParameters.txt",
 			startFresh => 0,
 			removeGapfillingFromModel => $args->{removeGapfillingFromModel},
