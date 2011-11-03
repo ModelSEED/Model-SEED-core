@@ -5442,7 +5442,7 @@ sub fbacheckgrowth {
 	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+	ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
     }
 	my $results = $mdl->fbaCalculateGrowth({
         fbaStartParameters => $fbaStartParameters,
@@ -5450,7 +5450,7 @@ sub fbacheckgrowth {
         saveLPfile => $args->{"save lp file"}
     });
 	if (!defined($results->{growth})) {
-		ModelSEED::FIGMODEL->FIGMODELERROR("FBA growth test of ".$args->{model}." failed!");
+		ModelSEED::globals::ERROR("FBA growth test of ".$args->{model}." failed!");
 	}
 	my $message = "";
 	if ($results->{growth} > 0.000001) {
@@ -5491,7 +5491,7 @@ sub fbasingleko {
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+	ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
     }
     if (!defined($args->{filename})) {
     	$args->{filename} = $mdl->id()."-EssentialGenes.lst"; 
@@ -5532,7 +5532,7 @@ sub fbafva {
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!");
+      ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
     }
     if ($args->{filename} eq "FBAFVA_model ID.xls") {
     	$args->{filename} = undef; 
@@ -5675,7 +5675,7 @@ sub fbafvabiomass {
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $rxn = $self->figmodel()->get_reaction($args->{biomass});
     if (!defined($rxn)) {
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Reaction ".$args->{biomass}." not found in database!");
+      ModelSEED::globals::ERROR("Reaction ".$args->{biomass}." not found in database!");
     }
     if ($args->{filename} eq "FBAFVA_model ID.xls") {
     	$args->{filename} = undef; 
@@ -6274,7 +6274,7 @@ sub mdlloadbiomass {
 			$args->{biomass} = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
-		ModelSEED::FIGMODEL->FIGMODELERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
+		ModelSEED::globals::ERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
 		#Loading biomass reaction file
 		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
 		$args->{equation} = $obj->{EQUATION}->[0];
@@ -6283,7 +6283,7 @@ sub mdlloadbiomass {
 	#Loading the biomass into the database
 	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
 	if (defined($bio) && $args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL->FIGMODELERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
+	  ModelSEED::globals::ERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
 	}
 	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
 		equation => $args->{equation},
@@ -6293,7 +6293,7 @@ sub mdlloadbiomass {
 	#Adjusting the model if a model was specified
 	if (defined($args->{model})) {
 		my $mdl = $self->figmodel()->get_model($args->{model});
-    	ModelSEED::FIGMODEL->FIGMODELERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
     	$mdl->biomassReaction($args->{biomass});
     	$msg .= "Successfully changed biomass reaction in model ".$args->{model}.".\n";
 	}
