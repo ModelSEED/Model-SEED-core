@@ -67,10 +67,10 @@ sub create {
 		if (!defined($rights->{admin})) {
 			ModelSEED::globals::ERROR("No rights to alter media object");
 		}
-        $mediaObj->public($args->{public} || $mediaObj->public());
-        $mediaObj->aerobic($args->{aerobic} || $mediaObj->aerobic());
-        $mediaObj->owner($args->{owner} || $mediaObj->owner());
-        $mediaObj->modificationDate(time());
+		$mediaObj->public($args->{public} || $mediaObj->public());
+		$mediaObj->aerobic($args->{aerobic} || $mediaObj->aerobic());
+		$mediaObj->owner($args->{owner} || $mediaObj->owner());
+		$mediaObj->modificationDate(time());
 	} else {
 		$mediaObj = $self->figmodel()->database()->create_object("media",{
 	    	public => $args->{public},
@@ -259,19 +259,23 @@ sub loadPPOFromFile {
 		filename => $self->filename()
 	});
 	my $data = $self->loadCompoundsFromFile({filename => $args->{filename}});
-	foreach my $obj (keys(%{$data})) {
-		my $newObj = $self->figmodel()->database()->get_object("mediacpd",{
-			MEDIA => $self->id(),
-			entity => $obj,
-			type => $data->{$obj}->{type}
-		});
+	my $oldObjs = $self->figmodel()->database()->get_objects("mediacpd", {MEDIA=>$self->id()});
+	my %oldObjsById = map { $_->entity() => $_ } @$oldObjs;
+
+	foreach my $id (keys(%{$data})) {
+	    my $newObj = $oldObjsById{$id};
 		if (defined($newObj)) {
-			$newObj->concentration($data->{$obj}->{concentration});
-			$newObj->maxFlux($data->{$obj}->{maxFlux});
-			$newObj->minFlux($data->{$obj}->{minFlux});
+			$newObj->concentration($data->{$id}->{concentration});
+			$newObj->maxFlux($data->{$id}->{maxFlux});
+			$newObj->minFlux($data->{$id}->{minFlux});
+			delete $oldObjsById{$id};
 		} else {
-			$self->figmodel()->database()->create_object("mediacpd",$data->{$obj});
+			$self->figmodel()->database()->create_object("mediacpd",$data->{$id});
 		}
+	}
+	# delete compounds that are no longer associated with the media
+	foreach my $obj (values %oldObjsById) {
+	    $obj->delete();
 	}
 }
 =head3 loadCompoundListToPPO
