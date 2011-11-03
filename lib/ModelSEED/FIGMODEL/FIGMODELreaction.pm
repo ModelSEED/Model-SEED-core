@@ -97,7 +97,7 @@ sub copyReaction {
 		newid=>undef,
 		owner=> defined($self->ppo()) ? $self->ppo()->owner() : 'master',
 	});
-	ModelSEED::FIGMODEL::FIGMODELERROR("Cannot call copyReaction on generic reaction") if (!defined($self->id()));
+	ModelSEED::globals::ERROR("Cannot call copyReaction on generic reaction") if (!defined($self->id()));
 	#Issuing new ID
 	if (!defined($args->{newid})) {
 		if ($self->id() =~ m/rxn/) {
@@ -168,7 +168,7 @@ sub file {
 	delete $self->{_file} if ($args->{clear} == 1);
 	if (!defined($self->{_file})) {
 		$self->{_file} = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{filename},delimiter=>"\t",-load => 1});
-		ModelSEED::FIGMODEL::FIGMODELERROR("could not load file") if (!defined($self->{_file}));
+		ModelSEED::globals::ERROR("could not load file") if (!defined($self->{_file}));
 	}
 	return $self->{_file};
 }
@@ -183,7 +183,7 @@ sub print_file_from_ppo {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		filename => $self->filename()
 	});
-	ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction") if (!defined($self->ppo()));
+	ModelSEED::globals::ERROR("Cannot obtain ppo data for reaction") if (!defined($self->ppo()));
 	my $data = {
 		DATABASE => [$self->ppo()->id()],
 		EQUATION => [$self->ppo()->equation()],
@@ -221,7 +221,7 @@ sub substrates_from_equation {
 	$args = $self->figmodel()->process_arguments($args,[],{equation => undef});
 	my $Equation = $args->{equation};
 	if (!defined($Equation)) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find reaction in database") if (!defined($self->ppo()));
+		ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
 		$Equation = $self->ppo()->equation();
 	}
 	my $Reactants;
@@ -265,7 +265,7 @@ Description:
 =cut
 sub updateReactionData {
 	my ($self) = @_;
-	ModelSEED::FIGMODEL::FIGMODELERROR("could not find ppo object") if (!defined($self->ppo()));
+	ModelSEED::globals::ERROR("could not find ppo object") if (!defined($self->ppo()));
 	my $data = $self->file({clear=>1});#Reloading the file data for the compound, which now has the updated data
 	my $translations = {EQUATION => "equation",DELTAG => "deltaG",DELTAGERR => "deltaGErr","THERMODYNAMIC REVERSIBILITY" => "thermoReversibility",STATUS => "status",TRANSATOMS => "transportedAtoms"};#Translating MFAToolkit file headings into PPO headings
 	foreach my $key (keys(%{$translations})) {#Loading file data into the PPO
@@ -392,7 +392,7 @@ sub processReactionWithMFAToolkit {
 #			}
 #		}
 #	} else {
-#		ModelSEED::FIGMODEL::FIGMODELERROR("could not find output reaction file");	
+#		ModelSEED::globals::ERROR("could not find output reaction file");	
 #	}
 #	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
 #	return {};
@@ -598,7 +598,17 @@ sub build_complete_biomass_reaction {
     $bioObj->equation($reactants."=>".$products);
 	if ($bioObj->equation() ne $oldEquation) {
 		$bioObj->essentialRxn("NONE");
-		$self->figmodel()->add_job_to_queue({command => "runfigmodelfunction?determine_biomass_essential_reactions?bio00001",user => $self->figmodel()->user(),queue => "fast"});
+		$self->figmodel()->queue()->queueJob({
+			function => "fbafvabiomass",
+			arguments => {
+				biomass => "bio00001",
+				media => "Complete",
+				options => {forcedGrowth => 1},
+				variables => "forcedGrowth",
+				savetodb => 1
+			},
+			user => $self->figmodel()->user(),
+		});
 	}
 }
 =head3 createReactionCode
@@ -663,7 +673,7 @@ sub createReactionCode {
 
 	#Checking for reactions that have no products, no reactants, or neither products nor reactants
 	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
-		ModelSEED::FIGMODEL::FIGMODELWARNING("Reaction either has no reactants or no products:".$OriginalEquation);
+		ModelSEED::globals::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
 		return {success => 0,error => "Reaction either has no reactants or no products:".$OriginalEquation};
 	}
 	#Ready to start parsing equation
@@ -1316,15 +1326,90 @@ sub add_biomass_reaction_from_equation {
 }
 =head3 add_biomass_reaction_from_file
 definition:
-	(success/fail) = figmodeldatabase>add_biomass_reaction_from_file(string:biomass id);
+	void FIGMODELreaction>add_biomass_reaction_from_file(string:biomass id);
 =cut
 sub add_biomass_reaction_from_file {
 	my($self,$biomassid) = @_;
 	my $object = $self->figmodel()->loadobject($biomassid);
 	$self->add_biomass_reaction_from_equation($object->{equation}->[0],$biomassid);
 }
-
-
+=head3 determine_biomass_essential_reactions
+Definition:
+	void FIGMODELreaction->determine_biomass_essential_reactions(string::biomass id);
+=cut
+sub determine_coupled_reactions {
+	my($self,$args) = @_;
+	$args =ModelSEED::globals::ARGS($args,[],{
+		variables => ["FLUX","UPTAKE"],
+		fbaStartParameters => {
+			media => "Complete",
+			drnRxn => [],
+			options => {forceGrowth => 1}
+		},
+	   	saveFVAResults=>1
+	});
+	if (!defined($self->ppo())) {
+		ModelSEED::globals::ERROR("Could not obtain PPO object for reaction ".$self->id());
+	}
+	my $fba = $self->figmodel()->fba($args->{fbaStartParameters});
+	$fba->model("Complete:".$self->id());
+	$fba->makeOutputDirectory({deleteExisting => $args->{startFresh}});
+	$fba->setTightBounds({variables => $args->{variables}});
+	print "Creating biochemistry provenance files\n";
+	my $rxn_config = {
+		filename => $fba->directory()."/reactionDataFile.tbl",
+		hash_headings => ['id', 'code'],
+		delimiter => "\t",
+		item_delimiter => "|",
+	};
+	my $rxntbl = $self->db()->ppo_rows_to_table($rxn_config, 
+		$self->db()->get_objects('reaction', {}));
+	$rxntbl->save();
+	my $cpd_config = {
+		filename => $fba->directory()."/compoundDataFile.tbl",
+		hash_headings => ['id', 'name', 'formula'],
+		delimiter => "\t",
+		item_delimiter => ";",
+	};
+	my $cpdtbl = $self->db()->ppo_rows_to_table($cpd_config,
+		$self->db()->get_objects('compound', {}));
+	$cpdtbl->save();
+	File::Path::mkpath($fba->directory()."/reaction/");
+	$self->print_file_from_ppo({filename => $fba->directory()."/reaction/".$self->id()});
+	$fba->createProblemDirectory({
+		parameterFile => $args->{parameterFile},
+		printToScratch => 0
+	});
+	$fba->runFBA({
+		printToScratch => 0,
+		studyType => "LoadCentralSystem",
+		parameterFile => "AddnlFBAParameters.txt"
+	});
+	my $results = $fba->runParsingFunction();
+	$results->{arguments} = $args;
+	$results->{fbaObj} = $fba;
+	$fba->clearOutput();
+	ModelSEED::globals::ERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
+	#Loading data into database if requested
+	if ($args->{saveFVAResults} == 1 && $self->id() =~ m/bio\d+/) {
+		my $EssentialReactions;
+		foreach my $obj (keys(%{$results->{tb}})) {
+			if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+				if (defined($results->{tb}->{$obj}->{class})) {
+					if ($results->{tb}->{$obj}->{class} eq "Positive" || $results->{tb}->{$obj}->{class} eq "Negative") {
+						push(@{$EssentialReactions},$obj);
+					}
+				}
+			}	
+		}
+		if ($args->{saveFVAResults} == 1) {
+			my $essentialRxn = join("|",@{$EssentialReactions});
+			$essentialRxn =~ s/\|bio\d\d\d\d\d//g;
+			$self->ppo()->essentialRxn($essentialRxn);
+		}
+	}	
+	return $results;
+}
 =head3 replacesReaction 
 definition
     (success/fail) = figmodelreaction->replacesReaction(other_reaction)

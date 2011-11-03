@@ -64,8 +64,9 @@ int GLPKPrintFromSolver() {
 		FlushErrorFile();
 		return FAIL;
 	}
-	
-	int Status = lpx_write_cpxlp(GLPKModel,ConvertStringToCString(FOutputFilepath()+GetParameter("LP filename")));
+
+	string Filename = CheckFilename(FOutputFilepath()+GetParameter("LP filename"));
+	int Status = lpx_write_cpxlp(GLPKModel,ConvertStringToCString(Filename));
 
 	if (Status) {
 		FErrorFile() << "Unable to write problem to file due to error in writing function." << endl;

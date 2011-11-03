@@ -164,6 +164,7 @@ int Initialize() {
 	Filename.append("ErrorLog");
 	Filename.append(OutputIndex);
 	Filename.append(".txt");
+	Filename = CheckFilename(Filename);
 	SetParameter("Error filename",Filename.data());
 	ofstream Output(Filename.data());
 	Output.close();
@@ -531,6 +532,9 @@ string FOutputFilepath() {
 		Temp.assign(GetParameter("Network output location"));
 	}
 	Temp.append(GetParameter("output folder"));
+	if (Temp.substr(0,12).compare("/cygdrive/c/") == 0) {
+		Temp = "C:/" + Temp.substr(12);
+	}
 	return Temp;
 }
 

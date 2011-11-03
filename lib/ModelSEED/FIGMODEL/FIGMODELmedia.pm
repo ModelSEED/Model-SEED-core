@@ -19,7 +19,7 @@ sub new {
 	my ($class,$args) = @_;
 	#Must manualy check for figmodel argument since figmodel is needed for automated checking
 	if (!defined($args->{figmodel})) {
-		ModelSEED::FIGMODEL::FIGMODELWARNING("Figmodel must be defined to create a media object");
+		ModelSEED::globals::WARNING("Figmodel must be defined to create a media object");
 		return undef;
 	}
 	my $self = {_figmodel => $args->{figmodel}};
@@ -33,7 +33,7 @@ sub new {
 			useCache => 1
 		});
 		if (!defined($medias->{$self->{_id}})) {
-			ModelSEED::FIGMODEL::FIGMODELWARNING("Could not find media in database:".$args->{id});
+			ModelSEED::globals::WARNING("Could not find media in database:".$args->{id});
 			return undef;
 		}
 		$self->{_ppo} = $medias->{$self->{_id}}->[0];
@@ -61,11 +61,11 @@ sub create {
 	my $mediaObj = $self->figmodel()->database()->sudo_get_object("media",{id => $args->{id}});
 	if (defined($mediaObj)) {
 		if ($args->{overwrite} == 0) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("Media already exists, and overwrite flag was not set!");
+			ModelSEED::globals::ERROR("Media already exists, and overwrite flag was not set!");
 		}
 		my $rights = $self->figmodel()->database()->get_object_rights($mediaObj,"media");
 		if (!defined($rights->{admin})) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter media object");
+			ModelSEED::globals::ERROR("No rights to alter media object");
 		}
         $mediaObj->public($args->{public} || $mediaObj->public());
         $mediaObj->aerobic($args->{aerobic} || $mediaObj->aerobic());
@@ -91,7 +91,7 @@ sub create {
 			addUniversal => 0
 		});
 	} else {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot create media without either filename or compound list");
+		ModelSEED::globals::ERROR("Cannot create media without either filename or compound list");
 	}
 	#Determining if media is aerobic
 	if (defined($self->{_entities}->{cpd00007}) && $self->{_entities}->{cpd00007}->{maxFlux} > 0) {
@@ -181,14 +181,14 @@ sub loadCompoundsFromFile {
 	});
 	delete $self->{_entities};
 	my $list = $self->figmodel()->database()->load_single_column_file($args->{filename},"");
-	ModelSEED::FIGMODEL::FIGMODELERROR("Could not load file for media:".$args->{id}) if (!defined($list));
+	ModelSEED::globals::ERROR("Could not load file for media:".$args->{id}) if (!defined($list));
 	my $headings = [split(/;/,$list->[0])];
 	my $headingHash;
 	for (my $i=0; $i < @{$headings}; $i++) {
 		$headingHash->{$headings->[$i]} = $i;
 	}
 	if (!defined($headingHash->{VarName}) || !defined($headingHash->{VarType}) || !defined($headingHash->{VarCompartment}) || !defined($headingHash->{Min}) || !defined($headingHash->{Max})) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Media file invalid.");
+		ModelSEED::globals::ERROR("Media file invalid.");
 	}
 	for (my $i=1; $i < @{$list}; $i++) {
 		my $temp = [split(/;/,$list->[$i])];
@@ -307,11 +307,11 @@ sub loadCompoundListToPPO {
 				}
 			}
 			if (!defined($alsHash->{lc($args->{compounds}->[$i])})) {
-				ModelSEED::FIGMODEL::FIGMODELWARNING("Compound ".$args->{compounds}->[$i]." not found in database");
+				ModelSEED::globals::WARNING("Compound ".$args->{compounds}->[$i]." not found in database");
 			} else {
 				my $hitList = [keys(%{$alsHash->{lc($args->{compounds}->[$i])}})];
 				if (@{$hitList} > 1) {
-					ModelSEED::FIGMODEL::FIGMODELWARNING("Multiple matches for ".$args->{compounds}->[$i].":".join(",",@{$hitList}));
+					ModelSEED::globals::WARNING("Multiple matches for ".$args->{compounds}->[$i].":".join(",",@{$hitList}));
 				}
 				$cpdHash->{$hitList->[0]} = 1;
 			}
@@ -363,12 +363,12 @@ sub createFindMedia {
 	for (my $i=0; $i < @{$args->{compounds}}; $i++) {
 		if ($args->{compounds}->[$i] !~ m/cpd\d\d\d\d\d/) {
 			if (!defined($alsHash->{lc($args->{compounds}->[$i])})) {
-				ModelSEED::FIGMODEL::FIGMODELWARNING("Compound ".$args->{compounds}->[$i]." not found in database");
+				ModelSEED::globals::WARNING("Compound ".$args->{compounds}->[$i]." not found in database");
 				return undef;
 			}
 			my $hitList = [keys(%{$alsHash->{lc($args->{compounds}->[$i])}})];
 			if (@{$hitList} > 1) {
-				ModelSEED::FIGMODEL::FIGMODELWARNING("Multiple matches for ".$args->{compounds}->[$i].":".join(",",@{$hitList}));
+				ModelSEED::globals::WARNING("Multiple matches for ".$args->{compounds}->[$i].":".join(",",@{$hitList}));
 			}
 			$args->{compounds}->[$i] = $hitList->[0];
 		}
@@ -458,7 +458,7 @@ sub createMediaFile {
 		$self->loadCompoundsFromPPO();	
 	}
 	if (!defined($self->{_entities})) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find compounds for media");	
+		ModelSEED::globals::ERROR("Could not find compounds for media");	
 	}
 	my $output = ["VarName;VarType;VarCompartment;Min;Max"];
 	foreach my $cpd (keys(%{$self->{_entities}})) {

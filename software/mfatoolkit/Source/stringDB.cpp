@@ -124,6 +124,9 @@ string StringDB::checkFilename(string INfilename) {
 	if (newFilename.substr(1,1).compare(":") != 0 && newFilename.substr(0,1).compare("/") != 0) {
 		newFilename.insert(0,this->get_programPath());
 	}
+	if (newFilename.substr(0,12).compare("/cygdrive/c/") == 0) {
+		newFilename = "C:/" + newFilename.substr(12);
+	}
 	return newFilename;
 }
 //DONE

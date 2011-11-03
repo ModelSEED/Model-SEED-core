@@ -143,7 +143,8 @@ int CPLEXPrintFromSolver() {
 		return FAIL;
 	}
 	
-	Status = CPXwriteprob (CPLEXenv, CPLEXModel, (FOutputFilepath()+GetParameter("LP filename")).data(), "LP");
+	string Filename = CheckFilename(FOutputFilepath()+GetParameter("LP filename"));
+	Status = CPXwriteprob (CPLEXenv, CPLEXModel,Filename.data(), "LP");
 
 	if (Status) {
 		FErrorFile() << "Cannot print problem to file for unknown reason." << endl;

@@ -368,7 +368,7 @@ sub set_attributes {
     my $id = $self->_master->backend->insert_row( $self->_table, $data );
     
     unless ($id) {
-      ModelSEED::FIGMODEL::FIGMODELERROR("Creating new object failed.");
+      ModelSEED::globals::ERROR("Creating new object failed.");
     }
     
     # update the perl object

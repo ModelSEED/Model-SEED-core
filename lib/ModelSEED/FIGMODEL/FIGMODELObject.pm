@@ -8,9 +8,9 @@
 # Date of module creation: 2/1/2008
 ########################################################################
 use strict;
+use ModelSEED::globals;
 package ModelSEED::FIGMODEL::FIGMODELObject;
 use Carp qw(cluck);
-#use ModelSEED::FIGMODEL qw(FIGMODELERROR);
 
 =head1 FIGMODELObject object
 =head2 Introduction
@@ -28,7 +28,7 @@ sub new {
 	my ($class,$args) = @_;
 	my $self = {};
 	bless $self;
-	$args = $self->process_arguments($args,["filename"],{
+	$args = ModelSEED::globals::ARGS($args,["filename"],{
 		delimiter => "\t",
 		headings => [],
 		-load => 0,
@@ -52,37 +52,6 @@ sub new {
 	return $self;
 }
 
-=head3 process_arguments
-Definition:
-	{key=>value} = FIGMODELObject->process_arguments({key=>value});
-Description:
-    Processes arguments to ensure that mandatory arguments are present and set default values for optional arguments
-=cut
-sub process_arguments {
-    my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
-    if (defined($mandatoryArguments)) {
-    	for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
-    		if (!defined($args->{$mandatoryArguments->[$i]})) {
-				push(@{$args->{_error}},$mandatoryArguments->[$i]);
-    		}
-    	}
-    }
-	ModelSEED::FIGMODELglobals::ERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
-    if (defined($optionalArguments)) {
-    	foreach my $argument (keys(%{$optionalArguments})) {
-    		if (!defined($args->{$argument})) {
-    			$args->{$argument} = $optionalArguments->{$argument};
-    		}
-    	}	
-    }
-    return $args;
-}
-
-sub ERROR {	
-	my ($self,$message) = @_;
-	confess $message;
-}
-
 =head3 load
 Definition:
 	string:error = FIGMODELObject->load({filename => string:filename for object,delimiter => string:delimiter for output});
@@ -91,10 +60,10 @@ Description:
 =cut
 sub load {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,[],{delimiter => $self->delimiter(),filename => $self->filename()});
+	$args = ModelSEED::globals::ARGS($args,[],{delimiter => $self->delimiter(),filename => $self->filename()});
     $self->filename($args->{filename});
 	$self->delimiter($args->{delimiter});
-    open (INPUT, "<".$self->filename()) || ModelSEED::FIGMODEL::FIGMODELERROR("Could not open: ".$self->filename()." ".$@);
+    open (INPUT, "<".$self->filename()) || ModelSEED::globals::ERROR("Could not open: ".$self->filename()." ".$@);
 	my $headings;
 	while (my $Line = <INPUT>) {
 		chomp($Line);
@@ -120,7 +89,7 @@ Description:
 
 sub save {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,[],{headings => $self->headings(),delimiter => $self->delimiter(),filename => $self->filename()});
+	$args = ModelSEED::globals::ARGS($args,[],{headings => $self->headings(),delimiter => $self->delimiter(),filename => $self->filename()});
 	$self->filename($args->{filename});
 	$self->delimiter($args->{delimiter});
 	$self->headings($args->{headings});
@@ -264,7 +233,6 @@ Description:
 =cut
 sub delete_key {
 	my ($self,$Key) = @_;
-
 	if ($self->get_data_size($Key) > 0) {
 		delete $self->{$Key};
 		$self->remove_heading($Key);
@@ -279,7 +247,6 @@ Description:
 =cut
 sub remove_data {
 	my ($self,@Data,$Key) = @_;
-
 	if ($self->get_data_size($Key) > 0) {
 		for (my $i=0; $i < $self->get_data_size($Key); $i++) {
 			foreach my $Item (@Data) {
@@ -340,10 +307,8 @@ Description:
 =cut
 sub add_headings {
 	my ($self,@Headings) = @_;
-
 	foreach my $Heading (@Headings) {
 		if (defined($self->headings())) {
-
             #First check if the heading already exists
             foreach my $ExistingHeading (@{$self->headings()}) {
                 if ($Heading eq $ExistingHeading) {

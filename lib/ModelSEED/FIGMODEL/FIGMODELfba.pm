@@ -197,7 +197,7 @@ sub queueFBAJob {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 		nohup => 0,
-		queue => "cplex",
+		queue => $self->figmodel()->queue()->computeQueueID({job => "runfba"}),
 		priority => 3
 	});
 	return $self->error_message({function => "queueFBAJob",args=>$args}) if (defined($args->{error}));
@@ -209,7 +209,14 @@ sub queueFBAJob {
 		$output->{jobid} = $self->filename();
 		return $output;
 	}
-	return $self->figmodel()->add_job_to_queue({command => "runfba?".$self->filename(),queue => $args->{queue},priority => $args->{priority}});
+	$self->figmodel()->queue()->queueJob({
+		function => "runfba",
+		arguments => {
+			filename => $self->filename()
+		},
+		queue => $args->{queue},
+		priority => $args->{priority}
+	});
 }
 =head3 returnFBAJobResults
 Definition:
@@ -350,7 +357,7 @@ sub dataFilename {
 		filename => undef
 	});
 	if (!defined($self->{_dataFilename}->{$args->{type}})) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Type not recognized: ".$args->{type});
+		ModelSEED::globals::ERROR("Type not recognized: ".$args->{type});
 	}
 	if (defined($args->{filename})) {
 		$self->{_dataFilename}->{$args->{type}} = $args->{filename};
@@ -373,7 +380,7 @@ sub printMediaFiles {
     return unless(@{$args->{printList}});
     my $first = $args->{printList}->[0];
     my $mediaObj = $self->figmodel()->get_media($first);
-    ModelSEED::FIGMODEL::FIGMODELERROR("Could not find media object for $first") if (!defined($mediaObj));
+    ModelSEED::globals::ERROR("Could not find media object for $first") if (!defined($mediaObj));
     $mediaObj->printDatabaseTable({
         filename => $self->directory()."/media.tbl",
         printList => $args->{printList}
@@ -739,11 +746,16 @@ sub setOptionParameters {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{});
 	my $options = $self->options();
-	if (defined($options->{thermo})) {
+	if (defined($options->{thermo}) || defined($options->{thermoerror}) || defined($options->{minthermoerror})) {
 		$self->parameters()->{"Thermodynamic constraints"} = 1;
 		$self->parameters()->{"Account for error in delta G"} = 0;
-		if (defined($options->{thermoerror})) {
+		if (defined($options->{thermoerror}) || defined($options->{minthermoerror})) {
 			$self->parameters()->{"Account for error in delta G"} = 1;
+			if (defined($options->{minthermoerror})) {
+				$self->parameters()->{"minimize deltaG error"} = 1;
+				$self->parameters()->{"Max deltaG error"} = 1000;
+				$self->parameters()->{"error multiplier"} = 100;
+			}
 		}
 		$self->parameters()->{"MFASolver"} = "CPLEX";
 	} elsif (defined($options->{simplethermo})) {
@@ -1344,9 +1356,9 @@ sub setTightBounds {
 	#Evaluating specific options meant for this function
 	if (!defined($self->options()->{forcedGrowth})) {
 		$self->set_parameters({"maximize single objective"=>0});
-		if (defined($self->options()->{noGrowth})) {
+		if (defined($self->options()->{noGrowth}) && $self->model() ne "Complete") {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
-			ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model".$self->model()) if (!defined($mdl));
+			ModelSEED::globals::ERROR("Could not find model".$self->model()) if (!defined($mdl));
 			$self->add_reaction_ko([$mdl->biomassReaction()]);
 		}
 	}

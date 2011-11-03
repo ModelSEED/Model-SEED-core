@@ -77,7 +77,9 @@ string CheckFilename(string Filename) {
 	if (Filename.substr(1,1).compare(":") != 0 && Filename.substr(0,1).compare("/") != 0) {
 		Filename.insert(0,FProgramPath());
 	}
-
+	if (Filename.substr(0,12).compare("/cygdrive/c/") == 0) {
+		Filename = "C:/" + Filename.substr(12);
+	}
 	return Filename;
 }
 
@@ -305,6 +307,7 @@ double AverageVector(double &StdDev, vector<double> &InVector) {
 
 void MakeDirectory(const char* InFilename) {
 	string Filename(InFilename);
+	Filename = CheckFilename(Filename);
 	int Position = int(Filename.rfind("/"));
 	if (Position < int(Filename.rfind("\\"))) {
 		Position = int(Filename.rfind("\\"));
@@ -320,8 +323,8 @@ void MakeDirectory(const char* InFilename) {
 	} else {
 		findandreplace(Filename,One,Two);
 	}
+	
 	strout << "mkdir " << Filename;
-	//cout << strout.str() << endl;
 	system(strout.str().data());
 }
 
@@ -596,6 +599,7 @@ int GetNumberOfLinesInFile(string Filename) {
 }
 
 bool FileExists(string InFilename) {
+	InFilename = CheckFilename(InFilename);
 	ifstream Input;
 	Input.open(InFilename.data());
 	if (Input.is_open()) {

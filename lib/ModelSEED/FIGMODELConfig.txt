@@ -31,8 +31,11 @@ database message file directory|${software root directory}logs/
 #Parameter arrays
 print to scratch|0
 CacheSettings|0
-Default queue|development
-Use queue|0
+Default queue|default
+Default queue type|file
+%Job specific default queues|testsolutions:short|runfba:short|mdlreconstruction:short|mdlautocomplete:cplex|fbacheckgrowth:short|mdlcreatemodel:short|mdlinspectstate:short|fbafvabiomass:short|
+Job file directory|${software root directory}jobs/
+Max file jobs|2
 data filenames|compounds|compound links|reactions|reaction links|cues|media
 compounds data filename|${database root directory}ReactionDB/MFAToolkitInputFiles/compoundTable.txt
 compound links data filename|${database root directory}ReactionDB/MFAToolkitInputFiles/compoundLinkTable.txt

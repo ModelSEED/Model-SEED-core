@@ -19,6 +19,7 @@ use DBI;
 use Encode;
 use XML::DOM;
 use SAPserver;
+use ModelSEED::globals;
 package ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
@@ -127,18 +128,7 @@ sub new {
 		}
 	}
 	$self->loadWorkspace();
-	return $self;
-}
-
-sub FIGMODELERROR {	
-	my ($message) = @_;
-    $message = "\"\"$message\"\"";
-	Carp::confess($message);
-}
-
-sub FIGMODELWARNING {	
-	my ($message) = @_;
-	Carp::cluck($message);
+	return $self;	
 }
 
 sub LoadFIGMODELConfig {
@@ -313,7 +303,7 @@ sub globalMessage {
 		message => $args->{msg},
 		function => $function,
 		"package" => $package,
-		"time" => $self->timestamp(),
+		"time" => ModelSEED::globals::TIMESTAMP(),
 		user => $self->user(),
 		id => $args->{id},
 		thread => $args->{thread},
@@ -496,82 +486,17 @@ sub config {
 
 =head3 process_arguments
 Definition:
-	{key=>value} = FBAMODEL->process_arguments( {key=>value} );
+	{}:arguments = FIGMODEL->process_arguments({}:arguments,[string]:mandatory arguments,{}:optional arguments);
 Description:
 	Processes arguments to authenticate users and perform other needed tasks
 =cut
 sub process_arguments {
 	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
-	if (defined($mandatoryArguments)) {
-		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
-			if (!defined($args->{$mandatoryArguments->[$i]})) {
-				push(@{$args->{_error}},$mandatoryArguments->[$i]);
-			}
-		}
-	}
-	ModelSEED::FIGMODEL::FIGMODELERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
-	if (defined($optionalArguments)) {
-		foreach my $argument (keys(%{$optionalArguments})) {
-			if (!defined($args->{$argument})) {
-				$args->{$argument} = $optionalArguments->{$argument};
-			}
-		}	
-	}
+	$args = ModelSEED::globals::ARGS($args,$mandatoryArguments,$optionalArguments);
 	if (defined($args->{cgi}) || ((defined($args->{user}) || defined($args->{username})) && defined($args->{password}))) {
 		$self->authenticate($args);
 	}
 	return $args;
-}
-
-=head3 print_usage
-Definition:
-	string = FBAMODEL->print_usage([]:madatory arguments,{}:optional arguments);
-Description:
-	Prints the usage for the current function call.
-=cut
-sub print_usage {
-	my ($self,$mandatoryArguments,$optionalArguments,$args) = @_;
-	my @calldata = caller(1);
-	my $call = $calldata[3];
-	if ($call eq "ModelSEED::FIGMODEL::process_arguments") {
-		@calldata = caller(2);
-		$call = $calldata[3];
-	}
-	my $usage = "";
-	if (defined($mandatoryArguments)) {
-		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
-			if (length($usage) > 0) {
-				$usage .= "/";	
-			}
-			$usage .= $mandatoryArguments->[$i];
-			if (defined($args)) {
-				$usage .= " => ";
-				if (defined($args->{$mandatoryArguments->[$i]})) {
-					$usage .= $args->{$mandatoryArguments->[$i]};
-				} else {
-					$usage .= " => ?";
-				}
-			}
-		}
-	}
-	if (defined($optionalArguments)) {
-		my $optArgs = [keys(%{$optionalArguments})];
-		for (my $i=0; $i < @{$optArgs}; $i++) {
-			if (length($usage) > 0) {
-				$usage .= "/";	
-			}
-			$usage .= $optArgs->[$i]."(".$optionalArguments->{$optArgs->[$i]}.")";
-			if (defined($args)) {
-				$usage .= " => ";
-				if (defined($args->{$optArgs->[$i]})) {
-					$usage .= $args->{$optArgs->[$i]};
-				} else {
-					$usage .= " => ".$optionalArguments->{$optArgs->[$i]};
-				}
-			}
-		}
-	}
-	return $call."{".$usage."}";
 }
 
 =head3 public_compound_table 
@@ -763,6 +688,27 @@ sub web {
 	my($self) = @_;
 	return $self->{"_figmodelweb"}->[0];
 }
+=head3 queue
+Definition:
+	queue = FIGMODEL->queue();
+Description:
+	Retreives the current queue object
+=cut
+sub queue {
+	my ($self) = @_;
+	if (!defined($self->{_queue})) {
+		$self->{_queue} = ModelSEED::FIGMODEL::queue->new({
+	        id => $self->config("Default queue")->[0],
+	        type => $self->config("Default queue type")->[0],
+	        user => $self->user(),
+	        db => $self->database(),
+	        defaultQueues => $self->config("Job specific default queues"),
+	        jobdirectory => $self->config("Job file directory")->[0],
+	        maxJobs => $self->config("Max file jobs")->[0],
+		});
+	}
+	return $self->{_queue};
+}
 
 =head3 workspace
 Definition:
@@ -952,12 +898,12 @@ sub authenticate {
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("No user account found with name: ".$args->{username}."!");
+			ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
 		} else {
-			ModelSEED::FIGMODEL::FIGMODELERROR("Input password does not match user account!");
+			ModelSEED::globals::ERROR("Input password does not match user account!");
 		}
 	}
 	return undef;
@@ -976,10 +922,10 @@ sub import_seed_account {
 	my($self,$args) = @_;
 	$args = $self->process_arguments($args,["username"],{password => undef});
 	#Checking that you are not already in the SEED environment
-	ModelSEED::FIGMODEL::FIGMODELERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
+	ModelSEED::globals::ERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
 	#Checking if user account already exists with specified name
 	my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
-	ModelSEED::FIGMODEL::FIGMODELERROR("A user account already exists locally with the specified username. This account must be deleted!") if (defined($usrObj));
+	ModelSEED::globals::ERROR("A user account already exists locally with the specified username. This account must be deleted!") if (defined($usrObj));
 	#Getting password from user if not provided
 	if (!defined($args->{password})) {
 		print "Enter password for SEED account:";
@@ -1018,89 +964,7 @@ sub logout {
 
 =head2 Functions relating to job queue
 
-=head3 add_job_to_queue
-Definition:
-	{jobid => integer} = FIGMODEL->add_job_to_queue({
-		command => string:command,
-		queue => integer:target queue,
-		priority => 0-10:lower priority jobs go first
-	});
-Description:
-	This function adds a job to the queue
-Example:
-=cut
-sub add_job_to_queue {
-	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["command"],{queue => "short",priority => 3,user => $self->user(), exclusivekey => undef});
-	if (defined($args->{error})) {
-		return {error => $args->{error}};
-	}
-	my $obj = $self->database()->get_object("queue",{NAME => $args->{queue}});
-	if (defined($obj)) {
-		$args->{queue} = $obj->ID();
-	} else {
-		$args->{queue} = 3;
-	}
-	my $objHash = {
-		QUEUETIME => time(),
-		COMMAND => $args->{command},
-		USER => $args->{user},
-		PRIORITY => $args->{priority},
-		STATUS => "QUEUED",
-		STATE => 0,
-		QUEUE => $args->{queue}
-	};
-	if(defined($args->{exclusivekey})) {
-		$objHash->{'EXCLUSIVEKEY'} = $args->{exclusivekey};
-	}
-	$obj = $self->database()->create_object("job", $objHash);
-	if (defined($obj)) {
-		$obj->ID($obj->_id());
-	}
-	return {jobid => $obj->_id()};
-}
 
-=head3 runTestJob
-Definition:
-	{} = FIGMODEL->runTestJob({jobid => integer:id of job to be run});
-Description:
-	This function runs a test job in the queue. The job will only run if it is in the "test" queue and it is owned by the currently logged in user.
-Example:
-=cut
-sub runTestJob {
-	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["jobid"],{user => $self->user()});
-	if (defined($args->{error})) {
-		return {error => $args->{error}};
-	}
-	my $obj = $self->database()->get_object("queue",{NAME => "test"});
-	if (!defined($obj)) {
-		return {error => $self->error_message("runTestJob:could not find test queue")};	
-	}
-	$obj = $self->database()->get_object("job",{_id => $args->{jobid},QUEUE => $obj->ID(),USER => $args->{user}});
-	if (!defined($obj)) {
-		return {error => $self->error_message("runTestJob:could not find specified job in the test queue")};
-	}
-	my $command = $obj->COMMAND();
-	system($self->figmodel()->config("Model driver executable")->[0]." \"".$command."\"");
-	$obj->delete();
-	return {};
-}
-
-=head3 checkJobQueue
-Definition:
-	status = FIGMODEL->checkJobQueue({jobid => integer:job id});
-Description:
-	This function checks the job queue for completed jobs
-Example:
-=cut
-sub checkJobQueue {
-	my($self,$args) = @_;
-	$args = $self->process_arguments($args,[],{user => undef,password => undef,cgi => undef,jobs => undef});
-	if (defined($args->{error})) {
-		return {error => $args->{error}};
-	}
-}
 
 =head2 Object retrieval methods
 
@@ -1268,19 +1132,28 @@ Description:
 =cut
 sub fba {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,[],{model => undef, geneKO => undef,rxnKO => undef,media => undef});
-	if (defined($args->{error})) {return {error => $args->{error}};}
+	$args = $self->process_arguments($args,[],{
+		parameters=>{},
+		filename=>undef,
+		geneKO=>[],
+		rxnKO=>[],
+		drnRxn=>[],
+		model=>undef,
+		media=>undef,
+		parameter_files=>["ProductionMFA"],
+		options => {}
+	});
 	if (defined($args->{model})) {
 		my $mdl = $self->get_model($args->{model});
 		if (defined($mdl)) {
 			return $mdl->fba($args);
 		}
 	} else {
-		return ModelSEED::FIGMODEL::FIGMODELfba->new({figmodel => $self,geneKO => $args->{geneKO},rxnKO => $args->{rxnKO},media => $args->{media},parameter_files=>["ProductionMFA"]});
+		$args->{figmodel} = $self;
+		return ModelSEED::FIGMODEL::FIGMODELfba->new($args);
 	}
 	return undef;
 }
-
 =head3 fba_run_study
 =item Definition:
 	Output:{} = FBAMODEL->fba_run_study({
@@ -2630,7 +2503,7 @@ sub import_model_file {
 		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
 	}
 	if (!-e $args->{filename}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find model specification file: ".$args->{filename}."!");		
+		ModelSEED::globals::ERROR("Could not find model specification file: ".$args->{filename}."!");		
 	}
 	#Calculating the full ID of the model
 	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
@@ -2640,7 +2513,7 @@ sub import_model_file {
 	}
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
-		ModelSEED::FIGMODEL::FIGMODELERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
+		ModelSEED::globals::ERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
 		$args->{id} .= ".".$usr->_id();
 	}
 	#Checking if the model exists, and if not, creating the model
@@ -2657,16 +2530,16 @@ sub import_model_file {
 		});
 		$modelObj = $mdl->ppo();
 	} elsif ($args->{overwrite} == 0) {
-		ModelSEED::FIGMODEL::FIGMODELERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
+		ModelSEED::globals::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
-			ModelSEED::FIGMODEL::FIGMODELERROR("No rights to alter model object");
+			ModelSEED::globals::ERROR("No rights to alter model object");
 		}
 	}
 	$mdl = $self->get_model($args->{id});
 	if (!-defined($mdl)) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not load/create model ".$mdl."!");
+		ModelSEED::globals::ERROR("Could not load/create model ".$mdl."!");
 	}
 	#Clearing current model data in the database
 	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
@@ -2710,7 +2583,7 @@ sub import_model_file {
 		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
-		ModelSEED::FIGMODEL::FIGMODELERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
+		ModelSEED::globals::ERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
 	}
 	my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
 	my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
@@ -5659,65 +5532,6 @@ sub add_pk_data_to_compound {
 	unlink($self->config("temp file directory")->[0].'pk'.$id.'.txt');
 }
 
-=head3 classify_database_reactions
-Definition:
-	(FIGMODELTable::Compound table,FIGMODELTable::Reaction table) = FIGMODEL->classify_database_reactions(string::media);
-=cut
-
-sub classify_database_reactions {
-	my ($self,$media,$biomassrxn) = @_;
-
-	my $CompoundTB;
-	my $ReactionTB;
-	my $UniqueFilename = $self->filename();
-	system($self->GenerateMFAToolkitCommandLineCall($UniqueFilename,"Complete",$media,["ProductionCompleteClassification"],{"find tight bounds" => 1,"Make all reactions reversible in MFA"=>1,"MFASolver" => "CPLEX","Complete model biomass reaction" => $biomassrxn},"Classify-Complete-".$UniqueFilename.".log",undef,""));
-	if (-e $self->{"MFAToolkit output directory"}->[0].$UniqueFilename."/"."MFAOutput/TightBoundsReactionData0.txt") {
-		$ReactionTB = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->{"MFAToolkit output directory"}->[0].$UniqueFilename."/MFAOutput/TightBoundsReactionData0.txt",";","|",1,["DATABASE ID"]);
-		my $inactiveRxn;
-		for (my $i=0; $i < $ReactionTB->size(); $i++) {
-			my $row = $ReactionTB->get_row($i);
-			if ($row->{"Max FLUX"}->[0] < 0.0000001 && $row->{"Min FLUX"}->[0] > -0.0000001) {
-				push(@{$inactiveRxn},$row->{"DATABASE ID"}->[0]);
-			}
-		}
-		$self->database()->print_array_to_file("/home/chenry/DBInactiveReactions.txt",$inactiveRxn);
-	}
-	if (-e $self->{"MFAToolkit output directory"}->[0].$UniqueFilename."/"."MFAOutput/TightBoundsCompoundData0.txt") {
-		$CompoundTB = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->{"MFAToolkit output directory"}->[0].$UniqueFilename."/MFAOutput/TightBoundsCompoundData0.txt",";","|",1,["DATABASE ID"]);
-	}
-	$self->clearing_output($UniqueFilename,"Classify-Complete-".$UniqueFilename.".log");
-	return ($CompoundTB,$ReactionTB);
-}
-
-=head3 determine_biomass_essential_reactions
-Definition:
-	(success/fail) = FIGMODEL->determine_biomass_essential_reactions(string::biomass);
-=cut
-
-sub determine_biomass_essential_reactions {
-	my ($self,$biomassID) = @_;
-	my $bioMgr = $self->database()->get_object_manager("bof");
-	my $bioObj = $bioMgr->get_objects({id=>$biomassID});
-	if (defined($bioObj->[0])) {
-		my ($CompoundTB,$ReactionTB) = $self->classify_database_reactions("Complete",$biomassID);
-		my $EssentialReactions;
-		if (!defined($ReactionTB)) {
-			$self->error_message("BuildSpecificBiomassReaction:".$biomassID." biomass reaction would not grow in complete database and complete media!");
-			$bioObj->[0]->essentialRxn("NONE");
-		} else {
-			for (my $i=0; $i < $ReactionTB->size(); $i++) {
-				my $Row = $ReactionTB->get_row($i);
-				if ($Row->{"Max FLUX"}->[0] < -0.0000001 || $Row->{"Min FLUX"}->[0] > 0.0000001) {
-					push(@{$EssentialReactions},$Row->{"DATABASE ID"}->[0]);
-				}
-			}
-			my $essentialRxn = join("|",@{$EssentialReactions});
-			$essentialRxn =~ s/\|bio\d\d\d\d\d//g;
-			$bioObj->[0]->essentialRxn($essentialRxn);
-		}
-	}
-}
-
 =head3 PrintDatabaseLPFiles
 Definition:
 	$model->PrintDatabaseLPFiles();
@@ -8659,32 +8473,6 @@ sub call_model_function {
 	}
 }
 
-=head3 process_models
-Definition:
-   FIGMODEL->process_models()
-Description:
-	Looks for incomplete models and ungapfilled models and automatically runs preliminary reconstruction and autocompletion
-=cut
-sub process_models {
-	my ($self,$startNumber,$owner) = @_;
-	my $objs = $self->database()->get_objects("model");
-	if (!defined($startNumber)) {
-		$startNumber = 0;
-	}
-	for (my $i=$startNumber; $i < @{$objs}; $i++) {
-		print $i."\n";
-		if (!defined($owner) || $objs->[$i]->owner() eq $owner) {
-			if ($objs->[$i]->id() =~ m/^Seed/ && $objs->[$i]->status() < 0) {
-				print "Building model"."\n";
-				$self->add_job_to_queue({command => "preliminaryreconstruction?".$objs->[$i]->id()."?1?",user => $objs->[$i]->owner(),queue => "short"});
-			} elsif ((!defined($objs->[$i]->growth()) || $objs->[$i]->growth() == 0) && $objs->[$i]->owner() ne "mdejongh" && $objs->[$i]->owner() ne "AaronB") {
-				print "Gapfilling model"."\n";
-				$self->add_job_to_queue({command => "gapfillmodel?".$objs->[$i]->id(),user => $objs->[$i]->owner(),queue => "cplex"});
-			}
-		}
-	}
-}
-
 =head3 process_strain_data
 Definition:
    FIGMODEL->process_strain_data()
@@ -8850,7 +8638,7 @@ sub processIDList {
 		} elsif (-e $self->ws()->directory().$args->{input}) {
 			return $self->database()->load_single_column_file($self->ws()->directory().$args->{input},"");
 		}
-		ModelSEED::FIGMODEL::FIGMODELERROR("Cannot obtain ppo data for reaction");
+		ModelSEED::globals::ERROR("Cannot obtain ppo data for reaction");
 	} elsif ($args->{input} eq "ALL") {
 		my $objects = $self->database()->get_objects($args->{objectType},$args->{parameters});
 		my $function = $args->{column};
@@ -8864,20 +8652,9 @@ sub processIDList {
 	} else {
 		return [split($args->{delimiter},$args->{input})];
 	}
-	ModelSEED::FIGMODEL::FIGMODELERROR("Unhandled use case");
+	ModelSEED::globals::ERROR("Unhandled use case");
 }
-=head3 timestamp
-Definition:
-	TIMESTAMP = FIGMODEL->timestamp();
-Description:	
-=cut
-sub timestamp {
-	my ($self) = @_;
-	my ($sec,$min,$hour,$day,$month,$year) = gmtime(time());
-	$year += 1900;
-	$month += 1;
-	return $year."-".$month."-".$day.' '.$hour.':'.$min.':'.$sec;
-}
+
 =head3 put_two_column_array_in_hash
 Definition:
 	({string:1 => string:2},{string:2 => string:1}) = FIGMODEL->put_two_column_array_in_hash([[string:1,string:2]]);

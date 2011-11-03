@@ -107,7 +107,6 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
 	}
 	$output = $fbamodel->fba_submit_gene_activity_analysis({model => "Seed158878.1",media => "Complete",queue => "test",geneCalls => $geneCalls});
 	ok !defined($output) || !defined($output->{jobid}), "FBAMODEL:fba_submit_gene_activity_analysis:test failed!\n";
-	$fbamodel->figmodel()->runTestJob($output->{jobid});
 	$output = $fbamodel->fba_retreive_gene_activity_analysis({jobid => $output->{jobid}});
 	ok !defined($output) || !defined($output->{On_On}->[10]), "FBAMODEL:fba_retreive_gene_activity_analysis:test failed!\n";
 	$output = $fbamodel->simulate_all_single_gene_knockout({parameters => [{"id" => "Seed83333.1",media => "Complete"}]});
