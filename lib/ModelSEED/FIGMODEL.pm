@@ -2588,14 +2588,15 @@ sub import_model_file {
 		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
-		ModelSEED::globals::ERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
-	}
-	my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
-	my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
+		ModelSEED::globals::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	
+	}else{
+	    my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+	    my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
 		equation => $obj->{EQUATION}->[0],
 		biomassID => $obj->{DATABASE}->[0]
-	});
-	$modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	        });
+	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	}
 	return $modelObj;
 }
 =head3 import_model
