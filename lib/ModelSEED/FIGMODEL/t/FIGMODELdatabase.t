@@ -75,7 +75,7 @@ my $fm = $helper->getDebugFIGMODEL();
         return $lines;
     }
     my $lines = testLocking("foo");
-    ok @{$lines} == 0, "Shouldn't aquire lock for default genericLock call";
+    ok @{$lines} != 0, "Will aquire lock for genericLock, non-exclusive";
     $lines = testLocking("foo", "EX",1);
     ok @{$lines} == 0, "Shouldn't aquire lock for genericLock, exclusive";
 }
