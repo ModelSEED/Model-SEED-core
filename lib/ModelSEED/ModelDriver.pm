@@ -4548,15 +4548,6 @@ sub clustermodels {
 	});
 }
 
-sub parsesbml {
-	my($self,@Data) = @_;
-	my $args = $self->check([["file",1]],[@Data]);
-	my $List = $self->figmodel()->parseSBMLToTable({file => $args->{file}});
-	foreach my $table(keys %$List){
-	    $List->{$table}->save();
-	}
-}
-
 sub printroleclass {
 	my($self,@Data) = @_;
 	my $args = $self->check([["roles",1],["filename",0,$self->outputdirectory()."RoleClasses.txt"]],[@Data]);
@@ -5816,6 +5807,7 @@ sub bcprintmedia {
 		parameters => {}
 	});
 	my $compoundHash;
+
 	for (my $i=0; $i < @{$mediaIDs}; $i++) {
 		if (defined($mediaHash->{$mediaIDs->[$i]})) {
 			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
@@ -6312,7 +6304,7 @@ sub mdlparsesbml {
 	my $args = $self->check([
 		["file",1,undef,"The name of the SBML file to be parsed. It is assumed the file is present in the workspace."]
 	],[@Data],"parsing SBML file into compound and reaction tables");
-	my $List = $self->figmodel()->parseSBMLtoTable({file => $self->ws()->directory().$args->{file}});
+	my $List = $self->figmodel()->parseSBMLToTable({file => $self->ws()->directory().$args->{file}});
 	foreach my $table(keys %$List){
 		$List->{$table}->save();
 	}
