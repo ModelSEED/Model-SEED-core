@@ -1118,6 +1118,9 @@ Description:
 =cut
 sub get_role {
 	my ($self,$id) = @_;
+	if (!defined($id)) {
+		return ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self});
+	}
 	my $cached = $self->getCache({key => "FIGMODELrole:".$id});
 	return $cached if defined($cached);
 	my $role = ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self,id => $id});
