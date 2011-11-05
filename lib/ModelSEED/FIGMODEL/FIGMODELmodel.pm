@@ -1728,34 +1728,33 @@ sub autocompleteMedia {
 
 sub biomassReaction {
 	my ($self,$newBiomass) = @_;
-	if (!defined($newBiomass) || $newBiomass eq $self->ppo()->biomassReaction()) {
-		return $self->ppo()->biomassReaction();	
-	}
-	
-	my $bioobj = $self->db()->get_object("bof",{id=>$newBiomass});
-	if (!defined($bioobj)) {
-		ModelSEED::globals::WARNING("Could not find new biomass reaction ".$newBiomass);
-		return $self->ppo()->biomassReaction();
-	}
-	my $oldBiomass = $self->ppo()->biomassReaction();
-	if ($oldBiomass =~ m/bio\d+/) {
+	if (defined($newBiomass)) {
+		my $bioobj = $self->db()->get_object("bof",{id=>$newBiomass});
+		if (!defined($bioobj)) {
+			ModelSEED::globals::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
+		}
+		my $oldBiomass = $self->ppo()->biomassReaction();
+		my $found = 0;
 		my $rxnmdl = $self->rxnmdl();
 		for (my $i=0; $i < @{$rxnmdl}; $i++) {
-			if ($rxnmdl->[$i]->REACTION() eq $self->ppo()->biomassReaction()) {
+			if ($rxnmdl->[$i]->REACTION() eq $oldBiomass) {
+				$found = 1;
 				$rxnmdl->[$i]->REACTION($newBiomass);
 			}
 		}
-	} else {
-		$self->db()->create_object("rxnmdl",{
-			MODEL=>$self->id(),
-			REACTION=>$newBiomass,
-			compartment=>"c",
-			confidence=>1,
-			pegs=>"SPONTANEOUS",
-			directionality=>"=>"
-		})
+		if ($found == 0) {
+			$self->db()->create_object("rxnmdl",{
+				MODEL=>$self->id(),
+				REACTION=>$newBiomass,
+				compartment=>"c",
+				confidence=>1,
+				pegs=>"SPONTANEOUS",
+				directionality=>"=>"
+			})
+		}
+		$self->ppo()->biomassReaction($newBiomass);
 	}
-	return $self->ppo()->biomassReaction($newBiomass);
+	return $self->ppo()->biomassReaction();
 }
 
 =head3 biomassObject
