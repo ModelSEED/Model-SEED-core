@@ -1,8 +1,7 @@
 use strict;
 use warnings;
-use FIG_Config;
 use ModelSEEDbootstrap;
-use Test::More qw(no_plan);
+use Test::More tests => 5;
 use Data::Dumper;
 use MSSeedSupport;
 

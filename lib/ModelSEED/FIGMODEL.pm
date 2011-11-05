@@ -7,6 +7,8 @@
 # Date of module creation: 8/26/2008
 ########################################################################
 use strict;
+use warnings;
+use 5.008;
 use Class::ISA;
 use File::Temp qw(tempfile);
 use Carp qw(cluck);
@@ -21,6 +23,7 @@ use XML::DOM;
 use SAPserver;
 use ModelSEED::globals;
 package ModelSEED::FIGMODEL;
+our $VERSION = '0.01';
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
 use ModelSEED::ModelSEEDUtilities::TimeZone;
@@ -1115,6 +1118,9 @@ Description:
 =cut
 sub get_role {
 	my ($self,$id) = @_;
+	if (!defined($id)) {
+		return ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self});
+	}
 	my $cached = $self->getCache({key => "FIGMODELrole:".$id});
 	return $cached if defined($cached);
 	my $role = ModelSEED::FIGMODEL::FIGMODELrole->new({figmodel => $self,id => $id});
@@ -2588,14 +2594,15 @@ sub import_model_file {
 		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
-		ModelSEED::globals::ERROR("Could not find biomass specification file: ".$args->{biomassFile}."!");	
-	}
-	my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
-	my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
+		ModelSEED::globals::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	
+	}else{
+	    my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+	    my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
 		equation => $obj->{EQUATION}->[0],
 		biomassID => $obj->{DATABASE}->[0]
-	});
-	$modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	        });
+	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	}
 	return $modelObj;
 }
 =head3 import_model

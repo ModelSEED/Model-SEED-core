@@ -1,21 +1,21 @@
 use strict;
 use warnings;
-use lib '../../../../config/';
-use ModelSEEDbootstrap;
 use ModelSEED::TestingHelpers;
-use Test::More qw(no_plan);
+use Test::More tests => 29;
 use Data::Dumper;
 use ModelSEED::ServerBackends::FBAMODEL;
 
-#my $helper = ModelSEED::TestingHelpers->new();
-#my $fm = $helper->getDebugFIGMODEL();
-#my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new({figmodel => $fm});
-my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
+my $helper = ModelSEED::TestingHelpers->new();
+my $fm = $helper->getDebugFIGMODEL();
+my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new({figmodel => $fm});
 
 #Testing each server function
 {
-    my $pubmodel = "iJR904";
-    my $privatemodel = "iJR904.796";
+    $fm->authenticate({username => "alice", password => "alice"});
+    my $aliceID = $fm->userObj()->_id();
+    $fm->logout();
+    my $pubmodel = "Seed83333.1";
+    my $privatemodel = "Seed83333.1.$aliceID";
     my $media = "Carbon-D-Glucose";
     my $genome = "83333.1";
 	my $output = $fbamodel->get_reaction_id_list({id => ["ALL",$pubmodel]});
@@ -25,11 +25,11 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
     $rxn = $output->{"ALL"}->[0];
     ok defined($rxn), "get_reaction_id_list for entire database".
         " should return at least 1 reaction, got ". scalar(@{$output->{"ALL"}});
-	$output = $fbamodel->get_reaction_id_list({id => [$privatemodel],user => "chenry",password => "Ko3BA9yMnMj2k"});
+	$output = $fbamodel->get_reaction_id_list({id => [$privatemodel],user => "alice",password => "alice"});
 	$rxn = $output->{$privatemodel}->[0];
 	ok defined($rxn), "get_reaction_id_list for private model ".$privatemodel.
         " should return at least 1 reaction, got ". scalar(@{$output->{$privatemodel}});
-	$output = $fbamodel->get_reaction_data({id => $output->{$privatemodel},model => [$privatemodel],user => "chenry",password => "Ko3BA9yMnMj2k"});
+	$output = $fbamodel->get_reaction_data({id => $output->{$privatemodel},model => [$privatemodel],user => "alice",password => "alice"});
 	$rxn = $output->{"rxn00781"};
 	ok defined($rxn->{$privatemodel}->{"ASSOCIATED PEG"}->[0]), "get_reaction_data for private model ".$privatemodel.
         " should return model data for rxn00781 , got ". $rxn->{$privatemodel}->{"ASSOCIATED PEG"}->[0];
@@ -81,7 +81,7 @@ my $fbamodel = ModelSEED::ServerBackends::FBAMODEL->new();
     $output = $fbamodel->get_model_reaction_classification_table({"model" => [$pubmodel]});
 	ok defined($output->{$pubmodel}->[0]->{class}->[0]), "get_model_reaction_classification_table for model ".$pubmodel.
         " should return classification data for at least one reaction, got ". $output->{$pubmodel}->[0]->{class}->[0];
-	$output = $fbamodel->model_build({id => "83333.1",overwrite => 1,user => "chenry",password => "Ko3BA9yMnMj2k"});
+	$output = $fbamodel->model_build({id => "83333.1",overwrite => 1,user => "alice",password => "alice"});
 	ok defined($output->{"83333.1"}), "model_build for genome 83333.1".
         " should return a success message, got ". $output->{"83333.1"};
 	exit();

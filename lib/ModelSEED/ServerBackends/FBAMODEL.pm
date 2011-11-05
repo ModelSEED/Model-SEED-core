@@ -146,6 +146,19 @@ sub configure_environment {
 	return $args;
 }
 
+=head2 Process Arguments and Authenticate
+=cut
+sub process_arguments_and_authenticate {
+    my ($self, $args, $req, $opt) = @_;
+    $args = $self->figmodel()->process_arguments($args, $req, $opt);
+    if(defined($args->{user}) || defined($args->{username})) {
+        $self->figmodel()->authenticate({
+            username => ($args->{user}) ? $args->{user} : $args->{username}, 
+            password => $args->{password}});
+    }
+    return $args;
+}
+
 =head2 Methods that access data from the database
 
 =head3 get_reaction_id_list
@@ -172,7 +185,7 @@ Example:
 =cut
 sub get_reaction_id_list {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
+	$args = $self->process_arguments_and_authenticate($args,[],{
 		id => ["ALL"]
 	});
 	if (ref($args->{id}) ne "ARRAY") {
@@ -241,7 +254,7 @@ Example:
 =cut
 sub get_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
+	$args = $self->process_arguments_and_authenticate($args,[],{
 		id => ["ALL"],
 		model => undef
 	});
@@ -322,7 +335,7 @@ sub get_reaction_data {
 				"MAIN EQUATION" => [$obj->equation()],
 				PATHWAY => ["Macromolecule biosynthesis"],
 				REVERSIBILITY => ["=>"]
-			};
+			} if(defined($obj));
 		}
 		if (defined($row)) {
 			$output->{$args->{id}->[$i]} = $row;
@@ -379,7 +392,7 @@ Example:
 
 sub get_biomass_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	if (!defined($args->{model})) {
 		return {error=>["No model ID provided"]};	
 	}
@@ -443,7 +456,7 @@ Example:
 =cut
 sub get_compound_id_list {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	#List of IDs to be returned will be stored here
 	my $ids;
 	#First checking that the "id" key exists
@@ -525,7 +538,7 @@ Example:
 =cut
 sub get_compound_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	my $idHash;
 	my $objects = $self->figmodel()->database()->get_objects("compound");
 	for (my $i=0; $i < @{$objects}; $i++) {
@@ -627,7 +640,7 @@ Example:
 =cut
 sub get_media_id_list {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	my $output;
 	my $all_media = $self->figmodel()->database()->get_objects("media"); 
     foreach my $media (@$all_media) {
@@ -663,7 +676,7 @@ Example:
 =cut
 sub get_media_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args, ["id"]);
+	$args = $self->process_arguments_and_authenticate($args, ["id"]);
     if(ref($args->{"id"}) ne "ARRAY") {
         $args->{"id"} = [$args->{"id"}];
     }
@@ -719,7 +732,7 @@ Description:
 
 sub get_metabolic_models {
     my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
     my $objs = [];
     my $params = {};
     if(defined($args->{genome})) {
@@ -764,7 +777,7 @@ Description:
 =cut
 sub get_model_id_list {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args, [], {'onlyMine' => 0});
+	$args = $self->process_arguments_and_authenticate($args, [], {'onlyMine' => 0});
 	my ($output, $objs);
     if($args->{'onlyMine'} == 1) {
         $objs = $self->figmodel()->database()->get_objects("model", {'owner' => $self->figmodel()->user()});
@@ -793,7 +806,7 @@ Give it a list of model ids. Returns a list of key-value pair statisics, one for
 =cut
 sub get_model_stats {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args,["id"]);
+    $args = $self->process_arguments_and_authenticate($args,["id"]);
     if(ref($args->{id}) ne 'ARRAY') {
         $args->{id} = [ $args->{id} ];
     }
@@ -855,7 +868,7 @@ Example:
 
 sub get_model_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
     my $figmodel = $self->figmodel();
 	#Getting the id list
 	my $ids;
@@ -920,7 +933,7 @@ Description:
 
 sub get_model_reaction_data {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["id"]);
+	$args = $self->process_arguments_and_authenticate($args,["id"]);
 	my $mdl = $self->figmodel()->get_model($args->{id});
 	if (!defined($mdl)) {return $self->error_message({message=>"get_model_reaction_data:could not access model",args=>$args});}
 	my $tbl = $mdl->generate_reaction_data_table($args);
@@ -958,7 +971,7 @@ sub get_model_reaction_data {
 
 sub get_model_essentiality_data {
 	my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
 	my $results;
     if (defined($args->{model})) {
     	for (my $i=0; $i < @{$args->{model}}; $i++) {
@@ -1004,7 +1017,7 @@ sub get_model_essentiality_data {
 
 sub get_experimental_essentiality_data {
 	my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
 	my $results;
     if (defined($args->{genome})) {
     	for (my $i=0; $i < @{$args->{genome}}; $i++) {
@@ -1150,7 +1163,7 @@ the reactions and transportable compounds in the model), and "fluxes"
 
 sub simulate_model_growth {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	#Checking that at least one parameter was input
 	if (!defined($args->{parameters})) {
 		return undef;
@@ -1226,7 +1239,7 @@ sub simulate_model_growth {
 
 sub fba_calculate_minimal_media {
 	my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args,["model"]);
+    $args = $self->process_arguments_and_authenticate($args,["model"]);
 	if (defined($args->{error})) {
 		return {error => $args->{error}};
 	}
@@ -1300,7 +1313,7 @@ classification data.
 
 sub get_model_reaction_classification_table {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["model"]);
+	$args = $self->process_arguments_and_authenticate($args,["model"]);
 	#Now retreiving the specified models from the database
 	my $output;
 	for (my $i=0; $i < @{$args->{model}}; $i++) {
@@ -1346,7 +1359,7 @@ sub get_model_reaction_classification_table {
 
 sub get_role_to_complex {
     my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     my $roles = $self->figmodel()->database()->get_objects("role");
     my $roleHash = {};
     for(my $i=0; $i<@$roles; $i++) {
@@ -1368,7 +1381,7 @@ sub get_role_to_complex {
 
 sub get_complex_to_reaction {
     my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     my $objs = $self->figmodel()->database()->get_objects("rxncpx",{'master' => 1});
     my $complexToReactionTable = [];
     for(my $i=0; $i<@$objs; $i++) {
@@ -1439,7 +1452,7 @@ the specified model did not grow in the specified conditions.
 =cut
 sub classify_model_entities {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["parameters"],{});
+	$args = $self->process_arguments_and_authenticate($args,["parameters"],{});
 	if (ref($args->{parameters}) ne "ARRAY") {
 		$args->{parameters} = [$args->{parameters}];
 	}
@@ -1548,7 +1561,7 @@ means the specified model did not grow in the specified conditions.
 =cut
 sub simulate_all_single_gene_knockout {
 	my ($self, $args) = @_;
-	$args = $self->figmodel()->process_arguments($args);
+	$args = $self->process_arguments_and_authenticate($args);
 	#Checking that at least one parameter was input
 	if (!defined($args->{parameters})) {
 		return undef;
@@ -1605,7 +1618,7 @@ sub simulate_all_single_gene_knockout {
 
 sub subsystems_of_reaction {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["reactions"]);
+	$args = $self->process_arguments_and_authenticate($args,["reactions"]);
 	if (defined($args->{error})) {return $self->error_message({function=>"subsystems_of_reaction",args=>$args});}
 	my $output;
 	if (@{$args->{reactions}} == 1) {
@@ -1648,7 +1661,7 @@ sub subsystems_of_reaction {
 
 sub get_subsystem_data {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
+	$args = $self->process_arguments_and_authenticate($args,[],{
 		ids => ["ALL"],
 	});
 	if (ref($args->{ids}) ne "ARRAY") {
@@ -1697,7 +1710,7 @@ sub get_subsystem_data {
 
 sub metabolic_neighborhood_of_roles {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["ids"]);
+	$args = $self->process_arguments_and_authenticate($args,["ids"]);
     return $self->figmodel()->mapping()->metabolic_neighborhood_of_roles({roles => $args->{ids}});
 }
 
@@ -1717,7 +1730,7 @@ sub metabolic_neighborhood_of_roles {
 
 sub modelseed_roles {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->process_arguments_and_authenticate($args,[],{});
     return {roles=>$self->figmodel()->mapping()->roles({})};
 }
 
@@ -1738,7 +1751,7 @@ sub modelseed_roles {
 
 sub gapfilled_roles {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["ids"],{});
+	$args = $self->process_arguments_and_authenticate($args,["ids"],{});
 	my $result;
 	for (my $i=0; $i < @{$args->{ids}}; $i++) {
 		my $mdl;
@@ -1780,7 +1793,7 @@ sub gapfilled_roles {
 
 sub rename_functional_role {
     my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     if ($self->figmodel()->admin() != 1) {
     	return "Cannot use this function without Model SEED administrator privelages";	
     }
@@ -1830,7 +1843,7 @@ sub rename_functional_role {
 #TODO: This function is incomplete
 sub add_functional_role_mapping {
     my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     #Checking for administrative privelages
     if ($self->figmodel()->admin() != 1) {
     	return "Cannot use this function without Model SEED administrator privelages";	
@@ -1856,7 +1869,7 @@ sub add_functional_role_mapping {
 
 sub pegs_of_function {
 	my ($self,$args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
  	my $result;
  	for (my $i=0; $i < @{$args->{roles}}; $i++) {
  		my @pegs = $self->figmodel()->fig()->prots_for_role($args->{roles}->[$i]);
@@ -1880,7 +1893,7 @@ Description:
 =cut
 sub fba_submit_gene_activity_analysis {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["id","geneCalls"],{user => undef,password => undef,media => "Complete"});
+	$args = $self->process_arguments_and_authenticate($args,["id","geneCalls"],{user => undef,password => undef,media => "Complete"});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	my $mdl = $self->figmodel()->get_model($args->{id});
 	if (!defined($mdl) && $args->{id} =~ m/^\d+\.\d+$/) {
@@ -1910,7 +1923,7 @@ Description:
 =cut
 sub fba_retreive_gene_activity_analysis {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["jobid"]);
+	$args = $self->process_arguments_and_authenticate($args,["jobid"]);
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	my $fbaObj = $self->figmodel()->fba();
 	return $fbaObj->returnFBAJobResults($args);
@@ -1935,7 +1948,7 @@ Description:
 
 sub get_abstract_reaction_groups {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     my $groups = {};
     foreach my $x (@{$self->figmodel()->database()->get_objects('reaction')}) {
         my $g = $x->abstractReaction(); 
@@ -1964,7 +1977,7 @@ Description:
 
 sub get_abstract_reaction_group {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['grouping']);
+    $args = $self->process_arguments_and_authenticate($args, ['grouping']);
     my $grouping = $args->{grouping};
     my $group = $self->figmodel()->database()->get_objects('reaction', {'abstractReaction' => $grouping });
     my @rxns = map { $_->id() } @$group;
@@ -1981,7 +1994,7 @@ Description:
 =cut
 sub set_abstract_reaction_group {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['group']);
+    $args = $self->process_arguments_and_authenticate($args, ['group']);
     my $group = $args->{'group'};
     my $grouping = $group->{'grouping'};    
     my $reactions = $group->{'reactions'} || [];
@@ -2017,7 +2030,7 @@ Description:
 
 sub get_abstract_compound_groups {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args);
+    $args = $self->process_arguments_and_authenticate($args);
     my $groups = {};
     foreach my $x (@{$self->figmodel()->database()->get_objects('compound')}) {
         my $g = $x->abstractcompound(); 
@@ -2046,7 +2059,7 @@ Description:
 
 sub get_abstract_compound_group {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['grouping']);
+    $args = $self->process_arguments_and_authenticate($args, ['grouping']);
     my $grouping = $args->{grouping};
     my $group = $self->figmodel()->database()->get_objects('compound', {'abstractCompound' => $grouping });
     my @cpds = map { $_->id() } @$group;
@@ -2063,7 +2076,7 @@ Description:
 =cut
 sub set_abstract_compound_group {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['group']);
+    $args = $self->process_arguments_and_authenticate($args, ['group']);
     my $group = $args->{'group'};
     my $grouping = $group->{'grouping'};    
     my $compounds = $group->{'compounds'} || [];
@@ -2106,7 +2119,7 @@ Description:
 =cut
 sub model_build {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['id'],{
+    $args = $self->process_arguments_and_authenticate($args, ['id'],{
     	genome => undef,
     	biomass => undef,
     	biochemSource => undef,
@@ -2155,7 +2168,7 @@ Description:
 
 sub model_status {
     my ($self, $args) = @_;
-    $args = $self->figmodel()->process_arguments($args, ['models']);
+    $args = $self->process_arguments_and_authenticate($args, ['models']);
     my $params = ['id', 'growth', 'status', 'message'];
     my $models = $args->{'models'};
     my $results = {'models' => []};
@@ -2201,7 +2214,7 @@ sub changeModelRole {
     my ($self, $args) = @_;
     my $logfile = $self->figmodel()->config("database root directory")->[0].'Mappings/automatic-role-changes.txt';
     my $errfile = $self->figmodel()->config("database root directory")->[0].'Mappings/manual-role-changes.txt';
-    $args = $self->figmodel()->process_arguments($args, ['oldRole', 'newRole'],
+    $args = $self->process_arguments_and_authenticate($args, ['oldRole', 'newRole'],
         { syntaxOnly => 0, user => undef });
     if(defined($args->{error})) {
         $self->figmodel()->new_error_message({ message => $args->{error}});

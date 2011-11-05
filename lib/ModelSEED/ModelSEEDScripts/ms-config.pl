@@ -49,13 +49,13 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 		do  $directoryRoot."/config/ModelSEEDbootstrap.pm";
 	}
 	$configFile = shift @ARGV || $ENV{MODELSEED_CONFIG} || "$directoryRoot/config/Settings.config";
-	unless(-f $configFile) {
-	    die("Could not find configuration file at $configFile!");
-	}
+    unless(-f $configFile) {
+        $configFile = "$directoryRoot/lib/ModelSEED/Settings.config"
+    }
 	$configFile = abs_path($configFile);
 	#Here we are adjusting the users config file to include changes made to the standard config
-	if ($configFile ne "$directoryRoot/config/Settings.config") {
-		patchconfig("$directoryRoot/config/Settings.config",$configFile);
+	if ($configFile ne "$directoryRoot/lib/ModelSEED/Settings.config") {
+		patchconfig("$directoryRoot/lib/ModelSEED/Settings.config",$configFile);
 	}
 	$Config = Config::Tiny->read($configFile);
 	# Setting defaults for dataDirectory,
@@ -74,6 +74,15 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $Config->{Database}->{filename} =
 	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 	}
+    my $glpksol = `which glpsol`;
+    chomp $glpksol;
+    $glpksol =~ s/\/bin\/glpsol//;
+    if(!defined($Config->{Optimizers}->{includeDirectoryGLPK}) && defined($glpksol)) {
+        $Config->{Optimizers}->{includeDirectoryGLPK} = "$glpksol/include/";
+    }
+    if(!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) && defined($glpksol)) {
+        $Config->{Optimizers}->{libraryDirectoryGLPK} = "$glpksol/lib/";
+    }
 	if(lc($Config->{Database}->{type}) eq 'mysql' &&
 	    !defined($Config->{Database}->{port})) {
 	    $Config->{Database}->{port} = "3306";
@@ -137,6 +146,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     # Creating config/ModelSEEDbootstrap.pm
     # and bin/source-me.sh
     my $perl5Libs = [
+        "$directoryRoot/local/lib/perl5",
         "$directoryRoot/lib/PPO",
         "$directoryRoot/lib/myRAST",
         "$directoryRoot/lib/FigKernelPackages",
@@ -207,6 +217,7 @@ BOOTSTRAP
     print $fh $bootstrap;
     close($fh);
     my $source_script = "#!/bin/sh\n";
+    push(@$perl5Libs, "$directoryRoot/config");
     foreach my $lib (@$perl5Libs) {
         $source_script .= 'PERL5LIB=${PERL5LIB}'.$delim."$lib;\n";
     }
@@ -382,6 +393,15 @@ SCRIPT
 	    	system($directoryRoot."/bin/makeMFAToolkit");
 	    }
     }
+}
+#Create database if none exists
+if(lc($Config->{Database}->{type}) eq 'sqlite' &&
+    !-f $Config->{Database}->{filename} ) {
+    my $cmd = "perl $directoryRoot/lib/ModelSEED/ModelSEEDScripts/ms-install-database" .
+        " --dataDir ". $Config->{Optional}->{dataDirectory} .
+        " --type sqlite --filename ".$Config->{Database}->{filename}; 
+    print $cmd;
+    system($cmd);
 }
 #Creating public useraccount
 {	

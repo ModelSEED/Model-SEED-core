@@ -18,7 +18,7 @@ use warnings;
 use Data::Dumper;
 use ModelSEED::FIGMODEL;
 use ModelSEED::TestingHelpers;
-use Test::More qw(no_plan);
+use Test::More tests => 1;
 
 my $helper = ModelSEED::TestingHelpers->new();
 my $fm = $helper->getDebugFIGMODEL();
