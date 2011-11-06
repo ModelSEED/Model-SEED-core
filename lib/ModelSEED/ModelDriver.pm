@@ -6274,20 +6274,25 @@ sub mdlloadbiomass {
 	}
 	#Loading the biomass into the database
 	my $bio = $self->figmodel()->database()->get_object("bof",{id => $args->{biomass}});
-	if (defined($bio) && $args->{overwrite} == 0) {
-	  ModelSEED::globals::ERROR("Biomass ".$args->{biomass}." already exists. You must specify an overwrite!");
+	if (defined($bio) && $args->{overwrite} == 0 && !defined($args->{model})) {
+	  ModelSEED::globals::ERROR("Biomass ".$args->{biomass}." already exists, and you did not pass a model id, You must therefore specify an overwrite!");
 	}
-	my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
+	
+	my $msg="";
+	if(!defined($bio) || $args->{overwrite} == 1){
+	    my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
 		equation => $args->{equation},
 		biomassID => $args->{biomass}
-	});
-	my $msg = "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
+	       });
+	    my $msg = "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
+	}
+
 	#Adjusting the model if a model was specified
 	if (defined($args->{model})) {
 		my $mdl = $self->figmodel()->get_model($args->{model});
 		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!") if (!defined($mdl));
-    	$mdl->biomassReaction($args->{biomass});
-    	$msg .= "Successfully changed biomass reaction in model ".$args->{model}.".\n";
+		$mdl->biomassReaction($args->{biomass});
+		$msg .= "Successfully changed biomass reaction in model ".$args->{model}.".\n";
 	}
 	return $msg;
 }
@@ -6321,7 +6326,7 @@ sub mdlimportmodel {
     my($self,@Data) = @_;
     my $args = $self->check([
     	["name",1,undef,"The ID in the Model SEED that the imported model should have, or the ID of the model to be overwritten by the imported model."],
-    	["genome",1,undef,"SEED ID of the genome the imported model should be associated with."],
+    	["genome",0,"NONE","SEED ID of the genome the imported model should be associated with."],
     	["owner",0,$self->figmodel()->user(),"Name of the user account that will own the imported model."],
     	["path",0,undef,"The path where the compound and reaction files containing the model data to be imported are located."],
     	["overwrite",0,0,"Set this FLAG to '1' to overwrite an existing model with the same name."],
