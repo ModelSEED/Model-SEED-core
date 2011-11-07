@@ -2622,7 +2622,7 @@ Description:
 sub import_model {
 	my ($self,$args) = @_;
 	$args = $self->process_arguments($args,["baseid"],{
-		path => $self->config("model import directory")->[0],
+		path => $self->ws(),
 		owner => $self->user(),
 		genome => "NONE",
 		public => 0,
