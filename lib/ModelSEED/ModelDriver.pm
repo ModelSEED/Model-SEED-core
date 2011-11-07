@@ -5097,6 +5097,7 @@ sub printgapfilledreactions {
 	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
 
+=head
 =CATEGORY
 Queue Operations
 =DESCRIPTION
@@ -5122,6 +5123,7 @@ sub queueRunJob {
 	return $args->{job}." completed!";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5156,6 +5158,7 @@ sub mscreateuser {
     return "SUCCESS";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5180,6 +5183,7 @@ sub msdeleteuser {
 	return "Account successfully deleted!\n";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5203,6 +5207,7 @@ sub msswitchworkspace {
 	return "Switched from workspace ".$id." to workspace ".$self->figmodel()->ws()->id()."!";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5219,6 +5224,8 @@ sub msworkspace {
 		verbose => $args->{verbose}
 	});
 }
+
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5237,6 +5244,7 @@ sub mslistworkspace {
 	return "Current workspaces for user ".$args->{user}.":\n".join("\n",@{$list})."\n";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5300,6 +5308,7 @@ sub mslogin {
 		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
 
+=head
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5336,6 +5345,7 @@ sub mslogout {
 		"You have switched from workspace \"".$oldws."\" to workspace \"public:".$self->figmodel()->ws()->id()."\"!\n";
 }
 
+=head
 =CATEGORY
 Sequence Analysis Operations
 =DESCRIPTION
@@ -5394,6 +5404,7 @@ sub sqblastgenomes {
 	$self->figmodel()->database()->print_array_to_file($self->ws->directory().$args->{"filename"},$output);
 }
 
+=head
 =CATEGORY
 Flux Balance Analysis Operations
 =DESCRIPTION
@@ -5458,6 +5469,7 @@ sub fbacheckgrowth {
 	return $message;
 }
 
+=head
 =CATEGORY
 Flux Balance Analysis Operations
 =DESCRIPTION
@@ -5498,6 +5510,7 @@ sub fbasingleko {
 	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{"filename"}.".";
 }
 
+=head
 =CATEGORY
 Flux Balance Analysis Operations
 =DESCRIPTION
@@ -5641,6 +5654,7 @@ sub fbafva {
         return $result;
 }
 
+=head
 =CATEGORY
 Flux Balance Analysis Operations
 =DESCRIPTION
@@ -5776,7 +5790,7 @@ sub fbafvabiomass {
 	}
 	return "Successfully completed flux variability analysis of ".$args->{biomass}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
 }
-
+=head
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
@@ -5827,6 +5841,8 @@ sub bcprintmediatable {
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
     return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
 }
+
+=head
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
@@ -5843,6 +5859,8 @@ sub bcprintmedia {
 	ModelSEED::globals::PRINTOBJECT({data => $media->pack(),filename => $self->ws()->directory().$args->{media}.".media"});
 	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
 }
+
+=head
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
@@ -5880,6 +5898,7 @@ sub bcloadmedia {
 	print "Media successfully created!\n";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -5944,6 +5963,7 @@ sub mdlautocomplete {
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -5971,6 +5991,7 @@ sub mdlreconstruction {
     return "Generated model from genome annotations";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -5991,6 +6012,7 @@ sub mdlmakedbmodel {
 	return "Set model reaction list to entire biochemistry database";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6017,6 +6039,7 @@ sub mdladdright {
 	return "Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!\n";	
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6073,6 +6096,7 @@ sub mdlcreatemodel {
     return $message;
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6113,6 +6137,7 @@ sub mdlinspectstate {
     return "SUCCESS";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6158,6 +6183,7 @@ sub mdlprintsbml {
     return $message;
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6198,6 +6224,7 @@ sub mdlprintmodel {
 	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6223,6 +6250,7 @@ sub mdlprintmodelgenes {
 	return "Successfully printed genelist for ".$args->{model}." in ".$self->ws()->directory().$args->{filename}."!\n";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6258,6 +6286,7 @@ sub mdlloadmodel {
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6315,6 +6344,7 @@ sub mdlloadbiomass {
 	return $msg;
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6333,6 +6363,7 @@ sub mdlparsesbml {
 	}
 }
 
+=head
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
@@ -6366,6 +6397,7 @@ sub mdlimportmodel {
 	return "SUCCESS";
 }
 
+=head
 =CATEGORY
 Utility Functions
 =DESCRIPTION
