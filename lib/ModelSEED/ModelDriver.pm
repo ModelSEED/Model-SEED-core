@@ -5219,7 +5219,6 @@ sub msworkspace {
 		verbose => $args->{verbose}
 	});
 }
-
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
@@ -5781,11 +5780,11 @@ sub fbafvabiomass {
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
-This function is used to print a media formulation to the current workspace.
+This function is used to print a table of the compounds across multiple media conditions
 =EXAMPLE
-./bcprintmedia -media Carbon-D-glucose
+./bcprintmediatable -media Carbon-D-glucose
 =cut
-sub bcprintmedia {
+sub bcprintmediatable {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["media",1,undef,"Name of the media formulation to be printed."],
@@ -5828,7 +5827,22 @@ sub bcprintmedia {
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
     return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
 }
-
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used to print a media formulation to the current workspace.
+=EXAMPLE
+./bcprintmedia -media Carbon-D-glucose
+=cut
+sub bcprintmedia {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["media",1,undef,"Name of the media formulation to be printed."],
+	],[@Data],"print Model SEED media formulation");
+    my $media = $self->figmodel()->database()->get_moose_object("media",{id => $args->{media}});
+	ModelSEED::globals::PRINTOBJECT({data => $media->pack(),filename => $self->ws()->directory().$args->{media}.".media"});
+	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
+}
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
@@ -6262,14 +6276,18 @@ sub mdlloadbiomass {
 	#Load the file if no equation was specified
 	if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
-		if ($args->{biomass} =~ m/^bio\d+$/) {
-			$args->{biomass} = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
+		my $filename = $args->{biomass};
+		if ($filename =~ m/^bio\d+$/) {
+			$filename = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
-		ModelSEED::globals::ERROR("Could not find specified biomass file ".$args->{biomass}."!") if (!-e $args->{biomass});
+		ModelSEED::globals::ERROR("Could not find specified biomass file ".$filename."!") if (!-e $filename);
 		#Loading biomass reaction file
-		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomass},delimiter=>"\t",-load => 1});
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$filename,delimiter=>"\t",-load => 1});
 		$args->{equation} = $obj->{EQUATION}->[0];
+		if ($args->{biomass} =~ m/(^bio\d+)/) {
+			$obj->{DATABASE}->[0] = $1;
+		}
 		$args->{biomass} = $obj->{DATABASE}->[0];
 	}
 	#Loading the biomass into the database

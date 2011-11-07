@@ -272,7 +272,6 @@ sub sudo_get_objects {
 	my $objMgr = $self->get_object_manager($type);
 	return $objMgr->get_objects($query);
 }
-
 =head3 get_objects
 Definition:
 	[PPOobject]:objects matching specified type and query = FIGMODELdatabase->get_object(string::type,{}:query);
@@ -308,6 +307,36 @@ sub get_objects {
 	}
     $self->setCache($cacheKey,$objs) unless($cacheBehavior == 0);
 	return $objs;
+}
+=head3 get_moose_objects
+Definition:
+	MooseDB::object = FIGMODELdatabase->get_moose_objects(string::type,{}:query);
+Description:
+	This is a little test function designed to explore the introduction and design of moose objects
+	This function accepts a type and query as input, and it returns Moose objects matching the type and query as output
+=cut
+sub get_moose_objects {
+	my ($self,$type,$query) = @_;
+	my $objs = $self->get_objects($type,$query);
+	for (my $i=0; $i < @{$objs}; $i++) {
+		my $class = "ModelSEED/MooseDB/".$type.".pm";
+		require $class;
+		$class = "ModelSEED::MooseDB::".$type;
+		$objs->[$i] = $class->new({ppo => $objs->[$i],db => $self});
+	}
+	return $objs;
+}
+=head3 get_moose_object
+Definition:
+	MooseDB::object = FIGMODELdatabase->get_moose_object(string::type,{}:query);
+Description:
+	Same as get moose objects, accept this function returns only the first element of the array mathing the query.
+=cut
+sub get_moose_object {
+	my ($self,$type,$query) = @_;
+	my $objs = $self->get_moose_objects($type, $query);
+    return undef unless(defined($objs->[0]));
+	return $objs->[0];
 }
 =head3 change_permissions
 Definition:

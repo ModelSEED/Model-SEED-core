@@ -1,3 +1,0 @@
-perl directory|C:/Perl/bin/perl.exe|This is the directory where the perl executable is located. This should be a complete path.|Filenames required for proper program start up
-scip executable|../../scip/scip.exe|0|MFA parameters
-os|windows|system parameter

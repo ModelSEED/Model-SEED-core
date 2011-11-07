@@ -60,7 +60,12 @@ int Data::LoadSystem(string Filename, bool StructCues) {
 	
 	//Checking if the filename specified is Complete indicating the complete database should be loaded
 	if (Filename.compare("Complete") == 0) {
-		vector<string> ReactionList = ReadStringsFromFile(GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Complete reaction list"),false);
+		vector<string> ReactionList;
+		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
+		for (int i=0; i < rxntbl->number_of_objects();i++) {
+			StringDBObject* rxnobj = rxntbl->get_object(i);
+			ReactionList.push_back(rxnobj->get("id"));
+		}
 		vector<string>* AllowedUnbalancedReactions = StringToStrings(GetParameter("Allowable unbalanced reactions"),",");
 		vector<string>* DissapprovedCompartments = NULL;
 		if (GetParameter("dissapproved compartments").compare("none") != 0) {

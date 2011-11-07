@@ -604,7 +604,11 @@ int MFAProblem::BuildMFAProblem(Data* InData,OptimizationParameter*& InParameter
 	for (int i=0; i < int(InParameters->KOReactions.size()); i++) {
 		Reaction* Temp = InData->FindReaction("DATABASE",InParameters->KOReactions[i].data());
 		if (Temp != NULL) {
-			Temp->UpdateBounds(FLUX,0,0);
+			if (Temp->GetData("FOREIGN",STRING).compare("Reaction") == 0 || GetParameter("Perform gap filling").compare("0") == 0) {
+				Temp->UpdateBounds(FLUX,0,0);
+			} else {
+				cout << InParameters->KOReactions[i] << endl;
+			}
 		}
 	}
 	for (int i=0; i < InData->FNumGenes(); i++) {
@@ -6022,14 +6026,19 @@ int MFAProblem::IdentifyReactionLoops(Data* InData, OptimizationParameter* InPar
 int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InParameters) {
 	if (InData->GetData("Reaction list loaded",STRING).length() == 0) {
 		InData->AddData("Reaction list loaded","YES",STRING);
-		vector<string> ReactionList = ReadStringsFromFile(GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Complete reaction list"),false);
+		vector<string> ReactionList;
+		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
+		for (int i=0; i < rxntbl->number_of_objects();i++) {
+			StringDBObject* rxnobj = rxntbl->get_object(i);
+			ReactionList.push_back(rxnobj->get("id"));
+		}
 		vector<string>* AllowedUnbalancedReactions = StringToStrings(GetParameter("Allowable unbalanced reactions"),",");
 		//Getting dissapproved compartment list
 		vector<string>* DissapprovedCompartments = NULL;
 		if (GetParameter("dissapproved compartments").compare("none") != 0) {
 			DissapprovedCompartments = StringToStrings(GetParameter("dissapproved compartments"),";");
 		}
-		//Iterating through the list and loading any reaction that is not already present in the model
+		//Iterating through the list and loading any reaction that is not already present in the model		
 		for (int i=0; i < int (ReactionList.size()); i++) {
 			//Making sure the reaction is not on the KO list
 			bool AddReaction = true;

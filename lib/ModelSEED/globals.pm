@@ -2,6 +2,9 @@ use strict;
 use warnings;
 use Carp qw(cluck);
 use Data::Dumper;
+use File::Temp qw(tempfile);
+use File::Path;
+use File::Copy::Recursive;
 package ModelSEED::globals;
 
 =head3 ModelSEED::globals::ARGS
@@ -172,6 +175,77 @@ sub RUNMODELDRIVER {
 	my $command = ModelSEED::globals::BUILDCOMMANDLINE($args);
 	print "Now running:".$command."!\n";
 	system($command);
+}
+
+=head3 PRINTOBJECT
+Definition:
+	string = PRINTOBJECT({
+		data => {}:object dump,
+		filename => string:filename
+	});
+Description:
+	This function prints a serialized moose object to a human-editable file
+Example:
+=cut
+sub PRINTOBJECT {
+	my ($args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["data","filename"],{});
+	if (!defined($args->{data}->{attributes})) {
+		ModelSEED::globals::ERROR("Data to be printed must contain an attributes hash!");
+	}
+	my $ordered;
+	foreach my $attribute (keys(%{$args->{data}->{attributes}})) {
+		push(@{$ordered},[$attribute,$args->{data}->{attributes}->{$attribute}]);
+	}
+	@{$ordered} = sort { $a-> [1] <=> $b->[1] } @{$ordered};
+	my $output;
+	for (my $i=0; $i < @{$ordered}; $i++) {
+		if (ref($args->{data}->{$ordered->[$i]->[0]}) eq "") {
+			push(@{$output},$ordered->[$i]->[0].":\t".$args->{data}->{$ordered->[$i]->[0]});
+		} elsif (ref($args->{data}->{$ordered->[$i]->[0]}) eq "ARRAY") {
+			if (ref($args->{data}->{$ordered->[$i]->[0]}->[0]) eq "SCALAR") {
+				push(@{$output},$ordered->[$i]->[0].":\t".join("|",@{$args->{data}->{$ordered->[$i]->[0]}}));
+			} elsif (ref($args->{data}->{$ordered->[$i]->[0]}->[0]) eq "HASH") {
+				if (defined($args->{data}->{$ordered->[$i]->[0]}->[0]->{attributes})) {
+					push(@{$output},$ordered->[$i]->[0]."{");
+					my $orderedTwo;
+					foreach my $attribute (keys(%{$args->{data}->{$ordered->[$i]->[0]}->[0]->{attributes}})) {
+						push(@{$orderedTwo},[$attribute,$args->{data}->{$ordered->[$i]->[0]}->[0]->{attributes}->{$attribute}]);
+					}
+					@{$orderedTwo} = sort { $a->[1] cmp $b->[1] } @{$orderedTwo};
+					my $line = "";
+					for (my $k=0; $k < @{$orderedTwo}; $k++) {
+						if ($k > 0) {
+							$line .= "\t";	
+						}
+						$line .= $orderedTwo->[$k]->[0];
+					}
+					push(@{$output},join("\t",$line));
+					for (my $j=0; $j < @{$args->{data}->{$ordered->[$i]->[0]}}; $j++) {
+						$line = "";
+						for (my $k=0; $k < @{$orderedTwo}; $k++) {
+							if ($k > 0) {
+								$line .= "\t";	
+							}
+							if (ref($args->{data}->{$ordered->[$i]->[0]}->[$j]->{$orderedTwo->[$k]->[0]}) eq "") {
+								$line .= $args->{data}->{$ordered->[$i]->[0]}->[$j]->{$orderedTwo->[$k]->[0]};
+							} else {
+								print "Reference:".ref($args->{data}->{$ordered->[$i]->[0]}->[$j]->{$orderedTwo->[$k]->[0]})."\n";
+							}
+						}
+						push(@{$output},join("\t",$line));
+					}
+					push(@{$output},"}");
+					
+				}
+			}
+		} elsif (ref($args->{data}->{$ordered->[$i]->[0]}) eq "HASH") {
+			push(@{$output},$ordered->[$i]->[0].":");
+		} else {
+			print "Reference:".ref($args->{data}->{$ordered->[$i]->[0]})."\n";
+		}
+	}
+	ModelSEED::globals::PRINTFILE($args->{filename},$output);
 }
 
 1;

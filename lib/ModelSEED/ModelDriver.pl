@@ -40,6 +40,9 @@ my $Status = "";
 
 #Searching for recognized arguments
 for (my $i=0; $i < @ARGV; $i++) {
+	$ARGV[$i] =~ s/\x{d}//g;#Cleaning out some weird characters Cygwin sometimes adds to input
+}
+for (my $i=0; $i < @ARGV; $i++) {
     $ARGV[$i] =~ s/___/ /g;
     $ARGV[$i] =~ s/\.\.\./(/g;
     $ARGV[$i] =~ s/,,,/)/g;

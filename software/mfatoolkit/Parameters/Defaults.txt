@@ -252,6 +252,6 @@ Calculations:compounds:process list|NONE|Indicates which reactions should be pro
 use default flux bound for media uptake|0|0|MFA parameters
 Add reaction drain fluxes|none|0|MFA parameters
 delete noncontributing reactions|0|0|MFA parameters
-Function mapping filename|../../Input/FunctionRoleMapping.txt|0|MFA parameters
-Reaction database filename|../../Input/ReactionDatabase.txt|0|MFA parameters
-hope scenarios filename|../../Input/HopeScenarios.txt|0|MFA parameters
+Function mapping filename|../Input/FunctionRoleMapping.txt|0|MFA parameters
+Reaction database filename|../Input/ReactionDatabase.txt|0|MFA parameters
+hope scenarios filename|../Input/HopeScenarios.txt|0|MFA parameters
