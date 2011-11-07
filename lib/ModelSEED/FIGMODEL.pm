@@ -2621,9 +2621,10 @@ Description:
 =cut
 sub import_model {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["baseid","genome"],{
+	$args = $self->process_arguments($args,["baseid"],{
 		path => $self->config("model import directory")->[0],
 		owner => $self->user(),
+		genome => "NONE",
 		public => 0,
 		overwrite => 0,
 		biochemSource => undef 

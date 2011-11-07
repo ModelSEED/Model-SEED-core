@@ -168,8 +168,9 @@ Description:
 =cut
 sub initializeModel {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args, ["genome"], {
+	$args = $self->figmodel()->process_arguments($args, [], {
 		id => undef,
+		genome => "NONE",
 		owner => "master",
 		public => undef,
 		biochemSource => undef,
@@ -182,6 +183,10 @@ sub initializeModel {
 		autocompletion => 0,
 		overwrite => 0,
 	});
+	if(!defined($args->{id}) && $args->{genome} eq "NONE"){
+#		ModelSEED::globals::ERROR("Cannot load a model object without specifying an ID!");
+		ModelSEED::globals::ERROR("Neither a model id nor a genome has been defined, the model cannot therefore be initialized!");    
+	}
 	if (!defined($args->{id})) {
 		$args->{id} = "Seed".$args->{genome};
 	} elsif ($args->{id} =~ m/^(.+)\.v(\w+)$/) {
@@ -7280,6 +7285,7 @@ sub runFBAStudy {
 		$args->{problemDirectory} = $fbaObj->filename();
 	}
 	$fbaObj->filename($args->{problemDirectory});
+	print "Using problem directory: ",$fbaObj->filename(),"\n";
 	#Creating the output directory
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 
