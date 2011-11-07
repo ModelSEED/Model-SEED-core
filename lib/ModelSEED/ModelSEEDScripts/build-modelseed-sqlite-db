@@ -71,7 +71,7 @@ system("$root/lib/PPO/ppo_generate.pl -xml $root/lib/ModelSEED/ModelDB/ModelDB.x
         my $step = floor($size/10);
         foreach my $obj (@$objects) {
             next unless(defined($obj));
-            if($counter % $step == 0) {
+            if($step > 0 && $counter % $step == 0) {
                 warn "Populating $table [$counter/$size]\n";
             }
             if(!defined($keys) && defined($obj->attributes())) {
