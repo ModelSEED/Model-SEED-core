@@ -85,6 +85,7 @@ sub check {
 	}
 	my $args;
 	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
+		print "test";
 		$args = $data->[1];
 		delete $data->[1];
 	}
@@ -5112,14 +5113,15 @@ sub queueRunJob {
 		["type",0,$self->figmodel()->queue()->type(),"Type of queue being run (file/db)."]
 	],[@Data],"running a queued job from a job file");
 	print "Waiting for opening in queue to start job ".$args->{job}."!\n";
-	while($self->figmodel()->queue()->jobready($args->{job}) == 0) {
+	while($self->figmodel()->queue()->jobready({job => $args->{job}}) == 0) {
 		sleep(60);	
 	}
 	print "Starting job ".$args->{job}."!\n";
-	my $job = $self->figmodel()->queue()->loadJobFile($args->{job});
+	my $job = $self->figmodel()->queue()->loadJobFile({job => $args->{job}});
 	my $function = $job->{function};
-	$self->$function(($job->{arguments}));
-	$self->figmodel()->queue()->clearJobFile($args->{job});
+	print STDERR Data::Dumper->Dump([$job->{arguments}]);
+	$self->$function(($function,$job->{arguments}));
+	$self->figmodel()->queue()->clearJobFile({job => $args->{job}});
 	return $args->{job}." completed!";
 }
 

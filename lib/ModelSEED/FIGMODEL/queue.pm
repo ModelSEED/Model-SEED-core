@@ -30,7 +30,7 @@ Unlike many objects, this object is independant of FIGMODEL and can be used anyw
 has 'id' => (is => 'rw', isa => 'Str', default => "jobdefault");
 has 'type' => (is => 'rw', isa => 'Str', required => 1);
 has 'user' => (is => 'rw', isa => 'Str', required => 1);
-has 'db' => (is => 'ro', isa => 'FIGMODELdatabase');
+has 'db' => (is => 'ro', isa => 'ModelSEED::FIGMODEL::FIGMODELdatabase');
 has 'defaultQueues' => (is => 'rw', isa => 'HashRef');
 has 'jobdirectory' => (is => 'rw', isa => 'Str', required => 1);
 has 'maxJobs' => (is => 'rw', isa => 'Int', default => 1);

@@ -145,7 +145,7 @@ sub BUILDCOMMANDLINE {
 		arguments => {},
 		nohup => 0
 	});
-	my $command = $ENV{"MODEL_SEED_CORE"}."bin/ModelDriver ".$args->{function};
+	my $command = $ENV{"MODEL_SEED_CORE"}."/bin/ModelDriver ".$args->{function};
 	foreach my $argument (keys(%{$args->{arguments}})) {
 		$command .= " -".$argument." ".$args->{arguments}->{$argument};
 	}
