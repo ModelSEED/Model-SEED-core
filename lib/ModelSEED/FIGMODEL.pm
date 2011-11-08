@@ -42,6 +42,7 @@ use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
 use ModelSEED::FIGMODEL::workspace;
+use ModelSEED::FIGMODEL::queue;
 
 =head1 Model database interaction module
 
