@@ -2622,7 +2622,7 @@ Description:
 sub import_model {
 	my ($self,$args) = @_;
 	$args = $self->process_arguments($args,["baseid"],{
-		path => $self->ws(),
+		path => $self->ws()->directory(),
 		owner => $self->user(),
 		genome => "NONE",
 		public => 0,
@@ -2911,7 +2911,14 @@ sub import_model {
 		if ($row->{"COMPARTMENT"}->[0] =~ m/\[(.)\]/) {
 			$row->{"COMPARTMENT"}->[0] = $1;
 		}
+		my $prior_eqn=$codeResults->{code};
+
 		($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation}) = $self->ApplyStoichiometryCorrections($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation});
+
+		if($codeResults->{code} ne $prior_eqn){
+		    print "Reaction Updated from: ",$prior_eqn," to ",$codeResults->{code},"\n";
+		}
+
 		my $rxn = $mdl->figmodel()->database()->get_object("reaction",{code => $codeResults->{code}});
 		if (!defined($rxn)) {
 			$rxn = $mdl->figmodel()->database()->get_object("reaction",{code => $codeResults->{reverseCode}});
@@ -3025,6 +3032,8 @@ sub import_model {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);
 	}
 	$mdl->processModel();
+
+	print "The model has been successfully imported as \"",$id,"\"\n";
 
 	return $result;
 }
