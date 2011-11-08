@@ -85,7 +85,6 @@ sub check {
 	}
 	my $args;
 	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
-		print "test";
 		$args = $data->[1];
 		delete $data->[1];
 	}
