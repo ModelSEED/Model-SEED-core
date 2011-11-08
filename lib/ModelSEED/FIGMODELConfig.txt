@@ -32,7 +32,7 @@ database message file directory|${software root directory}logs/
 print to scratch|0
 CacheSettings|0
 Default queue|default
-Default queue type|file
+Default queue type|run
 %Job specific default queues|testsolutions:short|runfba:short|mdlreconstruction:short|mdlautocomplete:cplex|fbacheckgrowth:short|mdlcreatemodel:short|mdlinspectstate:short|fbafvabiomass:short|
 Job file directory|${software root directory}jobs/
 Max file jobs|2
