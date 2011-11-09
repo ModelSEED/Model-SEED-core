@@ -5986,8 +5986,6 @@ sub mdlreconstruction {
     $mdl->reconstruction({
     	checkpoint => $args->{"checkpoint"},
 		autocompletion => $args->{"autocompletion"},
-		usequeue => $args->{"usequeue"},
-		queue => $args->{"queue"},
 	});
     return "Generated model from genome annotations";
 }

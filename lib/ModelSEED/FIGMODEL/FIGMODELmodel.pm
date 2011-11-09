@@ -250,14 +250,9 @@ sub initializeModel {
 	});
 	$self->buildDBInterface();
 	if ($args->{reconstruction} eq "1") {
-		$self->figmodel()->queue()->queueJob({
-			function => "mdlreconstruction",
-			arguments => {
-				model => $self->id(),
-				autocompletion => $args->{autocompletion},
-				checkpoint => 0
-			},
-			user => $args->{owner},
+		$self->reconstruction({
+	    	checkpoint => 0,
+			autocompletion => $args->{autocompletion}
 		});
 	}	
 }
@@ -3016,7 +3011,6 @@ sub reconstruction {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		checkpoint => 1,
 		autocompletion => 1,
-		queue => undef
 	});	
 	#Getting genome data and feature table
 	my $genomeObj = $self->genomeObj();
@@ -3272,21 +3266,18 @@ sub reconstruction {
 	#Adding model to gapfilling queue
 	if ($args->{autocompletion} == 1) {
 		$self->set_status(1,"Autocompletion queued");
-		$self->figmodel()->queue()->queueJob({
-			function => "mdlautocomplete",
-			arguments => {
-				model => $self->id(),
-				media => "Complete",
-				removegapfilling => 1,
-				inactivecoef => 100,
-				adddrains => 0,
-				iterative => 0,
-				testsolution => 0,
-				printdbmessage => 0,
-				rungapfilling => 1,
-				startfresh => 1
+		$self->completeGapfilling({
+			startFresh => 1,
+			rungapfilling=> 1,
+			removeGapfillingFromModel => 1,
+			inactiveReactionBonus => 0,
+			fbaStartParameters => {
+				media => "Complete"
 			},
-			user => $args->{owner}
+			iterative => 0,
+			adddrains => 0,
+			testsolution => 0,
+			globalmessage => 0
 		});
 	}
 	$self->processModel();
