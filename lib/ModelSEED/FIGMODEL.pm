@@ -2496,7 +2496,8 @@ Definition:
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
+		provenance => $args->{"provenance"},
+		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 Description:
 	Imports the specified model file into the database adding reactions and compounds if necessary and creating all necessary database links
@@ -2509,7 +2510,8 @@ sub import_model_file {
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
+		provenance => $args->{"provenance"},
+		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
@@ -2538,7 +2540,8 @@ sub import_model_file {
 			genome => $args->{genome},
 			gapfilling => 0,
 			runPreliminaryReconstruction => 0,
-			biochemSource => $args->{biochemSource}
+			biochemSource => $args->{biochemSource},
+			autoCompleteMedia => $args->{autoCompleteMedia}
 		});
 		$modelObj = $mdl->ppo();
 	} elsif ($args->{overwrite} == 0) {

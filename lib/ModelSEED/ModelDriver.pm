@@ -11,6 +11,8 @@
 use strict;
 use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
+use ModelSEED::ServerBackends::FBAMODEL;
+use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
 
@@ -2351,7 +2353,7 @@ sub test {
 	    }
     }
     return "SUCCESS";
-    my $fbaObj = ModelSEED::FBAMODEL->new();
+    my $fbaObj = ModelSEED::ServerBackends::FBAMODEL->new();
 	my $result = $fbaObj->fba_run_study({
 		model => "Seed83333.1",
 		media => "Complete",
@@ -6227,6 +6229,75 @@ sub mdlprintmodel {
 =CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
+This is a useful function for printing model data to the flatfiles that are used by CytoSEED. The function accepts a model ID as input, and it creates a directory using the model id that contains model data in the format expected by CytoSEED.
+By default, the model is printed in the "Model-SEED-core/data/MSModelFiles/" directory, but you can specify where the model will be printed using the "directory" input argument. You should print or copy the model data to the CytoSEED/Models folder (see "Set Location of CytoSEED Folder" menu item under "Plugins->SEED" in Cytoscape).
+=EXAMPLE
+./mdlprintcytoseed -'''model''' "iJR904" -'''directory''' "/Users/dejongh/Desktop/CytoSEED/Models"
+=cut
+sub mdlprintcytoseed {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"The full Model SEED ID of the model to be printed."],
+		["directory",0,undef,"The full path and name of the directory where the model should be printed."],
+	],[@Data],"prints a model to format expected by CytoSEED");
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model not valid ".$args->{model});
+	}
+	if (!defined($args->{directory})) {
+		$args->{directory} = $self->figmodel()->ws()->directory();
+	}
+	my $cmdir = $args->{directory}."/".$args->{model};
+	if (! -e $cmdir) {
+	    mkdir($cmdir) or ModelSEED::globals::ERROR("Could not create $cmdir: $!\n");
+	}
+	my $fbaObj = ModelSEED::ServerBackends::FBAMODEL->new();
+	my $dumper = YAML::Dumper->new;
+
+	open(FH, ">".$cmdir."/model_data") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
+	print FH $dumper->dump($md->{$args->{model}});
+	close FH;
+
+	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
+	close FH;
+
+	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
+	open(FH, ">".$cmdir."/compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
+	print FH $dumper->dump($cpds);
+	close FH;
+
+	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
+
+	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
+	close FH;
+
+	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
+	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
+	print FH $dumper->dump($rxns);
+	close FH;
+
+	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
+
+	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
+	close FH;
+
+	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::globals::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
+	close FH;
+
+	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
+}
+
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
 This function prints a list of all genes included in the specified model to a file in the workspace.
 =EXAMPLE
 ./mdlprintmodelgenes -model iJR904
@@ -6270,7 +6341,8 @@ sub mdlloadmodel {
     	["owner",0,$self->figmodel()->user(),"The login name of the user that should own the loaded model"],
     	["provenance",0,undef,"The full path to a model directory that contains a provenance database for the model to be imported. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
     	["overwrite",0,0,"If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'."],
-    	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
+    	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."],
+    	["autoCompleteMedia",0,"Complete","Name of the media used for auto-completing this model."]
 	],[@Data],"reload a model from a flatfile");
 	my $modelObj = $self->figmodel()->import_model_file({
 		id => $args->{"name"},
@@ -6280,7 +6352,8 @@ sub mdlloadmodel {
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
+		provenance => $args->{"provenance"},
+		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }

@@ -175,7 +175,7 @@ sub initializeModel {
 		public => undef,
 		biochemSource => undef,
 		biomassReaction => "NONE",
-		autocompleteMedia => "Complete",
+		autoCompleteMedia => "Complete",
 		cellwalltype => "Unknown",
 		name => "Unknown",
 		source => "Unknown",
@@ -206,6 +206,13 @@ sub initializeModel {
 		}
 		$args->{id} .= ".".$user->_id();
 	}
+	if ($args->{name} eq "Unknown" && $args->{genome} ne "NONE") {
+	    my $sap = $self->figmodel()->sapSvr();
+	    my $id2nameHash = $sap->genome_names({ "-ids"=>[$args->{genome}] });
+	    if (defined $id2nameHash->{$args->{genome}}) {
+		$args->{name} = $id2nameHash->{$args->{genome}};
+	    }
+	}
 	if(!defined($args->{public})) {
 		$args->{public} = 1;
 		if ($args->{owner} ne "master") {
@@ -233,7 +240,7 @@ sub initializeModel {
 		version => 0,
 		message => "Model created",
 		cellwalltype => $args->{cellwalltype},
-		autoCompleteMedia => $args->{autocompleteMedia},
+		autoCompleteMedia => $args->{autoCompleteMedia},
 		biomassReaction => $args->{biomassReaction},
 		growth => 0,
 		name => $args->{name}
