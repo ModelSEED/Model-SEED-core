@@ -263,14 +263,24 @@ sub get_reaction_data {
 	}
 	#Loading all reactions from database into id hash
 	my $idHash;
-	my $objects = $self->figmodel()->database()->get_objects("reaction");
-	for (my $i=0; $i < @{$objects}; $i++) {
-		$idHash->{$objects->[$i]->id()} = $objects->[$i];
-	}
 	#Setting ID list of "ALL" selected
 	if ($args->{id}->[0] eq "ALL") {
-		$args->{id} = [keys(%{$idHash})];
+	    my $objects = $self->figmodel()->database()->get_objects("reaction");
+	    for (my $i=0; $i < @{$objects}; $i++) {
+		$idHash->{$objects->[$i]->id()} = $objects->[$i];
+	    }
+	    $args->{id} = [keys(%{$idHash})];
 	}
+	else {
+	    for my $id (@{$args->{id}}) {
+		my $objects = $self->figmodel()->database()->get_objects("reaction",
+									 { "id" => $id});
+		for (my $i=0; $i < @{$objects}; $i++) {
+		    $idHash->{$objects->[$i]->id()} = $objects->[$i];
+		}
+	    }
+	}
+
 	#Getting model data
 	my $modelhash;
 	if (defined($args->{model})) {
@@ -284,8 +294,11 @@ sub get_reaction_data {
 			}
 		}
 	}
+
 	#Collecting reaction data for ID list
+	my $mapHash = $self->figmodel()->get_map_hash({type => "reaction"});
 	my $output;
+
 	for (my $i=0; $i < @{$args->{id}}; $i++) {
 		my $row;
 		if ($args->{id}->[$i] =~ m/rxn\d+/ && defined($idHash->{$args->{id}->[$i]})) {
@@ -301,7 +314,6 @@ sub get_reaction_data {
 				DELTAGERR => [$obj->deltaGErr()]
 			};
 			#Adding KEGG map data
-			my $mapHash = $self->figmodel()->get_map_hash({type => "reaction"});
 			if (defined($mapHash->{$args->{id}->[$i]})) {
 				foreach my $diagram (keys(%{$mapHash->{$args->{id}->[$i]}})) {
 					push(@{$row->{"PATHWAY"}},$mapHash->{$args->{id}->[$i]}->{$diagram}->name());
@@ -540,10 +552,6 @@ sub get_compound_data {
 	my ($self, $args) = @_;
 	$args = $self->process_arguments_and_authenticate($args);
 	my $idHash;
-	my $objects = $self->figmodel()->database()->get_objects("compound");
-	for (my $i=0; $i < @{$objects}; $i++) {
-		$idHash->{$objects->[$i]->id()} = $objects->[$i];
-	}
 
 	#Checking id list
 	my $ids;
@@ -555,15 +563,22 @@ sub get_compound_data {
 		push(@{$ids},@{$args->{id}});
 	}
 	if ($args->{id}->[0] eq "ALL") {
-		push(@{$ids},keys(%{$idHash}));
+	    my $objects = $self->figmodel()->database()->get_objects("compound");
+	    for (my $i=0; $i < @{$objects}; $i++) {
+		$idHash->{$objects->[$i]->id()} = $objects->[$i];
+	    }
+	    push(@{$ids},keys(%{$idHash}));
+	}
+	else {
+	    for my $id (@$ids) {
+		my $objects = $self->figmodel()->database()->get_objects("compound",
+		    { "id" => $id});
+		for (my $i=0; $i < @{$objects}; $i++) {
+		    $idHash->{$objects->[$i]->id()} = $objects->[$i];
+		}
+	    }
 	}
 	
-	my $cpdAlsHash = $self->figmodel()->database()->get_object_hash({
-		type => "cpdals",
-		attribute => "COMPOUND",
-		parameters => {type => "name"}
-	});
-
 	#Collecting compound data for ID list
 	my $output;
 	for (my $i=0; $i < @{$ids}; $i++) {
@@ -571,10 +586,11 @@ sub get_compound_data {
 		if ($ids->[$i] =~ m/cpd\d\d\d\d\d/ && defined($idHash->{$ids->[$i]})) {
 			my $obj = $idHash->{$ids->[$i]};
 			my $names = [$obj->name()];
-			if (defined($cpdAlsHash->{$ids->[$i]})) {
-				for (my $j=0; $j < @{$cpdAlsHash->{$ids->[$i]}}; $j++) {
-					if ($cpdAlsHash->{$ids->[$i]}->[$j]->alias() ne $obj->name()) {
-						push(@{$names},$cpdAlsHash->{$ids->[$i]}->[$j]->alias());
+			my $cpdAls = $self->figmodel()->database()->get_objects("cpdals", {"COMPOUND"=>$ids->[$i],type=>"name"});
+			if (defined($cpdAls)) {
+				for (my $j=0; $j < @{$cpdAls}; $j++) {
+					if ($cpdAls->[$j]->alias() ne $obj->name()) {
+						push(@{$names},$cpdAls->[$j]->alias());
 					}
 				}	
 			}

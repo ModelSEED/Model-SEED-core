@@ -325,6 +325,7 @@ SCRIPT
 		"mdl-createmodel",
 		"mdl-inspectstate",
 		"mdl-printsbml",
+		"mdl-printcytoseed",
 		"mdl-printmodel",
 		"mdl-printmodelgenes",
 		"mdl-loadmodel",
