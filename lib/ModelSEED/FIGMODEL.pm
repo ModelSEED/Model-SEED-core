@@ -1708,7 +1708,8 @@ sub parseSBMLToTable {
 	foreach my $attr($rxn->getAttributes()->getValues()){
 	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
 	    if($attr->getName() eq "reversible"){
-		$row->{$HeadingTranslation{$attr->getName()}}->[0]= ($attr->getValue() eq "true") ? "<=>" : "=>";
+		$row->{DIRECTIONALITY}->[0]="=>" if $attr->getValue() eq "false";
+		$row->{DIRECTIONALITY}->[0]="<=>" if $attr->getValue() eq "true";
 	    }
 	}
 
@@ -1770,8 +1771,13 @@ Definition:
 sub get_reaction_equation_sbml {
     my ($self, $rxn, $cmptsearch) = @_;
     my $eq = [];
-    my $reversable = $rxn->getAttribute("reversible");
-    (defined($reversable) && $reversable eq "false") ? $reversable = "=>" : $reversable = "<=>";
+    my $attr = $rxn->getAttribute("reversible");
+    my $reversable="<=>";
+
+    if(defined($attr) && $attr eq "false"){
+	$reversable = "=>";
+    }
+
     my @reactants = $rxn->getElementsByTagName("listOfReactants");
     my @products = $rxn->getElementsByTagName("listOfProducts");
     if(@reactants) {
@@ -2869,6 +2875,7 @@ sub import_model {
 		if (!defined($row->{"ENZYMES"})) {
 			$row->{"ENZYMES"} = [];
 		}
+
 		#Checking if there is an equation match
 		my $codeResults = $self->get_reaction()->createReactionCode({equation => $row->{"EQUATION"}->[0],translations => $translation});
 		if (defined($codeResults->{error})) {
@@ -2878,8 +2885,9 @@ sub import_model {
 		}
 		#Checking if this is a biomass reaction
 		if ($codeResults->{code} =~ m/cpd11416/) {
-			my $newid; 
+			my $newid;
 			if (defined($mdl->biomassReaction()) && length($mdl->biomassReaction()) > 0 && lc($mdl->biomassReaction()) ne "none") {
+			    print $mdl->biomassReaction(),"mdl\n";
 				$newid = $mdl->biomassReaction();
 			}
 			my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
@@ -2899,7 +2907,7 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
+			print "Created Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}
 		if (!defined($row->{"DIRECTIONALITY"}->[0])) {
@@ -2957,7 +2965,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{fullEquation}."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code}."\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
