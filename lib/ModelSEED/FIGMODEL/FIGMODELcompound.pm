@@ -206,7 +206,6 @@ sub convert_to_search_name {
 	    $searchnames{$sn}=1;
 	    if($OriginalName =~ /^an? /){
 		$sn =~ s/^an?(.*)$/$1/;
-		print $sn,"<<\n";
 	    }
 	    $searchnames{$sn}=1;
 	}

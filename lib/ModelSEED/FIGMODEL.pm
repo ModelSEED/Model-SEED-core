@@ -2789,7 +2789,7 @@ sub import_model {
 		}
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
-			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";;
+			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";
 			if (defined($row->{"CHARGE"}->[0])) {
 				if ($cpd->charge() == 10000000) {
 					$cpd->charge($row->{"CHARGE"}->[0]);
@@ -2808,13 +2808,13 @@ sub import_model {
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 			print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
-			if (!defined($row->{"MASS"}->[0])) {
+			if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 				$row->{"MASS"}->[0] = 10000000;	
 			}
-			if (!defined($row->{"CHARGE"}->[0])) {
+			if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
 				$row->{"CHARGE"}->[0] = 10000000;	
 			}
-			if (!defined($row->{"ABBREV"}->[0])) {
+			if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
 				$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
 			}
 			$cpd = $mdl->figmodel()->database()->create_object("compound",{
