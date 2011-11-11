@@ -1709,7 +1709,8 @@ sub parseSBMLToTable {
 	foreach my $attr($rxn->getAttributes()->getValues()){
 	    $row->{$HeadingTranslation{$attr->getName()}}->[0]=$attr->getValue();
 	    if($attr->getName() eq "reversible"){
-		$row->{$HeadingTranslation{$attr->getName()}}->[0]= ($attr->getValue() eq "true") ? "<=>" : "=>";
+		$row->{DIRECTIONALITY}->[0]="=>" if $attr->getValue() eq "false";
+		$row->{DIRECTIONALITY}->[0]="<=>" if $attr->getValue() eq "true";
 	    }
 	}
 
@@ -1771,8 +1772,13 @@ Definition:
 sub get_reaction_equation_sbml {
     my ($self, $rxn, $cmptsearch) = @_;
     my $eq = [];
-    my $reversable = $rxn->getAttribute("reversible");
-    (defined($reversable) && $reversable eq "false") ? $reversable = "=>" : $reversable = "<=>";
+    my $attr = $rxn->getAttribute("reversible");
+    my $reversable="<=>";
+
+    if(defined($attr) && $attr eq "false"){
+	$reversable = "=>";
+    }
+
     my @reactants = $rxn->getElementsByTagName("listOfReactants");
     my @products = $rxn->getElementsByTagName("listOfProducts");
     if(@reactants) {
@@ -2496,7 +2502,8 @@ Definition:
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
+		provenance => $args->{"provenance"},
+		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 Description:
 	Imports the specified model file into the database adding reactions and compounds if necessary and creating all necessary database links
@@ -2509,7 +2516,8 @@ sub import_model_file {
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"}
+		provenance => $args->{"provenance"},
+		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
@@ -2538,7 +2546,8 @@ sub import_model_file {
 			genome => $args->{genome},
 			gapfilling => 0,
 			runPreliminaryReconstruction => 0,
-			biochemSource => $args->{biochemSource}
+			biochemSource => $args->{biochemSource},
+			autoCompleteMedia => $args->{autoCompleteMedia}
 		});
 		$modelObj = $mdl->ppo();
 	} elsif ($args->{overwrite} == 0) {
@@ -2780,7 +2789,7 @@ sub import_model {
 		}
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
-			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";;
+			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";
 			if (defined($row->{"CHARGE"}->[0])) {
 				if ($cpd->charge() == 10000000) {
 					$cpd->charge($row->{"CHARGE"}->[0]);
@@ -2799,13 +2808,13 @@ sub import_model {
 		} else {
 			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 			print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
-			if (!defined($row->{"MASS"}->[0])) {
+			if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 				$row->{"MASS"}->[0] = 10000000;	
 			}
-			if (!defined($row->{"CHARGE"}->[0])) {
+			if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
 				$row->{"CHARGE"}->[0] = 10000000;	
 			}
-			if (!defined($row->{"ABBREV"}->[0])) {
+			if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
 				$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
 			}
 			$cpd = $mdl->figmodel()->database()->create_object("compound",{
@@ -2870,6 +2879,7 @@ sub import_model {
 		if (!defined($row->{"ENZYMES"})) {
 			$row->{"ENZYMES"} = [];
 		}
+
 		#Checking if there is an equation match
 		my $codeResults = $self->get_reaction()->createReactionCode({equation => $row->{"EQUATION"}->[0],translations => $translation});
 		if (defined($codeResults->{error})) {
@@ -2879,8 +2889,9 @@ sub import_model {
 		}
 		#Checking if this is a biomass reaction
 		if ($codeResults->{code} =~ m/cpd11416/) {
-			my $newid; 
+			my $newid;
 			if (defined($mdl->biomassReaction()) && length($mdl->biomassReaction()) > 0 && lc($mdl->biomassReaction()) ne "none") {
+			    print $mdl->biomassReaction(),"mdl\n";
 				$newid = $mdl->biomassReaction();
 			}
 			my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
@@ -2900,7 +2911,7 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			print "Found Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
+			print "Created Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
 			next;
 		}
 		if (!defined($row->{"DIRECTIONALITY"}->[0])) {
@@ -2958,7 +2969,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{fullEquation}."\n";
+			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code}."\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
