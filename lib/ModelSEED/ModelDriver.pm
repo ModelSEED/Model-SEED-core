@@ -5175,11 +5175,6 @@ sub msdeleteuser {
 		["login",0,$ENV{FIGMODEL_USER},"Login of the useraccount to be deleted."],
 		["password",0,$ENV{FIGMODEL_PASSWORD},"Password of the useraccount to be deleted."],
 	],[@Data],"deleting the local instantiation of the specified user account");
-	if ($args->{login} eq "jdavis") {
-		my $obj = $self->figmodel()->database()->sudo_get_object("user",{login => "jdavis"});
-		$obj->delete();
-		print "Delete successful!";
-	}
 	if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov") {
 		ModelSEED::globals::ERROR("This function cannot be used in the centralized SEED database!");
 	}

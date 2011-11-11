@@ -2724,8 +2724,9 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
-		print "Testing ",$row->{ID}->[0],"\n";
-
+		if ($row->{"ID"}->[0] =~ m/^M_/) {
+			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],2);
+		}
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
 		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
