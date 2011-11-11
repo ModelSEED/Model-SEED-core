@@ -37,7 +37,7 @@ tar -xzf $TMPFILE -C $DATA_DIR;
 # Download the sqlite database
 TMPFILE=`mktemp /tmp/XXXXXXXX`;
 echo "Downloading biochemistry database to $INSTALL_DIE/data/ModelDB/";
-curl http://bioseed.mcs.anl.gov/~devoid/ModelDB-sqlite.tgz > $TMPFILE;
+curl http://bioseed.mcs.anl.gov/~chenry/ModelDB-sqlite.tgz > $TMPFILE;
 tar -xzf $TMPFILE -C $DATA_DIR;
 echo "Loading database into sqlite at $INSTALL_DIE/data/ModelDB/ModelDB.db";
 sqlite3 $DATA_DIR/ModelDB/ModelDB.db < $DATA_DIR/ModelDB/ModelDB.sqlite;
