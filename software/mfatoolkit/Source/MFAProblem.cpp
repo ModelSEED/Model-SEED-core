@@ -2460,7 +2460,7 @@ int MFAProblem::FindTightBounds(Data* InData,OptimizationParameter*& InParameter
 	}
 	
 	if (SaveSolution) {
-		PrintSolutions(InitialSolutions,-5);
+		PrintSolutions(InitialSolutions,-1,true);
 		ClearSolutions(InitialSolutions,-1,true);
 	}
 
@@ -4216,6 +4216,9 @@ int MFAProblem::OptimizeSingleObjective(Data* InData, OptimizationParameter* InP
 		CheckIndividualMetaboliteProduction(InData,InParameters,GetParameter("metabolites to optimize"),false,false,NewNote,true);
 	}
 	//Reading the parameter indicating the acceptable fraction of the optimal that we will allow in the further studies performed and making the optimized single objective a constraint now
+	if (DoMinimizeDeltaGError) {
+		PrintProblemReport(NewSolution->Objective,InParameters,Note);
+	}
 	if (InParameters->DetermineMinimalMedia || DoMinimizeFlux || DoMinimizeDeltaGError || DoMinimizeReactions || DoFindTightBounds || MinimizeForeignReactions || OptimizeMedia || DoFluxCouplingAnalysis || DoMILPCoessentiality || DoIntervalOptimization || DoGeneOptimization) {
 		//Creating the objective constriant
 		LinEquation* ObjConst = NULL;
@@ -8721,191 +8724,342 @@ void MFAProblem::SaveTightBounds() {
 	Output.close();
 }
 
-void MFAProblem::PrintSolutions(int StartIndex, int EndIndex) {
+void MFAProblem::PrintSolutions(int StartIndex, int EndIndex,bool tightbounds) {
 	string FilenameSuffix;
-	if (EndIndex == -5) {
+	if (tightbounds) {
 		FilenameSuffix.assign("TB");
-		EndIndex = -1;
 	}
-
-	bool ThermodynamicConstraints = false;
-	bool ThermoUncertainty = false;
-	
+	if (StartIndex < 0) {
+		StartIndex = 0;
+	}
+	if (EndIndex >= FNumSolutions() || EndIndex < 0) {
+		EndIndex = FNumSolutions();
+	}
 	//Printing the raw solution data
 	ofstream Output;
 	string Filename(FOutputFilepath());
 	Filename.append("MFAOutput/RawData/RawSolutions");
 	Filename.append(FilenameSuffix);
-	Filename.append(itoa(ProblemIndex));
+	//Filename.append(itoa(ProblemIndex));
  	Filename.append(".txt");
-	
 	if (!OpenOutput(Output,Filename)) {
 		return;
 	}
-	
-	if (StartIndex < 0) {
-		StartIndex = 0;
-	}
-	if (EndIndex >= FNumSolutions() || EndIndex < 0) {
-		EndIndex = FNumSolutions()-1;
-	}
-
-	Output << ";;;;;Notes:";
-	for (int i=StartIndex; i <= EndIndex; i++) {
-		Output << ";" << GetSolution(i)->Notes;
+	vector<Reaction*> reactions;
+	vector<Species*> compounds;
+	vector<string> compartments;
+	compartments.push_back("none");
+	map<string,int,std::less<string> > compartmentIndecies;
+	compartmentIndecies["none"] = 0;
+	map<string,int,std::less<string> > reactionIndecies;
+	map<string,int,std::less<string> > compoundIndecies;
+	map<int, vector< vector<bool> >, std::less<int> > cpdVarTypePresence;
+	map<int, vector< vector<bool> >, std::less<int> > rxnVarTypePresence;
+	map<string, map<int, vector< vector<double> >, std::less<int> >, std::less<string> > cpdVars;
+	map<string, map<int, vector< vector<double> >, std::less<int> >, std::less<string> > rxnVars;
+	Output << "Index;Type;Compartment;Upper;Lower;Name;Data";	
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			Output << ";Solution " << j;
+		}
 	}
 	Output << endl;
-	
-	Output << ";;;;;;Objectives:";
-	for (int i=StartIndex; i <= EndIndex; i++) {
-		Output << ";" << GetSolution(i)->Objective;
+	Output << "-1;OBJECTIVE;none;--;--;Objective function";
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			Output << ";" << GetSolution(j)->Objective;
+		}
 	}
 	Output << endl;
-
-	Output << "Index;Type;Compartment;Upper;Lower;Name;Data" << endl;	
-
+	int reactionCount = 0;
+	int compoundCount = 0;
 	for (int i=0; i < FNumVariables(); i++) {
-		if (GetVariable(i)->Type == DELTAG || GetVariable(i)->Type == CONC || GetVariable(i)->Type == LOG_CONC) {
-			ThermodynamicConstraints = true;
-		}
-		if (GetVariable(i)->Type == REACTION_DELTAG_ERROR) {
-			ThermoUncertainty = true;
-		}
-		
 		Output << i << ";" << ConvertVariableType(GetVariable(i)->Type) << ";";
 		CellCompartment* VarComp = GetCompartment(GetVariable(i)->Compartment);
+		string comp("none");
 		if (VarComp != NULL) {
 			Output << VarComp->Abbreviation << ";" <<  GetVariable(i)->UpperBound << ";" << GetVariable(i)->LowerBound << ";";
+			comp = VarComp->Abbreviation;
+			if (compartmentIndecies.count(comp) == 0) {
+				compartmentIndecies[comp] = compartments.size();
+				compartments.push_back(comp);
+			}
 		} else {
 			Output << "none;" <<  GetVariable(i)->UpperBound << ";" << GetVariable(i)->LowerBound << ";";
 		}
-		
 		if (GetVariable(i)->AssociatedReaction != NULL) {
-			Output << GetVariable(i)->AssociatedReaction->GetData("SHORTNAME",STRING) << "|" << GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING) << ";" << GetVariable(i)->AssociatedReaction->GetData("DEFINITION",STRING);
+			if (reactionIndecies.count(GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)+comp) == 0) {
+				reactions.push_back(GetVariable(i)->AssociatedReaction);
+				reactionIndecies[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)+comp] = reactionCount;
+				reactionCount++;
+			}
+			Output << GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING);
 		} else if (GetVariable(i)->AssociatedSpecies != NULL) {
-			Output << GetVariable(i)->AssociatedSpecies->GetData("SHORTNAME",STRING) << "|" << GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING) << ";" << GetVariable(i)->AssociatedSpecies->GetData("DEFINITION",STRING);
+			if (compoundIndecies.count(GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)+comp) == 0) {
+				compounds.push_back(GetVariable(i)->AssociatedSpecies);
+				compoundIndecies[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)+comp] = compoundCount;
+				compoundCount++;
+			}
+			Output << GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING);
 		}
-		for (int j=StartIndex; j <= EndIndex; j++) { 
-			if (GetSolution(j)->Status == SUCCESS && i < int(GetSolution(j)->SolutionData.size())) {
-				Output << ";" << GetSolution(j)->SolutionData[i];
-			} else {
-				Output << ";NA";
+		int index = -1;
+		int compIndex = compartmentIndecies[comp];
+		int sign = 1;
+		if (GetVariable(i)->Type == DRAIN_FLUX || GetVariable(i)->Type == FORWARD_DRAIN_FLUX || GetVariable(i)->Type == REVERSE_DRAIN_FLUX) {
+			if ( GetVariable(i)->Type == REVERSE_DRAIN_FLUX) {
+				sign = -1;
+			}
+			index = 0;
+		} else if (GetVariable(i)->Type == CONC || GetVariable(i)->Type == LOG_CONC) {
+			index = 1;
+		} else if (GetVariable(i)->Type == POTENTIAL) {
+			index = 2;
+		} else if (GetVariable(i)->Type == DELTAGF_ERROR || GetVariable(i)->Type == DELTAGF_PERROR || GetVariable(i)->Type == DELTAGF_NERROR) {
+			if ( GetVariable(i)->Type == DELTAGF_NERROR) {
+				sign = -1;
+			}
+			index = 3;
+		} else if (GetVariable(i)->Type == FLUX || GetVariable(i)->Type == FORWARD_FLUX || GetVariable(i)->Type == REVERSE_FLUX) {
+			if ( GetVariable(i)->Type == REVERSE_FLUX) {
+				sign = -1;
+			}
+			index = 0;
+		} else if (GetVariable(i)->Type == DELTAG) {
+			index = 1;
+		} else if (GetVariable(i)->Type == REACTION_DELTAG_ERROR || GetVariable(i)->Type == REACTION_DELTAG_PERROR || GetVariable(i)->Type == REACTION_DELTAG_NERROR) {
+			if ( GetVariable(i)->Type == REACTION_DELTAG_NERROR) {
+				sign = -1;
+			}
+			index = 2;
+		}
+		if (index != -1) {
+			for (int j=StartIndex; j < EndIndex; j++) {
+				if (GetSolution(j)->Status == SUCCESS && i < int(GetSolution(j)->SolutionData.size())) {
+					Output << ";" << GetSolution(j)->SolutionData[i];
+					
+					if (GetVariable(i)->AssociatedReaction != NULL) {
+						if (int(rxnVarTypePresence[j].size()) == 0) {
+							rxnVarTypePresence[j].resize(4);
+						}
+						if (int(rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j].size()) == 0) {
+							rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j].resize(4);
+						}
+						if (int(rxnVarTypePresence[j][index].size()) <= compartmentIndecies[comp]) {
+							rxnVarTypePresence[j][index].resize(compartments.size(),false);
+						}
+						if (int(rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j][index].size()) <= compartmentIndecies[comp]) {
+							rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j][index].resize(compartments.size(),FLAG);
+						}
+						if (i < int(GetSolution(j)->SolutionData.size())) {
+							if (rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] == FLAG) {
+								rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] = sign*GetSolution(j)->SolutionData[i];
+							} else {
+								rxnVars[GetVariable(i)->AssociatedReaction->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] += sign*GetSolution(j)->SolutionData[i];
+							}
+						}
+						rxnVarTypePresence[j][index][compartmentIndecies[comp]] = true;
+					} else if (GetVariable(i)->AssociatedSpecies != NULL) {
+						if (int(cpdVarTypePresence[j].size()) == 0) {
+							cpdVarTypePresence[j].resize(4);
+						}
+						if (int(cpdVarTypePresence[j][index].size()) <= compartmentIndecies[comp]) {
+							cpdVarTypePresence[j][index].resize(compartments.size(),false);
+						}
+						if (int(cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j].size()) == 0) {
+							cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j].resize(4);
+						}
+						if (int(cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index].size()) <= compartmentIndecies[comp]) {
+							cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index].resize(compartments.size(),FLAG);
+						}
+						if (i < int(GetSolution(j)->SolutionData.size())) {
+							if (GetVariable(i)->Type == LOG_CONC) {
+								cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] = exp(GetSolution(j)->SolutionData[i]);
+							} else if (cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] == FLAG) {
+								cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] = sign*GetSolution(j)->SolutionData[i];
+							} else {
+								cpdVars[GetVariable(i)->AssociatedSpecies->GetData("DATABASE",STRING)][j][index][compartmentIndecies[comp]] += sign*GetSolution(j)->SolutionData[i];
+							}
+						}
+						cpdVarTypePresence[j][index][compartmentIndecies[comp]] = true;
+					}
+				} else {
+					Output << ";NA";
+				}
 			}
 		}
 		Output << endl;
 	}
 	Output.close();
-
 	//Printing the reaction solution data
 	Filename.assign(FOutputFilepath());
 	Filename.append("MFAOutput/SolutionReactionData");
 	Filename.append(FilenameSuffix);
-	Filename.append(itoa(ProblemIndex));
+	//Filename.append(itoa(ProblemIndex));
 	Filename.append(".txt");
 	if (!OpenOutput(Output,Filename)) {
 		return;
 	}
-	//Printing the heading for the reaction solution data
-	vector<int> ReactionVariables;
-	ReactionVariables.push_back(FLUX);
-	if (ThermodynamicConstraints) {
-		ReactionVariables.push_back(DELTAG);
-		if (ThermoUncertainty) {
-			ReactionVariables.push_back(REACTION_DELTAG_ERROR);
+	Output << "Reaction;Equation;Reversibility";	
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(rxnVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(rxnVarTypePresence[j][i].size()); k++) {
+					if (rxnVarTypePresence[j][i][k]) {
+						if (i == 0) {
+							Output << ";Flux";
+						} else if (i == 1) {
+							Output << ";DeltaG";
+						} else if (i == 2) {
+							Output << ";DeltaGErr";
+						}
+						if (k > 0) {
+							Output << "[" << compartments[k] << "]";
+						}
+						if ((EndIndex-StartIndex) > 1) {
+							Output << " " << j;
+						}
+					}
+				}
+			}
 		}
 	}
-	//Printing the objectives
-	Output << "REACTIONS;DATABASE ID;EQUATION";
-	for (int i=0; i < int(ReactionVariables.size()); i++) {
-		Output << ";;";
-	}
-	Output << ";Objectives:";
-	for (int i=StartIndex; i <= EndIndex; i++) {
-		Output << ";" << GetSolution(i)->Objective;
+	Output << endl;
+	Output << "Solution;none;none";
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(rxnVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(rxnVarTypePresence[j][i].size()); k++) {
+					if (rxnVarTypePresence[j][i][k]) {
+						Output << ";" << j;
+					}
+				}
+			}
+		}
 	}
 	Output << endl;
-	Output << "ENTRY;DATABASE ID;EQUATION";
-	for (int i=0; i < int(ReactionVariables.size()); i++) {
-		Output << ";Lower " << ConvertVariableType(ReactionVariables[i]) << " bound;Upper " << ConvertVariableType(ReactionVariables[i]) << " bound";
-	}
-	for (int j=StartIndex; j <= EndIndex; j++) {
-		for (int i=0; i < int(ReactionVariables.size()); i++) {
-			Output << ";" << ConvertVariableType(ReactionVariables[i]) << " " << j;
+	Output << "Objective;none;none";
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(rxnVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(rxnVarTypePresence[j][i].size()); k++) {
+					if (rxnVarTypePresence[j][i][k]) {
+						Output << ";" << GetSolution(j)->Objective;
+					}
+				}
+			}
 		}
 	}
 	Output << endl;
 	//Printing the actual reaction solution data
-	for (int i=0; i < SourceDatabase->FNumReactions(); i++) {
-		Output << SourceDatabase->GetReaction(i)->FEntry() << ";" << SourceDatabase->GetReaction(i)->GetData("DATABASE",STRING) << ";" << SourceDatabase->GetReaction(i)->Query("DEFINITION");
-		for (int k=0; k < int(ReactionVariables.size()); k++) {
-			vector<double> Temp = SourceDatabase->GetReaction(i)->RetrieveData(ReactionVariables[k],NULL);
-			Output << ";" << Temp[1] << ";" << Temp[0];
+	for (int i=0; i < int(reactions.size()); i++) {
+		string rev("<=>");
+		if (reactions[i]->FType() == FORWARD) {
+			rev.assign("=>");
+		} else if (reactions[i]->FType() == REVERSE) {
+			rev.assign("<=");
 		}
-		for (int j=StartIndex; j <= EndIndex; j++) {
-			for (int k=0; k < int(ReactionVariables.size()); k++) {
-				vector<double> Temp = SourceDatabase->GetReaction(i)->RetrieveData(ReactionVariables[k],GetSolution(j));
-				Output << ";" << Temp[4];
+		Output << reactions[i]->GetData("DATABASE",STRING) << ";" << reactions[i]->Query("DEFINITION") << ";" << rev; 
+		for (int j=StartIndex; j < EndIndex; j++) {
+			if (GetSolution(j)->Status == SUCCESS) {
+				for (int m=0; m < int(rxnVarTypePresence[j].size()); m++) {
+					for (int k=0; k < int(rxnVarTypePresence[j][m].size()); k++) {
+						if (rxnVarTypePresence[j][m][k]) {
+							string id = reactions[i]->GetData("DATABASE",STRING);
+							if (rxnVars[id].count(j) > 0 && int(rxnVars[id][j].size()) > m && int(rxnVars[id][j][m].size()) > k && rxnVars[id][j][m][k] != FLAG) {
+								Output << ";" << rxnVars[id][j][m][k];
+							} else {
+								Output << ";none";
+							}
+						}
+					}
+				}
 			}
 		}
 		Output << endl;
 	}
 	Output.close();
-
 	//Printing the compound solution data
 	Filename.assign(FOutputFilepath());
 	Filename.append("MFAOutput/SolutionCompoundData");
 	Filename.append(FilenameSuffix);
-	Filename.append(itoa(ProblemIndex));
+	//Filename.append(itoa(ProblemIndex));
 	Filename.append(".txt");
 	if (!OpenOutput(Output,Filename)) {
 		return;
 	}
-	//Printing the heading for the reaction solution data
-	vector<int> CompoundVariables;
-	CompoundVariables.push_back(DRAIN_FLUX);
-	if (ThermodynamicConstraints) {
-		CompoundVariables.push_back(LOG_CONC);
-		CompoundVariables.push_back(POTENTIAL);
-		if (ThermoUncertainty) {
-			CompoundVariables.push_back(DELTAGF_ERROR);
-		}
-	}
-	//Printing the objectives
-	Output << "COMPOUNDS;DATABASE ID;FORMULA;COMPARTMENT";
-	for (int i=0; i < int(CompoundVariables.size()); i++) {
-		Output << ";;";
-	}
-	Output << ";Objectives:";
-	for (int i=StartIndex; i <= EndIndex; i++) {
-		Output << ";" << GetSolution(i)->Objective;
-	}
-	Output << endl;
-	Output << "ENTRY;DATABASE ID;FORMULA;COMPARTMENT";
-	for (int i=0; i < int(CompoundVariables.size()); i++) {
-		Output << ";Lower " << ConvertVariableType(CompoundVariables[i]) << " bound;Upper " << ConvertVariableType(CompoundVariables[i]) << " bound";
-	}
-	for (int j=StartIndex; j <= EndIndex; j++) {
-		for (int i=0; i < int(CompoundVariables.size()); i++) {
-			Output << ";" << ConvertVariableType(CompoundVariables[i]) << " " << j;
-		}
-	}
-	Output << endl;
-	//Printing the actual compound solution data
-	for (int i=0; i < SourceDatabase->FNumSpecies(); i++) {
-		for (int m=0; m < SourceDatabase->GetSpecies(i)->FNumCompartments(); m++) {
-			Output << SourceDatabase->GetSpecies(i)->FEntry() << ";" << SourceDatabase->GetSpecies(i)->GetData("DATABASE",STRING) << ";" << SourceDatabase->GetSpecies(i)->FFormula() << ";" << SourceDatabase->GetSpecies(i)->GetSpeciesCompartment(m)->Compartment->Abbreviation;
-			for (int k=0; k < int(CompoundVariables.size()); k++) {
-				vector<double> Temp = SourceDatabase->GetSpecies(i)->RetrieveData(CompoundVariables[k],SourceDatabase->GetSpecies(i)->GetSpeciesCompartment(m)->Compartment->Index,NULL);
-				Output << ";" << Temp[1] << ";" << Temp[0];
-			}
-			for (int j=StartIndex; j <= EndIndex; j++) {
-				for (int k=0; k < int(CompoundVariables.size()); k++) {
-					vector<double> Temp = SourceDatabase->GetSpecies(i)->RetrieveData(CompoundVariables[k],SourceDatabase->GetSpecies(i)->GetSpeciesCompartment(m)->Compartment->Index,GetSolution(j));
-					Output << ";" << Temp[4];
+	Output << "Compound;Name;Formula";	
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(cpdVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(cpdVarTypePresence[j][i].size()); k++) {
+					if (cpdVarTypePresence[j][i][k]) {
+						if (i == 0) {
+							Output << ";Drain";
+						} else if (i == 1) {
+							Output << ";Concentration";
+						} else if (i == 2) {
+							Output << ";Potential";
+						} else if (i == 3) {
+							Output << ";DeltaGFErr";
+						}
+						if (k > 0) {
+							Output << "[" << compartments[k] << "]";
+						}
+						if ((EndIndex-StartIndex) > 1) {
+							Output << " " << j;
+						}
+					}
 				}
 			}
-			Output << endl;
 		}
+	}
+	Output << endl;
+	Output << "Solution;none;none";
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(cpdVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(cpdVarTypePresence[j][i].size()); k++) {
+					if (cpdVarTypePresence[j][i][k]) {
+						Output << ";" << j;
+					}
+				}
+			}
+		}
+	}
+	Output << endl;
+	Output << "Objective;none;none";
+	for (int j=StartIndex; j < EndIndex; j++) {
+		if (GetSolution(j)->Status == SUCCESS) {
+			for (int i=0; i < int(cpdVarTypePresence[j].size()); i++) {
+				for (int k=0; k < int(cpdVarTypePresence[j][i].size()); k++) {
+					if (cpdVarTypePresence[j][i][k]) {
+						Output << ";" << GetSolution(j)->Objective;
+					}
+				}
+			}
+		}
+	}
+	Output << endl;
+	//Printing the actual reaction solution data
+	for (int i=0; i < int(compounds.size()); i++) {
+		Output << compounds[i]->GetData("DATABASE",STRING) << ";" << compounds[i]->GetData("NAME",STRING) << ";" << compounds[i]->FFormula(); 
+		for (int j=StartIndex; j < EndIndex; j++) {
+			if (GetSolution(j)->Status == SUCCESS) {
+				for (int m=0; m < int(cpdVarTypePresence[j].size()); m++) {
+					for (int k=0; k < int(cpdVarTypePresence[j][m].size()); k++) {
+						if (cpdVarTypePresence[j][m][k]) {
+							string id = compounds[i]->GetData("DATABASE",STRING);
+							if (cpdVars[id].count(j) > 0 && int(cpdVars[id][j].size()) > m && int(cpdVars[id][j][m].size()) > k && cpdVars[id][j][m][k] != FLAG) {
+								Output << ";" << cpdVars[id][j][m][k];
+							} else {
+								Output << ";none";
+							}
+						}
+					}
+				}
+			}
+		}
+		Output << endl;
 	}
 	Output.close();
 }
@@ -8980,39 +9134,4 @@ void MFAProblem::WriteLPFile() {
 	if (GetParameter("write LP file").compare("1") == 0) {
 		GlobalWriteLPFile(Solver);
 	}
-}
-
-void MFAProblem::PrintSolutionTwo(int StartIndex, int EndIndex,bool Append, int SolutionIndexStart) {
-	//This version of this function prints the solutions downward
-	string Filename(FOutputFilepath());
-	Filename.append(GetParameter("MFA solutions filename"));
-	Filename = RemoveExtension(Filename);
-	Filename.append(itoa(ProblemIndex));
-	Filename.append(".txt");
-
-	ofstream Output;
-	if (!OpenOutput(Output,Filename,Append)) {
-		return;
-	}
-
-	if (StartIndex < 0) {
-		StartIndex = 0;
-	}
-	if (EndIndex >= FNumSolutions() || EndIndex < 0) {
-		EndIndex = FNumSolutions()-1;
-	}
-	
-	if (!Append) {
-		Output << "Index;Objective;" << endl;
-	} 
-
-	for (int i=StartIndex; i <= EndIndex; i++) {
-		Output << SolutionIndexStart+i-StartIndex << ";" << GetSolution(i)->Objective << ";";
-		for (int j=0; j < GetSolution(i)->NumVariables; j++) {
-			Output << GetSolution(i)->SolutionData[j] << ";";
-		}
-		Output << endl;
-	}
-
-	Output.close();
 }

@@ -5456,9 +5456,9 @@ sub fbacheckgrowth {
 	}
 	my $message = "";
 	if ($results->{growth} > 0.000001) {
-		if (-e $results->{fbaObj}->directory()."/MFAOutput/SolutionReactionData0.txt") {
-			system("cp ".$results->{fbaObj}->directory()."/MFAOutput/SolutionReactionData0.txt ".$self->ws()->directory()."Fluxes-".$mdl->id()."-".$args->{media}.".txt");
-			system("cp ".$results->{fbaObj}->directory()."/MFAOutput/SolutionCompoundData0.txt ".$self->ws()->directory()."CompoundFluxes-".$mdl->id()."-".$args->{media}.".txt");  
+		if (-e $results->{fbaObj}->directory()."/MFAOutput/SolutionReactionData.txt") {
+			system("cp ".$results->{fbaObj}->directory()."/MFAOutput/SolutionReactionData.txt ".$self->ws()->directory()."Fluxes-".$mdl->id()."-".$args->{media}.".txt");
+			system("cp ".$results->{fbaObj}->directory()."/MFAOutput/SolutionCompoundData.txt ".$self->ws()->directory()."CompoundFluxes-".$mdl->id()."-".$args->{media}.".txt");  
 		}
 		$message .= $args->{model}." grew in ".$args->{media}." media with rate:".$results->{growth}." gm biomass/gm CDW hr.\n"
 	} else {
