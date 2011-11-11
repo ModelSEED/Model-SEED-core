@@ -2664,15 +2664,10 @@ sub import_model {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
 	}else{
 	    $mdl = $self->get_model($id);
-
-	    if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-		print "Overwriting provenance\n";
 		$mdl->GenerateModelProvenance({
 		    biochemSource => $args->{biochemSource}
-					      });
-	    }
+		});	
 	}
-
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
@@ -2680,30 +2675,6 @@ sub import_model {
 			$mdl->figmodel()->database()->freezeFileSyncing($importTables->[$i]);
 		}
 		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("reaction",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("compound",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "name".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "searchname".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("rxnals",{type => $id});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
