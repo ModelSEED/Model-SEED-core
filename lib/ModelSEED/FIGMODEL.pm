@@ -2727,6 +2727,9 @@ sub import_model {
 		if ($row->{"ID"}->[0] =~ m/^M_/) {
 			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],2);
 		}
+		if ($row->{"ID"}->[0] =~ m/_[a-z]$/) {
+			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],0,length($row->{"ID"}->[0])-2);
+		}
 		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
 		if (defined($cpdals)) {
 		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
