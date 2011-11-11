@@ -939,6 +939,7 @@ sub import_seed_account {
 		$args->{password} = <>;
 	}
 	#Getting user data
+	print "TEST\n";
 	my $svr = $self->server("MSSeedSupportClient");
 	my $output = $svr->get_user_info({username => $args->{username},password => $args->{password}});
 	if (!defined($output->{username})) {
