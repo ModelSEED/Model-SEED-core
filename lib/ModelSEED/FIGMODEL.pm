@@ -927,7 +927,7 @@ Description:
 =cut
 sub import_seed_account {
 	my($self,$args) = @_;
-	$args = $self->process_arguments($args,["username"],{password => undef});
+	ModelSEED::globals::ARGS($args,["username"],{password => undef});
 	#Checking that you are not already in the SEED environment
 	ModelSEED::globals::ERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
 	#Checking if user account already exists with specified name
