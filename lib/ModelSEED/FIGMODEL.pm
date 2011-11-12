@@ -893,7 +893,7 @@ sub authenticate {
 	my($self,$args) = @_;
 	if (defined($args->{user})) {
 		$args->{username} = $args->{user};
-	}
+	}	
 	if (defined($args->{cgi})) {
 		   my $session = $self->database()->create_object("session",$args->{cgi});
 		   if (!defined($session) || !defined($session->user)) {
@@ -905,7 +905,21 @@ sub authenticate {
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
+			if (defined($ENV{"FIGMODEL_USER"})) {
+				my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
+				for (my $i=0; $i < @{$data};$i++) {
+					if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
+						$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "public";';
+					}
+					if ($data->[$i] =~ m/FIGMODEL_USER/) {
+						$data->[$i] = '$ENV{FIGMODEL_USER} = "public";';
+					}
+				}
+				$self->figmodel()->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
+				ModelSEED::globals::ERROR("Environment configured to log into a nonexistant account! Automatically logging out! Please attempt to log in again!");
+			} else {
+				ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
+			}
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
@@ -939,7 +953,6 @@ sub import_seed_account {
 		$args->{password} = <>;
 	}
 	#Getting user data
-	print "TEST\n";
 	my $svr = $self->server("MSSeedSupportClient");
 	my $output = $svr->get_user_info({username => $args->{username},password => $args->{password}});
 	if (!defined($output->{username})) {
