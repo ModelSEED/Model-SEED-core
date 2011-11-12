@@ -1086,29 +1086,36 @@ sub loadMetaboliteProduction {
 =cut
 sub loadFluxData {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{index => 0,filename => $self->filename()});
-	if (defined($args->{error})) {return $self->error_message({function => "loadFluxData",args => $args});}
+	$args = $self->figmodel()->process_arguments($args,[],{filename => $self->filename()});
 	$self->filename($args->{filename});
 	my $result;
 	my $tbl;
-	if (-e $self->directory()."/MFAOutput/SolutionCompoundData".$args->{index}.".txt") {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/SolutionCompoundData".$args->{index}.".txt",";","",1,undef);
+	if (-e $self->directory()."/MFAOutput/SolutionCompoundData.txt") {
+		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/SolutionCompoundData.txt",";","",0,undef);
 		if (defined($tbl)) {
 			for (my $i=0; $i < $tbl->size(); $i++) {
 				my $row = $tbl->get_row($i);
-				if (defined($row) && defined($row->{"DATABASE ID"}->[0]) && defined($row->{"DRAIN_FLUX 0"}->[0]) && $row->{"DRAIN_FLUX 0"}->[0] ne "1e+07") {
-					$result->{$row->{"DATABASE ID"}->[0].$row->{"COMPARTMENT"}->[0]} = $row->{"DRAIN_FLUX 0"}->[0];
+				if (defined($row)) {
+					foreach my $heading (keys(%{$row})) {
+						if ($heading =~ m/Drain\[([a-zA-Z0-9]+)\]/ && $row->{$heading}->[0] ne "none") {
+							$result->{$row->{"Compound"}->[0].$1} = $row->{$heading}->[0];
+						}
+					}	
 				}
 			}
 		}
 	}
-	if (-e $self->directory()."/MFAOutput/SolutionReactionData".$args->{index}.".txt") {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/SolutionReactionData".$args->{index}.".txt",";","",1,undef);
+	if (-e $self->directory()."/MFAOutput/SolutionReactionData.txt") {
+		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MFAOutput/SolutionReactionData.txt",";","",0,undef);
 		if (defined($tbl)) {
 			for (my $i=0; $i < $tbl->size(); $i++) {
 				my $row = $tbl->get_row($i);
-				if (defined($row) && defined($row->{"DATABASE ID"}->[0]) && defined($row->{"FLUX 0"}->[0])) {
-					$result->{$row->{"DATABASE ID"}->[0]} = $row->{"FLUX 0"}->[0];
+				if (defined($row)) {
+					foreach my $heading (keys(%{$row})) {
+						if ($heading =~ m/Flux\[([a-zA-Z0-9]+)\]/ && $row->{$heading}->[0] ne "none") {
+							$result->{$row->{"Reaction"}->[0].$1} = $row->{$heading}->[0];
+						}
+					}	
 				}
 			}
 		}

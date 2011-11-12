@@ -72,6 +72,7 @@ sub printWorkspaceEnvFiles {
     my ($self) = @_;
     ModelSEED::globals::PRINTFILE($self->root().$self->owner()."/current.txt",[$self->id()]);
     ModelSEED::globals::PRINTFILE($self->binDirectory()."ms-goworkspace",["cd ".$self->directory()]);
+	chmod 0775, $self->binDirectory()."ms-goworkspace";
 }
 
 sub printWorkspace {

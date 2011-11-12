@@ -167,10 +167,9 @@ public:
 	void PrintProblemReport(double SingleObjective,OptimizationParameter* InParameters, string InNote);
 	int LoadTightBounds(Data* InData, bool SetBoundToTightBounds);
 	void SaveTightBounds();
-	void PrintSolutions(int StartIndex, int EndIndex);
+	void PrintSolutions(int StartIndex, int EndIndex,bool tightbounds = false);
 	void PrintVariableKey();
 	void WriteLPFile();
-	void PrintSolutionTwo(int StartIndex, int EndIndex,bool Append, int SolutionIndexStart);
 };
 
 struct RegLogicNode {

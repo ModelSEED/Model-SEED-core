@@ -893,7 +893,7 @@ sub authenticate {
 	my($self,$args) = @_;
 	if (defined($args->{user})) {
 		$args->{username} = $args->{user};
-	}
+	}	
 	if (defined($args->{cgi})) {
 		   my $session = $self->database()->create_object("session",$args->{cgi});
 		   if (!defined($session) || !defined($session->user)) {
@@ -905,7 +905,21 @@ sub authenticate {
 	} elsif (defined($args->{username}) && defined($args->{password})) {
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
+			if (defined($ENV{"FIGMODEL_USER"})) {
+				my $data = $self->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
+				for (my $i=0; $i < @{$data};$i++) {
+					if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
+						$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "public";';
+					}
+					if ($data->[$i] =~ m/FIGMODEL_USER/) {
+						$data->[$i] = '$ENV{FIGMODEL_USER} = "public";';
+					}
+				}
+				$self->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
+				ModelSEED::globals::ERROR("Environment configured to log into a nonexistant account! Automatically logging out! Please attempt to log in again!");
+			} else {
+				ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
+			}
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
@@ -927,7 +941,7 @@ Description:
 =cut
 sub import_seed_account {
 	my($self,$args) = @_;
-	$args = $self->process_arguments($args,["username"],{password => undef});
+	ModelSEED::globals::ARGS($args,["username"],{password => undef});
 	#Checking that you are not already in the SEED environment
 	ModelSEED::globals::ERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
 	#Checking if user account already exists with specified name
@@ -2664,15 +2678,10 @@ sub import_model {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
 	}else{
 	    $mdl = $self->get_model($id);
-
-	    if ($args->{overwrite} == 1 && defined($args->{biochemSource})){
-		print "Overwriting provenance\n";
 		$mdl->GenerateModelProvenance({
 		    biochemSource => $args->{biochemSource}
-					      });
-	    }
+		});	
 	}
-
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
@@ -2680,34 +2689,6 @@ sub import_model {
 			$mdl->figmodel()->database()->freezeFileSyncing($importTables->[$i]);
 		}
 		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("reaction",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("compound",{scope => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => $id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "name".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "searchname".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "stringcode".$id});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
-		}
-		$objs = $mdl->figmodel()->database()->get_objects("rxnals",{type => $id});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
@@ -2728,6 +2709,16 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
+		if ($row->{"ID"}->[0] =~ m/^M_/) {
+			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],2);
+		}
+		if ($row->{"ID"}->[0] =~ m/_[a-z]$/) {
+			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],0,length($row->{"ID"}->[0])-2);
+		}
+		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
+		if (defined($cpdals)) {
+		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		print "Testing ",$row->{ID}->[0],"\n";
 
 		my $newStrings=();
