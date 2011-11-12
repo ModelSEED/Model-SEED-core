@@ -5263,12 +5263,16 @@ sub mslogin {
 		["noimport",0,0,undef,"username of user account you wish to log into"]
 	],[@Data],"login as new user and import user account from SEED");
 	#Checking for existing account in local database
+	print "test1\n";
 	my $usrObj = $self->figmodel()->database()->get_object("user",{login => $args->{username}});
 	if (!defined($usrObj) && $self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
+		print "test4\n";
 		ModelSEED::globals::ERROR("Could not find specified user account. Try new \"username\" or register an account on the SEED website!");
 	}
+	print "test2\n";
 	#If local account was not found, attempting to import account from the SEED
 	if (!defined($usrObj) && $args->{noimport} == 0) {
+        print "test5\n";
         print "Unable to find account locally, trying to obtain login info from theseed.org...\n";
 		$usrObj = $self->figmodel()->import_seed_account({
 			username => $args->{username},
@@ -5280,12 +5284,14 @@ sub mslogin {
 		}
         print "Success! Downloaded user credentials from theseed.org!\n";
 	}
+	print "test3\n";
 	my $oldws = $self->figmodel()->user().":".$self->figmodel()->ws()->id();
 	#Authenticating
 	$self->figmodel()->authenticate($args);
 	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
 		ModelSEED::globals::ERROR("Authentication failed! Try new password!");
 	}
+	print "test4\n";
 	$self->figmodel()->loadWorkspace();
 	my $data = $self->figmodel()->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
     my ($addedPWD, $addedUSR) = (0,0);
