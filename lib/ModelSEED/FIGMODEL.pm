@@ -2703,6 +2703,10 @@ sub import_model {
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
+		$objs = $mdl->figmodel()->database()->get_objects("cpdals",{type => "stringcode".$id});
+		for (my $i=0; $i < @{$objs}; $i++) {
+			$objs->[$i]->delete();	
+		}
 		$objs = $mdl->figmodel()->database()->get_objects("rxnals",{type => $id});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
@@ -2726,48 +2730,54 @@ sub import_model {
 		my $cpd;
 		print "Testing ",$row->{ID}->[0],"\n";
 
-		my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"ID"}->[0],type => "BKM"});
-		if (defined($cpdals)) {
-		    $cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-		    print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+		my $newStrings=();
+		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
+		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
+		    if (defined($cpdals) && !defined($cpd)) {
+			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+		    }
+		    if(!defined($cpdals)){
+			$newStrings->{$stringcode}=1;
+		    }
 		}
 
-		my $newNames;
+		my $newNames=();
 		for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
-			if (length($row->{"NAMES"}->[$j]) > 0) {
-				my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
-				for (my $k=0; $k < @{$searchNames}; $k++) {
-				    #Look for searchname in original 'searchname' type
-				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
-				  
-				    #if not, look for it in previous imports
-				    if (!defined($cpdals)) {
-					my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
-					for (my $m = 0; $m < @{$cpdalss}; $m++) {
-					    $cpdals = $cpdalss->[$m];
-					    last;
-					}
-				    }
-				    if (defined($cpdals)) {
-					if (!defined($cpd)) {
-					    $cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-					}
-				    } else {
-					#prevent use of names that being with cpd, for obvious confusion
-					#with ModelSEED identifiers
-					next if substr($searchNames->[$k],0,3) eq "cpd";
-
-					#stopgap to prevent names being inserted that are too close
-					#this occurs because the database doesn't recognize upper/lower case when
-					#using indexes
-					if(!exists($newNames->{search}->{$searchNames->[$k]})){
-					    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
-					}
-					$newNames->{search}->{$searchNames->[$k]} = 1;
-
-				    }
+		    if (length($row->{"NAMES"}->[$j]) > 0) {
+			my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
+			for (my $k=0; $k < @{$searchNames}; $k++) {
+			    #Look for searchname in original 'searchname' type
+			    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
+			    
+			    #if not, look for it in previous imports
+			    if (!defined($cpdals)) {
+				my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
+				for (my $m = 0; $m < @{$cpdalss}; $m++) {
+				    $cpdals = $cpdalss->[$m];
+				    last;
 				}
+			    }
+			    if (defined($cpdals)) {
+				if (!defined($cpd)) {
+				    $cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				}
+			    } else {
+				#prevent use of names that being with cpd, for obvious confusion
+				#with ModelSEED identifiers
+				next if substr($searchNames->[$k],0,3) eq "cpd";
+				
+				#stopgap to prevent names being inserted that are too close
+				#this occurs because the database doesn't recognize upper/lower case when
+				#using indexes
+				if(!exists($newNames->{search}->{$searchNames->[$k]})){
+				    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+				}
+				$newNames->{search}->{$searchNames->[$k]} = 1;
+				
+			    }
 			}
+		    }
 		}
 		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
@@ -2790,46 +2800,46 @@ sub import_model {
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
 			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";
-			if (defined($row->{"CHARGE"}->[0])) {
-				if ($cpd->charge() == 10000000) {
-					$cpd->charge($row->{"CHARGE"}->[0]);
-				}
+			if (defined($row->{"CHARGE"}->[0])){
+			    if ($cpd->charge() == 10000000){
+				$cpd->charge($row->{"CHARGE"}->[0]);
+			    }
 			}
-			if (defined($row->{"MASS"}->[0])) {
-				if ($cpd->mass() == 10000000) {
-					$cpd->mass($row->{"MASS"}->[0]);
-				}
+			if (defined($row->{"MASS"}->[0])){
+			    if ($cpd->mass() == 10000000){
+				$cpd->mass($row->{"MASS"}->[0]);
+			    }
 			}
-			if (defined($row->{"FORMULA"}->[0])) {
-				if (!defined($cpd->formula()) || length($cpd->formula()) == 0) {
-					$cpd->formula($row->{"FORMULA"}->[0]);
-				}
+			if (defined($row->{"FORMULA"}->[0])){
+			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0) {
+				$cpd->formula($row->{"FORMULA"}->[0]);
+			    }
 			}
 		} else {
-			my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
-			if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
-				$row->{"MASS"}->[0] = 10000000;	
-			}
-			if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
-				$row->{"CHARGE"}->[0] = 10000000;	
-			}
-			if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
-				$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
-			}
-			$cpd = $mdl->figmodel()->database()->create_object("compound",{
-				id => $newid,
-				name => $row->{"NAMES"}->[0],
-				abbrev => $row->{"ABBREV"}->[0],
-				mass => $row->{"MASS"}->[0],
-				charge => $row->{"CHARGE"}->[0],
-				deltaG => 10000000,
-				deltaGErr => 10000000,
-				owner => $args->{owner},
-				modificationDate => time(),
-				creationDate => time(),
-				public => 1,
-				scope => $id
+		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
+		    print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
+		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
+			$row->{"MASS"}->[0] = 10000000;	
+		    }
+		    if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
+			$row->{"CHARGE"}->[0] = 10000000;	
+		    }
+		    if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
+			$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
+		    }
+		    $cpd = $mdl->figmodel()->database()->create_object("compound",{
+			id => $newid,
+			name => $row->{"NAMES"}->[0],
+			abbrev => $row->{"ABBREV"}->[0],
+			mass => $row->{"MASS"}->[0],
+			charge => $row->{"CHARGE"}->[0],
+			deltaG => 10000000,
+			deltaGErr => 10000000,
+			owner => $args->{owner},
+			modificationDate => time(),
+			creationDate => time(),
+			public => 1,
+			scope => $id
 			});
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
@@ -2837,6 +2847,9 @@ sub import_model {
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{search}})) {
 		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "searchname".$id, alias => $name});
+		}
+		foreach my $stringcode ( keys %$newStrings ){
+		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "stringcode".$id, alias => $stringcode});
 		}
 
 		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
@@ -2927,10 +2940,6 @@ sub import_model {
 
 		($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation}) = $self->ApplyStoichiometryCorrections($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation});
 
-		if($codeResults->{code} ne $prior_eqn){
-		    print "Reaction Updated from: ",$prior_eqn," to ",$codeResults->{code},"\n";
-		}
-
 		my $rxn = $mdl->figmodel()->database()->get_object("reaction",{code => $codeResults->{code}});
 		if (!defined($rxn)) {
 			$rxn = $mdl->figmodel()->database()->get_object("reaction",{code => $codeResults->{reverseCode}});
@@ -3001,14 +3010,16 @@ sub import_model {
 			REACTION => $rxn->id(),
 			compartment => $row->{"COMPARTMENT"}->[0]
 		});
+
 		if (defined($rxnmdl)) {
+		    print "Duplicate found for reaction ",$rxnmdl->REACTION()," for model ",$rxnmdl->MODEL(),"\n";
 			if ($rxnmdl->directionality() ne $row->{"DIRECTIONALITY"}->[0]) {
 				$rxnmdl->directionality("<=>");
 			}
 			if ($row->{"PEGS"}->[0] ne "UNKNOWN") {
 				my $newPegs = join("|",@{$row->{"PEGS"}});
 				if ($rxnmdl->pegs() ne "UNKNOWN") {
-					$newPegs = 	$rxnmdl->pegs()."|".$newPegs;
+					$newPegs = $rxnmdl->pegs()."|".$newPegs;
 				}
 				$rxnmdl->pegs($newPegs);
 			}
