@@ -43,6 +43,7 @@ use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
 use ModelSEED::FIGMODEL::workspace;
 use ModelSEED::FIGMODEL::queue;
+use ModelSEED::MooseDB::user;
 
 =head1 Model database interaction module
 
