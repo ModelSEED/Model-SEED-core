@@ -906,7 +906,8 @@ sub authenticate {
 		if ($args->{username} eq "public" && $args->{password} eq "public") {
 			$self->{_user_acount}->[0] = ModelSEED::MooseDB::user->new({
 				username => "public",
-				login => "public"
+				login => "public",
+				db => $self->database()
 			});
 			return undef; 
 		}	
