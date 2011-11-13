@@ -134,7 +134,6 @@ sub new {
 			$self->authenticate_user($username,$password);
 		}
 	}
-	$self->loadWorkspace();
 	return $self;	
 }
 
@@ -893,7 +892,7 @@ sub authenticate {
 	my($self,$args) = @_;
 	if (defined($args->{user})) {
 		$args->{username} = $args->{user};
-	}	
+	}
 	if (defined($args->{cgi})) {
 		   my $session = $self->database()->create_object("session",$args->{cgi});
 		   if (!defined($session) || !defined($session->user)) {
@@ -903,6 +902,13 @@ sub authenticate {
 		   		return $self->user()." logged in";
 		   }
 	} elsif (defined($args->{username}) && defined($args->{password})) {
+		if ($args->{username} eq "public" && $args->{password} eq "public") {
+			$self->{_user_acount}->[0] = ModelSEED::MooseDB::user->new({
+				username => "public",
+				login => "public"
+			});
+			return undef; 
+		}	
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
 			if (defined($ENV{"FIGMODEL_USER"})) {
