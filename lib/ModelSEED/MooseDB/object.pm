@@ -27,9 +27,9 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 #use MooseX::Storage;
 
-our $VERSION = '1';
+#our $VERSION = '1';
 
-with Storage('format' => 'YAML', 'io' => 'File'); 
+#with Storage('format' => 'YAML', 'io' => 'File'); 
 #Other formats include Storable and YAML
 #Other io include AtomicFile and StorableFile
 
