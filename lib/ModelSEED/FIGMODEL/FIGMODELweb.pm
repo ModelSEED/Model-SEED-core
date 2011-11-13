@@ -885,20 +885,11 @@ sub print_reaction_equation {
 }
 
 sub print_biomass_models {
-	my ($self,$id) = @_;
-	my $tbl = $self->figmodel()->database()->GetLinkTable("MODEL","BOF");
-	if (defined($tbl)) {
-		my @rows = $tbl->get_rows_by_key($id,"BOF");
-		my $output;
-		for (my $i=0; $i < @rows; $i++) {
-			if ($i > 0) {
-				$output .= ", ";
-			}
-			$output .= $rows[$i]->{"MODEL"}->[0];
-		}
-		return $output;
+	my ($self,$args) = @_;
+	ModelSEED::globals::ARGS($args,["bofModelHash","data"],{});
+	if (defined($args->{bofModelHash}->{$args->{data}})) {
+		return join(", ",@{$args->{bofModelHash}->{$args->{data}}});
 	}
-	return "NONE";
 }
 
 sub call_model_function {
