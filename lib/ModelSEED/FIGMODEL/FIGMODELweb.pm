@@ -1011,23 +1011,13 @@ sub gapfill_control {
 
 sub printMediaCompounds {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["data"],{type => "id"});
-	if (defined($args->{error})) {return $self->error_message({function => "printMediaCompounds",args => $args});}
-	my $cpdHash;
+	$args = $self->figmodel()->process_arguments($args,["data","mediaCpdHash","compoundHash"],{type => "id"});
 	my $argTwo = "IDONLY";
+	my $mediaHash = $args->{mediaCpdHash};
+	my $cpdHash = $args->{compoundHash};
 	if ($args->{type} eq "name") {
 		$argTwo = "NAME";
-		$cpdHash = $self->figmodel()->database()->get_object_hash({
-	   		type => "compound",
-	   		attribute => "id",
-	    	-useCache => 1
-	    });
 	}
-	my $mediaHash = $self->figmodel()->database()->get_object_hash({
-   		type => "mediacpd",
-   		attribute => "MEDIA",
-    	-useCache => 1
-    });
 	if (!defined($mediaHash->{$args->{data}})) {
 		return "Not found";
 	}
