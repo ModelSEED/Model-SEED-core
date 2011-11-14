@@ -2723,7 +2723,7 @@ sub import_model {
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
 			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			print "Found using InChIs: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			print "Found using InChI string: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		    }
 		    if(!defined($cpdals)){
 			$newStrings->{$stringcode}=1;
@@ -2748,7 +2748,8 @@ sub import_model {
 			    }
 			    if (defined($cpdals)) {
 				if (!defined($cpd)) {
-				    $cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 				}
 			    } else {
 				#prevent use of names that being with cpd, for obvious confusion
@@ -2771,23 +2772,19 @@ sub import_model {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				print "Found using KEGG (",$row->{"KEGG"}->[0],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 			}
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc%"});
 			if (defined($cpdals)) {
-				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 			}
 		}
-		if (!defined($cpd) && defined($row->{"BRENDA"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"BRENDA"}->[0],type => "BRENDA%"});
-			if (defined($cpdals)) {
-				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			}
-		}
+
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
-			print "Found:".$cpd->id()." for ".$row->{"ID"}->[0]."\n";
 			if (defined($row->{"CHARGE"}->[0])){
 			    if ($cpd->charge() == 10000000){
 				$cpd->charge($row->{"CHARGE"}->[0]);
