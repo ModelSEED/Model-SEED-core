@@ -473,7 +473,6 @@ sub reaction_model_column {
 			my $row = $args->{featuretbl}->get_row_by_key("fig|".$args->{featuretbl}->{_genome}.".".$OriginalArray[$i],"ID");
 			print STDERR "Feature table size: ".$args->{featuretbl}->size();
 			if (defined($row)) {
-				print STDERR "SUCCESS!";
 				my $Link = $self->create_feature_link($row);
 				my $Find = $OriginalArray[$i];
 				$PegString =~ s/$Find(\D)/$Link$1/g;
