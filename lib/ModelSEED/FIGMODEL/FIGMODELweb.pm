@@ -389,7 +389,7 @@ Description:
 =cut
 sub table_model_column {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["type","model","data"],{
+	$args = $self->figmodel()->process_arguments($args,["type","model","data","rxnclasses"],{
 		rxnDataHash => undef
 	});
 	return $self->error_message({function => "display_reaction_notes",args=>$args}) if (defined($args->{error}));
@@ -425,7 +425,10 @@ sub table_model_column {
 		my $rxnMdlData = $args->{rxnDataHash}->{$args->{data}};
 		#Getting the reaction class
 		my $output;
-		my $rxnclass = $args->{model}->get_reaction_class($args->{data});
+		my $rxnclass = $self->reactionClassHtml({
+			classtbl => $args->{rxnclasses},
+			data => $args->{data}
+		});
 		if (defined($rxnclass)) {
 			$output = $rxnclass."<br>";
 		}
@@ -454,6 +457,44 @@ sub table_model_column {
 		$output =~ s/\s\)/)/g;
 		return $output;
 	}
+}
+
+=head3 reactionClassHtml
+Definition:
+	string = FIGMODELweb->reactionClassHtml({
+		classtbl => FIGMODELtable
+		data => string:reaction ID
+	});
+Description:
+	Returns reaction class in html form
+=cut
+sub reactionClassHtml {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["classtbl","data"],{showflux => 0});
+	my $output;
+	my $rows = $args->{classtbl}->get_rows_by_key($args->{data},"REACTION");
+	my $classHash = {
+		Positive => "Essential =>",
+		Negative => "Essential <=",
+		"Positive variable" => "Active =>",
+		"Negative variable" => "Active <=",
+		Blocked => "Inactive",
+		Dead => "Disconnected"
+	};
+	for (my $i=0; $i < @{$rows}; $i++) {
+		my $row = $rows->[$i];
+		if (defined($classHash->{$row->{CLASS}->[0]})) {
+			if (length($output) > 0) {
+				$output .= "<br>";
+			}
+			$output = $row->{MEDIA}->[0].":".$classHash->{$row->{CLASS}->[0]};
+			if ($args->{showflux} == 1 && $row->{CLASS}->[0] ne "Blocked" && $row->{CLASS}->[0] ne "Dead") {
+				$output .= "<br>[Flux: ".sprintf("%.3g",$row->{MAX}->[0])." to ".sprintf("%.3g",$row->{MIN}->[0])."]<br>";
+			}
+			#$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
+		}
+	}
+	return $output;
 }
 
 =head3 ModelSelectTable()
@@ -886,7 +927,7 @@ sub print_reaction_equation {
 
 sub print_biomass_models {
 	my ($self,$args) = @_;
-	ModelSEED::globals::ARGS($args,["bofModelHash","data"],{});
+	$args = ModelSEED::globals::ARGS($args,["bofModelHash","data"],{});
 	if (defined($args->{bofModelHash}->{$args->{data}})) {
 		return join(", ",@{$args->{bofModelHash}->{$args->{data}}});
 	}
