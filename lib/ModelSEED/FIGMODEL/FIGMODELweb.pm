@@ -441,9 +441,9 @@ sub reaction_model_column {
 	#	classtbl => $args->{rxnclasses},
 	#	data => $rxnMdlData->REACTION()
 	#});
-	if (defined($rxnclass)) {
-		$output = $rxnclass."<br>";
-	}
+	#if (defined($rxnclass)) {
+	#	$output = $rxnclass."<br>";
+	#}
 	#Handling genes
     if (!defined($rxnMdlData->pegs()) || length($rxnMdlData->pegs()) == 0) {
 		$output .= "UNKNOWN";
