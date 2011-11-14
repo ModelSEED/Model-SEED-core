@@ -7429,7 +7429,7 @@ sub ParseForLinks {
 		for (my $i=0; $i < @OriginalArray; $i++) {
 			if (!defined($VisitedLinks{$OriginalArray[$i]})) {
 				$VisitedLinks{$OriginalArray[$i]} = 1;
-				my $Link = $self->GeneLinks($OriginalArray[$i],$SelectedModel);
+				my $Link = $self->web()->gene_link($OriginalArray[$i],$SelectedModel);
 				my $Find = $OriginalArray[$i];
 				$Text =~ s/$Find(\D)/$Link$1/g;
 				$Text =~ s/$Find$/$Link/g;
@@ -8831,13 +8831,6 @@ MOVED TO FIGMODELreaction:MARKED FOR DELETION
 sub GetReactionSubstrateDataFromEquation {
 	my ($self,$Equation) = @_;
 	return $self->get_reaction("rxn00001")->substrates_from_equation({equation=>$Equation});
-}
-=head3 LoadProblemReport
-IMPLEMENTED IN FIGMODELweb:MARKED FOR DELETION
-=cut
-sub GeneLinks {
-	my ($self,$GeneID,$SelectedModel) = @_;
-	return $self->web()->gene_link($GeneID,$SelectedModel);
 }
 =head3 LoadProblemReport
 IMPLEMENTED IN FIGMODELfba:MARKED FOR DELETION

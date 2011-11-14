@@ -6376,6 +6376,28 @@ sub generate_compound_data_table {
 	}
 	return $outputTbl;
 }
+=head3 provenanceFeatureTable
+Definition:
+	FIGMODELTable = FIGMODELmodel->provenanceFeatureTable();
+Description:
+	Returns FIGMODELTable with the provenance feature table
+=cut
+sub provenanceFeatureTable {
+	my ($self) = @_;
+	if (!defined($self->{_provenanceFeatureTable})) {
+		if (!-e $self->directory()."annotations/features.txt") {
+			if(!-d $self->directory()."annotations/") {
+				mkdir $self->directory()."annotations/";
+			}
+			my $feature_table = $self->genomeObj()->feature_table();
+			$feature_table->save($self->directory()."annotations/features.txt");	
+		}
+		$self->{_provenanceFeatureTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."annotations/features.txt","\t","|",0,["ID","ROLES"]);
+		$self->{_provenanceFeatureTable}->{_genome} = $self->genome();
+	}
+	return $self->{_provenanceFeatureTable}; 
+}
+
 =head3 feature_table
 Definition:
 	FIGMODELTable = FIGMODELmodel->feature_table();
