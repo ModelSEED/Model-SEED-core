@@ -471,7 +471,7 @@ sub reaction_model_column {
 		if (!defined($visited->{$OriginalArray[$i]})) {
 			$visited->{$OriginalArray[$i]} = 1;
 			my $row = $args->{featuretbl}->get_row_by_key("fig|".$args->{featuretbl}->{_genome}.".".$OriginalArray[$i],"ID");
-			print STDERR "Searching for gene "."fig|".$args->{featuretbl}->{_genome}.".".$OriginalArray[$i];
+			print STDERR "Feature table size: ".$args->{featuretbl}->size();
 			if (defined($row)) {
 				print STDERR "SUCCESS!";
 				my $Link = $self->create_feature_link($row);
