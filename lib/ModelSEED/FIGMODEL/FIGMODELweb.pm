@@ -472,7 +472,7 @@ sub reactionClassHtml {
 	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,["classtbl","data"],{showflux => 0});
 	my $output = "";
-	my $rows = $args->{classtbl}->get_rows_by_key($args->{data},"REACTION");
+	my $rows = [$args->{classtbl}->get_rows_by_key($args->{data},"REACTION")];
 	my $classHash = {
 		Positive => "Essential =>",
 		Negative => "Essential <=",
