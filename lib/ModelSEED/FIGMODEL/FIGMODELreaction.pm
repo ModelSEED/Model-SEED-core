@@ -654,6 +654,7 @@ sub createReactionCode {
 	}
 	$OriginalEquation =~ s/^:\s//;
 	$OriginalEquation =~ s/^\s:\s//;
+
 	#Dealing with obvious errors in equation
 	while ($OriginalEquation =~ m/\s\s/) {
 		$OriginalEquation =~ s/\s\s/ /g;
