@@ -471,7 +471,7 @@ Description:
 sub reactionClassHtml {
 	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,["classtbl","data"],{showflux => 0});
-	my $output;
+	my $output = "";
 	my $rows = $args->{classtbl}->get_rows_by_key($args->{data},"REACTION");
 	my $classHash = {
 		Positive => "Essential =>",
@@ -481,17 +481,19 @@ sub reactionClassHtml {
 		Blocked => "Inactive",
 		Dead => "Disconnected"
 	};
-	for (my $i=0; $i < @{$rows}; $i++) {
-		my $row = $rows->[$i];
-		if (defined($classHash->{$row->{CLASS}->[0]})) {
-			if (length($output) > 0) {
-				$output .= "<br>";
+	if (defined($rows)) {
+		for (my $i=0; $i < @{$rows}; $i++) {
+			my $row = $rows->[$i];
+			if (defined($classHash->{$row->{CLASS}->[0]})) {
+				if (length($output) > 0) {
+					$output .= "<br>";
+				}
+				$output = $row->{MEDIA}->[0].":".$classHash->{$row->{CLASS}->[0]};
+				if ($args->{showflux} == 1 && $row->{CLASS}->[0] ne "Blocked" && $row->{CLASS}->[0] ne "Dead") {
+					$output .= "<br>[Flux: ".sprintf("%.3g",$row->{MAX}->[0])." to ".sprintf("%.3g",$row->{MIN}->[0])."]<br>";
+				}
+				#$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
 			}
-			$output = $row->{MEDIA}->[0].":".$classHash->{$row->{CLASS}->[0]};
-			if ($args->{showflux} == 1 && $row->{CLASS}->[0] ne "Blocked" && $row->{CLASS}->[0] ne "Dead") {
-				$output .= "<br>[Flux: ".sprintf("%.3g",$row->{MAX}->[0])." to ".sprintf("%.3g",$row->{MIN}->[0])."]<br>";
-			}
-			#$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
 		}
 	}
 	return $output;
