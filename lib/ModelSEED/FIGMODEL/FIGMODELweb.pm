@@ -478,6 +478,7 @@ sub reactionClassHtml {
 		Negative => "Essential <=",
 		"Positive variable" => "Active =>",
 		"Negative variable" => "Active <=",
+		Variable => "Active <=>",
 		Blocked => "Inactive",
 		Dead => "Disconnected"
 	};
