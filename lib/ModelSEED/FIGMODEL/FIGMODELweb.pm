@@ -493,6 +493,8 @@ sub reactionClassHtml {
 					$output .= "<br>[Flux: ".sprintf("%.3g",$row->{MAX}->[0])." to ".sprintf("%.3g",$row->{MIN}->[0])."]<br>";
 				}
 				#$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
+			} else {
+				print STDERR $row->{CLASS}->[0]."\n";
 			}
 		}
 	}
