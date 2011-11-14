@@ -2689,6 +2689,7 @@ sub import_model {
 		$mdl->GenerateModelProvenance({
 		    biochemSource => $args->{biochemSource}
 		});	
+		$mdl->buildDBInterface();
 	}
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();

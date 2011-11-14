@@ -429,7 +429,6 @@ Description:
 =cut
 sub reaction_model_column {
 	my ($self,$args) = @_;
-	print STDERR "PROCESSING ROW!";
 	$args = $self->figmodel()->process_arguments($args,["data","rxnclasses","dataHash","modelid","featuretbl"],{});
 	if (!defined($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$args->{modelid}})) {
 		return "Not in model";
@@ -471,7 +470,6 @@ sub reaction_model_column {
 		if (!defined($visited->{$OriginalArray[$i]})) {
 			$visited->{$OriginalArray[$i]} = 1;
 			my $row = $args->{featuretbl}->get_row_by_key("fig|".$args->{featuretbl}->{_genome}.".".$OriginalArray[$i],"ID");
-			print STDERR "Feature table size: ".$args->{featuretbl}->size();
 			if (defined($row)) {
 				my $Link = $self->create_feature_link($row);
 				my $Find = $OriginalArray[$i];
