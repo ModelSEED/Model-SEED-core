@@ -297,10 +297,11 @@ sub display_reaction_equation {
 	#Determining reaction direction
 	if ($args->{data}->id() !~ m/bio/) {
 		if (defined($args->{dataHash}->{$args->{data}->{_rtid}}->{models})) {
-			$direction = $args->{dataHash}->{$args->{data}->{_rtid}}->{models}->[0]->directionality();
+			my $list = [keys(%{$args->{dataHash}->{$args->{data}->{_rtid}}->{models}})];
+			$direction =  $args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$list->[0]}->directionality();
 			if ($direction ne "<=>") {
-				for (my $i=1; $i < @{$args->{dataHash}->{$args->{data}->{_rtid}}->{models}};$i++) {
-					if ($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->[$i]->directionality() ne $direction) {
+				for (my $i=1; $i < @{$list};$i++) {
+					if ($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$list->[$i]}->directionality() ne $direction) {
 						$direction = "<=>";
 						last;
 					}
