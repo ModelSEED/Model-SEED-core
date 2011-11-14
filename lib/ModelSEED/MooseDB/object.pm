@@ -25,11 +25,11 @@ package ModelSEED::MooseDB::object;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
-use MooseX::Storage;
+#use MooseX::Storage;
 
-our $VERSION = '1';
+#our $VERSION = '1';
 
-with Storage('format' => 'YAML', 'io' => 'File'); 
+#with Storage('format' => 'YAML', 'io' => 'File'); 
 #Other formats include Storable and YAML
 #Other io include AtomicFile and StorableFile
 
@@ -37,7 +37,7 @@ with Storage('format' => 'YAML', 'io' => 'File');
 #MooseX::Types::DBIx::Class
 #DBIx::Class
 
-has 'db' => (is => 'ro', isa => 'ModelSEED::FIGMODEL::FIGMODELdatabase', required => 1, metaclass => 'DoNotSerialize');
+has 'db' => (is => 'ro', isa => 'ModelSEED::FIGMODEL::FIGMODELdatabase', required => 1);#, metaclass => 'DoNotSerialize');
 
 sub BUILDARGS {
 	my ($self,$params) = @_;
@@ -59,18 +59,18 @@ sub BUILD {
 }
 
 
-around 'pack' => sub {
-	my $orig = shift;
-	my $self = shift;
-	my $data = $self->$orig();
-	my $attributes = [$self->meta()->get_attribute_list()];
-	foreach my $attribute (@{$attributes}) {
-		my $att = $self->meta()->get_attribute($attribute);
-		if ($att->isa('MyApp::Meta::Attribute::Indexed') && $att->has_index ) {
-        	$data->{attributes}->{$attribute} = $att->index();
-		}
-	}
-	return $data;
-};
+#around 'pack' => sub {
+#	my $orig = shift;
+#	my $self = shift;
+#	my $data = $self->$orig();
+#	my $attributes = [$self->meta()->get_attribute_list()];
+#	foreach my $attribute (@{$attributes}) {
+#		my $att = $self->meta()->get_attribute($attribute);
+#		if ($att->isa('MyApp::Meta::Attribute::Indexed') && $att->has_index ) {
+#       	$data->{attributes}->{$attribute} = $att->index();
+#		}
+#	}
+#	return $data;
+#};
 
 1;

@@ -1870,21 +1870,6 @@ sub addcompounds {
     return "SUCCESS";
 }
 
-sub checkbroadessentiality {
-    my($self,@Data) = @_;
-
-    if (@Data < 2) {
-		print "Syntax for this command: checkbroadessentiality?(Model ID)?(Num processors)?(Filename).\n\n";
-		return "ARGUMENT SYNTAX FAIL";
-    }
-
-    if (!defined($Data[2])) {
-        $Data[2] = 50;
-    }
-
-    $self->figmodel()->CheckReactionEssentiality($Data[1],$Data[2],$Data[3]);
-}
-
 sub checksbmlfile {
     my($self,@Data) = @_;
     if (@Data < 2) {

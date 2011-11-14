@@ -789,108 +789,6 @@ sub name {
 	$self->ppo()->name();
 }
 
-=head3 get_reaction_class
-Definition:
-	string = FIGMODELmodel->get_reaction_class(string::reaction ID);
-Description:
-	Returns reaction class
-=cut
-sub get_reaction_class {
-	my ($self,$reaction,$nohtml,$brief_flux) = @_;
-
-	if (!-e $self->directory()."ReactionClassification-".$self->id().".tbl") {
-		if (!defined($self->{_reaction_classes})) {
-			$self->{_reaction_classes} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
-                $self->directory()."ReactionClassification-".
-                $self->id()."-Complete.tbl",";","|",0,["REACTION"]);
-			if (!defined($self->{_reaction_classes})) {
-				return undef;
-			}
-		}
-
-		my $ClassRow = $self->{_reaction_classes}->get_row_by_key($reaction,"REACTION");
-		if (defined($ClassRow) && defined($ClassRow->{CLASS})) {
-			my $class;
-			my $min = $ClassRow->{MIN}->[0];
-			my $max = $ClassRow->{MAX}->[0];
-			if ($ClassRow->{CLASS}->[0] eq "Positive") {
-				$class = "Essential =>";
-				$brief_flux ? $class.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $class.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Negative") {
-				$class = "Essential <=";
-				$brief_flux ? $class.="<br>[Flux: ".sprintf("%.3g",$max)." to ".sprintf("%.3g",$min)."]<br>" : $class.="<br>[Flux: ".$max." to ".$min."]<br>";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Positive variable") {
-				$class = "Active =>";
-				$brief_flux ? $class.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $class.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Negative variable") {
-				$class = "Active <=";
-				$brief_flux ? $class.="<br>[Flux: ".sprintf("%.3g",$max)." to ".sprintf("%.3g",$min)."]<br>" : $class.="<br>[Flux: ".$max." to ".$min."]<br>";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Variable") {
-				$class = "Active <=>";
-				$brief_flux ? $class.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $class.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Blocked") {
-				$class = "Inactive";
-			} elsif ($ClassRow->{CLASS}->[0] eq "Dead") {
-				$class = "Disconnected";
-			}
-
-			if (!defined($nohtml) || $nohtml ne "1") {
-				$class = "<span title=\"Flux:".$min." to ".$max."\">".$class."</span>";
-			}
-
-			return $class;
-		}
-		return undef;
-	}
-
-	if (!defined($self->{_reaction_classes})) {
-		$self->{_reaction_classes} = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
-            $self->directory()."ReactionClassification-".$self->id().".tbl",";","|",0,["REACTION"]);
-		if (!defined($self->{_reaction_classes})) {
-			return undef;
-		}
-	}
-
-	my $ClassRow = $self->{_reaction_classes}->get_row_by_key($reaction,"REACTION");
-	my $classstring = "";
-	if (defined($ClassRow) && defined($ClassRow->{CLASS})) {
-		for (my $i=0; $i < @{$ClassRow->{CLASS}};$i++) {
-			if (length($classstring) > 0) {
-				$classstring .= "<br>";
-			}
-			my $NewClass;
-			my $min = $ClassRow->{MIN}->[$i];
-			my $max = $ClassRow->{MAX}->[$i];
-			if ($ClassRow->{CLASS}->[$i] eq "Positive") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Essential =>";
-				$brief_flux ? $NewClass.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $NewClass.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Negative") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Essential <=";
-				$brief_flux ? $NewClass.="<br>[Flux: ".sprintf("%.3g",$max)." to ".sprintf("%.3g",$min)."]<br>" : $NewClass.="<br>[Flux: ".$max." to ".$min."]<br>";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Positive variable") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Active =>";
-				$brief_flux ? $NewClass.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $NewClass.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Negative variable") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Active <=";
-				$brief_flux ? $NewClass.="<br>[Flux: ".sprintf("%.3g",$max)." to ".sprintf("%.3g",$min)."]<br>" : $NewClass.="<br>[Flux: ".$max." to ".$min."]<br>";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Variable") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Active <=>";
-				$brief_flux ? $NewClass.="<br>[Flux: ".sprintf("%.3g",$min)." to ".sprintf("%.3g",$max)."]<br>" : $NewClass.="<br>[Flux: ".$min." to ".$max."]<br>";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Blocked") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Inactive";
-			} elsif ($ClassRow->{CLASS}->[$i] eq "Dead") {
-				$NewClass = $ClassRow->{MEDIA}->[$i].":Disconnected";
-			}
-
-			if (!defined($nohtml) || $nohtml ne "1") {
-				$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
-			}
-			$classstring .= $NewClass;
-		}
-	}
-	return $classstring;
-}
-
 =head3 get_biomass
 Definition:
 	string = FIGMODELmodel->get_biomass();
@@ -4523,58 +4421,6 @@ sub find_minimal_pathways_two {
 	$self->figmodel()->database()->print_array_to_file($self->directory()."MinimalPathways-".$media."-".$objective."-".$self->id()."-".$AllReversible."-".$self->selectedVersion().".txt",[join("|",@Array)]);
 }
 
-sub combine_minimal_pathways {
-	my ($self) = @_;
-	
-	my $tbl;
-	if (-e $self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl") {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl",";","|",0,["Objective","Media","Reversible"]);
-	} else {
-		$tbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Objective","Media","Reactions","Reversible","Shortest path","Number of essentials","Essentials","Length"],$self->directory()."MinimalPathwayTable-".$self->id().$self->selectedVersion().".tbl",["Objective","Media","Reversible"],";","|");
-	}
-	my @files = glob($self->directory()."MinimalPathways-*");
-	for (my $i=0; $i < @files;$i++) {
-		if ($files[$i] =~ m/MinimalPathways\-(\S+)\-(cpd\d\d\d\d\d)\-(\w+)\-(\d)\-/ || $files[$i] =~ m/MinimalPathways\-(\S+)\-(ENERGY)\-(\w+)\-(\d)\-/) {
-			my $reactions = $self->figmodel()->database()->load_single_column_file($files[$i],"");
-			if (defined($reactions) && @{$reactions} > 0 && length($reactions->[0]) > 0) {
-				my $newrow = {"Objective"=>[$2],"Media"=>[$1],"Reversible"=>[$4]};
-				my $row = $tbl->get_table_by_key($newrow->{"Objective"}->[0],"Objective")->get_table_by_key($newrow->{"Media"}->[0],"Media")->get_row_by_key($newrow->{"Reversible"}->[0],"Reversible");
-				if (!defined($row)) {
-					$row = $tbl->add_row($newrow);
-				}
-				$row->{Reactions} = $self->figmodel()->database()->load_single_column_file($files[$i],"");
-				delete($row->{"Shortest path"});
-				delete($row->{"Number of essentials"});
-				delete($row->{"Essentials"});
-				delete($row->{"Length"});
-				for (my $j=0; $j < @{$row->{Reactions}}; $j++) {
-					my @array = split(/,/,$row->{Reactions}->[$j]);
-					$row->{"Length"}->[$j] = @array;
-					if (!defined($row->{"Shortest path"}->[0]) || $row->{"Length"}->[$j] < $row->{"Shortest path"}->[0]) {
-						$row->{"Shortest path"}->[0] = $row->{"Length"}->[$j];
-					}
-					$row->{"Number of essentials"}->[0] = 0;
-					for (my $k=0; $k < @array;$k++) {
-						if ($array[$k] =~ m/(rxn\d\d\d\d\d)/) {
-							my $class = $self->get_reaction_class($1,1);
-							my $temp = $row->{Media}->[0].":Essential";
-							if ($class =~ m/$temp/) {
-								$row->{"Number of essentials"}->[$j]++;
-								if (!defined($row->{"Essentials"}->[$j]) && length($row->{"Essentials"}->[$j]) > 0) {
-									$row->{"Essentials"}->[$j] = $array[$k];
-								} else {
-									$row->{"Essentials"}->[$j] .= ",".$array[$k];
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	$tbl->save();	
-}
-
 =head3 GetSimulationJobTable
 Definition:
 	my $JobTable = $model->GetSimulationJobTable($Experiment,$PrintResults,$Version);
@@ -6530,6 +6376,34 @@ sub generate_compound_data_table {
 	}
 	return $outputTbl;
 }
+=head3 provenanceFeatureTable
+Definition:
+	FIGMODELTable = FIGMODELmodel->provenanceFeatureTable();
+Description:
+	Returns FIGMODELTable with the provenance feature table
+=cut
+sub provenanceFeatureTable {
+	my ($self) = @_;
+	if (!defined($self->{_provenanceFeatureTable})) {
+		if (!-e $self->directory()."annotations/features.txt") {
+			if(!-d $self->directory()."annotations/") {
+				mkdir $self->directory()."annotations/";
+			}
+			my $feature_table = $self->genomeObj()->feature_table();
+			$feature_table->save($self->directory()."annotations/features.txt");	
+		}
+		$self->{_provenanceFeatureTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."annotations/features.txt","\t","`",0,["ID"]);
+		for (my $i=0; $i < $self->{_provenanceFeatureTable}->size(); $i++) {
+			my $row = $self->{_provenanceFeatureTable}->get_row($i);
+			if (defined($row->{ROLES}->[0])) {
+				$row->{ROLES} = [split(/\|/,$row->{ROLES}->[0])];
+			}
+		}
+		$self->{_provenanceFeatureTable}->{_genome} = $self->genome();
+	}
+	return $self->{_provenanceFeatureTable}; 
+}
+
 =head3 feature_table
 Definition:
 	FIGMODELTable = FIGMODELmodel->feature_table();

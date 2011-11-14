@@ -43,6 +43,7 @@ use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
 use ModelSEED::FIGMODEL::workspace;
 use ModelSEED::FIGMODEL::queue;
+use ModelSEED::MooseDB::user;
 
 =head1 Model database interaction module
 
@@ -134,7 +135,6 @@ sub new {
 			$self->authenticate_user($username,$password);
 		}
 	}
-	$self->loadWorkspace();
 	return $self;	
 }
 
@@ -893,7 +893,7 @@ sub authenticate {
 	my($self,$args) = @_;
 	if (defined($args->{user})) {
 		$args->{username} = $args->{user};
-	}	
+	}
 	if (defined($args->{cgi})) {
 		   my $session = $self->database()->create_object("session",$args->{cgi});
 		   if (!defined($session) || !defined($session->user)) {
@@ -903,6 +903,14 @@ sub authenticate {
 		   		return $self->user()." logged in";
 		   }
 	} elsif (defined($args->{username}) && defined($args->{password})) {
+		if ($args->{username} eq "public" && $args->{password} eq "public") {
+			$self->{_user_acount}->[0] = ModelSEED::MooseDB::user->new({
+				login => "public",
+				password => "public",
+				db => $self->database()
+			});
+			return undef; 
+		}	
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
 			if (defined($ENV{"FIGMODEL_USER"})) {
@@ -2691,6 +2699,7 @@ sub import_model {
 		$mdl->GenerateModelProvenance({
 		    biochemSource => $args->{biochemSource}
 		});	
+		$mdl->buildDBInterface();
 	}
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
@@ -6445,214 +6454,6 @@ sub CompareErrorVectors {
 	return ($CorrectOneErrorTwo,$ErrorOneCorrectTwo);
 }
 
-=head3 CheckReactionEssentiality
-Definition:
-	$model->CheckReactionEssentiality($ModelID,$NumProcessors,$ProcessorIndex,$ReactionList);
-Description:
-Example:
-=cut
-
-sub CheckReactionEssentiality {
-	my ($self,$ModelID,$NumProcessors,$Filename) = @_;
-
-	#Handling the scenario when a list of models of submitted instead of individual models
-	my $List;
-	if ($ModelID =~ m/LIST-(.+)$/) {
-		$List = FIGMODEL::LoadSingleColumnFile($1,"");
-	} elsif (ref($ModelID) eq 'ARRAY') {
-		push(@{$List},@{$ModelID});
-	} elsif (defined($self->get_model($ModelID))) {
-		push(@{$List},$ModelID);
-	}
-
-	#Colleting all jobs in this table
-	my $JobTable = $self->CreateJobTable("NONE");
-
-	#Processing model list
-	my $FirstStage = 0;
-	if (!defined($Filename)) {
-		$FirstStage = 1;
-		$Filename = $self->filename();
-	}
-
-	#Generating the list of jobs required to simulate every reaction KO in every model
-	if ($FirstStage == 1) {
-		for (my $i=0; $i < @{$List}; $i++) {
-			my $ModelID = $List->[$i];
-			my $model = $self->get_model($ModelID);
-			if (!defined($model)) {
-				print STDERR "FIGMODEL:CheckReactionEssentiality: Could not find model ".$ModelID.".\n";
-				return 0;
-			}
-			my $Version = "";
-			my $Directory = $model->directory();
-			if (defined($model->version())) {
-				$Version = $model->version();
-			}
-			$ModelID = $model->id();
-
-			#Determing the simulations that need to be run
-			my $ExperimentalDataTable = $self->GetExperimentalDataTable($model->genome(),"All");
-			#Creating the table of jobs to submit
-			my $JobArray = $self->get_model($ModelID.$Version)->GetSimulationJobTable($ExperimentalDataTable,"All",$Filename);
-
-			#Updating the current stage file
-			PrintArrayToFile($Directory."CURRENTSTAGE.txt",["checkbroadessentiality;RUNNING;".$ModelID.$Version]);
-
-			#Backing up any existing check broad essentiality files
-			if (-e $Directory.$ModelID.$Version."-ReactionKOResult.txt") {
-				system("cp ".$Directory.$ModelID.$Version."-ReactionKOResult.txt ".$Directory.$ModelID.$Version."-OldReactionKOResult.txt");
-			}
-
-			#Identifying blocked and essential reactions on complete media
-			my ($RxnClassTbl,$CpdClassTbl) = $model->ClassifyModelReactions("Complete");
-			if (!defined($RxnClassTbl)) {
-				print STDERR "FIGMODEL:CheckReactionEssentiality: ".$ModelID.$Version." won't grow on complete media.\n";
-				return 0;
-			}
-
-			#Identifying reactions that are not blocked, positive, or negative
-			my $KOList;
-			my $Results = ["REACTION;FALSE POSITIVES;FALSE NEGATIVES"];
-			for (my $i=0; $i < $model->get_reaction_number(); $i++) {
-				my $rxnClass = $model->get_reaction_class($i,"Complete");
-				my $rxnid = $model->get_reaction_id($i);
-				if (defined($rxnClass)) {
-					if ($rxnClass eq "Variable") {
-						push(@{$KOList},"+".$rxnid);
-						push(@{$KOList},"-".$rxnid);
-					} elsif ($rxnClass eq "Positive variable") {
-						push(@{$KOList},"+".$rxnid);
-					} elsif ($rxnClass eq "Negative variable") {
-						push(@{$KOList},"-".$rxnid);
-					} elsif ($rxnClass eq "Positive") {
-						push(@{$Results},"+".$rxnid.";0;10000");
-					} elsif ($rxnClass eq "Negative") {
-						push(@{$Results},"-".$rxnid.";0;10000");
-					}
-				}
-
-			}
-
-			#Updating the current stage file
-			PrintArrayToFile($Directory.$ModelID.$Version."-ReactionKOResult.txt",$Results);
-
-			#Printing LP files for model
-			$model->PrintModelLPFile();
-			if (!-d "/home/chenry/CheckBroadEss/".$Filename."/") {
-				system("mkdir /home/chenry/CheckBroadEss/".$Filename."/");
-			}
-			system("cp ".$Directory."FBA-".$ModelID.$Version.".lp /home/chenry/CheckBroadEss/".$Filename."/FBA-".$ModelID.$Version.".lp");
-			system("cp ".$Directory."FBA-".$ModelID.$Version.".key /home/chenry/CheckBroadEss/".$Filename."/FBA-".$ModelID.$Version.".key");
-			system("cp ".$Directory.$ModelID.$Version.".txt /home/chenry/CheckBroadEss/".$Filename."/".$ModelID.$Version.".txt");
-
-			#Adding the job list
-			for (my $i=0; $i < @{$KOList}; $i++) {
-				for (my $j=0; $j < $JobArray->size(); $j++) {
-					my @Headings = $JobArray->headings();
-					my $NewRow;
-					for (my$k=0; $k < @Headings; $k++) {
-						if (defined($JobArray->get_row($j)->{$Headings[$k]})) {
-							push(@{$NewRow->{$Headings[$k]}},@{$JobArray->get_row($j)->{$Headings[$k]}});
-						}
-					}
-					$NewRow->{"REACTION KO"}->[0] = $KOList->[$i];
-					$JobTable->add_row($NewRow);
-				}
-			}
-		}
-
-		#Printing the jobs tables
-		my $JobsPerProcessor = int($JobTable->size()/$NumProcessors)+1;
-		my $Count = 0;
-		for (my $i=0; $i < $NumProcessors; $i++) {
-			my $NewJobTable = $JobTable->clone_table_def();
-			for (my $j=0; $j < $JobsPerProcessor; $j++) {
-				if ($JobTable->size() > $Count) {
-					$NewJobTable->add_row($JobTable->get_row($Count));
-				}
-				$Count++;
-			}
-			$NewJobTable->save("/home/chenry/CheckBroadEss/".$Filename."/JobTable-".$i.".txt");
-			system($self->{"scheduler executable"}->[0]." \"add:runmfalite?/home/chenry/CheckBroadEss/".$Filename."/JobTable-".$i.".txt?/home/chenry/CheckBroadEss/".$Filename."/Output-".$i.".txt:BACK:test:QSUB\"");
-		}
-	} else {
-		#Parsing the job results files
-		my $CurrentResults;
-		my $CurrentReaction = "";
-		my $CurrentModel = "";
-		my $model;
-		my $Version;
-		my $Directory;
-		my $ExperimentalDataTable;
-		my $JobArray;
-		my $ModelID;
-		my $EssentialityResults;
-		for (my $i=0; $i < $NumProcessors; $i++) {
-			#Parsing the output from job file i
-			my $Results = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/home/chenry/CheckBroadEss/".$Filename."/Output-".$i.".txt",";","\\|",0,undef);
-			if (defined($Results)) {
-				for (my $j=0; $j < $Results->size();$j++) {
-					my $Row = $Results->get_row($j);
-					if (defined($Row->{"MODEL"}->[0]) && $Row->{"MODEL"}->[0] =~ m/\/([^\/]+)\.txt/) {
-						my $NewModel = $1;
-						if (defined($Row->{"KOREACTIONS"}->[0]) && $Row->{"KOREACTIONS"}->[0] ne "none") {
-							#Handling the transition to a new reaction
-							if ($CurrentReaction ne $Row->{"KOREACTIONS"}->[0] || $CurrentModel ne $NewModel) {
-								#Processing the results for the current model and reaction
-								if (defined($model)) {
-									my ($FalsePostives,$FalseNegatives,$CorrectNegatives,$CorrectPositives,$Errorvector,$HeadingVector,$SimulationResults) = $self->get_model($ModelID.$Version)->EvaluateSimulationResults($CurrentResults,$ExperimentalDataTable);
-									push(@{$EssentialityResults},$CurrentReaction.";".$FalsePostives.";".$FalseNegatives);
-								}
-								$CurrentReaction = $Row->{"KOREACTIONS"}->[0];
-								#Clearing out the current results table
-								$CurrentResults = $Results->clone_table_def();
-							}
-							#Handling the transition to a new model
-							if ($CurrentModel ne $NewModel) {
-								#Printing the results from the previous model if there was one
-								if (defined($model) && defined($EssentialityResults) && @{$EssentialityResults} > 0) {
-									PrintArrayToFile($Directory.$ModelID.$Version."-ReactionKOResult.txt",$EssentialityResults,1);
-									$EssentialityResults = ();
-								}
-								$CurrentModel = $NewModel;
-								#Checking if model exists
-								$model = $self->get_model($CurrentModel);
-								if (!defined($model)) {
-									print STDERR "FIGMODEL:CheckReactionEssentiality: Could not find model ".$CurrentModel.".\n";
-								} else {
-									$Version = "";
-									$Directory = $model->directory();
-									if (defined($model->version())) {
-										$Version = $model->version();
-									}
-									$ModelID = $model->id();
-									#Determing the simulations that need to be run
-									$ExperimentalDataTable = $self->GetExperimentalDataTable($model->genome(),"All");
-									#Creating the table of jobs to submit
-									$JobArray = $self->get_model($ModelID.$Version)->GetSimulationJobTable($ExperimentalDataTable,"All",$Filename);
-								}
-							}
-							$CurrentResults->add_row($Row);
-						}
-					}
-				}
-			}
-		}
-		#Processing the results for the final model and reaction
-		if (defined($model)) {
-			my ($FalsePostives,$FalseNegatives,$CorrectNegatives,$CorrectPositives,$Errorvector,$HeadingVector,$SimulationResults) = $self->get_model($ModelID.$Version)->EvaluateSimulationResults($CurrentResults,$ExperimentalDataTable);
-			push(@{$EssentialityResults},$CurrentReaction.";".$FalsePostives.";".$FalseNegatives);
-			#Printing the results for the final model
-			if (defined($EssentialityResults) && @{$EssentialityResults} > 0) {
-				PrintArrayToFile($Directory.$ModelID.$Version."-ReactionKOResult.txt",$EssentialityResults,1);
-			}
-		}
-	}
-
-	return 1;
-}
-
 =head3 TestDatabaseBiomassProduction
 Definition:
 	$model->TestDatabaseBiomassProduction($Biomass,$Media,$BalancedReactionsOnly);
@@ -7650,7 +7451,7 @@ sub ParseForLinks {
 		for (my $i=0; $i < @OriginalArray; $i++) {
 			if (!defined($VisitedLinks{$OriginalArray[$i]})) {
 				$VisitedLinks{$OriginalArray[$i]} = 1;
-				my $Link = $self->GeneLinks($OriginalArray[$i],$SelectedModel);
+				my $Link = $self->web()->gene_link($OriginalArray[$i],$SelectedModel);
 				my $Find = $OriginalArray[$i];
 				$Text =~ s/$Find(\D)/$Link$1/g;
 				$Text =~ s/$Find$/$Link/g;
@@ -9052,13 +8853,6 @@ MOVED TO FIGMODELreaction:MARKED FOR DELETION
 sub GetReactionSubstrateDataFromEquation {
 	my ($self,$Equation) = @_;
 	return $self->get_reaction("rxn00001")->substrates_from_equation({equation=>$Equation});
-}
-=head3 LoadProblemReport
-IMPLEMENTED IN FIGMODELweb:MARKED FOR DELETION
-=cut
-sub GeneLinks {
-	my ($self,$GeneID,$SelectedModel) = @_;
-	return $self->web()->gene_link($GeneID,$SelectedModel);
 }
 =head3 LoadProblemReport
 IMPLEMENTED IN FIGMODELfba:MARKED FOR DELETION

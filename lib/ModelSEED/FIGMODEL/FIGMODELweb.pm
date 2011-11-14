@@ -278,12 +278,11 @@ Description:
 =cut
 sub display_reaction_notes {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["data","rxnDataHash"],{});
-	return $self->error_message({function => "display_reaction_notes",args=>$args}) if (defined($args->{error}));
-	if (!defined($args->{rxnDataHash}->{$args->{data}})) {
-		return "Not in model";	
+	$args = $self->figmodel()->process_arguments($args,["data","dataHash","model"],{});
+	if (!defined($args->{"dataHash"}->{$args->{data}->{_rtid}}->{models}->{$args->{model}})) {
+		return "Not in model";
 	}
-	return $args->{rxnDataHash}->{$args->{data}}->notes();
+	return $args->{"dataHash"}->{$args->{data}->{_rtid}}->{models}->{$args->{model}}->notes();
 }
 
 =head3 display_reaction_equation()
@@ -292,25 +291,30 @@ Definition:
 Description:
 =cut
 sub display_reaction_equation {
-	my ($self,$rxnObj) = @_;
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["cpdHash","data"],{dataHash => undef});
 	my $direction = "=>";
 	#Determining reaction direction
-	if ($rxnObj->id() !~ m/bio/) {
-		my $selectedModels = $self->get_selected_models();
-		if (defined($selectedModels->[0]) && @{$selectedModels} == 1) {
-			my $data = $selectedModels->[0]->get_reaction_data({-id=>$rxnObj->id()});
-			if (defined($data) && defined($data->{DIRECTIONALITY})) {
-				$direction = $data->{DIRECTIONALITY}->[0];
+	if ($args->{data}->id() !~ m/bio/) {
+		if (defined($args->{dataHash}->{$args->{data}->{_rtid}}->{models})) {
+			my $list = [keys(%{$args->{dataHash}->{$args->{data}->{_rtid}}->{models}})];
+			$direction =  $args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$list->[0]}->directionality();
+			if ($direction ne "<=>") {
+				for (my $i=1; $i < @{$list};$i++) {
+					if ($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$list->[$i]}->directionality() ne $direction) {
+						$direction = "<=>";
+						last;
+					}
+				}
 			}
 		} else {
-			$direction = $rxnObj->thermoReversibility();
+			$direction = $args->{data}->thermoReversibility();
 		}
 	}
 	#Substituting direction in equation
-	my $Equation = $rxnObj->equation();
+	my $Equation = $args->{data}->equation();
 	$Equation =~ s/<*=>*/$direction/;
 	#Replacing compound IDs with compound names
-	my $cpdHash = $self->figmodel()->get_compound_hash();
 	$_ = $Equation;
 	my @OriginalArray = /(cpd\d\d\d\d\d)/g;
 	my %VisitedLinks;
@@ -318,8 +322,8 @@ sub display_reaction_equation {
 	  if (!defined($VisitedLinks{$OriginalArray[$i]})) {
 		$VisitedLinks{$OriginalArray[$i]} = 1;
 		my $Link = "|ERROR";
-		if (defined($cpdHash->{$OriginalArray[$i]})) {
-			$Link = "|".$cpdHash->{$OriginalArray[$i]}->name();
+		if (defined($args->{cpdHash}->{$OriginalArray[$i]})) {
+			$Link = "|".$args->{cpdHash}->{$OriginalArray[$i]}->name();
 		}
 		my $Find = $OriginalArray[$i];
 		$Equation =~ s/$Find(\[\D\])/$Link$1|/g;
@@ -377,83 +381,150 @@ sub display_reaction_flux {
 	return "None"
 }
 
-=head3 table_model_column()
+=head3 compound_model_column()
 Definition:
-	string = FIGMODELweb->table_model_column({
+	string = FIGMODELweb->compound_model_column({
 		data => string:object id,
-		type => string:object type,
 		model => FIGMODELmodel:model
-		modelhash => {string:object id => PPO:rxnmdl}:object model data
 	});
 Description:
 =cut
-sub table_model_column {
+sub compound_model_column {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["type","model","data"],{
-		rxnDataHash => undef
-	});
-	return $self->error_message({function => "display_reaction_notes",args=>$args}) if (defined($args->{error}));
-	#Generating output based on the object type
-	if ($args->{type} eq "compound") {
-		my $output = "";
-		my $cpd = $args->{model}->get_compound_data($args->{data});
-		if (!defined($cpd)) {
-			return "Not in model";
+	$args = $self->figmodel()->process_arguments($args,["model","data"],{});
+	my $output = "";
+	my $cpd = $args->{model}->get_compound_data($args->{data});
+	if (!defined($cpd)) {
+		return "Not in model";
+	}
+	if (defined($cpd->{COMPARTMENTS})) {
+		for (my $i=0; $i < @{$cpd->{COMPARTMENTS}}; $i++) {
+			if (length($output) > 0) {
+				$output .= "<br>";
+			}
+			if (defined($self->figmodel()->config("compartments")->{$cpd->{COMPARTMENTS}->[$i]}->[0])) {
+				$output .= $self->figmodel()->config("compartments")->{$cpd->{COMPARTMENTS}->[$i]}->[0];
+			} else {
+				$output .= $cpd->{COMPARTMENTS}->[$i];
+			}
 		}
-		if (defined($cpd->{COMPARTMENTS})) {
-			for (my $i=0; $i < @{$cpd->{COMPARTMENTS}}; $i++) {
+	} else {
+		$output = "Cytosol";
+	}
+	if (defined($cpd->{BIOMASS})) {
+		$output .= "<br>Biomass";
+	}
+	return $output;
+}
+
+=head3 reaction_model_column()
+Definition:
+	string = FIGMODELweb->reaction_model_column({
+		data => {},
+		rxnclasses => {},
+		dataHash => {},
+		modelid => string
+	});
+Description:
+=cut
+sub reaction_model_column {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["data","rxnclasses","dataHash","modelid","featuretbl"],{});
+	if (!defined($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$args->{modelid}})) {
+		return "Not in model";
+	}	
+	my $rxnMdlData = $args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$args->{modelid}};
+	#Getting the reaction class
+	my $output;
+	my $rxnclass = $self->reactionClassHtml({
+		classtbl => $args->{rxnclasses},
+		data => $rxnMdlData->REACTION()
+	});
+	if (defined($rxnclass)) {
+		$output = $rxnclass."<br>";
+	}
+	#Handling genes
+    if (!defined($rxnMdlData->pegs()) || length($rxnMdlData->pegs()) == 0) {
+		$output .= "UNKNOWN";
+		return $output;
+	}
+	#Handling normal genomes
+	my $PegString = $rxnMdlData->pegs();
+	if ($PegString !~ m/\d/ && $PegString !~ m/SPONT/) {
+		return "Gap filling";
+	}
+	$PegString =~ s/\sor\s/|/g;
+	$PegString =~ s/\sand\s/+/g;
+	my @PegList = split(/[\+\|\s\(\)]/,$PegString);
+	my $PegHash;
+	for (my $n=0; $n < @PegList; $n++) {
+	  if (length($PegList[$n]) > 0) {
+	  	$PegHash->{$PegList[$n]} = 1;
+	  }
+	}
+	$PegString = join(", <br>",keys(%{$PegHash}));
+	$_ = $PegString;
+	my @OriginalArray = /(peg\.\d+)/g;
+	my $visited;
+	for (my $i=0; $i < @OriginalArray; $i++) {
+		if (!defined($visited->{$OriginalArray[$i]})) {
+			$visited->{$OriginalArray[$i]} = 1;
+			my $row = $args->{featuretbl}->get_row_by_key("fig|".$args->{featuretbl}->{_genome}.".".$OriginalArray[$i],"ID");
+			if (defined($row)) {
+				my $Link = $self->create_feature_link($row);
+				my $Find = $OriginalArray[$i];
+				$PegString =~ s/$Find(\D)/$Link$1/g;
+				$PegString =~ s/$Find$/$Link/g;
+			}
+		}
+	}
+	$output .= $PegString;
+	$output =~ s/\(\s/(/g;
+	$output =~ s/\s\)/)/g;
+	return $output;
+}
+
+=head3 reactionClassHtml
+Definition:
+	string = FIGMODELweb->reactionClassHtml({
+		classtbl => FIGMODELtable
+		data => string:reaction ID
+	});
+Description:
+	Returns reaction class in html form
+=cut
+sub reactionClassHtml {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["classtbl","data"],{showflux => 0});
+	my $output = "";
+	my $rows = [$args->{classtbl}->get_rows_by_key($args->{data},"REACTION")];
+	my $classHash = {
+		Positive => "Essential =>",
+		Negative => "Essential <=",
+		"Positive variable" => "Active =>",
+		"Negative variable" => "Active <=",
+		Variable => "Active <=>",
+		Blocked => "Inactive",
+		Dead => "Disconnected"
+	};
+	if (defined($rows)) {
+		for (my $i=0; $i < @{$rows}; $i++) {
+			my $row = $rows->[$i];
+			if (defined($classHash->{$row->{CLASS}->[0]})) {
 				if (length($output) > 0) {
 					$output .= "<br>";
 				}
-				if (defined($self->figmodel()->config("compartments")->{$cpd->{COMPARTMENTS}->[$i]}->[0])) {
-					$output .= $self->figmodel()->config("compartments")->{$cpd->{COMPARTMENTS}->[$i]}->[0];
-				} else {
-					$output .= $cpd->{COMPARTMENTS}->[$i];
+				$output = $row->{MEDIA}->[0].":".$classHash->{$row->{CLASS}->[0]};
+				if ($args->{showflux} == 1 && $row->{CLASS}->[0] ne "Blocked" && $row->{CLASS}->[0] ne "Dead") {
+					$output .= "<br>[Flux: ".sprintf("%.3g",$row->{MAX}->[0])." to ".sprintf("%.3g",$row->{MIN}->[0])."]<br>";
 				}
+				#$NewClass = "<span title=\"Flux:".$min." to ".$max."\">".$NewClass."</span>";
+			} else {
+				print STDERR $row->{CLASS}->[0]."\n";
 			}
-		} else {
-			$output = "Cytosol";
 		}
-		if (defined($cpd->{BIOMASS})) {
-			$output .= "<br>Biomass";
-		}
-		return $output;
-	} elsif ($args->{type} eq "reaction") {
-		if (!defined($args->{rxnDataHash}->{$args->{data}})) {
-			return "Not in model";
-		}
-		my $rxnMdlData = $args->{rxnDataHash}->{$args->{data}};
-		#Getting the reaction class
-		my $output;
-		my $rxnclass = $args->{model}->get_reaction_class($args->{data});
-		if (defined($rxnclass)) {
-			$output = $rxnclass."<br>";
-		}
-		#Handling genes
-	    if (!defined($rxnMdlData->pegs()) || length($rxnMdlData->pegs()) == 0) {
-			$output .= "UNKNOWN";
-			return $output;
-		}
-		#Handling normal genomes
-		my $PegString = $rxnMdlData->pegs();
-		if ($PegString !~ m/\d/ && $PegString !~ m/SPONT/) {
-			return "Gap filling";
-		}
-		$PegString =~ s/\sor\s/|/g;
-		$PegString =~ s/\sand\s/+/g;
-		my @PegList = split(/[\+\|\s\(\)]/,$PegString);
-		my $PegHash;
-		for (my $n=0; $n < @PegList; $n++) {
-		  if (length($PegList[$n]) > 0) {
-		  	$PegHash->{$PegList[$n]} = 1;
-		  }
-		}
-		$PegString = join(", <br>",keys(%{$PegHash}));
-		$output .= $self->figmodel()->ParseForLinks($PegString,$args->{model}->id());
-		$output =~ s/\(\s/(/g;
-		$output =~ s/\s\)/)/g;
-		return $output;
 	}
+	return $output;
 }
 
 =head3 ModelSelectTable()
@@ -885,20 +956,11 @@ sub print_reaction_equation {
 }
 
 sub print_biomass_models {
-	my ($self,$id) = @_;
-	my $tbl = $self->figmodel()->database()->GetLinkTable("MODEL","BOF");
-	if (defined($tbl)) {
-		my @rows = $tbl->get_rows_by_key($id,"BOF");
-		my $output;
-		for (my $i=0; $i < @rows; $i++) {
-			if ($i > 0) {
-				$output .= ", ";
-			}
-			$output .= $rows[$i]->{"MODEL"}->[0];
-		}
-		return $output;
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["bofModelHash","data"],{});
+	if (defined($args->{bofModelHash}->{$args->{data}})) {
+		return join(", ",@{$args->{bofModelHash}->{$args->{data}}});
 	}
-	return "NONE";
 }
 
 sub call_model_function {
@@ -1011,23 +1073,13 @@ sub gapfill_control {
 
 sub printMediaCompounds {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["data"],{type => "id"});
-	if (defined($args->{error})) {return $self->error_message({function => "printMediaCompounds",args => $args});}
-	my $cpdHash;
+	$args = $self->figmodel()->process_arguments($args,["data","mediaCpdHash","compoundHash"],{type => "id"});
 	my $argTwo = "IDONLY";
+	my $mediaHash = $args->{mediaCpdHash};
+	my $cpdHash = $args->{compoundHash};
 	if ($args->{type} eq "name") {
 		$argTwo = "NAME";
-		$cpdHash = $self->figmodel()->database()->get_object_hash({
-	   		type => "compound",
-	   		attribute => "id",
-	    	-useCache => 1
-	    });
 	}
-	my $mediaHash = $self->figmodel()->database()->get_object_hash({
-   		type => "mediacpd",
-   		attribute => "MEDIA",
-    	-useCache => 1
-    });
 	if (!defined($mediaHash->{$args->{data}})) {
 		return "Not found";
 	}
