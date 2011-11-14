@@ -2655,6 +2655,7 @@ sub import_model {
 	});
 	return $self->new_error_message({function => "import_model",args => $args}) if (defined($args->{error}));
 	my $result = {success => 1};
+
 	#Calculating the full ID of the model
 	my $id = $args->{baseid};
 	if ($args->{owner} ne "master") {
@@ -2662,9 +2663,18 @@ sub import_model {
 		return $self->new_error_message({message=> "invalid model owner: ".$args->{owner},function => "import_model",args => $args}) if (!defined($usr));
 		$id .= ".".$usr->_id();
 	}
+
+	my $print_output=$self->ws()->directory()."mdl-importmodel_Output_".$id;
+	my $oldout;
+	print "Output printed to ",$print_output,"\n";
+	open($oldout, ">&STDOUT") or warn "Can't dup STDOUT: $!";
+	open(STDOUT, '>', $print_output) or warn "Can't redirect STDOUT: $!";
+	select STDOUT; $| = 1;
+
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->get_object("model",{id => $id});
+	print $modelObj,"\n";
 	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
 			id => $id,
@@ -2837,6 +2847,7 @@ sub import_model {
 		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "stringcode".$id, alias => $stringcode});
 		}
 
+		print $cpd->id(),"\t",$id,"\t",$row->{"ID"}->[0],"\n";
 		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
 
 		$translation->{$row->{"ID"}->[0]} = $cpd->id();
@@ -3040,6 +3051,9 @@ sub import_model {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);
 	}
 	$mdl->processModel();
+
+	#restore STDOUT
+	open(STDOUT, ">&", $oldout) or warn "Can't dup \$oldout: $!";
 
 	print "The model has been successfully imported as \"",$id,"\"\n";
 
