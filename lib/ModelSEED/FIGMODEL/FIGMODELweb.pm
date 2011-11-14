@@ -429,6 +429,7 @@ Description:
 =cut
 sub reaction_model_column {
 	my ($self,$args) = @_;
+	print STDERR "PROCESSING ROW!";
 	$args = $self->figmodel()->process_arguments($args,["data","rxnclasses","dataHash","modelid"],{});
 	if (!defined($args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$args->{modelid}})) {
 		return "Not in model";
