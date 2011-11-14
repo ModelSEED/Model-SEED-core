@@ -437,13 +437,13 @@ sub reaction_model_column {
 	my $rxnMdlData = $args->{dataHash}->{$args->{data}->{_rtid}}->{models}->{$args->{modelid}};
 	#Getting the reaction class
 	my $output;
-	#my $rxnclass = $self->reactionClassHtml({
-	#	classtbl => $args->{rxnclasses},
-	#	data => $rxnMdlData->REACTION()
-	#});
-	#if (defined($rxnclass)) {
-	#	$output = $rxnclass."<br>";
-	#}
+	my $rxnclass = $self->reactionClassHtml({
+		classtbl => $args->{rxnclasses},
+		data => $rxnMdlData->REACTION()
+	});
+	if (defined($rxnclass)) {
+		$output = $rxnclass."<br>";
+	}
 	#Handling genes
     if (!defined($rxnMdlData->pegs()) || length($rxnMdlData->pegs()) == 0) {
 		$output .= "UNKNOWN";
@@ -464,7 +464,7 @@ sub reaction_model_column {
 	  }
 	}
 	$PegString = join(", <br>",keys(%{$PegHash}));
-	$output .= $self->figmodel()->ParseForLinks($PegString,$args->{modelid});
+	#$output .= $self->figmodel()->ParseForLinks($PegString,$args->{modelid});
 	$output =~ s/\(\s/(/g;
 	$output =~ s/\s\)/)/g;
 	return $output;
