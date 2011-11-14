@@ -464,10 +464,9 @@ sub reaction_model_column {
 	  }
 	}
 	$PegString = join(", <br>",keys(%{$PegHash}));
-	#$output .= $self->figmodel()->ParseForLinks($PegString,$args->{modelid});
+	$output .= $self->figmodel()->ParseForLinks($PegString,$args->{modelid});
 	$output =~ s/\(\s/(/g;
 	$output =~ s/\s\)/)/g;
-	print STDERR "DONE!";
 	return $output;
 }
 
