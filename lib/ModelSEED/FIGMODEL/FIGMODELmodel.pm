@@ -26,9 +26,10 @@ sub new {
 		id => undef,
 		init => undef
 	});
-	my $self = {_figmodel => $args->{figmodel}};
+	my $self = {_figmodel => $args->{figmodel},_mainfigmodel => $args->{figmodel}};
 	# weaken figmodel even though it should disappear quickly, replaced by a private figmodel
 	Scalar::Util::weaken($self->{_figmodel});
+	Scalar::Util::weaken($self->{_mainfigmodel});
 	bless $self;
 	#If the init argument is provided, we attempt to build a new model
 	if (defined($args->{init})) {
@@ -138,7 +139,7 @@ Description:
 sub buildDBInterface {
 	my ($self) = @_;
 	#Creating model specific database object
-	my $configurationFiles = [@{$self->{_figmodel}->{_configSettings}}];
+	my $configurationFiles = [@{$self->{_mainfigmodel}->{_configSettings}}];
 	# Build default configuration based on files in model->directory()
 	push(@$configurationFiles, $self->build_default_model_config());
 	# Find model directory and load configuration file .figmodel_config if it's there
@@ -7815,7 +7816,6 @@ sub build_default_model_config {
 			status => [1],
 			type => ['FIGMODELTable'],
 		}; 
-	
 	}
 	if(-d $directory.'biochemistry') {
 		if (-f $directory.'biochemistry/reaction.txt') {
