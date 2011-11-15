@@ -19,10 +19,7 @@ Description:
 =cut
 sub new {
 	my ($class,$args) = @_;
-	if (!defined($args->{figmodel})) {
-		ModelSEED::globals::ERROR("FIGMODEL must be defined to load a model object!");
-	}
-	$args = $args->{figmodel}->process_arguments($args,["figmodel"],{
+	$args = ModelSEED::globals::ARGS($args,["figmodel"],{
 		id => undef,
 		init => undef
 	});

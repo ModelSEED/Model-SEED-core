@@ -1006,7 +1006,7 @@ Description:
 sub get_genome {
 	my ($self,$genome) = @_;
 	if (!defined($self->{_genome_cache}->{$genome})) {
-		$self->{_genome_cache}->{$genome} = ModelSEED::FIGMODEL::FIGMODELgenome->new($self,$genome);
+		$self->{_genome_cache}->{$genome} = ModelSEED::FIGMODEL::FIGMODELgenome->new({genome => $genome});
 	}
 	return $self->{_genome_cache}->{$genome};
 }

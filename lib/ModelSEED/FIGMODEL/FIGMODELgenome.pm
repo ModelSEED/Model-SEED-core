@@ -10,23 +10,14 @@ Module for holding genome related access functions
 
 =head3 new
 Definition:
-	FIGMODELgenome = FIGMODELgenome->new(figmodel,string:genome id);
+	FIGMODELgenome = FIGMODELgenome->new({figmodel => $self,genome => $genome});
 Description:
 	This is the constructor for the FIGMODELgenome object.
 =cut
 sub new {
-	my ($class,$figmodel,$genome) = @_;
-	#Error checking first
-	if (!defined($figmodel)) {
-		print STDERR "FIGMODELfba->new():figmodel must be defined to create an genome object!\n";
-		return undef;
-	}
-	if (!defined($genome)) {
-		$figmodel->error_message("FIGMODELfba->new():figmodel must be defined to create an genome object!");
-		return undef;
-	}
-	my $self = {_figmodel => $figmodel,_genome => $genome};
-    weaken($self->{_figmodel});
+	my ($class,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["genome"],{});
+	my $self = {_genome => $args->{genome}};
 	bless $self;
     $self->{_ppo} = $self->figmodel()->database()->get_object("genomestats",{GENOME => $self->genome()});
 	if (!defined($self->{_ppo})) {
@@ -34,8 +25,7 @@ sub new {
 			$self->{_ppo} = $self->update_genome_stats();
 		}
 		if (!defined($self->{_ppo})) {
-			$self->error_message("Could not find genome in database:".$self->genome());
-			return undef;
+			ModelSEED::globals::ERROR("Could not find genome in database:".$self->genome());
 		}
 	}
 	return $self;
@@ -49,7 +39,7 @@ Description:
 =cut
 sub figmodel {
 	my ($self) = @_;
-	return $self->{_figmodel};
+	return ModelSEED::globals::GETFIGMODEL();
 }
 
 =head3 ppo
@@ -178,7 +168,7 @@ Description:
 =cut
 sub feature_table {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
+	$args = ModelSEED::globals::ARGS($args,[],{
 		genome => $self->genome(),
 		getSequences => 0,
 		getEssentiality => 1,

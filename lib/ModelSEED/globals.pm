@@ -248,4 +248,15 @@ sub PRINTOBJECT {
 	ModelSEED::globals::PRINTFILE($args->{filename},$output);
 }
 
+my $globalFIGMODEL;
+
+sub SETFIGMODEL {
+	my ($infigmodel) = @_;
+	$globalFIGMODEL = $infigmodel;
+}
+
+sub GETFIGMODEL {
+	return $globalFIGMODEL;
+}
+
 1;
