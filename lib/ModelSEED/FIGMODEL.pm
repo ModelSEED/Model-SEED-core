@@ -2717,15 +2717,6 @@ sub import_model {
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
-		print "Testing ",$row->{ID}->[0],"\n";
-
-		if ($row->{"ID"}->[0] =~ m/^M_/) {
-			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],2);
-		}
-		if ($row->{"ID"}->[0] =~ m/_[a-z]$/) {
-			$row->{"ID"}->[0] = substr($row->{"ID"}->[0],0,length($row->{"ID"}->[0])-2);
-		}
-
 		my $newStrings=();
 		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
