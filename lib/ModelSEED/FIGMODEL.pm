@@ -2682,7 +2682,6 @@ sub import_model {
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->get_object("model",{id => $id});
-	print $modelObj,"\n";
 	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
 			id => $id,
