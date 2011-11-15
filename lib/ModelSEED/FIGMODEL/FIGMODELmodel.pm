@@ -3526,6 +3526,7 @@ sub GenerateModelProvenance {
 			unlink $biochemd.'rxnals.txt';
 			unlink $biochemd.'compound.txt';
 			unlink $biochemd.'cpdals.txt';
+			$self->buildDBInterface();
 		}
 
 		if (defined($args->{biochemSource})){
@@ -3593,6 +3594,7 @@ sub GenerateModelProvenance {
 			unlink $mappingd.'rxncpx.txt';
 			unlink $mappingd.'cpxrole.txt';
 			unlink $mappingd.'role.txt';
+			$self->buildDBInterface();
 		}
 		if (defined($args->{mappingSource}) && -d $args->{mappingSource}) {
 			system("cp ".$args->{mappingSource}."* ".$mappingd);
@@ -3661,6 +3663,7 @@ sub GenerateModelProvenance {
 			}
 		}
 	}
+	$self->buildDBInterface();
 }
 =head3 InspectModelState
 Definition:
