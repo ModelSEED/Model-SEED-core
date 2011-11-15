@@ -3514,21 +3514,26 @@ sub GenerateModelProvenance {
 	if(!-d $model_directory) {
 		File::Path::mkpath $model_directory;
 	}
-
+	my $biochemd = $model_directory."biochemistry/";
+	my $mappingd = $model_directory."mapping/";
+	my $annod = $model_directory."annotations/";
+	if ($args->{clearCurrentProvenance} == 1) {
+		unlink $mappingd.'complex.txt';
+		unlink $mappingd.'rxncpx.txt';
+		unlink $mappingd.'cpxrole.txt';
+		unlink $mappingd.'role.txt';
+		unlink $biochemd.'reaction.txt';
+		unlink $biochemd.'rxnals.txt';
+		unlink $biochemd.'compound.txt';
+		unlink $biochemd.'cpdals.txt';
+		unlink $annod.'features.txt';
+		$self->buildDBInterface();
+	}
 	my $db = $self->figmodel()->database();
 	{
-		my $biochemd = $model_directory."biochemistry/";
 		if(!-d $biochemd) {
 			mkdir $biochemd;
 		}
-		if ($args->{clearCurrentProvenance} == 1) {
-			unlink $biochemd.'reaction.txt';
-			unlink $biochemd.'rxnals.txt';
-			unlink $biochemd.'compound.txt';
-			unlink $biochemd.'cpdals.txt';
-			$self->buildDBInterface();
-		}
-
 		if (defined($args->{biochemSource})){
 		    print "Copying biochemistry from ",$args->{biochemSource},"\n";
 		    if(! -d $args->{biochemSource}){
@@ -3585,16 +3590,8 @@ sub GenerateModelProvenance {
 	}
 	# Doing mappings
 	{
-		my $mappingd = $model_directory."mapping/";
 		if(!-d $mappingd) {
 			mkdir $mappingd;
-		}
-		if ($args->{clearCurrentProvenance} == 1) {
-			unlink $mappingd.'complex.txt';
-			unlink $mappingd.'rxncpx.txt';
-			unlink $mappingd.'cpxrole.txt';
-			unlink $mappingd.'role.txt';
-			$self->buildDBInterface();
 		}
 		if (defined($args->{mappingSource}) && -d $args->{mappingSource}) {
 			system("cp ".$args->{mappingSource}."* ".$mappingd);
@@ -3646,13 +3643,9 @@ sub GenerateModelProvenance {
 	}
 	# Doing annotations
 	{
-		if (lc($self->genome()) ne "unknown" && lc($self->genome()) ne "none" && defined($self->genomeObj())) {
-			my $annod = $model_directory."annotations/";
+		if (lc($self->genome()) ne "unknown" && lc($self->genome()) ne "none" && defined($self->genomeObj())) {	
 			if(!-d $annod) {
 				mkdir $annod;
-			}
-			if ($args->{clearCurrentProvenance} == 1) {
-				unlink $annod.'features.txt';
 			}
 			if (defined($args->{annotationSource}) && -d $args->{annotationSource}) {
 				system("cp ".$args->{annotationSource}."* ".$annod);
