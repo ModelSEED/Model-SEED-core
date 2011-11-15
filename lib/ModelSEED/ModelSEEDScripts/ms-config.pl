@@ -41,6 +41,15 @@ if($command eq "unload" || $command eq "clean") {
 } elsif($command eq "reload") {
     unload($args);
 }
+#Creating missing directories
+{
+	my $directories = [qw( bin config data lib logs software workspace )];
+    foreach my $dir (@$directories) {
+		if (!-d "$directoryRoot/".$dir) {
+			File::Path::mkpath "$directoryRoot/".$dir;
+		}
+	}
+}
 my ($Config,$extension,$arguments,$delim,$os,$configFile);
 #Identifying and parsing the conf file
 {
@@ -109,15 +118,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $os = 'windows';
 	} elsif($^O =~ /darwin/) {
 	    $os = 'osx';
-	}
-}
-#Creating missing directories
-{
-	my $directories = [qw( bin config data lib logs software workspace )];
-    foreach my $dir (@$directories) {
-		if (!-d "$directoryRoot/".$dir) {
-			File::Path::mkpath "$directoryRoot/".$dir;
-		}
 	}
 }
 #Creating config/FIGMODELConfig.txt

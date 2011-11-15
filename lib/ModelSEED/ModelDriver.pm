@@ -24,6 +24,7 @@ Description:
 =cut
 sub new { 
 	my $self = {_figmodel => ModelSEED::FIGMODEL->new(),_finishedfile => "NONE"};
+	ModelSEED::globals::SETFIGMODEL($self->{_figmodel});
 	$self->{_outputdirectory} = $self->{_figmodel}->config("database message file directory")->[0];
 	if (defined($ENV{"FIGMODEL_OUTPUT_DIRECTORY"})) {
 		$self->{_outputdirectory} = $ENV{"FIGMODEL_OUTPUT_DIRECTORY"};
