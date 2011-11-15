@@ -64,7 +64,7 @@ __PACKAGE__->meta->setup(
         reaction_alias => {
             map_class => 'ModelSEED::DB::BiochemistryReactionAlia',
             map_from  => 'biochemistry_obj',
-            map_to    => 'reaction_alia',
+            map_to    => 'reaction_alias',
             type      => 'many to many',
         },
     ],

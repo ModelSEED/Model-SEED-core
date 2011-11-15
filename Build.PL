@@ -49,6 +49,7 @@ my $builder = Module::Build->new(
         "Moose::Role" => 2.0204,
         "Moose::Util::TypeConstraints" => 2.0204,
         "MooseX::NonMoose" => 0.22,
+        "MooseX::Role::Parameterized" => 0,
         "MooseX::Singleton" => 0.27,
         "MooseX::Storage" => 0,
         "MooseX::Storage::Format::JSONpm" => 0,

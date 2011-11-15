@@ -1,6 +1,6 @@
 package ModelSEED::Role::DBObject;
 
-use Moose::Role;
+use MooseX::Role::Parameterized;
 use Moose::Util::TypeConstraints;
 use Rose::DB::Object;
 use Scalar::Util;
@@ -8,19 +8,22 @@ use Data::Dumper;
 
 use ModelSEED::Role::DoNotStore;
 
-subtype 'RoseDBObject', as 'Object', where { $_->isa('Rose::DB::Object') };
+parameter 'type' => ( isa => 'Str', required => 1 );
 
-has '_rdbo' => (
-    is => 'rw', isa => 'RoseDBObject', lazy => 1, builder => '_buildRDBO',
-    handles => [ qw( db dbh delete DESTROY error init_db _init_db insert
-        load not_found save update) ],
-    traits => [ 'DoNotStore' ],
-);
+role {
+
+    has '_rdbo' => (
+        is => 'rw', isa => 'RoseDBObject', lazy => 1, builder => '_buildRDBO',
+        handles => [ qw( db dbh delete DESTROY error init_db _init_db insert
+            load not_found save update) ],
+        traits => [ 'DoNotStore' ],
+    );
 
 around BUILDARGS => sub {
     my $orig = shift;
     my $class = shift;
-    if(@_ == 1 && ref($_[0]) && blessed $_[0] && $_[0]->can('isa') && $_[0]->isa('Rose::DB::Object')) {
+    if(@_ == 1 && ref($_[0]) && blessed $_[0] &&
+       $_[0]->can('isa') && $_[0]->isa('Rose::DB::Object')) {
         return $class->$orig({_rdbo => $_[0]});
     } else {
         return $class->$orig(@_);
@@ -46,7 +49,9 @@ sub asStorableHash {
     my $hash = {};
     foreach my $attribute ( map { $self->meta->get_attribute($_) }
         sort $self->meta->get_attribute_list ) {
-        unless($attribute->does('ModelSEED::Role::DoNotStore')) {
+        if($attribute->does('ModelSEED::Role::DoNotStore')) {
+        } elsif($attribute->does('ModelSEED::Role::RelationshipTrait')) {
+        } else {
             my $name = $attribute->name;
             $hash->{$name} = $self->$name;
         }

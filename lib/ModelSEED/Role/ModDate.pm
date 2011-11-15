@@ -1,7 +1,7 @@
 package ModelSEED::Role::ModDate;
 
 use Moose::Role;
-use Date::Time;
+use DateTime;
 
 has modDate => (
     is => 'rw', isa => 'DateTime',
@@ -11,3 +11,5 @@ has modDate => (
 sub _buildModDate {
    return DateTime->now; 
 }
+
+1;

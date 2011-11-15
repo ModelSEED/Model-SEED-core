@@ -4,15 +4,19 @@ use Moose;
 use Data::UUID;
 use ModelSEED::Role::DBObject;
 
-with 'ModelSEED::Role::DBObject';
+with ('ModelSEED::Role::DBObject',
+      'ModelSEED::Role::Relationship' => {
+        role_type => 'one to one',
+        object_type => 'ModelSEED::Media',
+        object_name => 'media',
+      },
+      'ModelSEED::Role::Relationship' => {
+        role_type => 'one to one',
+        object_type => 'ModelSEED::Compound',
+        object_name => 'compound'
+      },
+);
 
-# has_one 'media' => ( table => 'media', )
-# has_one 'compound' => ( table => 'compound' )
-# ... results in
-# has media => ( is => 'rw', isa => 'ModelSEED::Media', required => 1)
-
-has 'media' => (is => 'ro', isa => 'ModelSEED::Media', required => 1);
-has 'compound' => (is => 'ro', isa => 'ModelSEED::Compound', required => 1);
 has 'concentration' => ( is => 'rw', isa => 'Num' );
 has 'minFlux' => ( is => 'rw', isa => 'Num' );
 has 'maxFlux' => ( is => 'rw', isa => 'Num' );

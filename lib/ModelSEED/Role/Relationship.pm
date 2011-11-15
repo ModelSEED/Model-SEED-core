@@ -1,7 +1,8 @@
 package ModelSEED::Role::Relationship;
 
-use Moose::Role;
-use Moose::Role::Parameterized;
+#use Moose::Role;
+use MooseX::Role::Parameterized;
+use ModelSEED::Role::RelationshipTrait;
 
 parameter role_type => (
     isa => 'Str',
@@ -17,13 +18,7 @@ parameter object_name => (
     isa => 'Str',
 );
 
-paraemeter relationship => )
-    isa => 'Str',
-    required => 1,
-);
-
 role {
-
     my $p = shift;
     my $objName;
     if(defined($p->object_name)) {
@@ -34,11 +29,37 @@ role {
         $objName = lc($objName);
     }
     my $objType = $p->object_type;
-    if($p->relationship eq 'many to many' ||
-       $p->relatiohship eq 'one to many') {
-        $objType = 'ArrayRef[' . $objType . ']';
+    my $objAttrType = $objType;
+    if($p->role_type eq 'many to many' ||
+       $p->role_type eq 'one to many') {
+        $objAttrType = 'ArrayRef[' . $objType . ']';
+        method "_build$objName" => sub {
+            my $self = shift @_;
+            my $objs = [];
+            foreach my $rdbObj (@{$self->_rdbo->$objName}) {
+                push(@$objs, $objType->new($rdbObj));
+            }
+            return $objs;
+        };
+        my $addMethod = "add_$objName";
+        method $addMethod => sub {
+            my ($self, $obj) = @_;
+            if(ref($obj) eq 'ARRAY') {
+                map { $self->$addMethod($_) } @$obj;
+            } elsif (ref($obj) ne $objType) {
+                $obj = $objType->new($obj); 
+            }   
+            push(@{$self->$objName}, $obj);
+        };
+    } else {
+        method "_build$objName" => sub {
+            my $self = shift @_;
+            return $self->_rdbo->$objName || undef;
+        };
     }
-    has $objName => ( is => 'rw', isa => $objType );
-        
-
+    has $objName => ( is => 'rw', isa => $objType, lazy => 1,
+        builder => "_build$objName",
+        traits => ['RelationshipTrait'] );
 };
+
+1;

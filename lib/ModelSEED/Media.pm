@@ -3,26 +3,23 @@ use Moose;
 
 use ModelSEED::Role::DBObject;
 use ModelSEED::DB::Media;
+use ModelSEED::Role::Relationship;
 
-with 'ModelSEED::Role::DBObject';
-with 'ModelSEED::Role::UUID';
 
-has 'modDate' => (is => 'rw', isa => 'DateTime', lazy => 1, builder => '_buildModDate');
+with (
+    'ModelSEED::Role::DBObject',
+    'ModelSEED::Role::UUID',
+    'ModelSEED::Role::ModDate',
+    'ModelSEED::Role::Relationship' => {
+    role_type => 'one to many',
+    object_type => 'ModelSEED::MediaCompound',
+    object_name => 'compounds',
+    },
+);
+
 has 'id'  => (is => 'rw', isa => 'Str|Undef');
 has 'name' => (is => 'rw', isa => 'Str|Undef');
 has 'type' => (is => 'rw', isa => 'Str|Undef');
-
-# Need role for linking to many to many, one to many, many to one, one to one
-# has_many 'compounds' => ( table => 'media_compound', ... )
-# ... results in
-# has compounds => ( is => 'rw', isa => 'ArrayRef[ModelSEED::MediaCompound]', lazy => 1, ...
-# sub add_compound {}
-# sub remove_compound {}
-# save() 
-
-
-#has 'compounds' => (is => 'rw', isa => 'ArrayRef[ModelSEED::MediaCompound]', lazy => 1,
-#    builder => '_buildMediaCompound');
 
 sub _buildMediaCompound {
     my ($self) = @_;
