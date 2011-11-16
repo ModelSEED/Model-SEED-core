@@ -888,18 +888,34 @@ sub createReactionCode {
 	my $ReverseEquation = $ProductString." <=> ".$ReactantString;
 	my $FullEquation = $Equation;
 	#Removing protons from the equations used for matching
+	#Protecting external protons/electrons
 	$Equation =~ s/cpd00067\[e\]/TEMPH/gi;
+	$Equation =~ s/cpd12713\[e\]/TEMPE/gi;
+	$ReverseEquation =~ s/cpd00067\[e\]/TEMPH/gi;
+	$ReverseEquation =~ s/cpd12713\[e\]/TEMPH/gi;
+	#Remove protons/electrons with coefficients, accounting for beginning or end of line
 	$Equation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
 	$Equation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
-	$Equation =~ s/cpd00067\s\+\s//g;
-	$Equation =~ s/\s\+\scpd00067//g;
-	$Equation =~ s/TEMPH/cpd00067\[e\]/g;
-	$ReverseEquation =~ s/cpd00067\[e\]/TEMPH/gi;
+	$Equation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	$Equation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
 	$ReverseEquation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
 	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
+	$ReverseEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
+	#Remove protons/electrons without coefficients, accounting for beginning or end of line
+	$Equation =~ s/cpd00067\s\+\s//g;
+	$Equation =~ s/\s\+\scpd00067//g;
+	$Equation =~ s/cpd12713\s\+\s//g;
+	$Equation =~ s/\s\+\scpd12713//g;
 	$ReverseEquation =~ s/cpd00067\s\+\s//g;
 	$ReverseEquation =~ s/\s\+\scpd00067//g;
+	$ReverseEquation =~ s/cpd12713\s\+\s//g;
+	$ReverseEquation =~ s/\s\+\scpd12713//g;
+	#Put external protons/electrons back in
+	$Equation =~ s/TEMPH/cpd00067\[e\]/g;
+	$Equation =~ s/TEMPH/cpd12713\[e\]/g;
 	$ReverseEquation =~ s/TEMPH/cpd00067\[e\]/g;
+	$ReverseEquation =~ s/TEMPH/cpd12713\[e\]/g;
 	#Clearing noncytosol compartment notation... compartment data is stored separately to improve reaction comparison
 	if ($EquationCompartment eq "") {
 		$EquationCompartment = "c";
@@ -1516,5 +1532,114 @@ sub get_reaction_reversibility_hash {
 	}
 	return $revHash;
 }
+
+
+=head3 balance_reaction
+Definition:
+	Output = FIGMODELreaction->balance_reaction();
+Description:
+	This function returns the code of the balanced reaction equation
+=cut
+
+sub balance_reaction {
+    my $reaction_code=shift;
+
+#Need to make sure reaction coefficient is +/- for reactants and products respectively
+#possibly need to calculate energy/charge from compounds groups
+#iterate through reactants
+#Add up charge * reactant coefficient
+#Need to translate compound formula to atoms
+#Add up number of atoms of each element * reaction coefficient
+#if charge != zero, unbalanced charge
+#find imbalanced atoms
+#flag reaction as imbalanced if imbalance occurs in any atom other than H or E
+#Check to see if H is in reaction, and add coefficient of H needed
+#If not in reaction, add H to reaction
+#Re-calculate charge of reaction in case
+#If number of E imbalanced, check to see if E is in reaction, and add coefficient of E needed
+#If not in reaction, add E to reaction
+
+    return $reaction_code;
+}
+
+#bool Reaction::BalanceReaction(bool AddH, bool AddE) {
+#int i, j, k;
+#bool Balanced = true;
+#vector<AtomType*> AtomVector;
+#vector<double> NumAtoms;
+#double Charge = 0;
+#for (i=0; i < FNumReactants(); i++) {
+#    if (GetReactant(i)->FNumAtoms() == 0) {
+#	GetReactant(i)->TranslateFormulaToAtoms();
+#    }
+#    Charge += GetReactantCoef(i)*GetReactant(i)->FCharge();
+#    for (j=0; j < GetReactant(i)->FNumAtoms(); j++) {
+#	for (k=0; k < int(AtomVector.size()); k++) {
+#	    if (GetReactant(i)->GetAtom(j)->FType() == AtomVector[k]) {
+#		NumAtoms[k] += GetReactantCoef(i);
+#		break;
+#	    }
+#	}
+#	if (k >= int(AtomVector.size())) {
+#	    AtomVector.push_back(GetReactant(i)->GetAtom(j)->FType());
+#	    NumAtoms.push_back(GetReactantCoef(i));
+#	}
+#    }
+#}
+#
+#bool HEOnly = true;
+#double NumH = 0;
+#double NumE = 0;
+#for (i=0; i < int(AtomVector.size()); i++) {
+#    if (NumAtoms[i] != 0) {
+#	if (AtomVector[i]->FID().compare("H") == 0) {
+#	    NumH = -NumAtoms[i];
+#	} else if (AtomVector[i]->FID().compare("E") == 0) {
+#	    NumE = -NumAtoms[i];
+#	} else {
+#	    HEOnly = false;
+#	}
+#    }
+#}
+#
+#if (HEOnly && NumH != 0) {
+#    for (j=0; j< MainData->FNumSpecies(); j++) {
+#	if (MainData->GetSpecies(j)->FFormula().compare("H") == 0) {
+#	    AddReactant(MainData->GetSpecies(j),NumH,Compartment); 
+#	    break;
+#	}
+#    }
+#    if (j == MainData->FNumSpecies()) {
+#	Species* NewSpecies = MainData->FindSpecies("NAME","H+");
+#	if (NewSpecies != NULL) {
+#	    AddReactant(NewSpecies,NumH,Compartment); 
+#	}
+#    }
+#    NumH = 0;
+#} else if (!HEOnly) {
+#    Balanced = false;
+#}
+#
+#Charge = 0;
+#for (i=0; i < FNumReactants(); i++) {
+#    Charge += GetReactantCoef(i)*GetReactant(i)->FCharge();
+#}	
+#if (HEOnly && Charge != 0) {
+#    for (j=0; j< MainData->FNumSpecies(); j++) {
+#	if (MainData->GetSpecies(j)->FFormula().compare("E") == 0) {
+#	    AddReactant(MainData->GetSpecies(j),Charge,Compartment); 
+#	    break;
+#	}
+#    }
+#    if (j == MainData->FNumSpecies()) {
+#	Species* NewSpecies = MainData->FindSpecies("NAME","e-");
+#	if (NewSpecies != NULL) {
+#	    AddReactant(NewSpecies,Charge,Compartment); 
+#	}
+#    }
+#    Charge = 0;
+#}	
+#return Balanced;
+#}
 
 1;
