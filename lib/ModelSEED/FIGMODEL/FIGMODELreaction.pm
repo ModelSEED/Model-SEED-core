@@ -890,32 +890,32 @@ sub createReactionCode {
 	#Removing protons from the equations used for matching
 	#Protecting external protons/electrons
 	$Equation =~ s/cpd00067\[e\]/TEMPH/gi;
-	$Equation =~ s/cpd12713\[e\]/TEMPE/gi;
+	#$Equation =~ s/cpd12713\[e\]/TEMPE/gi;
 	$ReverseEquation =~ s/cpd00067\[e\]/TEMPH/gi;
-	$ReverseEquation =~ s/cpd12713\[e\]/TEMPH/gi;
+	#$ReverseEquation =~ s/cpd12713\[e\]/TEMPH/gi;
 	#Remove protons/electrons with coefficients, accounting for beginning or end of line
 	$Equation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
 	$Equation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
-	$Equation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
-	$Equation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
+	#$Equation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	#$Equation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
 	$ReverseEquation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
 	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
-	$ReverseEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
-	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
+	#$ReverseEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	#$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
 	#Remove protons/electrons without coefficients, accounting for beginning or end of line
 	$Equation =~ s/cpd00067\s\+\s//g;
 	$Equation =~ s/\s\+\scpd00067//g;
-	$Equation =~ s/cpd12713\s\+\s//g;
-	$Equation =~ s/\s\+\scpd12713//g;
+	#$Equation =~ s/cpd12713\s\+\s//g;
+	#$Equation =~ s/\s\+\scpd12713//g;
 	$ReverseEquation =~ s/cpd00067\s\+\s//g;
 	$ReverseEquation =~ s/\s\+\scpd00067//g;
-	$ReverseEquation =~ s/cpd12713\s\+\s//g;
-	$ReverseEquation =~ s/\s\+\scpd12713//g;
+	#$ReverseEquation =~ s/cpd12713\s\+\s//g;
+	#$ReverseEquation =~ s/\s\+\scpd12713//g;
 	#Put external protons/electrons back in
 	$Equation =~ s/TEMPH/cpd00067\[e\]/g;
-	$Equation =~ s/TEMPH/cpd12713\[e\]/g;
+	#$Equation =~ s/TEMPH/cpd12713\[e\]/g;
 	$ReverseEquation =~ s/TEMPH/cpd00067\[e\]/g;
-	$ReverseEquation =~ s/TEMPH/cpd12713\[e\]/g;
+	#$ReverseEquation =~ s/TEMPH/cpd12713\[e\]/g;
 	#Clearing noncytosol compartment notation... compartment data is stored separately to improve reaction comparison
 	if ($EquationCompartment eq "") {
 		$EquationCompartment = "c";
