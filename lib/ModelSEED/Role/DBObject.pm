@@ -8,83 +8,78 @@ use Data::Dumper;
 
 use ModelSEED::Role::DoNotStore;
 
-parameter 'type' => ( isa => 'Str', required => 1 );
+parameter 'rose_class' => ( isa => 'Str', required => 1 );
 
 role {
+    my $p = shift;
+    my %args = @_;
+    
+    my $rose_class = $p->rose_class;
+    {
+        my $rose_class_path = $rose_class;
+        $rose_class_path =~ s/::/\//g;
+        eval {
+            require $rose_class_path
+        };
+        if($@) {
+            die($@);
+        }
+    }
 
+    sub _wrapMethod {
+        my ($type, $method_name) = @_;
+        before $method_name => sub {
+            my $self = shift @_;
+            my $objs;
+            if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
+                $objs = $_[0];
+            } else {
+                $objs = [@_];
+            }
+            foreach my $obj (@$objs) {
+                $args{consumer}->meta->class
+            }
+
+        };
+
+        after $method_name => sub {
+        
+
+        };
+
+    my $methods = [];
+    # Get all relationship methods and wrap them with class transformations
+    foreach my $rel (@{$rose_class->meta->relationships}) {
+        foreach my $type (@{$rel->method_types}) {
+            my $method_name = $rel->method_name($type);
+            _warpMethod($type, $method_name);
+            push(@$methods, $method_name);
+        }
+    }
+    
+    
     has '_rdbo' => (
-        is => 'rw', isa => 'RoseDBObject', lazy => 1, builder => '_buildRDBO',
-        handles => [ qw( db dbh delete DESTROY error init_db _init_db insert
-            load not_found save update) ],
+        is => 'rw', isa => $rose_class, lazy => 1, builder => '_buildRDBO',
+        handles => [ $rose_class->meta->column_names, qw( db dbh delete
+            DESTROY error init_db _init_db insert load not_found save update) ],
         traits => [ 'DoNotStore' ],
     );
 
-around BUILDARGS => sub {
-    my $orig = shift;
-    my $class = shift;
-    if(@_ == 1 && ref($_[0]) && blessed $_[0] &&
-       $_[0]->can('isa') && $_[0]->isa('Rose::DB::Object')) {
-        return $class->$orig({_rdbo => $_[0]});
-    } else {
-        return $class->$orig(@_);
-    }
-};
-
-# Construct Rose::DB::Object if not provided
-sub _buildRDBO {
-    my $self = shift;
-    my $obj = ref($self);
-    $obj =~ s/ModelSEED:://;
-    eval { 
-        require "ModelSEED/DB/$obj.pm";
-    };
-    if($@) {
-        die $@;
-    }
-    return "ModelSEED::DB::$obj"->new();
-}
-
-sub asStorableHash {
-    my ($self) = shift @_;
-    my $hash = {};
-    foreach my $attribute ( map { $self->meta->get_attribute($_) }
-        sort $self->meta->get_attribute_list ) {
-        if($attribute->does('ModelSEED::Role::DoNotStore')) {
-        } elsif($attribute->does('ModelSEED::Role::RelationshipTrait')) {
+    
+    around BUILDARGS => sub {
+        my $orig = shift;
+        my $class = shift;
+        if(@_ == 1 && ref($_[0]) eq $rose_class) { 
+            return $class->$orig({_rdbo => $_[0]});
         } else {
-            my $name = $attribute->name;
-            $hash->{$name} = $self->$name;
+            return $class->$orig(@_);
         }
     }
-    return $hash;
+    # Construct Rose::DB::Object if not provided
+    sub _buildRDBO {
+        my $self = shift;
+        return $rose_class->new();
+    }
 }
-
-
-# copy attributes from moose class to rose class
-before ['insert', 'save'] => sub {
-    my $self = shift @_;
-    my $hash = $self->asStorableHash();
-    foreach my $attr (keys %$hash) {
-        $self->_rdbo->$attr($hash->{$attr});
-    }
-};
-
-before ['load'] => sub {
-    my $self = shift @_;
-    my $hash = $self->asStorableHash();
-    foreach my $attr (keys %$hash) {
-        $self->_rdbo->$attr($hash->{$attr});
-    }
-};
-    
-
-# copy attributes from rose class to moose class 
-after ['load'] => sub {
-    my $self = shift @_;
-    my $hash = $self->asStorableHash();
-    foreach my $attr (keys %$hash) {
-        $self->$attr($self->_rdbo->$attr);
-    }
-};
 
 1;
