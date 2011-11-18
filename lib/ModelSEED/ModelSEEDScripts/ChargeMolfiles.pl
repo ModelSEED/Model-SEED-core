@@ -22,7 +22,6 @@ if(!-f $MarvinBeansPath){
 my $CombinedFilename = $DestinationPath."Combined.sdf";
 my @Files = glob($SourcePath."*.mol");
 
-
 open (COMBINED, ">$CombinedFilename");
 foreach my $Filename (@Files) {
 	if (open (MOLFILE, "<$Filename")) {
@@ -42,7 +41,7 @@ foreach my $Filename (@Files) {
 }
 close (COMBINED);
 #exit;
-my $Command = '/home/chenry/Software/MarvinBeans/bin/cxcalc -N hi majorms -H 7 -f mol:-a '.$DestinationPath.'Combined.sdf > '.$DestinationPath.'ChargeOutput.txt';
+my $Command = $MarvinBeansPath.' -N hi majorms -H 7 -f mol:-a '.$DestinationPath.'Combined.sdf > '.$DestinationPath.'ChargeOutput.txt';
 system($Command);
 
 $CombinedFilename = $DestinationPath."ChargeOutput.txt";
