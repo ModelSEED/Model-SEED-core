@@ -2634,6 +2634,16 @@ sub import_model_file {
 		biomassID => $obj->{DATABASE}->[0]
 	        });
 	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
+#	    $self->database()->create_object("rxnmdl",{
+#		REACTION => $row->{LOAD}->[0],
+#		MODEL => $args->{id},
+#		directionality => $row->{DIRECTIONALITY}->[0],
+#		compartment => $row->{COMPARTMENT}->[0],
+#		pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+#		confidence => $row->{CONFIDENCE}->[0],
+#		notes => $row->{NOTES}->[0],
+#		reference => $row->{REFERENCE}->[0]
+#		});
 	}
 	return $modelObj;
 }
@@ -2728,6 +2738,7 @@ sub import_model {
 		my $cpd;
 		my $newStrings=();
 		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
+		    next if $stringcode !~ /^InChI=/; #InChIs only
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
 			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
@@ -2793,21 +2804,34 @@ sub import_model {
 
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
+		    my $Changes="";
 			if (defined($row->{"CHARGE"}->[0])){
+			    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
+				$Changes.="Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."\n";
+			    } 
 			    if ($cpd->charge() == 10000000){
 				$cpd->charge($row->{"CHARGE"}->[0]);
 			    }
 			}
 			if (defined($row->{"MASS"}->[0])){
+			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0]){
+				$Changes.="Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]."\n";
+			    } 
 			    if ($cpd->mass() == 10000000){
 				$cpd->mass($row->{"MASS"}->[0]);
 			    }
 			}
 			if (defined($row->{"FORMULA"}->[0])){
+			    if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
+				$Changes.="Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]."\n";
+			    } 
 			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0) {
 				$cpd->formula($row->{"FORMULA"}->[0]);
 			    }
 			}
+		    if(length($Changes)>0){
+			print $Changes;
+		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 		    print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
@@ -2845,7 +2869,6 @@ sub import_model {
 		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "stringcode".$id, alias => $stringcode});
 		}
 
-		print $cpd->id(),"\t",$id,"\t",$row->{"ID"}->[0],"\n";
 		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
 
 		$translation->{$row->{"ID"}->[0]} = $cpd->id();
