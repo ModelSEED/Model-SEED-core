@@ -5,8 +5,23 @@ $|=1;
 
 my $SourcePath = $ARGV[0];
 my $DestinationPath = $ARGV[1];
+my $MarvinBeansPath = $ARGV[2];
+$MarvinBeansPath .= "bin/cxcalc";
+
+if(!$SourcePath || !-d $SourcePath || !$DestinationPath || !-d $DestinationPath || !$MarvinBeansPath){
+    usage();
+    exit(0);
+}
+
+if(!-f $MarvinBeansPath){
+    usage();
+    print STDERR "Cannot find cxcalc executable, double-check path for MarvinBeans software:\n".$MarvinBeansPath."\n";
+    exit(0);
+}
+
 my $CombinedFilename = $DestinationPath."Combined.sdf";
 my @Files = glob($SourcePath."*.mol");
+
 
 open (COMBINED, ">$CombinedFilename");
 foreach my $Filename (@Files) {
@@ -53,3 +68,7 @@ close (COMBINED);
 
 unlink($DestinationPath."Combined.sdf");
 unlink($DestinationPath."ChargeOutput.txt");
+
+sub usage {
+    print "./ChargeMolfiles <directory of mol files> <Directory for output files> <Path for MarvinBeans Software (ie ~/Software/MarvinBeans/)>\n";
+}
