@@ -659,9 +659,11 @@ Description:
 sub setDrainRxnParameters {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->error_message({function => "setDrainRxnParameters",args=>$args}) if (defined($args->{error}));
+	my $exchange = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
+	if (defined($self->model()) && defined($self->modelObj())) {
+		$exchange = $self->modelObj()->drains();
+	}
 	if (defined($self->{_drnRxn}) && @{$self->{_drnRxn}} > 0) {
-		my $exchange = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
 		if (defined($self->parameters()->{"exchange species"})) {
 			$exchange = $self->parameters()->{"exchange species"};
 		}

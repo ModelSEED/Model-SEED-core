@@ -312,6 +312,66 @@ sub setCache {
 	return $self->figmodel()->setCache({package=>"FIGMODELmodel",id=>$self->id(),key=>$key,data=>$data});
 }
 
+=head3 drains
+Definition:
+	FIGMODELmodel->drains();
+Description:
+	Get the drain fluxes associated with the model.
+=cut
+sub drains {
+	my ($self) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{});
+	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0"; 
+	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
+		my $data = ModelSEED::globals::LOADFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
+		$drainString = $data->[0];
+	}
+	return $drainString;
+}
+
+=head3 changeDrains
+Definition:
+	FIGMODELmodel->changeDrains();
+Description:
+	Changes the drain fluxes associated with the model.
+=cut
+sub changeDrains {
+	my ($self) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		inputs => undef,
+		drains => undef
+	});
+	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
+		unlink($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
+	}
+	my $drnHash = {};
+	if (defined($args->{inputs})) {
+		for (my $i=0; $i <@{$args->{inputs}}; $i++) {
+			if ($args->{inputs}->[$i] !~ m/\[\w+\]$/) {
+				$args->{inputs}->[$i] .= "[c]";
+			}
+			$drnHash->{$args->{inputs}->[$i]}->{max} = 10000;
+			$drnHash->{$args->{inputs}->[$i]}->{min} = 0;
+		}
+	}
+	if (defined($args->{drains})) {
+		for (my $i=0; $i <@{$args->{drains}}; $i++) {
+			if (!defined($drnHash->{$args->{drains}->[$i]}->{max})) {
+				$drnHash->{$args->{drains}->[$i]}->{max} = 0;
+			}
+			$drnHash->{$args->{drains}->[$i]}->{min} = -10000;
+		}
+	}
+	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
+	foreach my $drn (keys(%{$drnHash})) {
+		$drainString .= ";".$drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max};
+	}
+	if ($drainString ne "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0") {
+		ModelSEED::globals::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
+	}
+	return $drainString;
+}
+
 =head3 aquireModelLock
 Definition:
 	FIGMODELmodel->aquireModelLock();

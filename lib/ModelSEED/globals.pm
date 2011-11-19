@@ -259,4 +259,41 @@ sub GETFIGMODEL {
 	return $globalFIGMODEL;
 }
 
+=head3 PROCESSIDLIST
+Definition:
+	[string] = ModelSEED::globals::PROCESSIDLIST({
+		input => string
+	});
+Description:	
+=cut
+sub PROCESSIDLIST {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["input"],{
+		delimiter => "[,;]",
+		validation => undef
+	});
+	my $output;
+	if ($args->{input} =~ m/\.lst$/) {
+		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
+			$output = ModelSEED::globals::LOADFILE($args->{input},"");
+		} elsif (-e $self->ws()->directory().$args->{input}) {
+			$output = ModelSEED::globals::LOADFILE(ModelSEED::globals::GETFIGMOEL()->ws()->directory().$args->{input},"");
+		}
+	} else {
+		my $d = $args->{delimiter};
+		$output = [split(/$d/,$args->{input})];
+	}
+	if (defined($args->{validation})) {
+		my $v = $args->{validation};
+		my $newOutput;
+		for (my $i=0; $i < @{$output}; $i++) {
+			if ($output->[$i] =~ m/$v/) {
+				push(@{$newOutput},$output->[$i]);
+			}
+		}
+		$output = $newOutput;
+	}
+	return $output;
+}
+
 1;

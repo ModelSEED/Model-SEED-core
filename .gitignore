@@ -21,6 +21,11 @@ logs/*
 *.pdb
 software/mfatoolkit/bin/*
 software/cygwin/*
+software/MinGW/*
+software/git/*
+software/oldMinGW/*
+software/PortableApps/*
+software/strawberryperl/*
 workspace/*
 !.gitignore
 blib*

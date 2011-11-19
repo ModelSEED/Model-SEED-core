@@ -51,6 +51,19 @@ if($command eq "unload" || $command eq "clean") {
 	}
 }
 my ($Config,$extension,$arguments,$delim,$os,$configFile);
+#Setting operating system related parameters
+{
+	$extension = "";
+	$arguments = "\$*";
+	$delim = ":";
+	$os = 'linux';
+	# figure out OS from $^O variable for extension, arguments and delim:
+	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
+	    $os = 'windows';
+	} elsif($^O =~ /darwin/) {
+	    $os = 'osx';
+	}
+}
 #Identifying and parsing the conf file
 {
 	# By default use config/Settings.config
@@ -83,14 +96,16 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $Config->{Database}->{filename} =
 	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 	}
-    my $glpksol = `which glpsol`;
-    chomp $glpksol;
-    $glpksol =~ s/\/bin\/glpsol//;
-    if(!defined($Config->{Optimizers}->{includeDirectoryGLPK}) && defined($glpksol)) {
-        $Config->{Optimizers}->{includeDirectoryGLPK} = "$glpksol/include/";
-    }
-    if(!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) && defined($glpksol)) {
-        $Config->{Optimizers}->{libraryDirectoryGLPK} = "$glpksol/lib/";
+    if ($os ne "windows") {
+	    my $glpksol = `which glpsol`;
+	    chomp $glpksol;
+	    $glpksol =~ s/\/bin\/glpsol//;
+	    if(!defined($Config->{Optimizers}->{includeDirectoryGLPK}) && defined($glpksol)) {
+	        $Config->{Optimizers}->{includeDirectoryGLPK} = "$glpksol/include/";
+	    }
+	    if(!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) && defined($glpksol)) {
+	        $Config->{Optimizers}->{libraryDirectoryGLPK} = "$glpksol/lib/";
+	    }
     }
 	if(lc($Config->{Database}->{type}) eq 'mysql' &&
 	    !defined($Config->{Database}->{port})) {
@@ -107,19 +122,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    }
 	}
 }	
-#Setting operating system related parameters
-{
-	$extension = "";
-	$arguments = "\$*";
-	$delim = ":";
-	$os = 'linux';
-	# figure out OS from $^O variable for extension, arguments and delim:
-	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
-	    $os = 'windows';
-	} elsif($^O =~ /darwin/) {
-	    $os = 'osx';
-	}
-}
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
@@ -346,6 +348,7 @@ SCRIPT
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT
+        print $directoryRoot."/bin/".$function.$extension."\n";
         open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
         print $fh $script;
         close($fh);

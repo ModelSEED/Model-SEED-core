@@ -37,7 +37,8 @@ use namespace::autoclean;
 #MooseX::Types::DBIx::Class
 #DBIx::Class
 
-has 'db' => (is => 'ro', isa => 'ModelSEED::FIGMODEL::FIGMODELdatabase', required => 1);#, metaclass => 'DoNotSerialize');
+has 'db' => (is => 'ro', isa => 'ModelSEED::FIGMODEL::FIGMODELdatabase', required => 1);
+has 'type' => (is => 'ro', isa => 'Str', required => 1, default => "");
 
 sub BUILDARGS {
 	my ($self,$params) = @_;

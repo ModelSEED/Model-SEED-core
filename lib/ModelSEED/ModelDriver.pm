@@ -5845,7 +5845,7 @@ sub bcprintmedia {
 		["media",1,undef,"Name of the media formulation to be printed."],
 	],[@Data],"print Model SEED media formulation");
     my $media = $self->figmodel()->database()->get_moose_object("media",{id => $args->{media}});
-	ModelSEED::globals::PRINTOBJECT({data => $media->pack(),filename => $self->ws()->directory().$args->{media}.".media"});
+	ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{media}.".media",$media->print());
 	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
 }
 
@@ -5860,31 +5860,18 @@ This function is used to create or alter a media condition in the Model SEED dat
 sub bcloadmedia {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1,undef,"The name of the media formulation being created or altered."],
-		["filename",0,undef,"The full path and name to access a file specifying the media components. [[Example media file]]."],
-		["compounds",0,undef," As an alternative to specifying a filename, you can specify a ';' delimited list of the compound proposed to be present in the media. Either compound names or cpd##### ids must be supplied."],
-		["public",0,1,"Set directory in which FBA problem output files will be stored."],
+		["media",1,undef,"The name of the media formulation being created or altered."],
+		["public",0,0,"Set directory in which FBA problem output files will be stored."],
 		["owner",0,($self->figmodel()->user()),"Login of the user account who will own this media condition."],
 		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
 	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
-    if (defined($args->{compounds})) {
-    	$args->{compounds} = $self->figmodel()->processIDList({
-			objectType => "compound",
-			delimiter => ";",
-			column => "id",
-			parameters => undef,
-			input => $args->{compounds}
-		});	
+    my $media;
+    if (!-e $self->ws()->directory().$args->{media}) {
+    	ModelSEED::globals::ERROR("Could not find media file ".$self->ws()->directory().$args->{media});
     }
-    my $media = $self->figmodel()->get_media()->create({
-    	id => $args->{name},
-    	filename => $args->{filename},
-		compounds => $args->{compounds},
-		public => $args->{public},
-		owner => $args->{owner},
-		overwrite => $args->{overwrite}
-    });
-	print "Media successfully created!\n";
+    $media = ModelSEED::MooseDB::media->new({db => $self->figmodel()->database(),filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})});
+    $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
+    return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
 }
 
 =head
@@ -6135,37 +6122,38 @@ Prints the specified model(s) in SBML format.
 sub mdlprintsbml {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1,undef,"A ',' delimited list of the models in the Model SEED for which SBML files should be printed."],
+		["model",1,undef,"Model for which SBML files should be printed."],
+		["media",0,"Complete","ID of a media condition or media file for which SBML should be printed"],
 	],[@Data],"prints model(s) in SBML format");
-	my $results = $self->figmodel()->processIDList({
+	my $models = $self->figmodel()->processIDList({
 		objectType => "model",
-		delimiter => ",",
+		delimiter => ";",
 		column => "id",
 		parameters => {},
 		input => $args->{"model"}
 	});
+	if ($args->{media} =~ m/\.media$/) {
+		if (!-e $self->ws()->directory().$args->{media}) {
+			ModelSEED::globals::ERROR("Media file ".$self->ws()->directory().$args->{media}." not found");
+		}
+		$args->{media} = ModelSEED::MooseDB::media->new({
+			filename => $args->{media}
+		});
+	}
 	my $message;
-	if (@{$results} == 1 || $args->{usequeue} == 0) {
-		for (my $i=0;$i < @{$results}; $i++) {
-			print "Now processing ".$results->[$i]."\n";
-			my $mdl = $self->figmodel()->get_model($results->[$i]);
-	 		if (!defined($mdl)) {
-	 			ModelSEED::globals::WARNING("Model not valid ".$args->{model});
-	 			$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
-	 		} else {
-				my $sbml = $mdl->PrintSBMLFile();
-				$self->db()->print_array_to_file($self->ws()->directory().$results->[$i].".xml",$sbml);
-	 			$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
-	 		}
-		}
-	} else {
-		for (my $i=0; $i < @{$results}; $i++) {
-			$self->figmodel()->mdlprintsbml({
-	    		command => "mdlprintsbml?".$results->[$i],
-	    		user => $self->figmodel()->user().":".$self->ws()->id().":".$self->ws()->path(),
-	    		queue => $args->{queue}
-	    	});
-		}
+	for (my $i=0; $i < @{$models};$i++) {
+		print "Now loading model ".$results->[$i]."\n";
+		my $mdl = $self->figmodel()->get_model($results->[$i]);
+		if (!defined($mdl)) {
+	 		ModelSEED::globals::WARNING("Model not valid ".$args->{model});
+	 		$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
+	 		next;
+	 	}
+	 	my $sbml = $mdl->PrintSBMLFile({
+	 		media => $args->{media}
+	 	});
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$results->[$i].".xml",$sbml);
+		$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
 	}
     return $message;
 }
@@ -6342,6 +6330,40 @@ sub mdlloadmodel {
 		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
+}
+
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function changes the drain fluxes associated with a model.
+=EXAMPLE
+./mdlchangedrains -'''model''' "iJR904" -'''drains''' "cpd15302[c]" -'''inputs''' "cpd15302[c]"
+=cut
+sub mdlchangedrains {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"ID of the model the drains are to be added to"],
+    	["drains",0,undef,"\";\" delimited list of compounds for which drains should be added"],
+    	["inputs",0,undef,"\";\" delimited list of compounds for which inputs should be added"],
+	],[@Data],"change drain fluxes associated with model");
+	$args->{drains} = ModelSEED::globals::PROCESSIDLIST({
+		input => $args->{drains},
+		validation => "^cpd\\d+\\[*\\w*\\]*$"
+	});
+	$args->{inputs} = ModelSEED::globals::PROCESSIDLIST({
+		input => $args->{inputs},
+		validation => "^cpd\\d+\\[*\\w*\\]*$"
+	});
+	my $model = $self->figmodel()->get_model($args->{model});
+	if (!defined($model)) {
+		ModelSEED::globals::ERROR("Model not valid ".$args->{model});
+	}
+	my $string = $model->changeDrains({
+		drains => $args->{drains},
+		inputs => $args->{inputs},
+	})
+	return "Successfully adjusted the drain fluxes associated with model ".$args->{model}." to ".$string;
 }
 
 =head

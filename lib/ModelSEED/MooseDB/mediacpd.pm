@@ -12,7 +12,6 @@ package ModelSEED::MooseDB::mediacpd;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
-use MooseX::Storage;
 
 extends 'ModelSEED::MooseDB::object';
 
@@ -31,5 +30,41 @@ sub BUILD {
     my ($self,$params) = @_;
 	$params = ModelSEED::globals::ARGS($params,[],{});
 }
+
+sub BUILDARGS {
+	my ($self,$params) = @_;
+	$params->{type} => "mediacpd";
+	if (defined($params->{filedata})) {
+		$params = $self->parse($params);
+	}
+	return $params;
+}
+
+sub print {
+	my ($self) = @_;
+	my $data = [
+		"MEDIA\t".$self->MEDIA(),
+		"entity\t".$self->entity(),
+		"type\t".$self->type(),
+		"concentration\t".$self->concentration(),
+		"maxFlux\t".$self->maxFlux(),
+		"minFlux\t".$self->minFlux()
+	];
+	return $data;
+}
+
+sub parse {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["filedata"],{});
+	for (my $i=0; $i < @{$args->{filedata}}; $i++) {
+		my $array = split(/\t/,$args->{filedata}->[$i]);
+		my $function = $array->[0];
+		if ($function eq "MEDIA" || $function eq "entity" || $function eq "type" || $function eq "concentration" || $function eq "maxFlux" || $function eq "minFlux") {
+			$params->{$function} = $array->[1];
+		}
+	}
+	return $params;
+}
+
 
 1;
