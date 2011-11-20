@@ -683,8 +683,8 @@ sub setDrainRxnParameters {
 				}
 			}
 		}
-		$self->set_parameters({"exchange species"=>$exchange});
 	}
+	$self->set_parameters({"exchange species"=>$exchange});
 	return {success=>1,msg=>undef,error=>undef};
 }
 

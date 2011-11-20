@@ -19,7 +19,7 @@ extends 'ModelSEED::MooseDB::object';
 #Other formats include Storable and YAML
 #Other io include AtomicFile and StorableFile
 
-has 'MEDIA' => (is => 'ro', isa => 'Str', required => 1, metaclass => 'DoNotSerialize');
+has 'MEDIA' => (is => 'ro', isa => 'Str', required => 1);#, metaclass => 'DoNotSerialize');
 has 'entity' => (is => 'ro', isa => 'Str', required => 1, index => 0, metaclass => 'Indexed');
 has 'type' => (is => 'ro', isa => 'Str', required => 1, index => 1, metaclass => 'Indexed');
 has 'concentration' => (is => 'ro', isa => 'Num', required => 1, index => 2, metaclass => 'Indexed');
@@ -31,14 +31,15 @@ sub BUILD {
 	$params = ModelSEED::globals::ARGS($params,[],{});
 }
 
-sub BUILDARGS {
-	my ($self,$params) = @_;
-	$params->{type} => "mediacpd";
-	if (defined($params->{filedata})) {
-		$params = $self->parse($params);
+around 'BUILDARGS' => sub {
+	my ($orig,$self,$args) = @_;
+	$args = $self->$orig($args);
+	$args->{type} = "mediacpd";
+	if (defined($args->{filedata})) {
+		$args = $self->parse($args);
 	}
-	return $params;
-}
+	return $args;
+};
 
 sub print {
 	my ($self) = @_;
@@ -57,13 +58,13 @@ sub parse {
 	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,["filedata"],{});
 	for (my $i=0; $i < @{$args->{filedata}}; $i++) {
-		my $array = split(/\t/,$args->{filedata}->[$i]);
+		my $array = [split(/\t/,$args->{filedata}->[$i])];
 		my $function = $array->[0];
-		if ($function eq "MEDIA" || $function eq "entity" || $function eq "type" || $function eq "concentration" || $function eq "maxFlux" || $function eq "minFlux") {
-			$params->{$function} = $array->[1];
+		if (defined($array->[1]) && ($function eq "MEDIA" || $function eq "entity" || $function eq "type" || $function eq "concentration" || $function eq "maxFlux" || $function eq "minFlux")) {
+			$args->{$function} = $array->[1];
 		}
 	}
-	return $params;
+	return $args;
 }
 
 

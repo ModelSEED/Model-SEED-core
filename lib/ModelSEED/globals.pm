@@ -267,7 +267,7 @@ Definition:
 Description:	
 =cut
 sub PROCESSIDLIST {
-	my ($self,$args) = @_;
+	my ($args) = @_;
 	$args = ModelSEED::globals::ARGS($args,["input"],{
 		delimiter => "[,;]",
 		validation => undef
@@ -276,7 +276,7 @@ sub PROCESSIDLIST {
 	if ($args->{input} =~ m/\.lst$/) {
 		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
 			$output = ModelSEED::globals::LOADFILE($args->{input},"");
-		} elsif (-e $self->ws()->directory().$args->{input}) {
+		} elsif (-e ModelSEED::globals::GETFIGMODEL->ws()->directory().$args->{input}) {
 			$output = ModelSEED::globals::LOADFILE(ModelSEED::globals::GETFIGMOEL()->ws()->directory().$args->{input},"");
 		}
 	} else {

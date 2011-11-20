@@ -338,6 +338,21 @@ sub get_moose_object {
     return undef unless(defined($objs->[0]));
 	return $objs->[0];
 }
+=head3 create_moose_object
+Definition:
+	MooseDB::object = FIGMODELdatabase->create_moose_object(string::type,{
+		db => $self->figmodel()->database()
+		filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})
+	});
+Description:
+	Creates moose object using the object's constructor.
+=cut
+sub create_moose_object {
+	my ($self,$type,$args) = @_;
+	require "ModelSEED/MooseDB/".$type.".pm";
+	my $package = "ModelSEED::MooseDB::".$type;
+	return $package->new($args);
+}
 =head3 change_permissions
 Definition:
 	void FIGMODELdatabase->change_permissions({

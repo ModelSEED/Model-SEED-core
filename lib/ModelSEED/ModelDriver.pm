@@ -5869,7 +5869,7 @@ sub bcloadmedia {
     if (!-e $self->ws()->directory().$args->{media}) {
     	ModelSEED::globals::ERROR("Could not find media file ".$self->ws()->directory().$args->{media});
     }
-    $media = ModelSEED::MooseDB::media->new({db => $self->figmodel()->database(),filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})});
+    $media = $self->figmodel()->database()->create_moose_object("media",{db => $self->figmodel()->database(),filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})});
     $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
     return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
 }
@@ -6142,18 +6142,18 @@ sub mdlprintsbml {
 	}
 	my $message;
 	for (my $i=0; $i < @{$models};$i++) {
-		print "Now loading model ".$results->[$i]."\n";
-		my $mdl = $self->figmodel()->get_model($results->[$i]);
+		print "Now loading model ".$models->[$i]."\n";
+		my $mdl = $self->figmodel()->get_model($models->[$i]);
 		if (!defined($mdl)) {
 	 		ModelSEED::globals::WARNING("Model not valid ".$args->{model});
-	 		$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
+	 		$message .= "SBML printing failed for model ".$models->[$i].". Model not valid!\n";
 	 		next;
 	 	}
 	 	my $sbml = $mdl->PrintSBMLFile({
 	 		media => $args->{media}
 	 	});
-		ModelSEED::globals::PRINTFILE($self->ws()->directory().$results->[$i].".xml",$sbml);
-		$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$models->[$i].".xml",$sbml);
+		$message .= "SBML printing succeeded for model ".$models->[$i]."!\nFile printed to ".$self->ws()->directory().$models->[$i].".xml"."!";
 	}
     return $message;
 }
@@ -6347,14 +6347,18 @@ sub mdlchangedrains {
     	["drains",0,undef,"\";\" delimited list of compounds for which drains should be added"],
     	["inputs",0,undef,"\";\" delimited list of compounds for which inputs should be added"],
 	],[@Data],"change drain fluxes associated with model");
-	$args->{drains} = ModelSEED::globals::PROCESSIDLIST({
-		input => $args->{drains},
-		validation => "^cpd\\d+\\[*\\w*\\]*$"
-	});
-	$args->{inputs} = ModelSEED::globals::PROCESSIDLIST({
-		input => $args->{inputs},
-		validation => "^cpd\\d+\\[*\\w*\\]*$"
-	});
+	if (defined($args->{drains})) {
+		$args->{drains} = ModelSEED::globals::PROCESSIDLIST({
+			input => $args->{drains},
+			validation => "^cpd\\d+\\[*\\w*\\]*\$"
+		});
+	}
+	if (defined($args->{drains})) {
+		$args->{inputs} = ModelSEED::globals::PROCESSIDLIST({
+			input => $args->{inputs},
+			validation => "^cpd\\d+\\[*\\w*\\]*\$"
+		});
+	}
 	my $model = $self->figmodel()->get_model($args->{model});
 	if (!defined($model)) {
 		ModelSEED::globals::ERROR("Model not valid ".$args->{model});
@@ -6362,7 +6366,7 @@ sub mdlchangedrains {
 	my $string = $model->changeDrains({
 		drains => $args->{drains},
 		inputs => $args->{inputs},
-	})
+	});
 	return "Successfully adjusted the drain fluxes associated with model ".$args->{model}." to ".$string;
 }
 

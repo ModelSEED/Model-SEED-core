@@ -22,10 +22,10 @@ extends 'ModelSEED::MooseDB::object';
 
 has 'id' => (is => 'ro', isa => 'Str', required => 1, index => 0, metaclass => 'Indexed');
 has 'owner' => (is => 'ro', isa => 'Str', required => 1);#, metaclass => 'DoNotSerialize');
-has 'modificationDate' => (is => 'ro', isa => 'Int', required => 1);#, metaclass => 'DoNotSerialize');
+has 'modificationDate' => (is => 'ro', isa => 'Int', required => 1, default => 0);#, metaclass => 'DoNotSerialize');
 has 'creationDate' => (is => 'ro', isa => 'Int', required => 1);#, metaclass => 'DoNotSerialize');
 has 'aliases' => (is => 'ro', isa => 'Str', required => 1, default => "", index => 1, metaclass => 'Indexed');
-has 'aerobic' => (is => 'ro', isa => 'Bool', required => 1);#, metaclass => 'DoNotSerialize');
+has 'aerobic' => (is => 'ro', isa => 'Bool', required => 1, default => 1);#, metaclass => 'DoNotSerialize');
 has 'public' => (is => 'ro', isa => 'Bool', required => 1);#, metaclass => 'DoNotSerialize');
 has 'mediaCompounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MooseDB::mediacpd]', lazy => 1, builder => '_build_mediaCompounds', index => 2, metaclass => 'Indexed');
 
@@ -34,14 +34,15 @@ sub BUILD {
 	$params = ModelSEED::globals::ARGS($params,[],{});
 }
 
-sub BUILDARGS {
-	my ($self,$params) = @_;
-	$params->{type} => "media";
-	if (defined($params->{filedata})) {
-		$params = $self->parse($params);
+around 'BUILDARGS' => sub {
+	my ($orig,$self,$args) = @_;
+	$args = $self->$orig($args);
+	$args->{type} = "media";
+	if (defined($args->{filedata})) {
+		$args = $self->parse($args);
 	}
-	return $params;
-}
+	return $args;
+};
 
 sub _build_mediaCompounds {
     my ($self) = @_;
@@ -52,12 +53,12 @@ sub print {
 	my ($self) = @_;
 	my $data = [
 		"id\t".$self->id(),
-		"owner\t".$self->id(),
-		"modificationDate\t".$self->id(),
-		"creationDate\t".$self->id(),
-		"aliases\t".$self->id(),
-		"aerobic\t".$self->id(),
-		"public\t".$self->id(),
+		"owner\t".$self->owner(),
+		"modificationDate\t".$self->modificationDate(),
+		"creationDate\t".$self->creationDate(),
+		"aliases\t".$self->aliases(),
+		"aerobic\t".$self->aerobic(),
+		"public\t".$self->public(),
 		"mediaCompounds{",
 		"entity\ttype\tconcentration\tminFlux\tmaxFlux"
 	];
@@ -73,27 +74,27 @@ sub parse {
 	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,["filedata"],{});
 	for (my $i=0; $i < @{$args->{filedata}}; $i++) {
-		my $array = split(/\t/,$args->{filedata}->[$i]);
+		my $array = [split(/\t/,$args->{filedata}->[$i])];
 		my $function = $array->[0];
-		if ($function eq "id" || $function eq "owner" || $function eq "modificationDate" || $function eq "creationDate" || $function eq "aliases" || $function eq "aerobic" || $function eq "public") {
-			$params->{$function} = $array->[1];
+		if (defined ($array->[1]) && ($function eq "id" || $function eq "owner" || $function eq "modificationDate" || $function eq "creationDate" || $function eq "aliases" || $function eq "aerobic" || $function eq "public")) {
+			$args->{$function} = $array->[1];
 		} elsif ($function eq "mediaCompounds{") {
 			$i++;
-			$array = split(/\t/,$args->{filedata}->[$i]);
+			$array = [split(/\t/,$args->{filedata}->[$i])];
 			$i++;
 			while ($args->{filedata}->[$i] ne "}") {
-				my $newarray = split(/\t/,$args->{filedata}->[$i]);
+				my $newarray = [split(/\t/,$args->{filedata}->[$i])];
 				my $newData;
 				for (my $j=0; $j < @{$array}; $j++) {
 					push(@{$newData},$array->[$j]."\t".$newarray->[$j]);
 				}
-				my $mediacpd = ModelSEED::MooseDB::mediacpd->new({MEDIA => $params->{id},filedata => $newData});
-				push(@{$params->{mediaCompounds}},$mediacpd);
+				my $mediacpd = ModelSEED::MooseDB::mediacpd->new({db => $args->{db},MEDIA => $args->{id},filedata => $newData});
+				push(@{$args->{mediaCompounds}},$mediacpd);
 				$i++;
 			}
 		}
 	}
-	return $params;
+	return $args;
 }
 
 sub syncWithPPODB {
@@ -109,7 +110,7 @@ sub syncWithPPODB {
 		$object->aliases($self->aliases());
 		$object->aerobic($self->aerobic());
 		$object->public($self->public());
-		my $objects = $self->db()->sudo_get_object("mediacpd",{MEDIA => $self->id()});
+		my $objects = $self->db()->sudo_get_objects("mediacpd",{MEDIA => $self->id()});
 		for (my $i=0; $i < @{$objects};$i++) {
 			$objects->[$i]->delete();
 		}

@@ -292,20 +292,6 @@ SCRIPT
 }
 #Creating shell scripts for select model driver functions
 {
-	my $obsoleteList = [
-		"loadmodelfromfile",
-		"loadbiomassfromfile",
-		"printmodelfiles",
-		"logout",
-		"login",
-		"deleteaccount",
-		"importmodel",
-		"createlocaluser",
-		"gapfillmodel",
-		"printmedia",
-		"blastgenomesequences",
-		"createmedia"
-	];
 	my $functionList = [
 		"ms-createuser",
 		"ms-deleteuser",
@@ -334,8 +320,28 @@ SCRIPT
 		"mdl-loadbiomass",
 		"mdl-parsesbml",
 		"mdl-importmodel",
+		"mdl-changedrains",
 		"util-matrixdist"
 	];
+	my $obsoleteList = [
+		"loadmodelfromfile",
+		"loadbiomassfromfile",
+		"printmodelfiles",
+		"logout",
+		"login",
+		"deleteaccount",
+		"importmodel",
+		"createlocaluser",
+		"gapfillmodel",
+		"printmedia",
+		"blastgenomesequences",
+		"createmedia"
+	];
+	for (my $i=0; $i < @{$functionList}; $i++) {
+		my $function = $functionList->[$i];
+		$function =~ s/-//;
+		push(@{$obsoleteList},$function)
+	}
 	foreach my $function (@{$obsoleteList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
 			unlink $directoryRoot."/bin/".$function.$extension;

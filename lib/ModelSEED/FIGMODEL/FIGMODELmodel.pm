@@ -319,7 +319,7 @@ Description:
 	Get the drain fluxes associated with the model.
 =cut
 sub drains {
-	my ($self) = @_;
+	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,[],{});
 	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0"; 
 	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
@@ -336,7 +336,7 @@ Description:
 	Changes the drain fluxes associated with the model.
 =cut
 sub changeDrains {
-	my ($self) = @_;
+	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,[],{
 		inputs => undef,
 		drains => undef
