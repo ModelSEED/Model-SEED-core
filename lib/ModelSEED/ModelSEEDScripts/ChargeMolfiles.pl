@@ -5,8 +5,26 @@ $|=1;
 
 my $SourcePath = $ARGV[0];
 my $DestinationPath = $ARGV[1];
+my $MarvinBeansPath = $ARGV[2];
+$MarvinBeansPath='/home/chenry/Software/MarvinBeans/' if(!$MarvinBeansPath);
+$MarvinBeansPath .= "bin/cxcalc";
+
+if(!$SourcePath || !-d $SourcePath || !$DestinationPath || !-d $DestinationPath || !$MarvinBeansPath){
+#    usage();
+    exit(0);
+}
+
+if(!-f $MarvinBeansPath){
+#    usage();
+    print STDERR "Cannot find cxcalc executable, double-check path for MarvinBeans software:\n".$MarvinBeansPath."\n";
+    exit(0);
+}
+
 my $CombinedFilename = $DestinationPath."Combined.sdf";
-my @Files = glob($SourcePath."*.mol");
+
+opendir(my $dh, $SourcePath) || die "can't opendir $SourcePath: $!";
+my @Files = grep { /\.mol$/ } readdir($dh);
+closedir $dh;
 
 open (COMBINED, ">$CombinedFilename");
 foreach my $Filename (@Files) {
@@ -27,7 +45,7 @@ foreach my $Filename (@Files) {
 }
 close (COMBINED);
 #exit;
-my $Command = '/home/chenry/Software/MarvinBeans/bin/cxcalc -N hi majorms -H 7 -f mol:-a '.$DestinationPath.'Combined.sdf > '.$DestinationPath.'ChargeOutput.txt';
+my $Command = $MarvinBeansPath.' -N hi majorms -H 7 -f mol:-a '.$DestinationPath.'Combined.sdf > '.$DestinationPath.'ChargeOutput.txt';
 system($Command);
 
 $CombinedFilename = $DestinationPath."ChargeOutput.txt";
@@ -53,3 +71,7 @@ close (COMBINED);
 
 unlink($DestinationPath."Combined.sdf");
 unlink($DestinationPath."ChargeOutput.txt");
+
+sub usage {
+    print "./ChargeMolfiles <directory of mol files> <Directory for output files> <Path for MarvinBeans Software (ie ~/Software/MarvinBeans/)>\n";
+}
