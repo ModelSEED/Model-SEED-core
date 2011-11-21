@@ -18,10 +18,11 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     relationships => [
-        biochemistry_compound => {
-            class      => 'ModelSEED::DB::BiochemistryCompound',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
+        compounds => {
+            map_class  => 'ModelSEED::DB::BiochemistryCompound',
+            map_from   => 'biochemistry_obj',
+            map_to     => 'compound_obj',
+            type       => 'many to many',
         },
 
         biochemistry_compoundset => {

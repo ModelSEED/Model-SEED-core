@@ -1,65 +1,101 @@
 package ModelSEED::Role::Relationship;
-
-#use Moose::Role;
+use Moose::Util::TypeConstraints;
 use MooseX::Role::Parameterized;
 use ModelSEED::Role::RelationshipTrait;
 
-parameter role_type => (
-    isa => 'Str',
-    required => 1,
-); 
-
-parameter object_type => (
-    isa => 'Str',
+subtype 'RoseDBRelationship', as 'Object',
+    where { $_->isa('Rose::DB::Object::Metadata::Relationship') };
+    
+parameter 'relationship'  => (
+    isa => 'RoseDBRelationship',
     required => 1,
 );
 
-parameter object_name => (
+parameter 'attributeName' => (
     isa => 'Str',
 );
 
 role {
     my $p = shift;
-    my $objName;
-    if(defined($p->object_name)) {
-        $objName = $p->object_name;
-    } else { 
-        $objName = $p->object_type;
-        $objName =~ s/ModelSEED:://;
-        $objName = lc($objName);
+    my $rel = $p->relationship;
+    # 1. Create attribute parameter
+    #    has () with lazy builder
+    my $roseClass = ($rel->type =~ 'many to many') ?
+        $rel->map_class : $rel->class;
+    my $mooseClass = $roseClass;
+    $mooseClass =~ s/::DB//;
+    {
+        my $moose_class_path = $mooseClass;
+        $moose_class_path =~ s/::/\//g;
+        eval {
+            require "$moose_class_path.pm"
+        };
+        if($@) {
+            die($@);
+        }
     }
-    my $objType = $p->object_type;
-    my $objAttrType = $objType;
-    if($p->role_type eq 'many to many' ||
-       $p->role_type eq 'one to many') {
-        $objAttrType = 'ArrayRef[' . $objType . ']';
-        method "_build$objName" => sub {
+    my $mooseIsaType = $mooseClass;
+    my $attributeName = (defined($p->attributeName)) ?
+        $p->attributeName : $rel->name;
+    my $builderName = '_build'.$attributeName;
+    my $builder;
+    if($rel->type =~ 'to many') {
+        # If we have many of them need an ArrayRef
+        $mooseIsaType = 'ArrayRef['.$mooseIsaType.']';
+        $builder = sub {
             my $self = shift @_;
             my $objs = [];
-            foreach my $rdbObj (@{$self->_rdbo->$objName}) {
-                push(@$objs, $objType->new($rdbObj));
+            foreach my $obj (@{$self->_rdbo->$attributeName || []}) {
+                push(@$objs, $mooseClass->new($obj));
             }
             return $objs;
         };
-        my $addMethod = "add_$objName";
-        method $addMethod => sub {
-            my ($self, $obj) = @_;
-            if(ref($obj) eq 'ARRAY') {
-                map { $self->$addMethod($_) } @$obj;
-            } elsif (ref($obj) ne $objType) {
-                $obj = $objType->new($obj); 
-            }   
-            push(@{$self->$objName}, $obj);
-        };
     } else {
-        method "_build$objName" => sub {
+        $builder = sub {
             my $self = shift @_;
-            return $self->_rdbo->$objName || undef;
+            if(defined($self->_rdbo->$attributeName)) {
+                return $mooseClass->new($self->_rdbo->$attributeName);
+            } else {
+                return undef; 
+            }
         };
     }
-    has $objName => ( is => 'rw', isa => $objType, lazy => 1,
-        builder => "_build$objName",
-        traits => ['RelationshipTrait'] );
+    method $builderName => $builder;
+    has $attributeName => ( is => 'rw', isa => 'Maybe['.$mooseIsaType.']',
+        lazy => 1, builder => $builderName, traits => ['DoNotStore']);
+    # 2. Add before save() hook
+    my $forOneSaveHook = sub {
+        my ($self, $obj) = @_;
+        return unless(defined($obj));
+        if(ref($obj) eq 'HASH') { # NEED?
+            $obj = $mooseClass->new($obj);
+        } 
+        if($obj->isa($mooseClass)) {
+            $obj->save();
+            return $obj->_rdbo;
+        } elsif($obj->isa($roseClass)) {
+            return $obj;
+        } else {
+            die("Could not save object of type ".ref($obj));
+        }
+    };
+    if($rel->type =~ 'to many') {
+        before 'save' => sub {
+            my $self = shift @_;
+            my $objs = [];
+            foreach my $obj (@{$self->$attributeName}) {
+                push(@$objs, $forOneSaveHook->($self, $obj));
+            }
+            $self->_rdbo->$attributeName($objs);
+        };
+    } else {
+        before 'save' => sub {
+            my $self = shift @_;
+            my $obj = $self->$attributeName;
+            return unless(defined($obj));
+            $self->_rdbo->$attributeName($forOneSaveHook->($self, $obj));
+        };
+    }
 };
 
 1;

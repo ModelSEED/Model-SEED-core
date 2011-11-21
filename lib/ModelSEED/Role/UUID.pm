@@ -1,8 +1,6 @@
 package ModelSEED::Role::UUID;
 use Moose::Role;
 use Data::UUID;
-use Try::Tiny;
-use Data::Dumper;
 
 has 'uuid' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
 

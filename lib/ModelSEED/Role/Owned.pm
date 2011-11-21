@@ -24,3 +24,5 @@ sub get_permissions_for {
     $p->{view} = 1 if($self->public);
     return $p;
 }
+
+1;

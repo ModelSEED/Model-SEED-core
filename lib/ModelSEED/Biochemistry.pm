@@ -1,11 +1,12 @@
 package ModelSEED::Biochemistry;
-
 use Moose;
 
-with 'ModelSEED::Role::DBObject';
-with 'ModelSEED::Role::UUID';
-with 'ModelSEED::Role::Owned';
-with 'ModelSEED::Role::Versioned';
-with 'ModelSEED::Role::ModDate';
+with 'ModelSEED::Role::DBObject' => {
+        rose_class => "ModelSEED::DB::Biochemistry",
+        attribute_roles => {
+            'uuid' => 'ModelSEED::Role::UUID',
+            'modDate' => 'ModelSEED::Role::ModDate'
+        },
+    };
 
-has name => ( is => 'rw', isa => 'Str|Undef' );
+1;
