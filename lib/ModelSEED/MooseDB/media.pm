@@ -37,7 +37,7 @@ sub BUILD {
 around 'BUILDARGS' => sub {
 	my ($orig,$self,$args) = @_;
 	$args = $self->$orig($args);
-	$args->{type} = "media";
+	$args->{_type} = "media";
 	if (defined($args->{filedata})) {
 		$args = $self->parse($args);
 	}
@@ -100,7 +100,7 @@ sub parse {
 sub syncWithPPODB {
 	my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,[],{overwrite => 0});
-	my $object = $self->db()->sudo_get_object($self->type(),{id => $self->id()});
+	my $object = $self->db()->sudo_get_object($self->_type(),{id => $self->id()});
 	if (defined($object)) {
 		if ($args->{overwrite} == 0 || $object->owner() ne $self->owner()) {
 			ModelSEED::globals::ERROR("Media exists in database. Cannot update without ownership or specifying overwrite.");

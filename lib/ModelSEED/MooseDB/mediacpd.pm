@@ -34,7 +34,7 @@ sub BUILD {
 around 'BUILDARGS' => sub {
 	my ($orig,$self,$args) = @_;
 	$args = $self->$orig($args);
-	$args->{type} = "mediacpd";
+	$args->{_type} = "mediacpd";
 	if (defined($args->{filedata})) {
 		$args = $self->parse($args);
 	}
