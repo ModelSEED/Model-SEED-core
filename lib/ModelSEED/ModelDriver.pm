@@ -6353,7 +6353,7 @@ sub mdlchangedrains {
 			validation => "^cpd\\d+\\[*\\w*\\]*\$"
 		});
 	}
-	if (defined($args->{drains})) {
+	if (defined($args->{inputs})) {
 		$args->{inputs} = ModelSEED::globals::PROCESSIDLIST({
 			input => $args->{inputs},
 			validation => "^cpd\\d+\\[*\\w*\\]*\$"
