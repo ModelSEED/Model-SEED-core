@@ -75,10 +75,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         $configFile = "$directoryRoot/lib/ModelSEED/Settings.config"
     }
 	$configFile = abs_path($configFile);
-	#Here we are adjusting the users config file to include changes made to the standard config
-	if ($configFile ne "$directoryRoot/lib/ModelSEED/Settings.config") {
-		patchconfig("$directoryRoot/lib/ModelSEED/Settings.config",$configFile);
-	}
 	$Config = Config::Tiny->read($configFile);
 	# Setting defaults for dataDirectory,
 	# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
