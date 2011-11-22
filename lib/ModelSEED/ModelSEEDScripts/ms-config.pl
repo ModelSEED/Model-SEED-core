@@ -353,7 +353,6 @@ SCRIPT
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT
-        print $directoryRoot."/bin/".$function.$extension."\n";
         open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
         print $fh $script;
         close($fh);
@@ -415,7 +414,6 @@ if(lc($Config->{Database}->{type}) eq 'sqlite' &&
 #Creating public useraccount
 {	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
-	require ModelSEED::FIGMODEL;
 	my $figmodel = ModelSEED::FIGMODEL->new();
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});
