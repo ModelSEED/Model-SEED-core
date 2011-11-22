@@ -351,6 +351,7 @@ sub create_moose_object {
 	my ($self,$type,$args) = @_;
 	require "ModelSEED/MooseDB/".$type.".pm";
 	my $package = "ModelSEED::MooseDB::".$type;
+	$args->{db} = $self;
 	return $package->new($args);
 }
 =head3 change_permissions

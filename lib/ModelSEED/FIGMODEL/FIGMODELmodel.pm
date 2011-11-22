@@ -7537,20 +7537,18 @@ sub fbaCalculateGrowth {
 =cut
 sub fbaCalculateMinimalMedia {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		numFormulations => 1,
-		problemDirectory => undef,
+	$args = ModelSEED::globals::ARGS($args,[],{
+		numsolutions => 1,
 		fbaStartParameters => {},
 	});
-	my $results = $self->runFBAStudy({
+	return $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
 			function => "setMinimalMediaStudy",
 			arguments => {
-				numFormulations=>$args->{numFormulations},
+				numsolutions=>$args->{numsolutions},
 			} 
 		},
-		problemDirectory => $args->{problemDirectory},
 		parameterFile => "MinimalMediaStudy.txt",
 		startFresh => 1,
 		removeGapfillingFromModel => 0,
@@ -7558,7 +7556,6 @@ sub fbaCalculateMinimalMedia {
 		runProblem => 1,
 		clearOuput => 1
 	});
-	return $results;
 }
 =head3 fbaSubmitGeneActivityAnalysis
 =item Definition:

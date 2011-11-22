@@ -39,7 +39,7 @@ Minimize the number of foreign reactions|0|0|MFA parameters
 Reoptimize suboptimal objective during recursive MILP|0|0|MFA parameters
 optimize individual foreign reactions|0|0|MFA parameters
 determine minimal required media|0|0|MFA parameters
-exclude input media components from media optimization|1|0|MFA parameters
+exclude input media components from media optimization|0|0|MFA parameters
 uptake dead end compounds during media optimization|0|0|MFA parameters
 coefficient for dead end compound uptake|2|0|MFA parameters
 run reaction addition experiments|0|0|MFA parameters

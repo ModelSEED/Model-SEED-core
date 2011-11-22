@@ -1629,9 +1629,13 @@ sub parseCombinatorialDeletionStudy {
 =cut
 sub setMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{numberOfFormulations => 1});
-	$self->set_parameters({"determine minimal required media" => 1,"Recursive MILP solution limit" => $args->{numberOfFormulations}});
-	$self->parsingFunction("parseMinimalMediaResults");
+	$args = ModelSEED::globals::ARGS($args,[],{numsolutions => 1});
+	$self->set_parameters({
+		"determine minimal required media" => 1,
+		"MFASolver"=>"CPLEX",
+		"Recursive MILP solution limit" => $args->{numsolutions}
+	});
+	$self->parsingFunction("parseMinimalMediaStudy");
 	return {};
 }
 
@@ -1645,22 +1649,46 @@ sub setMinimalMediaStudy {
 =cut
 sub parseMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
+	$args = ModelSEED::globals::ARGS($args,[],{filename=>$self->filename()});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	$self->filename($args->{filename});
 	if (-e $self->directory()."/MFAOutput/MinimalMediaResults.txt") {
-		my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/MFAOutput/MinimalMediaResults.txt","\t");
+		my $media = $self->figmodel()->database()->create_moose_object("media",{
+			id => $self->model()."-minimal",
+			owner => ModelSEED::globals::GETFIGMODEL()->user(),
+			modificationDate => time(),
+			creationDate => time(),
+			aliases => "",
+			aerobic => 0,
+			public => 1,
+			mediaCompounds => []		
+		});
+		my $data = ModelSEED::globals::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
 		my $result;
 		push(@{$result->{essentialNutrients}},split(/;/,$data->[1]));
+		my $mediaCpdList = [@{$result->{essentialNutrients}}];
 		for (my $i=3; $i < @{$data}; $i++) {
 			if ($data->[$i] !~ m/^Dead/) {
 				my $temp;
 				push(@{$temp},split(/;/,$data->[$i]));
+				push(@{$mediaCpdList},@{$temp});
 				push(@{$result->{optionalNutrientSets}},$temp);
 			} else {
 				last;
 			}	
+		}	
+		for (my $i=0; $i < @{$mediaCpdList}; $i++) {
+			my $mediacpd = $self->figmodel()->database()->create_moose_object("mediacpd",{
+				MEDIA => $self->model()."-minimal",
+				entity => $mediaCpdList->[$i],
+				type => "COMPOUND",
+				concentration => 0.001,
+				maxFlux => 10000,
+				minFlux => -10000
+			});
+			push(@{$media->mediaCompounds()},$mediacpd);
 		}
+		$result->{minimalMedia} = $media;
 		return $result;
 	}
 	return {error => "parseMinimalMediaStudy:could not find specified output directory"};

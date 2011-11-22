@@ -172,10 +172,12 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
         MFATOOLKITDIR => $directoryRoot.'/software/mfatoolkit/'
     };
-    if(defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
-        $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
-        $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
+    if(!defined($ENV{FIGMODEL_USER}) || !defined($ENV{FIGMODEL_PASSWORD})) {
+    	$ENV{FIGMODEL_USER} = "public";
+    	$ENV{FIGMODEL_PASSWORD} = "public";
     }
+    $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
+    $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
     $envSettings->{CPLEXAPI} = "CPLEXapiEMPTY.cpp";
     $envSettings->{MFATOOLKITCCFLAGS} = "-O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX -I../Include/ -DNOSAFEMEM -DNOBLOCKMEM";    
     $envSettings->{MFATOOLKITCCLNFLAGS} = "";
@@ -304,6 +306,7 @@ SCRIPT
 		"fba-checkgrowth",
 		"fba-singleko",
 		"fba-fva",
+		"fba-minimalmedia",
 		"bc-printmedia",
 		"bc-loadmedia",
 		"mdl-autocomplete",

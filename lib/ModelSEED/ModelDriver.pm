@@ -4003,42 +4003,6 @@ sub printdatatables {
 	return "SUCCESS";
 }
 
-sub calcminmedia {
-	my($self,@Data) = @_;
-	if (@Data < 2) {
-        print "Syntax for this command: calcminmedia?(model)\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-	my $mdl = $self->figmodel()->get_model($Data[1]);
-	if (defined($mdl)) {
-		my $result = $mdl->fbaCalculateMinimalMedia();
-		if (defined($result->{essentialNutrients}) && defined($result->{optionalNutrientSets}->[0])) {
-			my $count = @{$result->{essentialNutrients}};
-			print "Essential nutrients (".$count."):";
-			for (my $j=0; $j < @{$result->{essentialNutrients}}; $j++) {
-				if ($j > 0) {
-					print ";";
-				}
-				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{essentialNutrients}->[$j]});
-				print $result->{essentialNutrients}->[$j]."(".$cpd->name().")";
-			}
-			print "\n";
-			for (my $i=0; $i < @{$result->{optionalNutrientSets}}; $i++) {
-				my $count = @{$result->{optionalNutrientSets}->[$i]};
-				print "Optional nutrients ".($i+1)." (".$count."):";
-				for (my $j=0; $j < @{$result->{optionalNutrientSets}->[$i]}; $j++) {
-					if ($j > 0) {
-						print ";";	
-					}
-					my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{optionalNutrientSets}->[$i]->[$j]});
-					print $result->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
-				}
-			}
-			print "\n";
-		}
-	}
-}
-
 sub comparearrays {
 	my($self,@Data) = @_;
 	if (@Data < 2) {
@@ -5497,6 +5461,64 @@ sub fbasingleko {
 	}
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$results->{essentialGenes});
 	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{"filename"}.".";
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function utilizes flux balance analysis to calculate a minimal media for the specified model. 
+=EXAMPLE
+./fbaminimalmedia -model iJR904
+=cut
+sub fbaminimalmedia {
+	my($self,@Data) = @_;
+	 my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["numsolutions",0,1,"Indicates the number of alternative minimal media formulations that should be calculated"],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+	],[@Data],"calculates the minimal media for the specified model");
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    my $result = $mdl->fbaCalculateMinimalMedia({
+    	fbaStartParameters => $fbaStartParameters,
+    	numsolutions => $args->{numsolutions}
+    });
+	if (defined($result->{essentialNutrients}) && defined($result->{optionalNutrientSets}->[0])) {
+		my $count = @{$result->{essentialNutrients}};
+		my $output;
+		my $line = "Essential nutrients (".$count."):";
+		for (my $j=0; $j < @{$result->{essentialNutrients}}; $j++) {
+			if ($j > 0) {
+				$line .= ";";
+			}
+			my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{essentialNutrients}->[$j]});
+			$line .= $result->{essentialNutrients}->[$j]."(".$cpd->name().")";
+		}
+		push(@{$output},$line);
+		for (my $i=0; $i < @{$result->{optionalNutrientSets}}; $i++) {
+			my $count = @{$result->{optionalNutrientSets}->[$i]};
+			$line = "Optional nutrients ".($i+1)." (".$count."):";
+			for (my $j=0; $j < @{$result->{optionalNutrientSets}->[$i]}; $j++) {
+				if ($j > 0) {
+					$line .= ";";	
+				}
+				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{optionalNutrientSets}->[$i]->[$j]});
+				$line .= $result->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
+			}
+			push(@{$output},$line);
+		}
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-MinimalMediaAnalysis.out",$output);
+	}
+	if (defined($result->{minimalMedia})) {
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-minimal.media",$result->{minimalMedia}->print());
+	}
 }
 
 =head
