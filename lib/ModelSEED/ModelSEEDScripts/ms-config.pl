@@ -414,7 +414,6 @@ if(lc($Config->{Database}->{type}) eq 'sqlite' &&
 #Creating public useraccount
 {	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
-	require $directoryRoot."/lib/ModelSEED/FIGMODEL.pm";
 	my $figmodel = ModelSEED::FIGMODEL->new();
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});
