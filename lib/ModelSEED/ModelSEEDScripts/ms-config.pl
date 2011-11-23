@@ -60,6 +60,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	# figure out OS from $^O variable for extension, arguments and delim:
 	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
 	    $os = 'windows';
+	    $extension = "";
 	} elsif($^O =~ /darwin/) {
 	    $os = 'osx';
 	}
@@ -243,8 +244,8 @@ BOOTSTRAP
 		"source bin/source-me.sh",
 		"./bin/ms-config load"
 	];	
-	printFile($directoryRoot."/bin/ms-update",$data);
-	chmod 0775,$directoryRoot."/bin/ms-update";
+	printFile($directoryRoot."/bin/ms-update".$extension,$data);
+	chmod 0775,$directoryRoot."/bin/ms-update".$extension;
 }
 #Creating shell scripts for individual perl scripts
 {
