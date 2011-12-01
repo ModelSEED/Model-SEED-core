@@ -39,16 +39,18 @@ sub new {
 		geneKO=>[],
 		rxnKO=>[],
 		drnRxn=>[],
+		uptakeLim => {},
 		model=>undef,
 		media=>undef,
 		parameter_files=>["ProductionMFA"],
 		options => {}
 	});
 	return $self->error_message({function => "new",args=>$args}) if (defined($args->{error}));
-	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files"];
+	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files","uptakeLim"];
 	$self->{_geneKO} = $args->{geneKO};
 	$self->{_rxnKO} = $args->{rxnKO};
 	$self->{_drnRxn} = $args->{drnRxn};
+	$self->{_uptakeLim} = $args->{uptakeLim};
 	$self->{_model} = $args->{model};
 	$self->{_media} = $args->{media};
 	$self->{_parameter_files} = $args->{parameter_files};
@@ -140,6 +142,18 @@ sub FBAStartParametersFromArguments {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["arguments"],{});
 	my $fbaStartParameters;
+	if (defined($args->{arguments}->{uptakeLim})) {
+		$args->{arguments}->{uptakeLim} = [split(/[;,]/,$args->{arguments}->{uptakeLim})];
+		my $array = $args->{arguments}->{uptakeLim};
+		$args->{arguments}->{uptakeLim} = {};
+		for (my $i=0; $i < @{$array}; $i++) {
+			my $subarray = [split(/[:]/,$array->[$i])];
+			if (defined($subarray->[1]) && $subarray->[0] =~ m/[CNOPS]/) {
+				$args->{arguments}->{uptakeLim}->{$subarray->[0]} = $subarray->[1];
+			}
+		}
+		$fbaStartParameters->{uptakeLim} = $args->{arguments}->{uptakeLim};
+	}
 	if (defined($args->{arguments}->{rxnKO})) {
 		if (ref($args->{arguments}->{rxnKO}) ne "ARRAY") {
 			$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{arguments}->{rxnKO})];
@@ -326,6 +340,7 @@ sub printJobParametersToFile {
 	$self->setDrainRxnParameters();
 	$self->setConstrainParameters();
 	$self->setMediaParameters();
+	$self->setUptakeLimitParameters();
 	$self->setOptionParameters();
 	$self->parameters()->{"output folder"} = $self->filename()."/";
 	$self->parameters()->{"Network output location"} = "/scratch/" if ($args->{printToScratch} == 1);
@@ -630,6 +645,27 @@ sub setRxnKOParameters {
 	return $self->error_message({function => "setRxnKOParameters",args=>$args}) if (defined($args->{error}));
 	if (defined($self->{_rxnKO}) && @{$self->{_rxnKO}} > 0) {
 		$self->parameters()->{"Reactions to knockout"} =  join(";",@{$self->{_rxnKO}});
+	}
+	return {success=>1,msg=>undef,error=>undef};
+}
+
+=head3 setUptakeLimitParameters
+Definition:
+	{success,msg,error} = FIGMODELfba->setUptakeLimitParameters();
+Description:
+	Creates the parameters setting the uptake limits
+=cut
+sub setUptakeLimitParameters {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{});
+	if (defined($self->{_uptakeLim}) && keys(%{$self->{_uptakeLim}}) > 0) {
+		$self->parameters()->{"uptake limits"} = "";
+		foreach my $key (keys(%{$self->{_uptakeLim}})) {
+			if (length($self->parameters()->{"uptake limits"}) > 0) {
+				$self->parameters()->{"uptake limits"} .= ";";
+			}
+			$self->parameters()->{"uptake limits"} = $key.":".$self->{_uptakeLim}->{$key};
+		}
 	}
 	return {success=>1,msg=>undef,error=>undef};
 }
