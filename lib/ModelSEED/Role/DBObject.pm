@@ -92,7 +92,7 @@ role {
         }
     }
     # Apply roles now
-    with @$roles;
+    with @$roles if(@$roles);
 };
 
 sub _getType {

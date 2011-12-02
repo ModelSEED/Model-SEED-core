@@ -1,6 +1,7 @@
 package ModelSEED::Compound;
 use Moose;
 use ModelSEED::Role::DBObject;
+use namespace::autoclean;
 
 with 'ModelSEED::Role::DBObject' => {
         rose_class => "ModelSEED::DB::Compound",
@@ -10,4 +11,5 @@ with 'ModelSEED::Role::DBObject' => {
         },
     };
 
+__PACKAGE__->meta->make_immutable;
 1;
