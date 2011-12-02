@@ -1,4 +1,4 @@
-package ModelSEED::DB::CompoundAlia;
+package ModelSEED::DB::CompoundAlias;
 
 use strict;
 
@@ -25,7 +25,7 @@ __PACKAGE__->meta->setup(
 
     relationships => [
         biochemistry_objs => {
-            map_class => 'ModelSEED::DB::BiochemistryCompoundAlia',
+            map_class => 'ModelSEED::DB::BiochemistryCompoundAlias',
             map_from  => 'compound_alia',
             map_to    => 'biochemistry_obj',
             type      => 'many to many',

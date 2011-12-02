@@ -24,35 +24,35 @@ __PACKAGE__->meta->setup(
             map_to     => 'compound_obj',
             type       => 'many to many',
         },
-
-        biochemistry_compoundset => {
-            class      => 'ModelSEED::DB::BiochemistryCompoundset',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
-        },
-
-        biochemistry_media => {
-            class      => 'ModelSEED::DB::BiochemistryMedia',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
-        },
-
-        biochemistry_reaction => {
-            class      => 'ModelSEED::DB::BiochemistryReaction',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
-        },
-
-        biochemistry_reactionset => {
-            class      => 'ModelSEED::DB::BiochemistryReactionset',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
-        },
-
-        compound_alias => {
-            map_class => 'ModelSEED::DB::BiochemistryCompoundAlia',
+        compoundSet => {
+            map_class => 'ModelSEED::DB::BiochemistryCompoundset',
             map_from  => 'biochemistry_obj',
-            map_to    => 'compound_alia',
+            map_to    => 'compoundset_obj',
+            type      => 'many to many',
+        },
+        media => {
+            map_class  => 'ModelSEED::DB::BiochemistryMedia',
+            map_from   => 'biochemistry_obj',
+            map_to     => 'compound_obj',
+            type       => 'many to many',
+        },
+        reactions => {
+            map_class  => 'ModelSEED::DB::BiochemistryReaction',
+            map_from   => 'biochemistry_obj',
+            map_to     => 'compound_obj',
+            type       => 'many to many',
+        },
+        reactionSet => {
+            map_class  => 'ModelSEED::DB::BiochemistryReactionset',
+            map_from   => 'biochemistry_obj',
+            map_to     => 'reactionset_obj',
+            type       => 'many to many', 
+        },
+        
+        compound_alias => {
+            map_class => 'ModelSEED::DB::BiochemistryCompoundAlias',
+            map_from  => 'biochemistry_obj',
+            map_to    => 'compound_alias',
             type      => 'many to many',
         },
 

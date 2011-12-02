@@ -1,4 +1,4 @@
-package ModelSEED::DB::ReactionAlia;
+package ModelSEED::DB::ReactionAlias;
 
 use strict;
 
@@ -25,8 +25,8 @@ __PACKAGE__->meta->setup(
 
     relationships => [
         biochemistry_objs => {
-            map_class => 'ModelSEED::DB::BiochemistryReactionAlia',
-            map_from  => 'reaction_alia',
+            map_class => 'ModelSEED::DB::BiochemistryReactionAlias',
+            map_from  => 'reaction_alias',
             map_to    => 'biochemistry_obj',
             type      => 'many to many',
         },
