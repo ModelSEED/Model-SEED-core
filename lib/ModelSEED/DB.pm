@@ -3,6 +3,7 @@ use Rose::DB;
 use Moose;
 extends 'Rose::DB';
 
+=cut
 ModelSEED::DB->register_db(
     domain => 'production',
     type   => 'main',
