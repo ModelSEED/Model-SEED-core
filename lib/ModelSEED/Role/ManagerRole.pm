@@ -30,8 +30,7 @@ role {
             require $Mpkg;
             require $Rpkg_base;
         } catch {
-            my $foo = $@;
-            die("Role::ManagerRole died on $type : $foo");
+            die("Role::ManagerRole died on $type : $_");
         };
         # now create functions
         my $get = _get_objects_wrapper($name, $Rtype, $Mtype);

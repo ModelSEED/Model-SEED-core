@@ -92,8 +92,8 @@ CREATE  TABLE IF NOT EXISTS `biochemistry_compound` (
   `biochemistry` CHAR(36) NOT NULL ,
   `compound` CHAR(36) NOT NULL ,
   PRIMARY KEY (`biochemistry`, `compound`) ,
-  INDEX `compound` (`compound`) ,
-  INDEX `biochemistry` (`biochemistry`) ,
+  INDEX `compound_fk` (`compound`) ,
+  INDEX `biochemistry_fk` (`biochemistry`) ,
   CONSTRAINT `biochemistry_compound_biochemistry_fk`
     FOREIGN KEY (`biochemistry` )
     REFERENCES `biochemistry` (`uuid` )
@@ -258,15 +258,15 @@ ENGINE = InnoDB;
 CREATE  TABLE IF NOT EXISTS `reaction_complex` (
   `reaction` CHAR(36) NOT NULL ,
   `complex` CHAR(36) NOT NULL ,
-  `in` CHAR(36) NOT NULL ,
-  `out` CHAR(36) NOT NULL ,
+  `input` CHAR(36) NOT NULL ,
+  `output` CHAR(36) NOT NULL ,
   `direction` CHAR(1) NULL ,
   `transproton` DOUBLE NULL ,
   PRIMARY KEY (`reaction`, `complex`) ,
   INDEX `reaction_complex_complex_fk` (`complex`) ,
   INDEX `reaction_complex_reaction_fk` (`reaction`) ,
-  INDEX `reaction_complex_in_fk` (`in`) ,
-  INDEX `reaction_complex_out_fk` (`out`) ,
+  INDEX `reaction_complex_in_fk` (`input`) ,
+  INDEX `reaction_complex_out_fk` (`output`) ,
   CONSTRAINT `reaction_complex_reaction_fk`
     FOREIGN KEY (`reaction` )
     REFERENCES `reaction` (`uuid` )
@@ -278,12 +278,12 @@ CREATE  TABLE IF NOT EXISTS `reaction_complex` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `reaction_complex_in_fk`
-    FOREIGN KEY (`in` )
+    FOREIGN KEY (`input` )
     REFERENCES `compartment` (`uuid` )
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `reaction_complex_out_fk`
-    FOREIGN KEY (`out` )
+    FOREIGN KEY (`output` )
     REFERENCES `compartment` (`uuid` )
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
@@ -474,7 +474,7 @@ ENGINE = InnoDB;
 CREATE  TABLE IF NOT EXISTS `model_compartment` (
   `model` CHAR(36) NOT NULL ,
   `compartment` CHAR(36) NOT NULL ,
-  `index` INT NULL ,
+  `compartment_index` INT NULL ,
   `label` VARCHAR(255) NULL ,
   `pH` DOUBLE NULL ,
   `potential` DOUBLE NULL ,
@@ -503,13 +503,13 @@ CREATE  TABLE IF NOT EXISTS `model_reaction` (
   `direction` CHAR(1) NULL ,
   `transproton` DOUBLE NULL ,
   `protons` DOUBLE NULL ,
-  `in` CHAR(36) NOT NULL ,
-  `out` CHAR(36) NOT NULL ,
+  `input` CHAR(36) NOT NULL ,
+  `output` CHAR(36) NOT NULL ,
   PRIMARY KEY (`model`, `reaction`) ,
   INDEX `model_reaction_reaction_fk` (`reaction`) ,
   INDEX `model_reaction_model_fk` (`model`) ,
-  INDEX `model_reaction_in_fk` (`in`) ,
-  INDEX `model_reaction_out_fk` (`out`) ,
+  INDEX `model_reaction_in_fk` (`input`) ,
+  INDEX `model_reaction_out_fk` (`output`) ,
   CONSTRAINT `model_reaction_model_fk`
     FOREIGN KEY (`model` )
     REFERENCES `model` (`uuid` )
@@ -521,12 +521,12 @@ CREATE  TABLE IF NOT EXISTS `model_reaction` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `model_reaction_in_fk`
-    FOREIGN KEY (`in` )
+    FOREIGN KEY (`input` )
     REFERENCES `compartment` (`uuid` )
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `model_reaction_out_fk`
-    FOREIGN KEY (`out` )
+    FOREIGN KEY (`output` )
     REFERENCES `compartment` (`uuid` )
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
@@ -965,14 +965,112 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `parent`
+-- Table `biochemistry_parents`
 -- -----------------------------------------------------
-CREATE  TABLE IF NOT EXISTS `parent` (
+CREATE  TABLE IF NOT EXISTS `biochemistry_parents` (
   `child` CHAR(36) NOT NULL ,
   `parent` CHAR(36) NOT NULL ,
-  `table` VARCHAR(30) NOT NULL ,
   PRIMARY KEY (`child`, `parent`) ,
-  INDEX `parent_table` (`table`) )
+  INDEX `biochemistry_parents_parent_fk` (`parent`) ,
+  CONSTRAINT `biochemistry_parents_parent_fk`
+    FOREIGN KEY (`parent`)
+    REFERENCES `biochemistry` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  INDEX `biochemistry_parents_child_fk` (`child`) ,
+  CONSTRAINT `biochemistry_parents_child_fk`
+    FOREIGN KEY (`child`)
+    REFERENCES `biochemistry` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION )
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mapping_parents`
+-- -----------------------------------------------------
+CREATE  TABLE IF NOT EXISTS `mapping_parents` (
+  `child` CHAR(36) NOT NULL ,
+  `parent` CHAR(36) NOT NULL ,
+  PRIMARY KEY (`child`, `parent`) ,
+  INDEX `mapping_parents_parent_fk` (`parent`) ,
+  CONSTRAINT `mapping_parents_parent_fk`
+    FOREIGN KEY (`parent`)
+    REFERENCES `mapping` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  INDEX `mapping_parents_child_fk` (`child`) ,
+  CONSTRAINT `mapping_parents_child_fk`
+    FOREIGN KEY (`child`)
+    REFERENCES `mapping` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION )
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `model_parents`
+-- -----------------------------------------------------
+CREATE  TABLE IF NOT EXISTS `model_parents` (
+  `child` CHAR(36) NOT NULL ,
+  `parent` CHAR(36) NOT NULL ,
+  PRIMARY KEY (`child`, `parent`) ,
+  INDEX `model_parents_parent_fk` (`parent`) ,
+  CONSTRAINT `model_parents_parent_fk`
+    FOREIGN KEY (`parent`)
+    REFERENCES `model` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  INDEX `model_parents_child_fk` (`child`) ,
+  CONSTRAINT `model_parents_child_fk`
+    FOREIGN KEY (`child`)
+    REFERENCES `model` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION )
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `annotation_parents`
+-- -----------------------------------------------------
+CREATE  TABLE IF NOT EXISTS `annotation_parents` (
+  `child` CHAR(36) NOT NULL ,
+  `parent` CHAR(36) NOT NULL ,
+  PRIMARY KEY (`child`, `parent`) ,
+  INDEX `annotation_parents_parent_fk` (`parent`) ,
+  CONSTRAINT `annotation_parents_parent_fk`
+    FOREIGN KEY (`parent`)
+    REFERENCES `annotation` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  INDEX `annotation_parents_child_fk` (`child`) ,
+  CONSTRAINT `annotation_parents_child_fk`
+    FOREIGN KEY (`child`)
+    REFERENCES `annotation` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION )
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `roleset_parents`
+-- -----------------------------------------------------
+CREATE  TABLE IF NOT EXISTS `roleset_parents` (
+  `child` CHAR(36) NOT NULL ,
+  `parent` CHAR(36) NOT NULL ,
+  PRIMARY KEY (`child`, `parent`) ,
+  INDEX `roleset_parents_parent_fk` (`parent`) ,
+  CONSTRAINT `roleset_parents_parent_fk`
+    FOREIGN KEY (`parent`)
+    REFERENCES `roleset` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  INDEX `roleset_parents_child_fk` (`child`) ,
+  CONSTRAINT `roleset_parents_child_fk`
+    FOREIGN KEY (`child`)
+    REFERENCES `roleset` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION )
 ENGINE = InnoDB;
 
 

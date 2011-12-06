@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Fri Dec  2 15:21:53 2011
+-- Created on Fri Dec  2 15:59:44 2011
 -- 
 
 BEGIN TRANSACTION;
@@ -86,9 +86,9 @@ CREATE TABLE biochemistry_compound (
   FOREIGN KEY(compound) REFERENCES compound(uuid)
 );
 
-CREATE INDEX compound ON biochemistry_compound (compound);
+CREATE INDEX compound_fk ON biochemistry_compound (compound);
 
-CREATE INDEX biochemistry ON biochemistry_compound (biochemistry);
+CREATE INDEX biochemistry_fk ON biochemistry_compound (biochemistry);
 
 --
 -- Table: complex
@@ -215,24 +215,24 @@ CREATE INDEX biochemistry_reaction_biochemistry_fk ON biochemistry_reaction (bio
 CREATE TABLE reaction_complex (
   reaction CHAR(36) NOT NULL,
   complex CHAR(36) NOT NULL,
-  in CHAR(36) NOT NULL,
-  out CHAR(36) NOT NULL,
+  input CHAR(36) NOT NULL,
+  output CHAR(36) NOT NULL,
   direction CHAR(1),
   transproton DOUBLE,
   PRIMARY KEY (reaction, complex),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid),
   FOREIGN KEY(complex) REFERENCES complex(uuid),
-  FOREIGN KEY(in) REFERENCES compartment(uuid),
-  FOREIGN KEY(out) REFERENCES compartment(uuid)
+  FOREIGN KEY(input) REFERENCES compartment(uuid),
+  FOREIGN KEY(output) REFERENCES compartment(uuid)
 );
 
 CREATE INDEX reaction_complex_complex_fk ON reaction_complex (complex);
 
 CREATE INDEX reaction_complex_reaction_fk ON reaction_complex (reaction);
 
-CREATE INDEX reaction_complex_in_fk ON reaction_complex (in);
+CREATE INDEX reaction_complex_in_fk ON reaction_complex (input);
 
-CREATE INDEX reaction_complex_out_fk ON reaction_complex (out);
+CREATE INDEX reaction_complex_out_fk ON reaction_complex (output);
 
 --
 -- Table: compound_alias
@@ -377,7 +377,7 @@ CREATE INDEX model_annotation_fk ON model (annotation);
 CREATE TABLE model_compartment (
   model CHAR(36) NOT NULL,
   compartment CHAR(36) NOT NULL,
-  index int(11),
+  compartment_index int(11),
   label VARCHAR(255),
   pH DOUBLE,
   potential DOUBLE,
@@ -399,22 +399,22 @@ CREATE TABLE model_reaction (
   direction CHAR(1),
   transproton DOUBLE,
   protons DOUBLE,
-  in CHAR(36) NOT NULL,
-  out CHAR(36) NOT NULL,
+  input CHAR(36) NOT NULL,
+  output CHAR(36) NOT NULL,
   PRIMARY KEY (model, reaction),
   FOREIGN KEY(model) REFERENCES model(uuid),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid),
-  FOREIGN KEY(in) REFERENCES compartment(uuid),
-  FOREIGN KEY(out) REFERENCES compartment(uuid)
+  FOREIGN KEY(input) REFERENCES compartment(uuid),
+  FOREIGN KEY(output) REFERENCES compartment(uuid)
 );
 
 CREATE INDEX model_reaction_reaction_fk ON model_reaction (reaction);
 
 CREATE INDEX model_reaction_model_fk ON model_reaction (model);
 
-CREATE INDEX model_reaction_in_fk ON model_reaction (in);
+CREATE INDEX model_reaction_in_fk ON model_reaction (input);
 
-CREATE INDEX model_reaction_out_fk ON model_reaction (out);
+CREATE INDEX model_reaction_out_fk ON model_reaction (output);
 
 --
 -- Table: modelfba
@@ -727,16 +727,79 @@ CREATE INDEX biochemistry_compound_alias_compound_alias_fk ON biochemistry_compo
 CREATE INDEX biochemistry_compound_alias_biochemistry_fk ON biochemistry_compound_alias (biochemistry);
 
 --
--- Table: parent
+-- Table: biochemistry_parents
 --
-CREATE TABLE parent (
+CREATE TABLE biochemistry_parents (
   child CHAR(36) NOT NULL,
   parent CHAR(36) NOT NULL,
-  table VARCHAR(30) NOT NULL,
-  PRIMARY KEY (child, parent)
+  PRIMARY KEY (child, parent),
+  FOREIGN KEY(parent) REFERENCES biochemistry(uuid),
+  FOREIGN KEY(child) REFERENCES biochemistry(uuid)
 );
 
-CREATE INDEX parent_table ON parent (table);
+CREATE INDEX biochemistry_parents_parent_fk ON biochemistry_parents (parent);
+
+CREATE INDEX biochemistry_parents_child_fk ON biochemistry_parents (child);
+
+--
+-- Table: mapping_parents
+--
+CREATE TABLE mapping_parents (
+  child CHAR(36) NOT NULL,
+  parent CHAR(36) NOT NULL,
+  PRIMARY KEY (child, parent),
+  FOREIGN KEY(parent) REFERENCES mapping(uuid),
+  FOREIGN KEY(child) REFERENCES mapping(uuid)
+);
+
+CREATE INDEX mapping_parents_parent_fk ON mapping_parents (parent);
+
+CREATE INDEX mapping_parents_child_fk ON mapping_parents (child);
+
+--
+-- Table: model_parents
+--
+CREATE TABLE model_parents (
+  child CHAR(36) NOT NULL,
+  parent CHAR(36) NOT NULL,
+  PRIMARY KEY (child, parent),
+  FOREIGN KEY(parent) REFERENCES model(uuid),
+  FOREIGN KEY(child) REFERENCES model(uuid)
+);
+
+CREATE INDEX model_parents_parent_fk ON model_parents (parent);
+
+CREATE INDEX model_parents_child_fk ON model_parents (child);
+
+--
+-- Table: annotation_parents
+--
+CREATE TABLE annotation_parents (
+  child CHAR(36) NOT NULL,
+  parent CHAR(36) NOT NULL,
+  PRIMARY KEY (child, parent),
+  FOREIGN KEY(parent) REFERENCES annotation(uuid),
+  FOREIGN KEY(child) REFERENCES annotation(uuid)
+);
+
+CREATE INDEX annotation_parents_parent_fk ON annotation_parents (parent);
+
+CREATE INDEX annotation_parents_child_fk ON annotation_parents (child);
+
+--
+-- Table: roleset_parents
+--
+CREATE TABLE roleset_parents (
+  child CHAR(36) NOT NULL,
+  parent CHAR(36) NOT NULL,
+  PRIMARY KEY (child, parent),
+  FOREIGN KEY(parent) REFERENCES roleset(uuid),
+  FOREIGN KEY(child) REFERENCES roleset(uuid)
+);
+
+CREATE INDEX roleset_parents_parent_fk ON roleset_parents (parent);
+
+CREATE INDEX roleset_parents_child_fk ON roleset_parents (child);
 
 --
 -- Table: permission

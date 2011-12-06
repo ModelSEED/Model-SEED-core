@@ -4,14 +4,14 @@ use ModelSEED::DB;
 use namespace::autoclean;
 
 my $types = [ qw( Annotation AnnotationFeature Biochemistry
-    BiochemistryCompound BiochemistryCompoundAlia BiochemistryCompoundset
-    BiochemistryMedia BiochemistryReaction BiochemistryReactionAlia
+    BiochemistryCompound BiochemistryCompoundAlias BiochemistryCompoundset
+    BiochemistryMedia BiochemistryReaction BiochemistryReactionAlias
     BiochemistryReactionset Compartment Complex ComplexRole Compound
-    CompoundAlia CompoundPk Compoundset CompoundsetCompound
+    CompoundAlias CompoundPk Compoundset CompoundsetCompound
     Feature Genome Mapping MappingCompartment MappingComplex MappingRole
     Media MediaCompound Model ModelCompartment ModelReaction
-    ModelessFeature Modelfba ModelfbaCompound ModelfbaReaction Parent
-    Permission Reaction ReactionAlia ReactionComplex ReactionCompound
+    ModelessFeature Modelfba ModelfbaCompound ModelfbaReaction 
+    Permission Reaction ReactionAlias ReactionComplex ReactionCompound
     Reactionset ReactionsetReaction Role Roleset RolesetRole
 )];
 

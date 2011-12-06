@@ -28,6 +28,18 @@ __PACKAGE__->meta->setup(
             column_map => { uuid => 'roleset' },
             type       => 'one to many',
         },
+        parents => {
+            map_class  => 'ModelSEED::DB::RolesetParents',
+            map_from   => 'parent_obj',
+            map_to     => 'child_obj',
+            type       => 'many to many',
+        },
+        children => {
+            map_class  => 'ModelSEED::DB::RolesetParents',
+            map_from   => 'child_obj',
+            map_to     => 'parent_obj',
+            type       => 'many to many',
+        },
     ],
 );
 

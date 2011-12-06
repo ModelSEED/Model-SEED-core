@@ -32,7 +32,7 @@ __PACKAGE__->meta->setup(
         },
 
         compound_alias => {
-            class      => 'ModelSEED::DB::CompoundAlia',
+            class      => 'ModelSEED::DB::CompoundAlias',
             column_map => { uuid => 'compound' },
             type       => 'one to many',
         },

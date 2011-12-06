@@ -63,9 +63,21 @@ __PACKAGE__->meta->setup(
         },
 
         reaction_alias => {
-            map_class => 'ModelSEED::DB::BiochemistryReactionAlia',
+            map_class => 'ModelSEED::DB::BiochemistryReactionAlias',
             map_from  => 'biochemistry_obj',
             map_to    => 'reaction_alias',
+            type      => 'many to many',
+        },
+        parents => {
+            map_class => 'ModelSEED::DB::BiochemistryParents',
+            map_from  => 'child_obj',
+            map_to    => 'parent_obj',
+            type      => 'many to many',
+        }, 
+        children => {
+            map_class => 'ModelSEED::DB::BiochemistryParents',
+            map_from  => 'parent_obj',
+            map_to    => 'child_obj',
             type      => 'many to many',
         },
     ],

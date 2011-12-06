@@ -59,7 +59,7 @@ __PACKAGE__->meta->setup(
         },
 
         reaction_alias => {
-            class      => 'ModelSEED::DB::ReactionAlia',
+            class      => 'ModelSEED::DB::ReactionAlias',
             column_map => { uuid => 'reaction' },
             type       => 'one to many',
         },

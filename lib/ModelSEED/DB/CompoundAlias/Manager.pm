@@ -4,7 +4,7 @@ use strict;
 
 use base qw(Rose::DB::Object::Manager);
 
-use ModelSEED::DB::CompoundAlia;
+use ModelSEED::DB::CompoundAlias;
 
 sub object_class { 'ModelSEED::DB::CompoundAlias' }
 
