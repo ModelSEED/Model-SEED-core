@@ -312,6 +312,66 @@ sub setCache {
 	return $self->figmodel()->setCache({package=>"FIGMODELmodel",id=>$self->id(),key=>$key,data=>$data});
 }
 
+=head3 drains
+Definition:
+	FIGMODELmodel->drains();
+Description:
+	Get the drain fluxes associated with the model.
+=cut
+sub drains {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{});
+	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0"; 
+	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
+		my $data = ModelSEED::globals::LOADFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
+		$drainString = $data->[0];
+	}
+	return $drainString;
+}
+
+=head3 changeDrains
+Definition:
+	FIGMODELmodel->changeDrains();
+Description:
+	Changes the drain fluxes associated with the model.
+=cut
+sub changeDrains {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		inputs => undef,
+		drains => undef
+	});
+	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
+		unlink($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
+	}
+	my $drnHash = {};
+	if (defined($args->{inputs})) {
+		for (my $i=0; $i <@{$args->{inputs}}; $i++) {
+			if ($args->{inputs}->[$i] !~ m/\[\w+\]$/) {
+				$args->{inputs}->[$i] .= "[c]";
+			}
+			$drnHash->{$args->{inputs}->[$i]}->{max} = 10000;
+			$drnHash->{$args->{inputs}->[$i]}->{min} = 0;
+		}
+	}
+	if (defined($args->{drains})) {
+		for (my $i=0; $i <@{$args->{drains}}; $i++) {
+			if (!defined($drnHash->{$args->{drains}->[$i]}->{max})) {
+				$drnHash->{$args->{drains}->[$i]}->{max} = 0;
+			}
+			$drnHash->{$args->{drains}->[$i]}->{min} = -10000;
+		}
+	}
+	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
+	foreach my $drn (keys(%{$drnHash})) {
+		$drainString .= ";".$drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max};
+	}
+	if ($drainString ne "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0") {
+		ModelSEED::globals::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
+	}
+	return $drainString;
+}
+
 =head3 aquireModelLock
 Definition:
 	FIGMODELmodel->aquireModelLock();
@@ -5643,7 +5703,6 @@ sub BuildSpecificBiomassReaction {
 	}
 	return $biomassID;
 }
-
 =head3 PrintSBMLFile
 Definition:
 	FIGMODELmodel->PrintSBMLFile();
@@ -5652,10 +5711,25 @@ Description:
 =cut
 sub PrintSBMLFile {
 	my($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{media => "Complete"});
 	if (-e $self->directory().$self->id().".xml") {
 		unlink($self->directory().$self->id().".xml");	
 	}
+	
+	#Handling media formulation for SBML file
+	my $mediaCpd;
+	if ($args->{media} ne "Complete" && ref($args->{media}) eq "SCALAR") {
+		$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
+	}
+	if (!defined($args->{media})) {
+		$args->{media} = "Complete";
+	}
+	if ($args->{media} ne "Complete") {
+		for (my $i=0; $i < @{$args->{media}->mediaCompounds()}; $i++) {
+			$mediaCpd->{$args->{media}->mediaCompounds()->[$i]->entity()} = $args->{media}->mediaCompounds()->[$i];
+		}
+	}
+	
 	#Adding intracellular metabolites that also need exchange fluxes to the exchange hash
 	my $ExchangeHash = {"cpd11416" => "c"};
 	my %CompartmentsPresent;
@@ -5932,6 +6006,7 @@ sub PrintSBMLFile {
 		push(@{$output},'</reaction>');
 	}
 
+	#Adding exchange fluxes based on input media formulation
 	my @ExchangeList = keys(%{$ExchangeHash});
 	foreach my $ExCompound (@ExchangeList) {
 		my $cpdObj;
@@ -5944,6 +6019,14 @@ sub PrintSBMLFile {
 		my $ExCompoundName = $cpdObj->name();
 		$ExCompoundName =~ s/[<>;&]//g;
 		$ObjectiveCoef = "0.0";
+		my $min = -10000;
+		my $max = 10000;
+		if ($args->{media} ne "Complete") {
+			$min = 0;
+			if (defined($mediaCpd->{$ExCompound}) && $mediaCpd->{$ExCompound}->maxFlux() > 0.001) {
+				$min = -10000;
+			}
+		}
 		push(@{$output},'<reaction id="EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}.'" name="EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}.'" reversible="true">');
 		push(@{$output},"\t".'<notes>');
 		push(@{$output},"\t\t".'<html:p>GENE_ASSOCIATION: </html:p>');
@@ -5962,8 +6045,8 @@ sub PrintSBMLFile {
 		push(@{$output},"\t\t\t\t".'<ci> FLUX_VALUE </ci>');
 		push(@{$output},"\t\t".'</math>');
 		push(@{$output},"\t\t".'<listOfParameters>');
-		push(@{$output},"\t\t\t".'<parameter id="LOWER_BOUND" value="-10000.000000" units="mmol_per_gDW_per_hr"/>');
-		push(@{$output},"\t\t\t".'<parameter id="UPPER_BOUND" value="10000.000000" units="mmol_per_gDW_per_hr"/>');
+		push(@{$output},"\t\t\t".'<parameter id="LOWER_BOUND" value="'.$min.'" units="mmol_per_gDW_per_hr"/>');
+		push(@{$output},"\t\t\t".'<parameter id="UPPER_BOUND" value="'.$max.'" units="mmol_per_gDW_per_hr"/>');
 		push(@{$output},"\t\t\t".'<parameter id="OBJECTIVE_COEFFICIENT" value="'.$ObjectiveCoef.'"/>');
 		push(@{$output},"\t\t\t".'<parameter id="FLUX_VALUE" value="0.000000" units="mmol_per_gDW_per_hr"/>');
 		push(@{$output},"\t\t".'</listOfParameters>');
@@ -7477,20 +7560,18 @@ sub fbaCalculateGrowth {
 =cut
 sub fbaCalculateMinimalMedia {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		numFormulations => 1,
-		problemDirectory => undef,
+	$args = ModelSEED::globals::ARGS($args,[],{
+		numsolutions => 1,
 		fbaStartParameters => {},
 	});
-	my $results = $self->runFBAStudy({
+	return $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
 			function => "setMinimalMediaStudy",
 			arguments => {
-				numFormulations=>$args->{numFormulations},
+				numsolutions=>$args->{numsolutions},
 			} 
 		},
-		problemDirectory => $args->{problemDirectory},
 		parameterFile => "MinimalMediaStudy.txt",
 		startFresh => 1,
 		removeGapfillingFromModel => 0,
@@ -7498,7 +7579,6 @@ sub fbaCalculateMinimalMedia {
 		runProblem => 1,
 		clearOuput => 1
 	});
-	return $results;
 }
 =head3 fbaSubmitGeneActivityAnalysis
 =item Definition:

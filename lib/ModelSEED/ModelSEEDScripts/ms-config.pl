@@ -51,6 +51,20 @@ if($command eq "unload" || $command eq "clean") {
 	}
 }
 my ($Config,$extension,$arguments,$delim,$os,$configFile);
+#Setting operating system related parameters
+{
+	$extension = "";
+	$arguments = "\$*";
+	$delim = ":";
+	$os = 'linux';
+	# figure out OS from $^O variable for extension, arguments and delim:
+	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
+	    $os = 'windows';
+	    $extension = "";
+	} elsif($^O =~ /darwin/) {
+	    $os = 'osx';
+	}
+}
 #Identifying and parsing the conf file
 {
 	# By default use config/Settings.config
@@ -62,10 +76,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         $configFile = "$directoryRoot/lib/ModelSEED/Settings.config"
     }
 	$configFile = abs_path($configFile);
-	#Here we are adjusting the users config file to include changes made to the standard config
-	if ($configFile ne "$directoryRoot/lib/ModelSEED/Settings.config") {
-		patchconfig("$directoryRoot/lib/ModelSEED/Settings.config",$configFile);
-	}
 	$Config = Config::Tiny->read($configFile);
 	# Setting defaults for dataDirectory,
 	# database (sqlite, data/ModelDB/ModelDB.db), port if db type = mysql
@@ -83,14 +93,16 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $Config->{Database}->{filename} =
 	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 	}
-    my $glpksol = `which glpsol`;
-    chomp $glpksol;
-    $glpksol =~ s/\/bin\/glpsol//;
-    if(!defined($Config->{Optimizers}->{includeDirectoryGLPK}) && defined($glpksol)) {
-        $Config->{Optimizers}->{includeDirectoryGLPK} = "$glpksol/include/";
-    }
-    if(!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) && defined($glpksol)) {
-        $Config->{Optimizers}->{libraryDirectoryGLPK} = "$glpksol/lib/";
+    if ($os ne "windows") {
+	    my $glpksol = `which glpsol`;
+	    chomp $glpksol;
+	    $glpksol =~ s/\/bin\/glpsol//;
+	    if(!defined($Config->{Optimizers}->{includeDirectoryGLPK}) && defined($glpksol)) {
+	        $Config->{Optimizers}->{includeDirectoryGLPK} = "$glpksol/include/";
+	    }
+	    if(!defined($Config->{Optimizers}->{libraryDirectoryGLPK}) && defined($glpksol)) {
+	        $Config->{Optimizers}->{libraryDirectoryGLPK} = "$glpksol/lib/";
+	    }
     }
 	if(lc($Config->{Database}->{type}) eq 'mysql' &&
 	    !defined($Config->{Database}->{port})) {
@@ -107,19 +119,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    }
 	}
 }	
-#Setting operating system related parameters
-{
-	$extension = "";
-	$arguments = "\$*";
-	$delim = ":";
-	$os = 'linux';
-	# figure out OS from $^O variable for extension, arguments and delim:
-	if($^O =~ /cygwin/ || $^O =~ /MSWin32/) {
-	    $os = 'windows';
-	} elsif($^O =~ /darwin/) {
-	    $os = 'osx';
-	}
-}
 #Creating config/FIGMODELConfig.txt
 {
     my $data = loadFile($directoryRoot."/lib/ModelSEED/FIGMODELConfig.txt");
@@ -170,10 +169,12 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         ARGONNEDB => $Config->{Optional}->{dataDirectory}.'/ReactionDB/',
         MFATOOLKITDIR => $directoryRoot.'/software/mfatoolkit/'
     };
-    if(defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
-        $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
-        $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
+    if(!defined($ENV{FIGMODEL_USER}) || !defined($ENV{FIGMODEL_PASSWORD})) {
+    	$ENV{FIGMODEL_USER} = "public";
+    	$ENV{FIGMODEL_PASSWORD} = "public";
     }
+    $envSettings->{FIGMODEL_USER} = $ENV{FIGMODEL_USER};
+    $envSettings->{FIGMODEL_PASSWORD} = $ENV{FIGMODEL_PASSWORD};
     $envSettings->{CPLEXAPI} = "CPLEXapiEMPTY.cpp";
     $envSettings->{MFATOOLKITCCFLAGS} = "-O3 -fPIC -fexceptions -DNDEBUG -DIL_STD -DILOSTRICTPOD -DLINUX -I../Include/ -DNOSAFEMEM -DNOBLOCKMEM";    
     $envSettings->{MFATOOLKITCCLNFLAGS} = "";
@@ -243,8 +244,8 @@ BOOTSTRAP
 		"source bin/source-me.sh",
 		"./bin/ms-config load"
 	];	
-	printFile($directoryRoot."/bin/ms-update",$data);
-	chmod 0775,$directoryRoot."/bin/ms-update";
+	printFile($directoryRoot."/bin/ms-update".$extension,$data);
+	chmod 0775,$directoryRoot."/bin/ms-update".$extension;
 }
 #Creating shell scripts for individual perl scripts
 {
@@ -290,20 +291,6 @@ SCRIPT
 }
 #Creating shell scripts for select model driver functions
 {
-	my $obsoleteList = [
-		"loadmodelfromfile",
-		"loadbiomassfromfile",
-		"printmodelfiles",
-		"logout",
-		"login",
-		"deleteaccount",
-		"importmodel",
-		"createlocaluser",
-		"gapfillmodel",
-		"printmedia",
-		"blastgenomesequences",
-		"createmedia"
-	];
 	my $functionList = [
 		"ms-createuser",
 		"ms-deleteuser",
@@ -316,6 +303,7 @@ SCRIPT
 		"fba-checkgrowth",
 		"fba-singleko",
 		"fba-fva",
+		"fba-minimalmedia",
 		"bc-printmedia",
 		"bc-loadmedia",
 		"mdl-autocomplete",
@@ -332,8 +320,28 @@ SCRIPT
 		"mdl-loadbiomass",
 		"mdl-parsesbml",
 		"mdl-importmodel",
+		"mdl-changedrains",
 		"util-matrixdist"
 	];
+	my $obsoleteList = [
+		"loadmodelfromfile",
+		"loadbiomassfromfile",
+		"printmodelfiles",
+		"logout",
+		"login",
+		"deleteaccount",
+		"importmodel",
+		"createlocaluser",
+		"gapfillmodel",
+		"printmedia",
+		"blastgenomesequences",
+		"createmedia"
+	];
+	for (my $i=0; $i < @{$functionList}; $i++) {
+		my $function = $functionList->[$i];
+		$function =~ s/-//;
+		push(@{$obsoleteList},$function)
+	}
 	foreach my $function (@{$obsoleteList}) {
 		if (-e $directoryRoot."/bin/".$function.$extension) {
 			unlink $directoryRoot."/bin/".$function.$extension;
@@ -407,7 +415,6 @@ if(lc($Config->{Database}->{type}) eq 'sqlite' &&
 #Creating public useraccount
 {	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
-	require ModelSEED::FIGMODEL;
 	my $figmodel = ModelSEED::FIGMODEL->new();
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});

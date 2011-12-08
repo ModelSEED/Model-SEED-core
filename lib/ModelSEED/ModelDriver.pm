@@ -4003,42 +4003,6 @@ sub printdatatables {
 	return "SUCCESS";
 }
 
-sub calcminmedia {
-	my($self,@Data) = @_;
-	if (@Data < 2) {
-        print "Syntax for this command: calcminmedia?(model)\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-	my $mdl = $self->figmodel()->get_model($Data[1]);
-	if (defined($mdl)) {
-		my $result = $mdl->fbaCalculateMinimalMedia();
-		if (defined($result->{essentialNutrients}) && defined($result->{optionalNutrientSets}->[0])) {
-			my $count = @{$result->{essentialNutrients}};
-			print "Essential nutrients (".$count."):";
-			for (my $j=0; $j < @{$result->{essentialNutrients}}; $j++) {
-				if ($j > 0) {
-					print ";";
-				}
-				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{essentialNutrients}->[$j]});
-				print $result->{essentialNutrients}->[$j]."(".$cpd->name().")";
-			}
-			print "\n";
-			for (my $i=0; $i < @{$result->{optionalNutrientSets}}; $i++) {
-				my $count = @{$result->{optionalNutrientSets}->[$i]};
-				print "Optional nutrients ".($i+1)." (".$count."):";
-				for (my $j=0; $j < @{$result->{optionalNutrientSets}->[$i]}; $j++) {
-					if ($j > 0) {
-						print ";";	
-					}
-					my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{optionalNutrientSets}->[$i]->[$j]});
-					print $result->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
-				}
-			}
-			print "\n";
-		}
-	}
-}
-
 sub comparearrays {
 	my($self,@Data) = @_;
 	if (@Data < 2) {
@@ -5409,6 +5373,7 @@ sub fbacheckgrowth {
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
 		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
@@ -5474,6 +5439,7 @@ sub fbasingleko {
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["maxDeletions",0,1,"A number specifying the maximum number of simultaneous knockouts to be simulated. We donot recommend specifying more than 2."],
 		["savetodb",0,0,"A FLAG that indicates that results should be saved to the database if set to '1'."],
@@ -5503,6 +5469,65 @@ sub fbasingleko {
 =CATEGORY
 Flux Balance Analysis Operations
 =DESCRIPTION
+This function utilizes flux balance analysis to calculate a minimal media for the specified model. 
+=EXAMPLE
+./fbaminimalmedia -model iJR904
+=cut
+sub fbaminimalmedia {
+	my($self,@Data) = @_;
+	 my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["numsolutions",0,1,"Indicates the number of alternative minimal media formulations that should be calculated"],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+	],[@Data],"calculates the minimal media for the specified model");
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    my $result = $mdl->fbaCalculateMinimalMedia({
+    	fbaStartParameters => $fbaStartParameters,
+    	numsolutions => $args->{numsolutions}
+    });
+	if (defined($result->{essentialNutrients}) && defined($result->{optionalNutrientSets}->[0])) {
+		my $count = @{$result->{essentialNutrients}};
+		my $output;
+		my $line = "Essential nutrients (".$count."):";
+		for (my $j=0; $j < @{$result->{essentialNutrients}}; $j++) {
+			if ($j > 0) {
+				$line .= ";";
+			}
+			my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{essentialNutrients}->[$j]});
+			$line .= $result->{essentialNutrients}->[$j]."(".$cpd->name().")";
+		}
+		push(@{$output},$line);
+		for (my $i=0; $i < @{$result->{optionalNutrientSets}}; $i++) {
+			my $count = @{$result->{optionalNutrientSets}->[$i]};
+			$line = "Optional nutrients ".($i+1)." (".$count."):";
+			for (my $j=0; $j < @{$result->{optionalNutrientSets}->[$i]}; $j++) {
+				if ($j > 0) {
+					$line .= ";";	
+				}
+				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{optionalNutrientSets}->[$i]->[$j]});
+				$line .= $result->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
+			}
+			push(@{$output},$line);
+		}
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-MinimalMediaAnalysis.out",$output);
+	}
+	if (defined($result->{minimalMedia})) {
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-minimal.media",$result->{minimalMedia}->print());
+	}
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
 This function performs FVA analysis, calculating minimal and maximal flux through the reactions (range of fluxes) consistent with maximal theoretical growth rate.
 =EXAMPLE
 ./fbafva '''-model''' iJR904
@@ -5515,6 +5540,7 @@ sub fbafva {
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained."],
 		["variables",0,"FLUX;UPTAKE","A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]]."],	
 		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
@@ -5659,6 +5685,7 @@ sub fbafvabiomass {
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained."],
 		["variables",0,"FLUX;UPTAKE","A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]]."],	
 		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
@@ -5845,7 +5872,7 @@ sub bcprintmedia {
 		["media",1,undef,"Name of the media formulation to be printed."],
 	],[@Data],"print Model SEED media formulation");
     my $media = $self->figmodel()->database()->get_moose_object("media",{id => $args->{media}});
-	ModelSEED::globals::PRINTOBJECT({data => $media->pack(),filename => $self->ws()->directory().$args->{media}.".media"});
+	ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{media}.".media",$media->print());
 	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
 }
 
@@ -5860,31 +5887,18 @@ This function is used to create or alter a media condition in the Model SEED dat
 sub bcloadmedia {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1,undef,"The name of the media formulation being created or altered."],
-		["filename",0,undef,"The full path and name to access a file specifying the media components. [[Example media file]]."],
-		["compounds",0,undef," As an alternative to specifying a filename, you can specify a ';' delimited list of the compound proposed to be present in the media. Either compound names or cpd##### ids must be supplied."],
-		["public",0,1,"Set directory in which FBA problem output files will be stored."],
+		["media",1,undef,"The name of the media formulation being created or altered."],
+		["public",0,0,"Set directory in which FBA problem output files will be stored."],
 		["owner",0,($self->figmodel()->user()),"Login of the user account who will own this media condition."],
 		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
 	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
-    if (defined($args->{compounds})) {
-    	$args->{compounds} = $self->figmodel()->processIDList({
-			objectType => "compound",
-			delimiter => ";",
-			column => "id",
-			parameters => undef,
-			input => $args->{compounds}
-		});	
+    my $media;
+    if (!-e $self->ws()->directory().$args->{media}) {
+    	ModelSEED::globals::ERROR("Could not find media file ".$self->ws()->directory().$args->{media});
     }
-    my $media = $self->figmodel()->get_media()->create({
-    	id => $args->{name},
-    	filename => $args->{filename},
-		compounds => $args->{compounds},
-		public => $args->{public},
-		owner => $args->{owner},
-		overwrite => $args->{overwrite}
-    });
-	print "Media successfully created!\n";
+    $media = $self->figmodel()->database()->create_moose_object("media",{db => $self->figmodel()->database(),filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})});
+    $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
+    return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
 }
 
 =head
@@ -6135,37 +6149,38 @@ Prints the specified model(s) in SBML format.
 sub mdlprintsbml {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1,undef,"A ',' delimited list of the models in the Model SEED for which SBML files should be printed."],
+		["model",1,undef,"Model for which SBML files should be printed."],
+		["media",0,"Complete","ID of a media condition or media file for which SBML should be printed"],
 	],[@Data],"prints model(s) in SBML format");
-	my $results = $self->figmodel()->processIDList({
+	my $models = $self->figmodel()->processIDList({
 		objectType => "model",
-		delimiter => ",",
+		delimiter => ";",
 		column => "id",
 		parameters => {},
 		input => $args->{"model"}
 	});
+	if ($args->{media} =~ m/\.media$/) {
+		if (!-e $self->ws()->directory().$args->{media}) {
+			ModelSEED::globals::ERROR("Media file ".$self->ws()->directory().$args->{media}." not found");
+		}
+		$args->{media} = ModelSEED::MooseDB::media->new({
+			filename => $args->{media}
+		});
+	}
 	my $message;
-	if (@{$results} == 1 || $args->{usequeue} == 0) {
-		for (my $i=0;$i < @{$results}; $i++) {
-			print "Now processing ".$results->[$i]."\n";
-			my $mdl = $self->figmodel()->get_model($results->[$i]);
-	 		if (!defined($mdl)) {
-	 			ModelSEED::globals::WARNING("Model not valid ".$args->{model});
-	 			$message .= "SBML printing failed for model ".$results->[$i].". Model not valid!\n";
-	 		} else {
-				my $sbml = $mdl->PrintSBMLFile();
-				$self->db()->print_array_to_file($self->ws()->directory().$results->[$i].".xml",$sbml);
-	 			$message .= "SBML printing succeeded for model ".$results->[$i]."!\nFile printed to ".$self->ws()->directory().$results->[$i].".xml"."!";
-	 		}
-		}
-	} else {
-		for (my $i=0; $i < @{$results}; $i++) {
-			$self->figmodel()->mdlprintsbml({
-	    		command => "mdlprintsbml?".$results->[$i],
-	    		user => $self->figmodel()->user().":".$self->ws()->id().":".$self->ws()->path(),
-	    		queue => $args->{queue}
-	    	});
-		}
+	for (my $i=0; $i < @{$models};$i++) {
+		print "Now loading model ".$models->[$i]."\n";
+		my $mdl = $self->figmodel()->get_model($models->[$i]);
+		if (!defined($mdl)) {
+	 		ModelSEED::globals::WARNING("Model not valid ".$args->{model});
+	 		$message .= "SBML printing failed for model ".$models->[$i].". Model not valid!\n";
+	 		next;
+	 	}
+	 	my $sbml = $mdl->PrintSBMLFile({
+	 		media => $args->{media}
+	 	});
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$models->[$i].".xml",$sbml);
+		$message .= "SBML printing succeeded for model ".$models->[$i]."!\nFile printed to ".$self->ws()->directory().$models->[$i].".xml"."!";
 	}
     return $message;
 }
@@ -6342,6 +6357,44 @@ sub mdlloadmodel {
 		autoCompleteMedia => $args->{"autoCompleteMedia"}
 	});
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
+}
+
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function changes the drain fluxes associated with a model.
+=EXAMPLE
+./mdlchangedrains -'''model''' "iJR904" -'''drains''' "cpd15302[c]" -'''inputs''' "cpd15302[c]"
+=cut
+sub mdlchangedrains {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"ID of the model the drains are to be added to"],
+    	["drains",0,undef,"\";\" delimited list of compounds for which drains should be added"],
+    	["inputs",0,undef,"\";\" delimited list of compounds for which inputs should be added"],
+	],[@Data],"change drain fluxes associated with model");
+	if (defined($args->{drains})) {
+		$args->{drains} = ModelSEED::globals::PROCESSIDLIST({
+			input => $args->{drains},
+			validation => "^cpd\\d+\\[*\\w*\\]*\$"
+		});
+	}
+	if (defined($args->{inputs})) {
+		$args->{inputs} = ModelSEED::globals::PROCESSIDLIST({
+			input => $args->{inputs},
+			validation => "^cpd\\d+\\[*\\w*\\]*\$"
+		});
+	}
+	my $model = $self->figmodel()->get_model($args->{model});
+	if (!defined($model)) {
+		ModelSEED::globals::ERROR("Model not valid ".$args->{model});
+	}
+	my $string = $model->changeDrains({
+		drains => $args->{drains},
+		inputs => $args->{inputs},
+	});
+	return "Successfully adjusted the drain fluxes associated with model ".$args->{model}." to ".$string;
 }
 
 =head

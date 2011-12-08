@@ -39,16 +39,18 @@ sub new {
 		geneKO=>[],
 		rxnKO=>[],
 		drnRxn=>[],
+		uptakeLim => {},
 		model=>undef,
 		media=>undef,
 		parameter_files=>["ProductionMFA"],
 		options => {}
 	});
 	return $self->error_message({function => "new",args=>$args}) if (defined($args->{error}));
-	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files"];
+	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files","uptakeLim"];
 	$self->{_geneKO} = $args->{geneKO};
 	$self->{_rxnKO} = $args->{rxnKO};
 	$self->{_drnRxn} = $args->{drnRxn};
+	$self->{_uptakeLim} = $args->{uptakeLim};
 	$self->{_model} = $args->{model};
 	$self->{_media} = $args->{media};
 	$self->{_parameter_files} = $args->{parameter_files};
@@ -140,6 +142,18 @@ sub FBAStartParametersFromArguments {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["arguments"],{});
 	my $fbaStartParameters;
+	if (defined($args->{arguments}->{uptakeLim})) {
+		$args->{arguments}->{uptakeLim} = [split(/[;,]/,$args->{arguments}->{uptakeLim})];
+		my $array = $args->{arguments}->{uptakeLim};
+		$args->{arguments}->{uptakeLim} = {};
+		for (my $i=0; $i < @{$array}; $i++) {
+			my $subarray = [split(/[:]/,$array->[$i])];
+			if (defined($subarray->[1]) && $subarray->[0] =~ m/[CNOPS]/) {
+				$args->{arguments}->{uptakeLim}->{$subarray->[0]} = $subarray->[1];
+			}
+		}
+		$fbaStartParameters->{uptakeLim} = $args->{arguments}->{uptakeLim};
+	}
 	if (defined($args->{arguments}->{rxnKO})) {
 		if (ref($args->{arguments}->{rxnKO}) ne "ARRAY") {
 			$fbaStartParameters->{rxnKO} = [split(/[;,]/,$args->{arguments}->{rxnKO})];
@@ -326,6 +340,7 @@ sub printJobParametersToFile {
 	$self->setDrainRxnParameters();
 	$self->setConstrainParameters();
 	$self->setMediaParameters();
+	$self->setUptakeLimitParameters();
 	$self->setOptionParameters();
 	$self->parameters()->{"output folder"} = $self->filename()."/";
 	$self->parameters()->{"Network output location"} = "/scratch/" if ($args->{printToScratch} == 1);
@@ -634,6 +649,27 @@ sub setRxnKOParameters {
 	return {success=>1,msg=>undef,error=>undef};
 }
 
+=head3 setUptakeLimitParameters
+Definition:
+	{success,msg,error} = FIGMODELfba->setUptakeLimitParameters();
+Description:
+	Creates the parameters setting the uptake limits
+=cut
+sub setUptakeLimitParameters {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{});
+	if (defined($self->{_uptakeLim}) && keys(%{$self->{_uptakeLim}}) > 0) {
+		$self->parameters()->{"uptake limits"} = "";
+		foreach my $key (keys(%{$self->{_uptakeLim}})) {
+			if (length($self->parameters()->{"uptake limits"}) > 0) {
+				$self->parameters()->{"uptake limits"} .= ";";
+			}
+			$self->parameters()->{"uptake limits"} = $key.":".$self->{_uptakeLim}->{$key};
+		}
+	}
+	return {success=>1,msg=>undef,error=>undef};
+}
+
 =head3 setGeneKOParameters
 Definition:
 	{success,msg,error} = FIGMODELfba->setGeneKOParameters();
@@ -659,9 +695,11 @@ Description:
 sub setDrainRxnParameters {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->error_message({function => "setDrainRxnParameters",args=>$args}) if (defined($args->{error}));
+	my $exchange = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
+	if (defined($self->model()) && defined($self->modelObj())) {
+		$exchange = $self->modelObj()->drains();
+	}
 	if (defined($self->{_drnRxn}) && @{$self->{_drnRxn}} > 0) {
-		my $exchange = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
 		if (defined($self->parameters()->{"exchange species"})) {
 			$exchange = $self->parameters()->{"exchange species"};
 		}
@@ -681,8 +719,8 @@ sub setDrainRxnParameters {
 				}
 			}
 		}
-		$self->set_parameters({"exchange species"=>$exchange});
 	}
+	$self->set_parameters({"exchange species"=>$exchange});
 	return {success=>1,msg=>undef,error=>undef};
 }
 
@@ -1013,7 +1051,7 @@ sub runFBA {
 	$self->createProblemDirectory({parameterFile => $args->{parameterFile},printToScratch => $args->{printToScratch}});
 	my $ParameterFileList = $self->parameter_files();
 	for (my $i=0; $i < @{$ParameterFileList}; $i++) {
-		if ($ParameterFileList->[$i] =~ m/^\// || $ParameterFileList->[$i] =~ m/^[A-Z]:/) {
+		if ($ParameterFileList->[$i] =~ m/^\// || $ParameterFileList->[$i] =~ m/^[A-Za-z]:/) {
 			$commandLine->{files} .= " parameterfile \"".$ParameterFileList->[$i]."\"";
 		} else {
 			$commandLine->{files} .= " parameterfile \"../Parameters/".$ParameterFileList->[$i].".txt\"";
@@ -1627,9 +1665,13 @@ sub parseCombinatorialDeletionStudy {
 =cut
 sub setMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{numberOfFormulations => 1});
-	$self->set_parameters({"determine minimal required media" => 1,"Recursive MILP solution limit" => $args->{numberOfFormulations}});
-	$self->parsingFunction("parseMinimalMediaResults");
+	$args = ModelSEED::globals::ARGS($args,[],{numsolutions => 1});
+	$self->set_parameters({
+		"determine minimal required media" => 1,
+		"MFASolver"=>"CPLEX",
+		"Recursive MILP solution limit" => $args->{numsolutions}
+	});
+	$self->parsingFunction("parseMinimalMediaStudy");
 	return {};
 }
 
@@ -1643,22 +1685,46 @@ sub setMinimalMediaStudy {
 =cut
 sub parseMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
+	$args = ModelSEED::globals::ARGS($args,[],{filename=>$self->filename()});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	$self->filename($args->{filename});
 	if (-e $self->directory()."/MFAOutput/MinimalMediaResults.txt") {
-		my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/MFAOutput/MinimalMediaResults.txt","\t");
+		my $media = $self->figmodel()->database()->create_moose_object("media",{
+			id => $self->model()."-minimal",
+			owner => ModelSEED::globals::GETFIGMODEL()->user(),
+			modificationDate => time(),
+			creationDate => time(),
+			aliases => "",
+			aerobic => 0,
+			public => 1,
+			mediaCompounds => []		
+		});
+		my $data = ModelSEED::globals::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
 		my $result;
 		push(@{$result->{essentialNutrients}},split(/;/,$data->[1]));
+		my $mediaCpdList = [@{$result->{essentialNutrients}}];
 		for (my $i=3; $i < @{$data}; $i++) {
 			if ($data->[$i] !~ m/^Dead/) {
 				my $temp;
 				push(@{$temp},split(/;/,$data->[$i]));
+				push(@{$mediaCpdList},@{$temp});
 				push(@{$result->{optionalNutrientSets}},$temp);
 			} else {
 				last;
 			}	
+		}	
+		for (my $i=0; $i < @{$mediaCpdList}; $i++) {
+			my $mediacpd = $self->figmodel()->database()->create_moose_object("mediacpd",{
+				MEDIA => $self->model()."-minimal",
+				entity => $mediaCpdList->[$i],
+				type => "COMPOUND",
+				concentration => 0.001,
+				maxFlux => 10000,
+				minFlux => -10000
+			});
+			push(@{$media->mediaCompounds()},$mediacpd);
 		}
+		$result->{minimalMedia} = $media;
 		return $result;
 	}
 	return {error => "parseMinimalMediaStudy:could not find specified output directory"};

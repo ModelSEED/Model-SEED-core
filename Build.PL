@@ -20,6 +20,7 @@ my $builder = Module::Build->new(
         "Config::Tiny" => 2.14,
         "Cwd" => 3.31,
         "DBI" => 1.616,
+        "DBD::SQLite" => 0,
         "DB_File" => 1.824,
         "Data::Dumper" => 2.131,
         "Digest::MD5" => 2.39,
