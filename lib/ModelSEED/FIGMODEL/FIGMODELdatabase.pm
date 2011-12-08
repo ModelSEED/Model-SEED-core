@@ -81,7 +81,7 @@ sub _cache {
     return $self->{_cache} if(defined($self->{_cache}));
     my $settings = ($self->config('CacheSettings')) ?
         $self->config('CacheSettings') : { driver => 'RawMemory', global => 1 };
-    ModelSEED::globals::ERROR("Cannot call _cache right now. The feature is broken!");
+    ModelSEED::utilities::ERROR("Cannot call _cache right now. The feature is broken!");
     return $self->{_cache} = CHI->new(%$settings);
 }
 
@@ -127,9 +127,9 @@ sub get_object_manager {
 	#Checking on the status of the database and returned undefined if the status is zero
     my $config = $self->config("PPO_tbl_".$type);
 	if (!defined($config)) { 
-        ModelSEED::globals::ERROR("Unable to find database configuration for $type");
+        ModelSEED::utilities::ERROR("Unable to find database configuration for $type");
 	} elsif($config->{status}->[0] == 0) {
-        ModelSEED::globals::ERROR("Database for $type has status=0, disabled!");
+        ModelSEED::utilities::ERROR("Database for $type has status=0, disabled!");
     } 
     my $db_type = $config->{type}->[0];
 	#Checking if a database connection exists for the desired object type
@@ -155,7 +155,7 @@ sub get_object_manager {
                 my $temp = DBMaster->new(-database => $config->{host}->[0], -backend => 'SQLite');
                 $self->{_dbhandles}->{$config->{name}->[0]} = $temp;
             } else {
-                ModelSEED::globals::ERROR("Unable to find database configuration for " . $config->{name}->[0] . " " . $config->{table}->[0]);
+                ModelSEED::utilities::ERROR("Unable to find database configuration for " . $config->{name}->[0] . " " . $config->{table}->[0]);
             }
         } elsif ($db_type eq 'FIGMODELTable') {
             my $params = {
@@ -173,7 +173,7 @@ sub get_object_manager {
                 $self->{_dbhandles}->{$config->{name}->[0]} = ModelSEED::FIGMODEL::FIGMODELTable->new($params);
             }
         } else {
-            ModelSEED::globals::ERROR("Unknown database type $db_type for object type ".$config->{name}->[0]);
+            ModelSEED::utilities::ERROR("Unknown database type $db_type for object type ".$config->{name}->[0]);
         }
 	}
     if($db_type eq "PPO") {
@@ -342,7 +342,7 @@ sub get_moose_object {
 Definition:
 	MooseDB::object = FIGMODELdatabase->create_moose_object(string::type,{
 		db => $self->figmodel()->database()
-		filedata => ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{media})
+		filedata => ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{media})
 	});
 Description:
 	Creates moose object using the object's constructor.
@@ -582,7 +582,7 @@ sub load_multiple_column_file {
 	my ($self,$Filename,$Delimiter) = @_;
 	my $DataArrayRefArrayRef = [];
 	open (my $fh, "<", $Filename) ||
-        ModelSEED::globals::ERROR("Unable to open File $Filename: $@");
+        ModelSEED::utilities::ERROR("Unable to open File $Filename: $@");
     while (my $Line = <$fh>) {
         chomp($Line);
 		my $Data = [$Line];

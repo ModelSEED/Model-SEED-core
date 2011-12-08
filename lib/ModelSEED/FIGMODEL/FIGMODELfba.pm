@@ -372,7 +372,7 @@ sub dataFilename {
 		filename => undef
 	});
 	if (!defined($self->{_dataFilename}->{$args->{type}})) {
-		ModelSEED::globals::ERROR("Type not recognized: ".$args->{type});
+		ModelSEED::utilities::ERROR("Type not recognized: ".$args->{type});
 	}
 	if (defined($args->{filename})) {
 		$self->{_dataFilename}->{$args->{type}} = $args->{filename};
@@ -395,7 +395,7 @@ sub printMediaFiles {
     return unless(@{$args->{printList}});
     my $first = $args->{printList}->[0];
     my $mediaObj = $self->figmodel()->get_media($first);
-    ModelSEED::globals::ERROR("Could not find media object for $first") if (!defined($mediaObj));
+    ModelSEED::utilities::ERROR("Could not find media object for $first") if (!defined($mediaObj));
     $mediaObj->printDatabaseTable({
         filename => $self->directory()."/media.tbl",
         printList => $args->{printList}
@@ -1403,7 +1403,7 @@ sub setTightBounds {
 		$self->set_parameters({"maximize single objective"=>0});
 		if (defined($self->options()->{noGrowth}) && $self->model() ne "Complete") {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
-			ModelSEED::globals::ERROR("Could not find model".$self->model()) if (!defined($mdl));
+			ModelSEED::utilities::ERROR("Could not find model".$self->model()) if (!defined($mdl));
 			$self->add_reaction_ko([$mdl->biomassReaction()]);
 		}
 	}
@@ -1608,6 +1608,7 @@ sub parseCompleteGapfillingStudy {
 	}
 	my $data = $self->figmodel()->database()->load_multiple_column_file($args->{solutionFile},"\t");
 	my $result;
+	$result->{gapfillReportFile} = $data;
 	for (my $i=1; $i < @{$data}; $i++) {
 		$result->{$data->[$i]->[0]}->{gapfilled} = undef;
 		$result->{$data->[$i]->[0]}->{repaired} = undef;
@@ -1665,7 +1666,7 @@ sub parseCombinatorialDeletionStudy {
 =cut
 sub setMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{numsolutions => 1});
+	$args = ModelSEED::utilities::ARGS($args,[],{numsolutions => 1});
 	$self->set_parameters({
 		"determine minimal required media" => 1,
 		"MFASolver"=>"CPLEX",
@@ -1685,7 +1686,7 @@ sub setMinimalMediaStudy {
 =cut
 sub parseMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{filename=>$self->filename()});
+	$args = ModelSEED::utilities::ARGS($args,[],{filename=>$self->filename()});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	$self->filename($args->{filename});
 	if (-e $self->directory()."/MFAOutput/MinimalMediaResults.txt") {
@@ -1699,7 +1700,7 @@ sub parseMinimalMediaStudy {
 			public => 1,
 			mediaCompounds => []		
 		});
-		my $data = ModelSEED::globals::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
+		my $data = ModelSEED::utilities::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
 		my $result;
 		push(@{$result->{essentialNutrients}},split(/;/,$data->[1]));
 		my $mediaCpdList = [@{$result->{essentialNutrients}}];

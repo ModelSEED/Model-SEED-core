@@ -144,7 +144,7 @@ sub process_arguments {
     		}
     	}
     }
-	ModelSEED::globals::ERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
+	ModelSEED::utilities::ERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
     if (defined($optionalArguments)) {
     	foreach my $argument (keys(%{$optionalArguments})) {
     		if (!defined($args->{$argument})) {
@@ -210,7 +210,7 @@ sub blast_sequence {
 	my($self,$args) = @_;
 	$args = $self->process_arguments($args,["sequences","genomes"],{});
 	if (@{$args->{genomes}} > 10) {
-		ModelSEED::globals::ERROR("This is not the appropriate function to use for blasting > 10 genomes.");
+		ModelSEED::utilities::ERROR("This is not the appropriate function to use for blasting > 10 genomes.");
 	}
 	my $dbname = join(".",sort(@{$args->{genomes}}));
 	if (!-e $self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta") {
@@ -363,13 +363,13 @@ sub getRastGenomeData {
 	}
 	#Bailing if we still haven't found the genome
 	if (!defined($directory)) {
-		ModelSEED::globals::WARNING("Could not find data for genome".$args->{genome});
+		ModelSEED::utilities::WARNING("Could not find data for genome".$args->{genome});
 		return undef;
 	}
 	#Checking for rights
 	if ($output->{source} =~ m/^MGRAST/ || $output->{source} =~ m/^RAST/ || $output->{source} =~ m/^TESTRAST/) {
 		if ($figmodel->user() eq "PUBLIC") {
-			ModelSEED::globals::WARNING("Must be authenticated to access model");
+			ModelSEED::utilities::WARNING("Must be authenticated to access model");
 			return undef;
 		} elsif (!defined($figmodel->config("super users")->{$figmodel->user()})) {
 			my $haveRight = 0;
@@ -389,7 +389,7 @@ sub getRastGenomeData {
 				}
 			}
 			if ($haveRight == 0) {
-				ModelSEED::globals::WARNING("Do not have rights to requested genome");
+				ModelSEED::utilities::WARNING("Do not have rights to requested genome");
 				return undef;
 			}
 		}
@@ -411,7 +411,7 @@ sub getRastGenomeData {
 	require FIGV;
 	my $figv = new FIGV($directory);	
 	if (!defined($figv)) {
-		ModelSEED::globals::WARNING("Could not create FIGV object for RAST genome:".$args->{genome});
+		ModelSEED::utilities::WARNING("Could not create FIGV object for RAST genome:".$args->{genome});
 		return undef;
 	}
 	if ($args->{getDNASequence} == 1) {

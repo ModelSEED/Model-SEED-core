@@ -97,7 +97,7 @@ sub copyReaction {
 		newid=>undef,
 		owner=> defined($self->ppo()) ? $self->ppo()->owner() : 'master',
 	});
-	ModelSEED::globals::ERROR("Cannot call copyReaction on generic reaction") if (!defined($self->id()));
+	ModelSEED::utilities::ERROR("Cannot call copyReaction on generic reaction") if (!defined($self->id()));
 	#Issuing new ID
 	if (!defined($args->{newid})) {
 		if ($self->id() =~ m/rxn/) {
@@ -168,7 +168,7 @@ sub file {
 	delete $self->{_file} if ($args->{clear} == 1);
 	if (!defined($self->{_file})) {
 		$self->{_file} = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{filename},delimiter=>"\t",-load => 1});
-		ModelSEED::globals::ERROR("could not load file") if (!defined($self->{_file}));
+		ModelSEED::utilities::ERROR("could not load file") if (!defined($self->{_file}));
 	}
 	return $self->{_file};
 }
@@ -183,7 +183,7 @@ sub print_file_from_ppo {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		filename => $self->filename()
 	});
-	ModelSEED::globals::ERROR("Cannot obtain ppo data for reaction") if (!defined($self->ppo()));
+	ModelSEED::utilities::ERROR("Cannot obtain ppo data for reaction") if (!defined($self->ppo()));
 	my $data = {
 		DATABASE => [$self->ppo()->id()],
 		EQUATION => [$self->ppo()->equation()],
@@ -221,7 +221,7 @@ sub substrates_from_equation {
 	$args = $self->figmodel()->process_arguments($args,[],{equation => undef});
 	my $Equation = $args->{equation};
 	if (!defined($Equation)) {
-		ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
+		ModelSEED::utilities::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
 		$Equation = $self->ppo()->equation();
 	}
 	my $Reactants;
@@ -265,7 +265,7 @@ Description:
 =cut
 sub updateReactionData {
 	my ($self) = @_;
-	ModelSEED::globals::ERROR("could not find ppo object") if (!defined($self->ppo()));
+	ModelSEED::utilities::ERROR("could not find ppo object") if (!defined($self->ppo()));
 	my $data = $self->file({clear=>1});#Reloading the file data for the compound, which now has the updated data
 	my $translations = {EQUATION => "equation",DELTAG => "deltaG",DELTAGERR => "deltaGErr","THERMODYNAMIC REVERSIBILITY" => "thermoReversibility",STATUS => "status",TRANSATOMS => "transportedAtoms"};#Translating MFAToolkit file headings into PPO headings
 	foreach my $key (keys(%{$translations})) {#Loading file data into the PPO
@@ -392,7 +392,7 @@ sub processReactionWithMFAToolkit {
 #			}
 #		}
 #	} else {
-#		ModelSEED::globals::ERROR("could not find output reaction file");	
+#		ModelSEED::utilities::ERROR("could not find output reaction file");	
 #	}
 #	$self->figmodel()->clearing_output($filename,"DBProcessing-".$self->id()."-".$filename.".log");
 #	return {};
@@ -674,7 +674,7 @@ sub createReactionCode {
 
 	#Checking for reactions that have no products, no reactants, or neither products nor reactants
 	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
-		ModelSEED::globals::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
+		ModelSEED::utilities::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
 		return {success => 0,error => "Reaction either has no reactants or no products:".$OriginalEquation};
 	}
 	#Ready to start parsing equation
@@ -1356,7 +1356,7 @@ Definition:
 =cut
 sub determine_coupled_reactions {
 	my($self,$args) = @_;
-	$args =ModelSEED::globals::ARGS($args,[],{
+	$args =ModelSEED::utilities::ARGS($args,[],{
 		variables => ["FLUX","UPTAKE"],
 		fbaStartParameters => {
 			media => "Complete",
@@ -1366,7 +1366,7 @@ sub determine_coupled_reactions {
 	   	saveFVAResults=>1
 	});
 	if (!defined($self->ppo())) {
-		ModelSEED::globals::ERROR("Could not obtain PPO object for reaction ".$self->id());
+		ModelSEED::utilities::ERROR("Could not obtain PPO object for reaction ".$self->id());
 	}
 	my $fba = $self->figmodel()->fba($args->{fbaStartParameters});
 	$fba->model("Complete:".$self->id());
@@ -1406,7 +1406,7 @@ sub determine_coupled_reactions {
 	$results->{arguments} = $args;
 	$results->{fbaObj} = $fba;
 	$fba->clearOutput();
-	ModelSEED::globals::ERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
+	ModelSEED::utilities::ERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
 	#Loading data into database if requested
 	if ($args->{saveFVAResults} == 1 && $self->id() =~ m/bio\d+/) {
 		my $EssentialReactions;

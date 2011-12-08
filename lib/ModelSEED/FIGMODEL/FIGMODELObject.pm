@@ -28,7 +28,7 @@ sub new {
 	my ($class,$args) = @_;
 	my $self = {};
 	bless $self;
-	$args = ModelSEED::globals::ARGS($args,["filename"],{
+	$args = ModelSEED::utilities::ARGS($args,["filename"],{
 		delimiter => "\t",
 		headings => [],
 		-load => 0,
@@ -60,10 +60,10 @@ Description:
 =cut
 sub load {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{delimiter => $self->delimiter(),filename => $self->filename()});
+	$args = ModelSEED::utilities::ARGS($args,[],{delimiter => $self->delimiter(),filename => $self->filename()});
     $self->filename($args->{filename});
 	$self->delimiter($args->{delimiter});
-    open (INPUT, "<".$self->filename()) || ModelSEED::globals::ERROR("Could not open: ".$self->filename()." ".$@);
+    open (INPUT, "<".$self->filename()) || ModelSEED::utilities::ERROR("Could not open: ".$self->filename()." ".$@);
 	my $headings;
 	while (my $Line = <INPUT>) {
 		chomp($Line);
@@ -89,7 +89,7 @@ Description:
 
 sub save {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{headings => $self->headings(),delimiter => $self->delimiter(),filename => $self->filename()});
+	$args = ModelSEED::utilities::ARGS($args,[],{headings => $self->headings(),delimiter => $self->delimiter(),filename => $self->filename()});
 	$self->filename($args->{filename});
 	$self->delimiter($args->{delimiter});
 	$self->headings($args->{headings});

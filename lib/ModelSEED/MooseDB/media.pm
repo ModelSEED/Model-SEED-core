@@ -31,7 +31,7 @@ has 'mediaCompounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MooseDB::mediac
 
 sub BUILD {
     my ($self,$params) = @_;
-	$params = ModelSEED::globals::ARGS($params,[],{});
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
 around 'BUILDARGS' => sub {
@@ -72,7 +72,7 @@ sub print {
 
 sub parse {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["filedata"],{});
+	$args = ModelSEED::utilities::ARGS($args,["filedata"],{});
 	for (my $i=0; $i < @{$args->{filedata}}; $i++) {
 		my $array = [split(/\t/,$args->{filedata}->[$i])];
 		my $function = $array->[0];
@@ -99,11 +99,11 @@ sub parse {
 
 sub syncWithPPODB {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{overwrite => 0});
+	$args = ModelSEED::utilities::ARGS($args,[],{overwrite => 0});
 	my $object = $self->db()->sudo_get_object($self->_type(),{id => $self->id()});
 	if (defined($object)) {
 		if ($args->{overwrite} == 0 || $object->owner() ne $self->owner()) {
-			ModelSEED::globals::ERROR("Media exists in database. Cannot update without ownership or specifying overwrite.");
+			ModelSEED::utilities::ERROR("Media exists in database. Cannot update without ownership or specifying overwrite.");
 		}
 		$object->modificationDate($self->modificationDate());
 		$object->creationDate($self->creationDate());

@@ -1,45 +1,37 @@
+#!/usr/bin/perl -w
+########################################################################
+# MEDIA OBJECT: An object that manages all access to the media object
+# Author: Christopher Henry
+# Author email: chenry@mcs.anl.gov
+# Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
+# Date of module creation: 11/6/2011
+########################################################################
 use strict;
-package ModelSEED::FIGMODEL::FIGMODELmedia;
-use Scalar::Util qw(weaken);
-use Carp qw(cluck);
-use Data::Dumper;
+use warnings;
+use File::Temp qw(tempfile);
+use File::Path;
+use File::Copy::Recursive;
+use ModelSEED::globals;
 
-=head1 FIGMODELmedia object
-=head2 Introduction
-Module for holding media related functions
-=head2 Core Object Methods
+package ModelSEED::FIGMODEL::media;
 
-=head3 new
-Definition:
-	FIGMODELmedia = FIGMODELmedia->new({figmodel => FIGMODEL:parent figmodel object,id => string:media id});
-Description:
-	This is the constructor for the FIGMODELmedia object.
-=cut
-sub new {
-	my ($class,$args) = @_;
-	#Must manualy check for figmodel argument since figmodel is needed for automated checking
-	if (!defined($args->{figmodel})) {
-		ModelSEED::utilities::WARNING("Figmodel must be defined to create a media object");
-		return undef;
-	}
-	my $self = {_figmodel => $args->{figmodel}};
-    weaken($self->{_figmodel});
-	bless $self;
-	if (defined($args->{id})) {
-		$self->{_id} = $args->{id};
-		my $medias = $self->figmodel()->database()->get_object_hash({
-			type => "media",
-			attribute => "id",
-			useCache => 1
-		});
-		if (!defined($medias->{$self->{_id}})) {
-			ModelSEED::utilities::WARNING("Could not find media in database:".$args->{id});
-			return undef;
-		}
-		$self->{_ppo} = $medias->{$self->{_id}}->[0];
-	}
-	return $self;
+use Moose;
+use Moose::Util::TypeConstraints;
+use namespace::autoclean;
+
+extends 'ModelSEED::MooseDB::media' #So access to all database content comes through this subclass
+
+has 'id' => (is => 'ro', isa => 'Str', required => 1);
+has 'owner' => (is => 'ro', isa => 'Str', required => 1);
+
+sub BUILD {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
+
+
+
+
 =head3 create
 Definition:
 	FIGMODELmedia = FIGMODELmedia->create({
@@ -100,66 +92,7 @@ sub create {
 	return $self;
 }
 
-=head3 figmodel
-Definition:
-	FIGMODEL = FIGMODELmedia->figmodel();
-Description:
-	Returns the figmodel object
-=cut
-sub figmodel {
-	my ($self) = @_;
-	return $self->{_figmodel};
-}
 
-=head3 id
-Definition:
-	string:compound ID = FIGMODELmedia->id();
-Description:
-	Returns the reaction ID
-=cut
-sub id {
-	my ($self) = @_;
-	return $self->{_id};
-}
-
-=head3 ppo
-Definition:
-	PPOmedia:media object = FIGMODELmedia->ppo();
-Description:
-	Returns the media ppo object
-=cut
-sub ppo {
-	my ($self,$inppo) = @_;
-	if (defined($inppo)) {
-		$self->{_ppo} = $inppo;
-	}
-	if (!defined($self->{_ppo})) {
-		$self->{_ppo} = $self->figmodel()->database()->get_object("media",{id => $self->id()});
-	}
-	return $self->{_ppo};
-}
-=head3 directory
-Definition:
-	string = FIGMODELmedia->directory();
-Description:
-	Returns directory for media files
-=cut
-sub directory {
-	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->figmodel()->config("Media directory")->[0];
-}
-=head3 filename
-Definition:
-	string = FIGMODELmedia->filename();
-Description:
-	Returns filename for media file
-=cut
-sub filename {
-	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->directory().$self->id().".txt";
-}
 =head3 loadCompoundsFromFile
 Definition:
 	Output = FIGMODELmedia->loadCompoundsFromFile({clear => 0/1});
