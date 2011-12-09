@@ -3,6 +3,8 @@ use MooseX::Role::Parameterized;
 use Moose::Util::TypeConstraints;
 use Scalar::Util;
 use ModelSEED::Role::DoNotStore;
+use Data::Dumper;
+use Try::Tiny;
 
 parameter 'rose_class' => ( isa => 'Str', required => 1 );
 # This is a hash of string => Role object where string
@@ -27,14 +29,15 @@ role {
     # Create attribute _rdbo that contains rose object 
     has '_rdbo' => (
         is => 'rw', isa => $rose_class, lazy => 1, builder => '_buildRDBO',
-        handles => [ qw( db dbh delete DESTROY error init_db _init_db
+        handles => [ qw( dbh delete DESTROY error init_db _init_db
             insert load not_found save update) ],
         traits => [ 'DoNotStore' ],
     );
+    has 'db' => ( is => 'rw', isa => 'ModelSEED::DB' );
     # Construct Rose::DB::Object if not provided
     my $_buildRDBO = sub {
         my $self = shift;
-        return $rose_class->new();
+        return $rose_class->new(db => $self->db);
     };
     method '_buildRDBO' => $_buildRDBO;
     # Allow builder to accept rose_class object
@@ -54,12 +57,13 @@ role {
         foreach my $attr ($self->meta->get_all_attributes) {
             unless($attr->does('DoNotStore')) {
                 my $name = $attr->name;
+                next if( 0 != grep /^$name/, qw(dbh db) ); 
                 $self->_rdbo->$name($self->$name);
             }
         }
     };
     before insert => $pushAttributesDown;
-    before load   => $pushAttributesDown;
+    #before load   => $pushAttributesDown;
     before save   => $pushAttributesDown;
     # After load, copy data over from _rdbo
     my $popAttributesUp = sub {
@@ -68,7 +72,10 @@ role {
         foreach my $attr ($self->meta->get_all_attributes) {
             unless($attr->does('DoNotStore')) {
                 my $name = $attr->name;
-                $self->$name($self->_rdbo->$name);
+                my $val;
+                $val = $self->_rdbo->$name;
+                warn Dumper($val) if($name eq 'id' && ref($val));
+                $self->$name($val);
             }
         }
     };
@@ -88,9 +95,14 @@ role {
         } else {
             my $required = ($col->not_null) ? 1 : 0;
             my $type = _getType($col, $rose_class);
-            has $name => ( is => 'rw', isa => $type );
+            has $name => ( is => 'rw', isa => $type,
+                lazy => 1, builder => '_defaultAttrBuilder');
         }
     }
+    method '_defaultAttrBuilder' => sub {
+        my $self = shift;
+        $self->load;
+    };
     # Apply roles now
     with @$roles if(@$roles);
 };

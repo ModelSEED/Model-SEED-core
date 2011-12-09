@@ -4,14 +4,17 @@ use Data::Dumper;
 use Try::Tiny;
 
 use ModelSEED::FIGMODEL;
-use ModelSEED::Biochemistry;
-use ModelSEED::Compound;
-use ModelSEED::DB;
+use ModelSEED::ObjectManager;
+
+my $om = ModelSEED::ObjectManager->new(
+    database => '/home/devoid/test.db',
+    driver   => 'SQLite',
+);
+    
 
 my $fm = ModelSEED::FIGMODEL->new();
 my $db = $fm->database();
-my $rdb = ModelSEED::DB->new();
-
+my $rdb = $om->db;
 $rdb->begin_work;
 
 sub hashRename {
@@ -20,7 +23,7 @@ sub hashRename {
     delete $hash->{$old};
 }
 # do one biochemistry
-my $bio = ModelSEED::Biochemistry->new(db => $rdb);
+my $bio = $om->create_biochemistry();
 
 # do compounds
 {
@@ -46,14 +49,15 @@ my $bio = ModelSEED::Biochemistry->new(db => $rdb);
         $hash->{abbreviation} = substr($hash->{abbreviation}, 0, 32);
         # convert unix time to DateTime object
         $hash->{modDate} = DateTime->from_epoch(epoch => $hash->{modDate});
-        $hash->{db} = $rdb;
+        #$hash->{db} = $rdb;
+        my $cpd;
         try {
-            my $cpd = ModelSEED::Compound->new($hash);
+            $cpd = $om->create_compound($hash);
             $cpd->save();
+            push(@{$bio->compounds}, $cpd);
         } catch {
-            warn "Couldn't copy over ". $hash->{id} . "\n";
+            warn "Couldn't copy over ". $hash->{id} . ": $_\n";
         };
-        push(@{$bio->compounds}, $cpd);
     }
 }
 # do reactions

@@ -33,13 +33,13 @@ __PACKAGE__->meta->setup(
         media => {
             map_class  => 'ModelSEED::DB::BiochemistryMedia',
             map_from   => 'biochemistry_obj',
-            map_to     => 'compound_obj',
+            map_to     => 'media_obj',
             type       => 'many to many',
         },
         reactions => {
             map_class  => 'ModelSEED::DB::BiochemistryReaction',
             map_from   => 'biochemistry_obj',
-            map_to     => 'compound_obj',
+            map_to     => 'reaction_obj',
             type       => 'many to many',
         },
         reactionSet => {

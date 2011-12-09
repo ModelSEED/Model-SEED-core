@@ -32,7 +32,7 @@ sub _buildRDB {
     foreach my $param (qw(driver database host username server_time_zone)) {
         $params->{$param} = $self->$param;
     }
-    return ModelSEED::DB->new($params);
+    return ModelSEED::DB->new(%$params);
 }
 
 sub get_object {

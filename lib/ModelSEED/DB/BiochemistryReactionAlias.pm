@@ -5,7 +5,7 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'biochemistry_reaction_aliass',
+    table   => 'biochemistry_reaction_alias',
 
     columns => [
         biochemistry => { type => 'character', length => 36, not_null => 1 },
