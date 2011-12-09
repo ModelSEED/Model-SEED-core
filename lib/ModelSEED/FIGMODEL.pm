@@ -100,6 +100,7 @@ sub new {
 	$self->{_configSettings} = \@figmodelConfigFiles;
 	#Loading the FIGMODELConfig files
 	for (my $k=0;$k < @figmodelConfigFiles; $k++) {
+		print $figmodelConfigFiles[$k]."\n";
 		$figmodelConfigFiles[$k] =~ s/^\/c\//C:\//;
 		if (ref($figmodelConfigFiles[$k]) eq 'HASH') {
 			my $hash_config = $figmodelConfigFiles[$k];
@@ -121,6 +122,7 @@ sub new {
 	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($db_config, $self);
 	$self->{"_figmodelweb"}->[0] = ModelSEED::FIGMODEL::FIGMODELweb->new($self);
 	#Authenticating the user
+	print $self->config("PPO_tbl_user")->{host}->[0]."\n";
 	if (defined($userObj)) {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
