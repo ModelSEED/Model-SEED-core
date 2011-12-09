@@ -426,5 +426,26 @@ sub replacesCompound {
     return 1;
 }
 
+sub atoms {
+    my $self=shift;
+    return {} if !defined($self->ppo()); #some compounds in equations no longer exist in database?!
+    my $formula=$self->ppo()->formula();
+    #special case of electron
+    return {$self->id()=>1} if $self->id() eq "cpd12713";
+    return {'noformula'=>1} if !$formula || $formula eq 'noformula';
 
+    my @atoms = ($formula =~ /(\D[a-z]?\d*)/g);
+    my %atomKey=();    
+    foreach my $a (@atoms){
+	my @stoich=($a =~ /(\D[a-z]?)(\d*)/);
+	$stoich[1]=1 if $stoich[1] eq '';
+	$atomKey{$stoich[0]}+=$stoich[1];
+    }
+    return \%atomKey;
+}
+
+sub charge {
+    my $self=shift;
+    return $self->ppo()->charge();
+}
 1;
