@@ -6336,7 +6336,7 @@ sub mdlloadmodel {
 	my($self,@Data) = @_;
 	my $args = $self->check([
 		["name",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
-    	["genome",1,undef,"The SEED genome ID associated with the model to be loaded."],
+    	["genome",0,undef,"The SEED genome ID associated with the model to be loaded."],
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
     	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
     	["owner",0,$self->figmodel()->user(),"The login name of the user that should own the loaded model"],
