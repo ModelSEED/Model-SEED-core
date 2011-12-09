@@ -96,6 +96,16 @@ sub ERROR {
     $message = "\"\"$message\"\"";
 	Carp::confess($message);
 }
+=head3 USEERROR
+Definition:
+	void ModelSEED::utilities::USEERROR();
+Description:	
+=cut
+sub USEERROR {	
+	my ($message) = @_;
+    $message = "\"\"$message\"\"";
+	die;
+}
 
 =head3 WARNING
 Definition:

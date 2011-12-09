@@ -17,8 +17,8 @@ my $mss = MSSeedSupportClient->new();
     ok defined($usrdata->{username}), "User account not found or authentication failed!";
     $usrdata = $mss->build_primers({
     	genome => "224308.1",
-    	start => "100",
-    	stop => "150",
+    	start => "3317087",
+    	stop => "3318652",
     	username => "reviewer",
     	password => "reviewer"
     });
@@ -38,7 +38,7 @@ my $mss = MSSeedSupportClient->new();
     	username => "reviewer",
     	password => "reviewer"
     });
-    ok defined(@{$usrdata->{features}} > 1000), "Genome not retrieved!";
+    ok defined($usrdata->{features}->size() > 1000), "Genome not retrieved!";
     $usrdata = $mss->users_for_genome({
     	genome => "315750.3",
     	username => "reviewer",

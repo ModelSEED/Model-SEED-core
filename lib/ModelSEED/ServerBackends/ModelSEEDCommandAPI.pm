@@ -1409,7 +1409,7 @@ sub mdlloadmodel {
 	my $results;
 	my $message = [];
 	try {
-		$args = ModelSEED::utilities::ARGS($args,["name","filedata"],{
+		$args = ModelSEED::utilities::ARGS($args,["model","modelfiledata"],{
 			genome => "NONE",
 			biomassid => undef,
 			biomassEquation => undef,
@@ -1419,10 +1419,10 @@ sub mdlloadmodel {
 			public => 0,
 			autoCompleteMedia => "Complete"
 		});
-		my $modelObj = ModelSEED::globals::GETFIGMODEL()->import_model_file({#TODO: must adjust this function
-			id => $args->{"name"},
+		my $modelObj = ModelSEED::globals::GETFIGMODEL()->import_model_file({
+			id => $args->{"model"},
 			genome => $args->{"genome"},
-			filedata => $args->{"filedata"},
+			modelfiledata => $args->{"modelfiledata"},
 			biomassID => $args->{"biomassid"},
 			biomassEquation => $args->{"biomassEquation"},
 			owner => $args->{"owner"},
@@ -1432,7 +1432,7 @@ sub mdlloadmodel {
 			autoCompleteMedia => $args->{"autoCompleteMedia"}
 		});
 		if (defined($modelObj)) {
-			push(@{$message},"Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!");
+			push(@{$message},"Successfully imported ".$args->{model}." into Model SEED as ".$modelObj->id()."!");
 		}
 	} catch {
 		my $errorMessage = shift @_;
@@ -1567,7 +1567,7 @@ sub mdlloadbiomass {
 				equation => $args->{equation},
 				biomassID => $args->{biomassid}
 			});
-			push(@{$message},"Equation for biomass reaction ".$args->{biomassid}." modified!");
+			push(@{$message},"New biomass reaction ".$args->{biomassid}." created!");
 		}
 		if (defined($args->{model})) {
 			my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});

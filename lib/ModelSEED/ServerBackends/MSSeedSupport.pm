@@ -245,7 +245,7 @@ sub blast_sequence {
 		open( TMP, ">".$filename) || die "could not open";
 		print TMP  $fastaString;
 		close(TMP);
-		system("blastall -i ".$filename." -d ".$self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta -p blastn -FF -e 1.0e-5 -m 8 -o ".$filename.".out");
+		system("/vol/rast-bcr/2010-1124/linux-rhel5-x86_64/bin/blastall -i ".$filename." -d ".$self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta -p blastn -FF -e 1.0e-5 -m 8 -o ".$filename.".out");
 		my $data = $self->figmodel()->database()->load_multiple_column_file($filename.".out","\t");
 		for (my $j=0; $j < @{$data}; $j++) {
 			if (defined($data->[$j]->[11])) {
@@ -343,7 +343,8 @@ sub getRastGenomeData {
 			$output->{source} = "RAST:".$job->id();
 			$directory = "/vol/rast-prod/jobs/".$job->id()."/rp/".$args->{genome};
 			#$FIG_Config::rast_jobs = "/vol/rast-prod/jobs";
-			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
+			$output->{gc} = 0.5;
+			#$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-prod/jobs/".$job->id()."/USER","\t")->[0];
 		}
 	}
@@ -354,7 +355,8 @@ sub getRastGenomeData {
 			$output->{source} = "TESTRAST:".$job->id();
 			$directory = "/vol/rast-test/jobs/".$job->id()."/rp/".$args->{genome};
 			#$FIG_Config::rast_jobs = "/vol/rast-test/jobs";
-			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
+			$output->{gc} = 0.5;
+			#$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-test/jobs/".$job->id()."/USER","\t")->[0];
 		}
 	}
@@ -373,7 +375,7 @@ sub getRastGenomeData {
 		if ($figmodel->user() eq "PUBLIC") {
 			ModelSEED::utilities::WARNING("Must be authenticated to access model");
 			return undef;
-		} elsif (!defined($figmodel->config("super users")->{$figmodel->user()})) {
+		} elsif (!defined($figmodel->config("model administrators")->{$figmodel->user()})) {
 			my $haveRight = 0;
 			my $userScopes = $figmodel->database()->get_objects("userscope",{
 				user => $figmodel->userObj()
@@ -555,36 +557,24 @@ sub build_primers {
     	contig => 0
     });
     my $location = "NC_000964_".$args->{start}."_".$args->{stop};
+    my $output = $self->figmodel()->runexecutable("/vol/model-prod/Software/primerCode/runprimer.sh ".$args->{genome}." ".$location);
+    if (!defined($output) || !defined($output->[5])) {
+    	return {
+    		SUCCESS => 0,
+    		ERROR => "Primer generation failed!",
+    		MESSAGE => "Primer generation failed!"
+    	};
+    }
     my $result = {
     	SUCCESS => 1,
-    	MESSAGE => "Primers successfully generated for genome ".$args->{genome}." on location ".$location.".",
-    	primers => [
-    		{
-    			sequence => "CTGTAAAAAGAGAAAGCCCTGCTG",
-    			data => "61.01;62.74;45.83;3.83;;24;24"
-    		},
-    		{
-    			sequence => "CGACCTGCAGGCATGCAAGCTAAAAAGGGCGCCCTAAAAGGGT",
-    			data => "60.25;66.79;50;14.63;1426;22;43"
-    		},
-    		{
-    			sequence => "CGAGCTCGAATTCACTGGCCGTCGATAAGGGCACCCTTTTAGGGCGCCCTTTTTAATTCATTGCCCCGTCCCCATC",
-    			data => "62.12;69.94;54.55;12.73;;22;76"
-    		},
-    		{
-    			sequence => "GTATGCGAAGAAGCAAAGTGTCC",
-    			data => "60.65;62.32;47.83;4.56;1512;23;23"
-    		},
-    		{
-    			sequence => "CTCCGTTAGTGGAAATAAAGCGG",
-    			data => "60.65;63.12;47.83;4.5;;23;23"
-    		},
-    		{
-    			sequence => "GACGACCAGAATCAAAAGGCAAC",
-    			data => "60.65;64.19;47.83;4.08;1045;23;23"
-    		}
-    	]
+    	MESSAGE => "Primers successfully generated for genome ".$args->{genome}." on location ".$location."."
     };
+    for (my $i=0; $i < @{$output};$i++) {
+    	chomp($output->[$i]);
+    	my $temp = [split(/\t/,$output->[$i])];
+    	$result->{primers}->[$i]->{sequence} = uc($temp->[1]);
+    	$result->{primers}->[$i]->{data} = $temp->[0].";".$temp->[5].";".$temp->[4].";".$temp->[6].";".$temp->[2].";".$temp->[3];
+    }
     return $result;
 }
 

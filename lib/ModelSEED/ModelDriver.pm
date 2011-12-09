@@ -994,22 +994,42 @@ This function is designed to be used in conjunction with ''printmodelfiles'' to 
 sub mdlloadmodel {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
+		["model",1,undef,"ID of the model to be loaded (Please DO append your user ID!)."],
     	["genome",1,undef,"The SEED genome ID associated with the model to be loaded."],
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
     	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
-    	["owner",0,$self->figmodel()->user(),"The login name of the user that should own the loaded model"],
-    	["provenance",0,undef,"The full path to a model directory that contains a provenance database for the model to be imported. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
+    	["owner",0,ModelSEED::interface::USERNAME(),"The login name of the user that should own the loaded model"],
+    	["provenance",0,undef,"The name of an existing model for which the provenance database should be copied. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
     	["overwrite",0,0,"If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'."],
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."],
     	["autoCompleteMedia",0,"Complete","Name of the media used for auto-completing this model."]
 	],[@Data],"reload a model from a flatfile");
+	if (!defined($args->{filename})) {
+		$args->{filename} = ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl";
+	}
+	if (!-e $args->{filename}) {
+		ModelSEED::utilities::USEERROR("Model file ".$args->{filename}." not found. Check file and input.");
+	}
+	$args->{modelfiledata} = ModelSEED::interface::LOADFILE($args->{filename});
+	if (!defined($args->{biomassFile})) {
+		my $biomassID;
+		for (my $i=0; $i < @{$args->{modelfiledata}};$i++) {
+			if ($args->{modelfiledata}->[$i] =~ m/^(bio\d+);/) {
+				$biomassID = $1;
+			}
+		}
+		$args->{biomassFile} = ModelSEED::interface::GETWORKSPACE()->directory().$biomassID.".bof";
+	}
+	if (-e $args->{biomassFile}) {
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+		$args->{biomassEquation} = $obj->{EQUATION}->[0];
+		$args->{biomassid} = $obj->{DATABASE}->[0];
+	}
 	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->mdlloadmodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	push(@{$output->{MESSAGE}},"Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!");
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
