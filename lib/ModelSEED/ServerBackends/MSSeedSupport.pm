@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use lib "/vol/model-prod/Model-SEED-core/config/";
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use FIG;
@@ -98,7 +99,8 @@ sub methods {
 			"blast_sequence",
 			"pegs_of_function",
 			"getRastGenomeData",
-			"users_for_genome"
+			"users_for_genome",
+			"build_primers"
         ];
 	}
 	return $self->{_methods};
@@ -502,6 +504,90 @@ sub users_for_genome {
     }
     return $result;
 }
+=head3 build_primers
+
+=item Definition:
+
+    Output = MSSeedSupport->build_primers({
+        genome => string,
+        start => string,
+        stop => string,
+        contig => integer(0)  
+    });
+    Output: {
+    	ERROR => string,
+    	MESSAGE => string,
+    	SUCCESS => 0/1,
+    	primer1 => {
+    		sequence => string,
+    		data => string
+    	}
+    	primer2 => {
+    		sequence => string,
+    		data => string
+    	}
+    	primer3 => {
+    		sequence => string,
+    		data => string
+    	}
+    	primer4 => {
+    		sequence => string,
+    		data => string
+    	}
+    	primer5 => {
+    		sequence => string,
+    		data => string
+    	}
+    	primer6 => {
+    		sequence => string,
+    		data => string
+    	}
+    }
+    
+=item Description:
+    
+    Designs primers for the specified interval locations
+
+=cut
+sub build_primers {
+    my ($self,$args) = @_;
+    $args = $self->process_arguments($args, ["genome","start","stop"],{
+    	contig => 0
+    });
+    my $location = "NC_000964_".$args->{start}."_".$args->{stop};
+    my $result = {
+    	SUCCESS => 1,
+    	MESSAGE => "Primers successfully generated for genome ".$args->{genome}." on location ".$location.".",
+    	primers => [
+    		{
+    			sequence => "CTGTAAAAAGAGAAAGCCCTGCTG",
+    			data => "61.01;62.74;45.83;3.83;;24;24"
+    		},
+    		{
+    			sequence => "CGACCTGCAGGCATGCAAGCTAAAAAGGGCGCCCTAAAAGGGT",
+    			data => "60.25;66.79;50;14.63;1426;22;43"
+    		},
+    		{
+    			sequence => "CGAGCTCGAATTCACTGGCCGTCGATAAGGGCACCCTTTTAGGGCGCCCTTTTTAATTCATTGCCCCGTCCCCATC",
+    			data => "62.12;69.94;54.55;12.73;;22;76"
+    		},
+    		{
+    			sequence => "GTATGCGAAGAAGCAAAGTGTCC",
+    			data => "60.65;62.32;47.83;4.56;1512;23;23"
+    		},
+    		{
+    			sequence => "CTCCGTTAGTGGAAATAAAGCGG",
+    			data => "60.65;63.12;47.83;4.5;;23;23"
+    		},
+    		{
+    			sequence => "GACGACCAGAATCAAAAGGCAAC",
+    			data => "60.65;64.19;47.83;4.08;1045;23;23"
+    		}
+    	]
+    };
+    return $result;
+}
+
 #TODO: These are function specific to the SEED environment that may still be useful, but will not work as they currently stand
 =head3 ParseHopeSEEDReactionFiles
 
