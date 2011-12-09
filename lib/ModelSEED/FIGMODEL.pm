@@ -2559,6 +2559,11 @@ sub import_model_file {
 		ModelSEED::globals::ERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
 		$args->{id} .= ".".$usr->_id();
 	}
+	#Warning if genome id not used
+	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
+	    ModelSEED::globals::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	}
+
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->sudo_get_object("model",{id => $args->{id}});
