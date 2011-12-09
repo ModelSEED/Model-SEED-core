@@ -2532,9 +2532,10 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","genome"],{
+	$args = $self->process_arguments($args,["id"],{
 		filename => undef,
 		biomassFile => undef,
+		genome => "NONE",
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
@@ -2622,8 +2623,9 @@ sub import_model_file {
 		}
 	}
 	#Loading biomass reaction file
-	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
+	if (!defined($args->{biomassFile})) {
+	    $biomassID="" if !defined($biomassID);
+	    $args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
 		ModelSEED::globals::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	
