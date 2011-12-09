@@ -1658,7 +1658,7 @@ sub parseSBMLToTable {
 	$row->{ENZYMES}->[0]="";
 	$TableList->{reaction}->add_row($row);
     }
-
+	$TableList->{SUCCESS} = 1;
     return $TableList;
 }
 
@@ -2439,21 +2439,17 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","genome"],{
-		filename => undef,
-		biomassFile => undef,
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"},
-		autoCompleteMedia => $args->{"autoCompleteMedia"}
+	$args = $self->process_arguments($args,["id","modelfiledata"],{
+		genome => "NONE",
+		modelfiledata => undef,
+		biomassID => undef,
+		biomassEquation => undef,
+		owner => "master",
+		public => 0,
+		overwrite => 0,
+		provenance => undef,
+		autoCompleteMedia => "Complete"
 	});
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
-	}
-	if (!-e $args->{filename}) {
-		ModelSEED::utilities::ERROR("Could not find model specification file: ".$args->{filename}."!");		
-	}
 	#Calculating the full ID of the model
 	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
 		$args->{id} = $1;
@@ -2499,11 +2495,14 @@ sub import_model_file {
 		}
 	}
 	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
-	my $biomassID;
+	my $found = 0;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
-		if ($row->{LOAD}->[0] =~ m/(bio\d+)/) {
-			$biomassID = $1;
+		if ($row->{LOAD}->[0] =~ m/(bio\d+)/ && !defined($args->{biomassID})) {
+			$args->{biomassID} = $1;
+		}
+		if ($row->{LOAD}->[0] eq $args->{biomassID}) {
+			$found = 1;	
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
@@ -2529,28 +2528,24 @@ sub import_model_file {
 		}
 	}
 	#Loading biomass reaction file
-	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
-	}
-	if (!-e $args->{biomassFile}) {
-		ModelSEED::utilities::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	
-	}else{
-	    my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+	if (defined($args->{biomassEquation})) {
 	    my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
-		equation => $obj->{EQUATION}->[0],
-		biomassID => $obj->{DATABASE}->[0]
-	        });
+			equation => $args->{biomassEquation},
+			biomassID => $args->{biomassID}
+	    });
 	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
-#	    $self->database()->create_object("rxnmdl",{
-#		REACTION => $row->{LOAD}->[0],
-#		MODEL => $args->{id},
-#		directionality => $row->{DIRECTIONALITY}->[0],
-#		compartment => $row->{COMPARTMENT}->[0],
-#		pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-#		confidence => $row->{CONFIDENCE}->[0],
-#		notes => $row->{NOTES}->[0],
-#		reference => $row->{REFERENCE}->[0]
-#		});
+	}
+	if ($found == 0) {
+		$self->database()->create_object("rxnmdl",{
+			REACTION => $row->{LOAD}->[0],
+			MODEL => $args->{id},
+			directionality => "=>",
+			compartment => "c",
+			pegs => "UNIVERSAL",
+			confidence => 5,
+			notes => "",
+			reference => ""
+		});
 	}
 	return $modelObj;
 }
