@@ -269,7 +269,7 @@ int StringDBTable::loadFromFile(string INfilename,string INpath,string INdelimit
 	this->set_indexed_attributes(INindexedAttributes);
 	ifstream input(INfilename.data());
 	if (!input.is_open()) {
-		this->print_error("could not open table file","loadFromFile");
+		this->print_error("could not open table file "+INfilename,"loadFromFile");
 		return FAIL;
 	}
 	string Buff = STRINGDB::GetFileLine(input);
