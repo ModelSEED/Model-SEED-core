@@ -2532,9 +2532,10 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","genome"],{
+	$args = $self->process_arguments($args,["id"],{
 		filename => undef,
 		biomassFile => undef,
+		genome => "NONE",
 		owner => $args->{"owner"},
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
@@ -2558,6 +2559,11 @@ sub import_model_file {
 		ModelSEED::globals::ERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
 		$args->{id} .= ".".$usr->_id();
 	}
+	#Warning if genome id not used
+	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
+	    ModelSEED::globals::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	}
+
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->sudo_get_object("model",{id => $args->{id}});
@@ -2622,8 +2628,9 @@ sub import_model_file {
 		}
 	}
 	#Loading biomass reaction file
-	if (!defined($args->{biomassFile}) && defined($biomassID)) {
-		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
+	if (!defined($args->{biomassFile})) {
+	    $biomassID="" if !defined($biomassID);
+	    $args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
 	}
 	if (!-e $args->{biomassFile}) {
 		ModelSEED::globals::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	

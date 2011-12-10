@@ -728,7 +728,7 @@ sub print_array_to_file {
 	my ($self,$filename,$arrayRef,$Append) = @_;
     my $writeParam = ($Append) ? ">>" : ">";
     open(my $fh, $writeParam, $filename) || die("Could not open file: $filename, $@");
-    print $fh join("\n", @$arrayRef);
+    print $fh join("\n", @$arrayRef),"\n";
     close($fh);
 }
 
