@@ -18,7 +18,7 @@ sub new {
 	my ($class,$args) = @_;
 	#Must manualy check for figmodel argument since figmodel is needed for automated checking
 	if (!defined($args->{figmodel})) {
-		print STDERR "FIGMODELreaction->new():figmodel must be defined to create an genome object!\n";
+		print STDERR "FIGMODELreaction->new():figmodel must be defined to create an reaction object!\n";
 		return undef;
 	}
 	my $self = {_figmodel => $args->{figmodel}};
@@ -27,9 +27,12 @@ sub new {
 	$args = $self->figmodel()->process_arguments($args,["figmodel"],{id => undef});
 	if (defined($args->{id})) {
 		$self->{_id} = $args->{id};
+		print "test:".$self->{_id}."\n";
 		if ($self->id() =~ m/^bio\d+$/) {
+			print "test2:".$self->{_id}."\n";
 			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->id()});
 		} else {
+			print "test3:".$self->{_id}."\n";
 			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
 		}		
 		if(!defined($self->{_ppo})){
