@@ -25,8 +25,8 @@ has 'owner' => (is => 'ro', isa => 'Str', required => 1);#, metaclass => 'DoNotS
 has 'modificationDate' => (is => 'ro', isa => 'Int', required => 1, default => 0);#, metaclass => 'DoNotSerialize');
 has 'creationDate' => (is => 'ro', isa => 'Int', required => 1);#, metaclass => 'DoNotSerialize');
 has 'aliases' => (is => 'ro', isa => 'Str', required => 1, default => "", index => 1, metaclass => 'Indexed');
-has 'aerobic' => (is => 'ro', isa => 'Int', required => 1, default => 1);#, metaclass => 'DoNotSerialize');
-has 'public' => (is => 'ro', isa => 'Int', required => 1);#, metaclass => 'DoNotSerialize');
+has 'aerobic' => (is => 'ro', isa => 'Bool', required => 1, default => 1);#, metaclass => 'DoNotSerialize');
+has 'public' => (is => 'ro', isa => 'Bool', required => 1);#, metaclass => 'DoNotSerialize');
 has 'mediaCompounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MooseDB::mediacpd]', lazy => 1, builder => '_build_mediaCompounds', index => 2, metaclass => 'Indexed');
 
 sub BUILD {
