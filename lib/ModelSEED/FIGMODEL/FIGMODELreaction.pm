@@ -27,13 +27,13 @@ sub new {
 	$args = $self->figmodel()->process_arguments($args,["figmodel"],{id => undef});
 	if (defined($args->{id})) {
 		$self->{_id} = $args->{id};
-		print "test:".$self->{_id}."\n";
-		if ($self->id() =~ m/^bio\d+$/) {
-			print "test2:".$self->{_id}."\n";
-			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->id()});
+		print "test:".$self->{_id}.".\n";
+		if ($self->{_id} =~ m/^bio\d+$/) {
+			print "test2:".$self->{_id}.".\n";
+			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->{_id}});
 		} else {
-			print "test3:".$self->{_id}."\n";
-			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
+			print "test3:".$self->{_id}.".\n";
+			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->{_id}});
 		}		
 		if(!defined($self->{_ppo})){
 		    return undef;
