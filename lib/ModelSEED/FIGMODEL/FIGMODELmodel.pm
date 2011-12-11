@@ -7264,8 +7264,8 @@ sub runFBAStudy {
 	my $bioRxn=$self->biomassReaction();
 	if(!defined($bioRxn) || $bioRxn eq "NONE"){
 		ModelSEED::globals::ERROR("Model ".$self->id()." does not contain a biomass function");
-		return;
 	}
+	print "Biomass reaction:".$bioRxn."\n";
 	$self->figmodel()->get_reaction($bioRxn)->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$bioRxn});
 	$fbaObj->createProblemDirectory({
 		parameterFile => $args->{parameterFile},
