@@ -868,29 +868,27 @@ sub html_print {
 
 =head3 load_table_from_array
 Definition:
-	my $Table = load_table_from_array($array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
+	my $Table = load_table_from_array($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
 Description:
 
 Example:
-	my $Table = load_table_from_array($array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
+	my $Table = load_table_from_array($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
 =cut
 
 sub load_table_from_array {
     my $args = shift @_;
-    my ($array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = undef;
+    my ($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = undef;
     if(ref($args) eq 'HASH') {
         $array = $args->{array};    
         $Delimiter = $args->{delimiter};    
         $ItemDelimiter = $args->{itemDelimiter};    
         $HeadingLine = $args->{headingLine};
         $HashColumns = $args->{hashColumns};
+        $Filename = $args->{filename};
     } else {
-        $array = $args;
-        ($Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = @_;
+        $Filename = $args;
+        ($array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = @_;
     }
-
-		
-
 	#Sanity checking input values
 	if (!defined($HeadingLine) || $HeadingLine eq "") {
 		$HeadingLine = 0;
@@ -906,7 +904,6 @@ sub load_table_from_array {
 	} elsif ($ItemDelimiter eq "|") {
 		$ItemDelimiter = "\\|";
 	}
-
 	#Loading the data table
 	my $Prefix;
 	my @Headings;
@@ -916,12 +913,13 @@ sub load_table_from_array {
 		$count++;
 	}
 	@Headings = split(/$Delimiter/,$array->[$count]);
+	$count++;
 	my $headingCount = @Headings;
 	my $HeadingRef;
 	push(@{$HeadingRef},@Headings);
 	my $Table = new ModelSEED::FIGMODEL::FIGMODELTable($HeadingRef,$Filename,$HashColumns,$Delimiter,$ItemDelimiter,$Prefix);
-	while ($Line = <TABLEINPUT>) {
-		chomp($Line);
+	for (my $j=$count; $j < @{$array}; $j++) {
+		my $Line = $array->[$j];
 		my @Data = split(/$Delimiter/,$Line);
 		my $ArrayRefHashRef;
 		for (my $i=0; $i < @Headings; $i++) {
@@ -938,8 +936,6 @@ sub load_table_from_array {
 		}
 		$Table->add_row($ArrayRefHashRef);
 	}
-	close(TABLEINPUT);
-
 	return $Table;
 }
 

@@ -778,7 +778,6 @@ sub mdladdright {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	push(@{$output->{MESSAGE}},"Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!");
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
@@ -807,7 +806,6 @@ sub mdlcreatemodel {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	push(@{$output->{MESSAGE}},"Successfully created model ".$args->{model}."!");
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
@@ -822,7 +820,7 @@ Inspects that the specified model(s) are consistent with their associated bioche
 sub mdlinspectstate {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1,undef,"A ',' delimited list of the models in the Model SEED that should be inspected."],
+		["model",1,undef,"ID of model to be inspected"],
 	],[@Data],"inspect that model consistency with biochemistry database");
 	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->mdlinspectstate($args);
@@ -847,6 +845,14 @@ sub mdlprintsbml {
 		["model",1,undef,"Model for which SBML files should be printed."],
 		["media",0,"Complete","ID of a media condition or media file for which SBML should be printed"],
 	],[@Data],"prints model(s) in SBML format");
+	if ($args->{media} =~ m/\.media$/) {
+		if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}) {
+			ModelSEED::utilities::USERERROR("Media file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}." not found");
+		}
+		$args->{media} = {
+			filedata => ModelSEED::interface::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media})
+		}; 
+	}
 	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->mdlprintsbml($args);
 	if (defined($output->{ERROR})) {
@@ -857,7 +863,6 @@ sub mdlprintsbml {
 		push(@{$output->{MESSAGE}},"SBML file printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml");
 		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml",$output->{sbmlfile});
 	}
-    return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
 =head
@@ -887,10 +892,13 @@ sub mdlprintmodel {
 		push(@{$output->{MESSAGE}},"Reaction table printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl");
 		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl",$output->{modelfile});
 	}
-	if (defined($output->{biomassfile})) {
+	if (defined($output->{biomassEquation})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed biomass reaction ".$output->{biomassID}." for ".$args->{model}."!");
 		push(@{$output->{MESSAGE}},"Biomass data printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$output->{biomassID}.".bof");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$output->{biomassID}.".bof",$output->{biomassfile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$output->{biomassID}.".bof",[
+			"DATABASE\t".$output->{biomassID},
+			"EQUATION\t".$output->{biomassEquation}
+		]);
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -910,11 +918,19 @@ sub mdlprintcytoseed {
 		["model",1,undef,"The full Model SEED ID of the model to be printed."],
 		["directory",0,undef,"The full path and name of the directory where the model should be printed."],
 	],[@Data],"prints a model to format expected by CytoSEED");
+	if (!defined($args->{directory})) {
+		$args->{directory} = ModelSEED::interface::GETWORKSPACE()->directory();
+	}
+	my $cmdir = $args->{directory}."/".$args->{model};
+	if (!-d $cmdir) {
+	    mkdir($cmdir) or ModelSEED::utilities::ERROR("Could not create $cmdir: $!\n");
+	}
 	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->mdlprintcytoseed($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
+	my $dumper = YAML::Dumper->new;
 	if (defined($output->{modeldata})) {
 		open(FH, ">".$cmdir."/model_data") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
 		print FH $dumper->dump($output->{modeldata});
@@ -950,7 +966,7 @@ sub mdlprintcytoseed {
 		print FH $dumper->dump($output->{reactionclassifications});
 		close FH;
 	}
-	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
+	push(@{$output->{MESSAGE}},"Successfully printed cytoseed data for ".$args->{model}." in directory ".$args->{directory}."!");
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
@@ -973,9 +989,8 @@ sub mdlprintmodelgenes {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{geneList})) {
-		push(@{$output->{MESSAGE}},"Succesfully printed gene list for ".$args->{model}."!");
-		push(@{$output->{MESSAGE}},"Gene list printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}."lst");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}."lst",[keys(%{$ftrHash})];
+		push(@{$output->{MESSAGE}},"Gene list printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst",$output->{geneList});
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -999,7 +1014,7 @@ sub mdlloadmodel {
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
     	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
     	["owner",0,ModelSEED::interface::USERNAME(),"The login name of the user that should own the loaded model"],
-    	["provenance",0,undef,"The name of an existing model for which the provenance database should be copied. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
+    	["biochemSource",0,undef,"Name of the model whose biochem database should be copied with this new model. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
     	["overwrite",0,0,"If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'."],
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."],
     	["autoCompleteMedia",0,"Complete","Name of the media used for auto-completing this model."]

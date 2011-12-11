@@ -3514,7 +3514,11 @@ sub printModelFileForMFAToolkit {
 			push(@{$output},$line);
 		}
 	}
-	$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
+	if ($args->{filename} ne "ARRAY") {
+		$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
+	} else {
+		return $output;
+	}
 	return {success=>1};
 }
 

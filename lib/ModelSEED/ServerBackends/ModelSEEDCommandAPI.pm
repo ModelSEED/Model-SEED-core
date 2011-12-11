@@ -955,19 +955,40 @@ sub bcloadmedia {
 }
 
 =head
+=NAME
+mdlreconstruction
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlreconstruction({
+	model => string:ID of the model to be gapfilled
+	media => string(Complete):The media condition the model will be gapfilled in
+	removegapfilling => 0/1(1):All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'
+	inactivecoef
+	adddrains
+	iterative
+	testsolution
+	printdbmessage
+	coefficientfile
+	rungapfilling
+	problemdirectory
+	startfresh => 0/1(1):
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+adds reactions to the model to eliminate inactive reactions
 =DESCRIPTION
 This function is used to add a minimal number of reactions to a model from the biochemistry database such that one or more inactive reactions is eliminated.
-=EXAMPLE
-./mdlautocomplete '''-model''' iJR904"
 =cut
 sub mdlautocomplete {
-    my($self,@Data) = @_;
-    my $args = $self->check([
-		["model",1,undef,"The full Model SEED ID of the model to be gapfilled."],
-		["media",0,"Complete","The media condition the model will be gapfilled in."],
-		["removegapfilling",0,1,"All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'."],
+		["model",1,undef,"The full Model SEED ."],
+		["media",0,"Complete","."],
+		["removegapfilling",0,1,"."],
 		["inactivecoef",0,0,"The coefficient on the inactive reactions in the gapfilling objective function."],
 		["adddrains",0,0,"Drain fluxes will be added for all intracellular metabolites and minimized if this flag is set to '1'."],
 		["iterative",0,0,"All inactive reactions in the model will be identified, and they will be iteratively gapfilled one at a time if this flag is set to '1'."],
@@ -977,7 +998,39 @@ sub mdlautocomplete {
 		["rungapfilling",0,1,"The gapfilling will not be run unless you set this flag to '1'."],
 		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
 		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
-	],[@Data],"adds reactions to the model to eliminate inactive reactions");
+
+    
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{
+			autocompletion => 0,
+			checkpoint => 0
+		});
+		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
+	    if (!defined($mdl)) {
+	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	    }
+		$mdl->reconstruction({
+	    	checkpoint => $args->{"checkpoint"},
+			autocompletion => $args->{"autocompletion"},
+		});
+		push(@{$message},"Successfully generated model ".$args->{model}." from genome annotations");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
+    
+   
     #Getting model list
     my $models = ModelSEED::interface::PROCESSIDLIST({
 		objectType => "model",
@@ -1018,360 +1071,488 @@ sub mdlautocomplete {
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
-
 =head
+=NAME
+mdlreconstruction
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlreconstruction({
+	model => string:name of the model to be reconstructed
+	autocompletion => 0/1(0):flag indicating if autocompletion should be run
+	checkpoint => 0/1(0):flag indicating if model should be checked in prior to the reconstruction process so the current model will be preserved
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+run model reconstruction from genome annotations
 =DESCRIPTION
 This command uses the Model SEED pipeline to reconstruct an existing SEED model from scratch based on SEED genome annotations.
-=EXAMPLE
-./mdlreconstruction -model Seed83333.1
 =cut
 sub mdlreconstruction {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"The name of an existing model in the Model SEED database that should be reconstructed from scratch from genome annotations."],
-		["autocompletion",0,0,"Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete."],
-		["checkpoint",0,0,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
-	],[@Data],"run model reconstruction from genome annotations");
-    my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
-    if (!defined($mdl)) {
-    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
-    }
-    $mdl->reconstruction({
-    	checkpoint => $args->{"checkpoint"},
-		autocompletion => $args->{"autocompletion"},
-	});
-    return "Generated model from genome annotations";
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{
+			autocompletion => 0,
+			checkpoint => 0
+		});
+		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
+	    if (!defined($mdl)) {
+	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	    }
+		$mdl->reconstruction({
+	    	checkpoint => $args->{"checkpoint"},
+			autocompletion => $args->{"autocompletion"},
+		});
+		push(@{$message},"Successfully generated model ".$args->{model}." from genome annotations");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlmakedbmodel
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlmakedbmodel({
+	model => string:The name of the model that will contain all the database reactions.
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+construct a model with all database reactions
 =DESCRIPTION
 This function creates a model that includes all reactions in the current database. Such a model is useful to determine the capabilities of the current biochemistry database.
-=EXAMPLE
-./mdlmakedbmodel -model ModelSEED
 =cut
 sub mdlmakedbmodel {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"The name of the model that will contain all the database reactions."],
-	],[@Data],"construct a model with all database reactions");
-    my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
-    if (!defined($mdl)) {
-    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
-    }
-    $mdl->generate_fulldb_model();
-	return "Set model reaction list to entire biochemistry database";
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{});
+		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
+	    if (!defined($mdl)) {
+	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	    }
+		$mdl->generate_fulldb_model();
+		push(@{$message},"Set model reaction list to entire biochemistry database");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdladdright
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdladdright({
+	model => string:ID of the model for which rights should be added
+	user => string:Login of the user account for which rights should be added
+	right => string(view):Type of right that should be added. Possibilities include 'view' and 'admin'
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+add rights to a model to another user
 =DESCRIPTION
 This function is used to provide rights to view or edit a model to another Model SEED user. Use this function to share a model.
-=EXAMPLE
-./mdladdright -model Seed83333.1.796 -user reviewer -right view
 =cut
 sub mdladdright {
-	my($self,@Data) = @_;
-    my $args = $self->check([
-		["model",1,undef,"ID of the model for which rights should be added."],
-		["user",1,undef,"Login of the user account for which rights should be added."],
-		["right",0,"view","Type of right that should be added. Possibilities include 'view' and 'admin'."]
-	],[@Data],"add rights to a model to another user");
-    my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
-    if (!defined($mdl)) {
-    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
-    }
-    $mdl->changeRight({
-    	permission => $args->{right},
-		username => $args->{user},
-		force => 1
-    });
-	return "Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!\n";	
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model","user"],{
+			right => "view"
+		});
+		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
+	    if (!defined($mdl)) {
+	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	    }
+		$mdl->changeRight({
+	    	permission => $args->{right},
+			username => $args->{user},
+			force => 1
+	    });
+		push(@{$message},"Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlcreatemodel
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlcreatemodel({
+	genome => string:genome for which model will be created
+	id => string(undef):ID that the new model should have in the Model SEED database
+	biomass => string(undef):ID of the biomass reaction the new model should have in the Model SEED database
+	owner => string(Logged in user):The login of the user account that should own the new model
+	biochemSource => string(undef):Name of model with biochemistry that should be utilized for new model
+	reconstruction => string(1):Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created
+	autocompletion => string(0):Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created
+	overwrite => string(0):Set this FLAG to '1' to overwrite any model that has the same specified ID in the database
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+create new Model SEED models
 =DESCRIPTION
 This function is used to create new models in the Model SEED database.
-=EXAMPLE
-./mdlcreatemodel -genome 83333.1
 =cut
 sub mdlcreatemodel {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["genome",1,undef,"A ',' delimited list of genomes for which new models should be created."],
-		["id",0,undef,"ID that the new model should have in the Model SEED database."],
-		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
-		["owner",0,ModelSEED::globals::GETFIGMODEL()->user(),"The login of the user account that should own the new model."],
-		["biochemSource",0,undef,"Path to an existing biochemistry provenance database that should be used for provenance in the new model."],
-		["reconstruction",0,1,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
-		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
-		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
-	],[@Data],"create new Model SEED models");
-    my $output = ModelSEED::interface::PROCESSIDLIST({
-		objectType => "genome",
-		delimiter => ",",
-		input => $args->{genome}
-	});
-	my $message = "";
-    if (@{$output} == 1 || $args->{usequeue} eq 0) {
-    	for (my $i=0; $i < @{$output}; $i++) {
-    		my $mdl = ModelSEED::globals::GETFIGMODEL()->create_model({
-				genome => $output->[0],
-				id => $args->{id},
-				owner => $args->{owner},
-				biochemSource => $args->{"biochemSource"},
-				biomassReaction => $args->{"biomass"},
-				reconstruction => $args->{"reconstruction"},
-				autocompletion => $args->{"autocompletion"},
-				overwrite => $args->{"overwrite"}
-			});
-			if (defined($mdl)) {
-				$message .= "Successfully created model ".$mdl->id()."!\n";
-			} else {
-				$message .= "Failed to create model ".$mdl->id()."!\n";
-			}
-    	}
-	} else {
-		for (my $i=0; $i < @{$output}; $i++) {
-	    	$args->{model} = $output->[$i];
-	    	ModelSEED::globals::GETFIGMODEL()->queue()->queueJob({
-				function => "mdlcreatemodel",
-				arguments => $args,
-				user => ModelSEED::globals::GETFIGMODEL()->user()
-			});
-    	}
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["genome"],{
+			id => undef,
+			biomass => undef,
+			owner => ModelSEED::globals::GETFIGMODEL()->user(),
+			biochemSource => undef,
+			reconstruction => 1,
+			autocompletion => 0,
+			overwrite => 0
+		});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->create_model({
+			genome => $output->[0],
+			id => $args->{id},
+			owner => $args->{owner},
+			biochemSource => $args->{"biochemSource"},
+			biomassReaction => $args->{"biomass"},
+			reconstruction => $args->{"reconstruction"},
+			autocompletion => $args->{"autocompletion"},
+			overwrite => $args->{"overwrite"}
+		});
+		if (!defined($mdl)) {
+			ModelSEED::utilities::ERROR("Failed to create model ".$args->{id}."!");	
+		}
+		push(@{$message},"Successfully created model ".$mdl->id()."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-    return $message;
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlinspectstate
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlinspectstate({
+	model => string:ID of model to be inspected
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+inspect that model consistency with biochemistry database
 =DESCRIPTION
 Inspects that the specified model(s) are consistent with their associated biochemistry databases", and modifies the database if not.
-=EXAMPLE
-./mdlinspectstate -model iJR904
 =cut
 sub mdlinspectstate {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"A ',' delimited list of the models in the Model SEED that should be inspected."],
-	],[@Data],"inspect that model consistency with biochemistry database");
-	my $results = ModelSEED::interface::PROCESSIDLIST({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => $args->{"model"}
-	});
-	if (@{$results} == 1 || $args->{usequeue} == 0) {
-		for (my $i=0;$i < @{$results}; $i++) {
-			my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($results->[$i]);
-	 		if (!defined($mdl)) {
-	 			ModelSEED::utilities::WARNING("Model not valid ".$results->[$i]);	
-	 		} else {
-	 			$mdl->InspectModelState({});
-	 		}
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
+		if (!defined($mdl)) {
+			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
 		}
-	} else {
-		for (my $i=0; $i < @{$results}; $i++) {
-			$args->{model} = $results->[$i];
-			ModelSEED::globals::GETFIGMODEL()->queue()->queueJob({
-				function => "mdlinspectstate",
-				arguments => $args
-			});
-		}
+		$results = $mdl->InspectModelState({});
+		push(@{$message},"Successfully inspected model ".$args->{model}."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-    return "SUCCESS";
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlprintsbml
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlprintsbml({
+	model => string:Model for which SBML files should be printed
+	media => string(Complete):ID of a media condition or media file for which SBML should be printed
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+prints model(s) in SBML format
 =DESCRIPTION
 Prints the specified model(s) in SBML format.
-=EXAMPLE
-./mdlprintsbml -model iJR904
 =cut
 sub mdlprintsbml {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"Model for which SBML files should be printed."],
-		["media",0,"Complete","ID of a media condition or media file for which SBML should be printed"],
-	],[@Data],"prints model(s) in SBML format");
-	my $models = ModelSEED::interface::PROCESSIDLIST({
-		objectType => "model",
-		delimiter => ";",
-		column => "id",
-		parameters => {},
-		input => $args->{"model"}
-	});
-	if ($args->{media} =~ m/\.media$/) {
-		if (!-e $self->ws()->directory().$args->{media}) {
-			ModelSEED::utilities::ERROR("Media file ".$self->ws()->directory().$args->{media}." not found");
-		}
-		$args->{media} = ModelSEED::MooseDB::media->new({
-			filename => $args->{media}
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{
+			media => "Complete"
 		});
-	}
-	my $message;
-	for (my $i=0; $i < @{$models};$i++) {
-		print "Now loading model ".$models->[$i]."\n";
-		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($models->[$i]);
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
 		if (!defined($mdl)) {
-	 		ModelSEED::utilities::WARNING("Model not valid ".$args->{model});
-	 		$message .= "SBML printing failed for model ".$models->[$i].". Model not valid!\n";
-	 		next;
-	 	}
-	 	my $sbml = $mdl->PrintSBMLFile({
-	 		media => $args->{media}
-	 	});
-		ModelSEED::utilities::PRINTFILE($self->ws()->directory().$models->[$i].".xml",$sbml);
-		$message .= "SBML printing succeeded for model ".$models->[$i]."!\nFile printed to ".$self->ws()->directory().$models->[$i].".xml"."!";
+			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+		}
+		if (ref($args->{media}) eq "HASH") {
+			$args->{media} = ModelSEED::MooseDB::media->new({
+				filedata => $args->{media}->{filedata}
+			});
+		}
+		$args->{sbmlfile} = $mdl->PrintSBMLFile({
+		 	media => $args->{media}
+		});
+		push(@{$message},"Successfully printed model SBML in ".$args->{media}." media!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-    return $message;
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlprintmodel
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlprintmodel({
+	model => string:The full Model SEED ID of the model to be printed
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+prints a model to flatfile for alteration and reloading
 =DESCRIPTION
 This is a useful function for printing model data to simple flatfiles that may be easily altered to facilitate hand-curation of a model. The function accepts a model ID as input, and it creates two flat files for the specified model: 
 * a reaction table file that lists the id, directionality,
 * a biomass reaction file that lists the equation of the biomass reaction
 By default, the flatfiles are printed in the "Model-SEED-core/data/MSModelFiles/" directory, but you can specify where the files will be printed using the "filename" and "biomassFilename" input arguments.
 NOTE: currently this function is the only mechanism for moving models from the Central Model SEED database into a local Model SEED database. This will soon change.
-=EXAMPLE
-./mdlprintmodel -'''model''' "iJR904"
 =cut
 sub mdlprintmodel {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"The full Model SEED ID of the model to be printed."],
-		["filename",0,undef,"The full path and name of the file where the model reaction table should be printed."],
-		["biomassFilename",0,undef,"The full path and name of the file where the biomass reaction should be printed."]
-	],[@Data],"prints a model to flatfile for alteration and reloading");
-	my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
-	if (!defined($mdl)) {
-		ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
-	}
-	if (!defined($args->{filename})) {
-		$args->{filename} = ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl";
-	}
-    my $biomass = $mdl->biomassReaction();
-	if( defined($biomass) && $biomass ne "NONE"){
-	    if (!defined($args->{biomassFilename})){
-			$args->{biomassFilename} = ModelSEED::interface::GETWORKSPACE()->directory().$biomass.".bof";
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
+		if (!defined($mdl)) {
+			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+		}
+		$results->{modelfile} = $mdl->printModelFileForMFAToolkit({
+			filename => "ARRAY"
+		});
+		$results->{biomassID} = $mdl->biomassReaction();
+		if( defined($results->{biomassID}) && $results->{biomassID} ne "NONE"){
+			my $biomass = ModelSEED::globals::GETFIGMODEL()->get_reaction($results->{biomassID});
+			if (defined($biomass)) {
+				$results->{biomassEquation} = $biomass->ppo()->equation();
+			}
+		} else {
+			delete $results->{biomassID};
+		}
+		push(@{$message},"Successfully retreived data for model ".$args->{model}."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
 	    }
-	    ModelSEED::globals::GETFIGMODEL()->get_reaction($biomass)->print_file_from_ppo({
-			filename => $args->{biomassFilename}
-	    });
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-	$mdl->printModelFileForMFAToolkit({
-		filename => $args->{filename}
-	});
-	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlprintcytoseed
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlprintcytoseed({
+	model => string:The full Model SEED ID of the model to be printed
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+prints a model to format expected by CytoSEED
 =DESCRIPTION
 This is a useful function for printing model data to the flatfiles that are used by CytoSEED. The function accepts a model ID as input, and it creates a directory using the model id that contains model data in the format expected by CytoSEED.
 By default, the model is printed in the "Model-SEED-core/data/MSModelFiles/" directory, but you can specify where the model will be printed using the "directory" input argument. You should print or copy the model data to the CytoSEED/Models folder (see "Set Location of CytoSEED Folder" menu item under "Plugins->SEED" in Cytoscape).
-=EXAMPLE
-./mdlprintcytoseed -'''model''' "iJR904" -'''directory''' "/Users/dejongh/Desktop/CytoSEED/Models"
 =cut
 sub mdlprintcytoseed {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"The full Model SEED ID of the model to be printed."],
-		["directory",0,undef,"The full path and name of the directory where the model should be printed."],
-	],[@Data],"prints a model to format expected by CytoSEED");
-	my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
-	if (!defined($mdl)) {
-		ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
+		if (!defined($mdl)) {
+			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+		}
+		my $fbaObj = ModelSEED::ServerBackends::FBAMODEL->new();
+		my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
+		$results->{modeldata} = $md->{$args->{model}};
+		$results->{biomassdata} = $fbaObj->get_biomass_reaction_data({ model => [$args->{model}] });
+		my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
+		$results->{compounddata} = $fbaObj->get_compound_data({ id => $cids->{$args->{model}} });
+		my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
+		$results->{abstractcompounddata} = $fbaObj->get_compound_data({ "id" => \@abcids });
+		my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
+		$results->{reactiondata} = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
+		my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
+		$results->{abstractreactiondata} = $fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] });
+		$results->{reactionclassifications} = $fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] });
+		push(@{$message},"Successfully retreived data for model ".$args->{model}."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-	if (!defined($args->{directory})) {
-		$args->{directory} = ModelSEED::interface::GETWORKSPACE()->directory();
-	}
-	my $cmdir = $args->{directory}."/".$args->{model};
-	if (! -e $cmdir) {
-	    mkdir($cmdir) or ModelSEED::utilities::ERROR("Could not create $cmdir: $!\n");
-	}
-	my $fbaObj = ModelSEED::ServerBackends::FBAMODEL->new();
-	my $dumper = YAML::Dumper->new;
-
-	open(FH, ">".$cmdir."/model_data") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
-	print FH $dumper->dump($md->{$args->{model}});
-	close FH;
-
-	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
-	close FH;
-
-	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
-	open(FH, ">".$cmdir."/compound_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
-	print FH $dumper->dump($cpds);
-	close FH;
-
-	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
-
-	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
-	close FH;
-
-	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
-	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
-	print FH $dumper->dump($rxns);
-	close FH;
-
-	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
-
-	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
-	close FH;
-
-	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
-	close FH;
-
-	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
+=NAME
+mdlprintmodelgenes
 =CATEGORY
 Metabolic Model Operations
+=DEFINITION
+Output = mdlprintmodelgenes({
+	model => string:ID of the model for which genes will be printed
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+print all genes in model
 =DESCRIPTION
 This function prints a list of all genes included in the specified model to a file in the workspace.
-=EXAMPLE
-./mdlprintmodelgenes -model iJR904
 =cut
 sub mdlprintmodelgenes {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"Name of the model for which the genes should be printed."],
-		["filename",0,undef,"Name of the file in the current workspace where the genes should be printed."]
-	],[@Data],"print all genes in model");
-	my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
-	if (!defined($mdl)) {
-		ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
+		if (!defined($mdl)) {
+			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+		}
+		my $ftrHash = $mdl->featureHash();
+		$output->{geneList} = [keys(%{$ftrHash})];
+		push(@{$message},"Successfully retreived gene list for ".$args->{model}."!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-	if (!defined($args->{filename})) {
-		$args->{filename} = $mdl->id()."-GeneList.lst";
-	}
-	my $ftrHash = $mdl->featureHash();
-	ModelSEED::globals::GETFIGMODEL()->database()->print_array_to_file($self->ws()->directory().$args->{filename},[keys(%{$ftrHash})]);
-	return "Successfully printed genelist for ".$args->{model}." in ".$self->ws()->directory().$args->{filename}."!\n";
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
 =head
 =NAME
@@ -1380,12 +1561,13 @@ mdlloadmodel
 Metabolic Model Operations
 =DEFINITION
 Output = mdlloadmodel({
-	name => string:The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)
+	model => string:ID of the model to be loaded (DO append your user index!)
+	modelfiledata => string(undef):Array containing the lines of the model reaction table
 	genome => string(NONE):The SEED genome ID associated with the model to be loaded
-	filename => string(undef):The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]
-	biomassFile => string(undef):The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]
+	biomassid => string(NONE):ID of the biomass reaction to be loaded into the model
+	biomassEquation => string(NONE):Stoichiometric equation for the biomass reaction to be loaded into the model
 	owner => string(Your login):The login name of the user that should own the loaded model
-	provenance => string(undef):The full path to a model directory that contains a provenance database for the model to be imported. If not provided, the Model SEED will generate a new provenance database from scratch using current system data.
+	biochemSource => string(undef):Name of the model whose biochem database should be copied with this new model. If not provided, the Model SEED will generate a new provenance database from scratch using current system data.
 	overwrite => string(0):If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'.
 	public => string(0):If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'.
 	autoCompleteMedia => string(Complete):Name of the media used for auto-completing this model.
@@ -1414,7 +1596,7 @@ sub mdlloadmodel {
 			biomassid => undef,
 			biomassEquation => undef,
 			owner => ModelSEED::globals::GETFIGMODEL()->user(),
-			provenance => undef,
+			biochemSource => undef,
 			overwrite => 0,
 			public => 0,
 			autoCompleteMedia => "Complete"
@@ -1428,7 +1610,7 @@ sub mdlloadmodel {
 			owner => $args->{"owner"},
 			public => $args->{"public"},
 			overwrite => $args->{"overwrite"},
-			provenance => $args->{"provenance"},
+			biochemSource => $args->{"biochemSource"},
 			autoCompleteMedia => $args->{"autoCompleteMedia"}
 		});
 		if (defined($modelObj)) {
@@ -1542,7 +1724,6 @@ sub mdlloadbiomass {
 	try {
 		$args = ModelSEED::utilities::ARGS($args,["biomassid"],{
 			equation => undef
-			biomassid => undef
 			model => undef,
 			overwrite => 0
 		});
@@ -1638,11 +1819,12 @@ mdlimportmodel
 =CATEGORY
 Metabolic Model Operations
 =DEFINITION
-Output = fbacheckgrowth({
+Output = mdlimportmodel({
 	name => string:The ID in the Model SEED that the imported model should have, or the ID of the model to be overwritten by the imported model,
+	compoundTable => FIGMODELTable:table of compounds in the imported model
+	reactionTable => FIGMODELTable:table of reactions in the imported model
 	genome => string:SEED ID of the genome the imported model should be associated with,
 	owner => string:Name of the user account that will own the imported model,
-	path => string:The path where the compound and reaction files containing the model data to be imported are located,
 	overwrite => 0/1:Set this FLAG to '1' to overwrite an existing model with the same name,
 	biochemsource => string:The path to the directory where the biochemistry database that the model should be imported into is located,
 })
@@ -1711,8 +1893,8 @@ utilmatrixdist
 =CATEGORY
 Utility Functions
 =DEFINITION
-Output = fbacheckgrowth({
-	matrixfile => string:Filename of table with numerical data you want to calculate the distribution of. Unless a full path is specified, file is assumed to be located in the current workspace,
+Output = utilmatrixdist({
+	matrix => [string]:numerical data you want to calculate the distribution of. Unless a full path is specified, file is assumed to be located in the current workspace,
 	binsize => integer:Size of bins into which data should be distributed,
 	startcol => integer:Column of the input data table where the numerical data begins,
 	endcol => integer:Column of the input data table where the numerical data ends,

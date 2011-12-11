@@ -2441,13 +2441,12 @@ sub import_model_file {
 	my ($self,$args) = @_;
 	$args = $self->process_arguments($args,["id","modelfiledata"],{
 		genome => "NONE",
-		modelfiledata => undef,
 		biomassID => undef,
 		biomassEquation => undef,
 		owner => "master",
 		public => 0,
 		overwrite => 0,
-		provenance => undef,
+		biochemSource => undef,
 		autoCompleteMedia => "Complete"
 	});
 	#Calculating the full ID of the model
@@ -2494,7 +2493,7 @@ sub import_model_file {
 			$objs->[$i]->delete();	
 		}
 	}
-	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
+	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table_from_array("",$args->{modelfiledata},"[;\\t]","|",1,["LOAD"]);
 	my $found = 0;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
