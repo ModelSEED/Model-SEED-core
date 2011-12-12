@@ -3019,7 +3019,7 @@ sub import_model {
 				modificationDate => time(),
 				creationDate => time(),
 				public => 1,
-				status => "UNKNOWN",
+				status => $codeResults->{status},
 				scope => $id
 			});
 		}
