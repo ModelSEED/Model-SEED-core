@@ -2816,7 +2816,7 @@ sub import_model {
 			    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
 				$Changes.="Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."\n";
 			    } 
-			    if ($cpd->charge() == 10000000){
+			    if (!$cpd->charge() || $cpd->charge() == 10000000){
 				$cpd->charge($row->{"CHARGE"}->[0]);
 			    }
 			}
@@ -2824,7 +2824,7 @@ sub import_model {
 			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0]){
 				$Changes.="Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]."\n";
 			    } 
-			    if ($cpd->mass() == 10000000){
+			    if (!$cpd->mass() || $cpd->mass() == 10000000){
 				$cpd->mass($row->{"MASS"}->[0]);
 			    }
 			}
@@ -2832,8 +2832,17 @@ sub import_model {
 			    if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
 				$Changes.="Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]."\n";
 			    } 
-			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0) {
+			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0 || $cpd->formula() eq "noformula") {
 				$cpd->formula($row->{"FORMULA"}->[0]);
+			    }
+			}
+
+			if (defined($row->{"STRINGCODE"}->[0])){
+			    if(defined($cpd->stringcode()) && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
+				$Changes.="Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]."\n";
+			    } 
+			    if (!defined($cpd->stringcode()) || length($cpd->stringcode()) == 0 || $cpd->stringcode() eq "nostringcode") {
+				$cpd->stringcode($row->{"STRINGCODE"}->[0]);
 			    }
 			}
 		    if(length($Changes)>0){
@@ -2851,12 +2860,20 @@ sub import_model {
 		    if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
 			$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
 		    }
+		    if (!defined($row->{"FORMULA"}->[0]) || $row->{"FORMULA"}->[0] eq "") {
+			$row->{"FORMULA"}->[0] = "noformula";	
+		    }
+		    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
+			$row->{"STRINGCODE"}->[0] = "nostringcode";
+		    }
 		    $cpd = $mdl->figmodel()->database()->create_object("compound",{
 			id => $newid,
 			name => $row->{"NAMES"}->[0],
 			abbrev => $row->{"ABBREV"}->[0],
 			mass => $row->{"MASS"}->[0],
 			charge => $row->{"CHARGE"}->[0],
+			charge => $row->{"STRINGCODE"}->[0],
+			charge => $row->{"FORMULA"}->[0],
 			deltaG => 10000000,
 			deltaGErr => 10000000,
 			owner => $args->{owner},
