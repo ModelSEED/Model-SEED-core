@@ -18,7 +18,7 @@ sub new {
 	my ($class,$args) = @_;
 	#Must manualy check for figmodel argument since figmodel is needed for automated checking
 	if (!defined($args->{figmodel})) {
-		print STDERR "FIGMODELreaction->new():figmodel must be defined to create an genome object!\n";
+		print STDERR "FIGMODELreaction->new():figmodel must be defined to create a reaction object!\n";
 		return undef;
 	}
 	my $self = {_figmodel => $args->{figmodel}};
@@ -27,10 +27,10 @@ sub new {
 	$args = $self->figmodel()->process_arguments($args,["figmodel"],{id => undef});
 	if (defined($args->{id})) {
 		$self->{_id} = $args->{id};
-		if ($self->id() =~ m/^bio\d+$/) {
-			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->id()});
+		if ($self->{_id} =~ m/^bio\d+$/) {
+			$self->{_ppo} = $self->figmodel()->database()->get_object("bof",{id => $self->{_id}});
 		} else {
-			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->id()});
+			$self->{_ppo} = $self->figmodel()->database()->get_object("reaction",{id => $self->{_id}});
 		}		
 		if(!defined($self->{_ppo})){
 		    return undef;
@@ -611,31 +611,73 @@ sub build_complete_biomass_reaction {
 		});
 	}
 }
-=head3 createReactionCode
+
+=head3 cleanupEquation
 Definition:
-	{} = FIGMODELreaction->createReactionCode({
+	"" = FIGMODELreaction->cleanupEquation({
+		equation => 
+	});
+	
+	Output = string:clean equation
+Description:
+	This function is used to correct errors in an equation string
+=cut
+sub cleanupEquation {
+    my ($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{
+	equation => undef,
+	});
+    if (!defined($args->{equation})) {
+	$args->{equation} = $self->ppo()->equation();
+    }
+    my $OriginalEquation = $args->{equation};
+
+    $OriginalEquation =~ s/^:\s//;
+    $OriginalEquation =~ s/^\s:\s//;
+
+    while ($OriginalEquation =~ m/\s\s/) {
+	$OriginalEquation =~ s/\s\s/ /g;
+    }
+    
+    $OriginalEquation =~ s/([^\+]\s)\+([^\s])/$1+ $2/g;
+    $OriginalEquation =~ s/([^\s])\+(\s[^\+<=])/$1 +$2/g;
+    $OriginalEquation =~ s/-->/=>/;
+    $OriginalEquation =~ s/<--/<=/;
+    $OriginalEquation =~ s/<==>/<=>/;
+    $OriginalEquation =~ s/([^\s^<])(=>)/$1 $2/;
+    $OriginalEquation =~ s/(<=)([^\s^>])/$1 $2/;
+    $OriginalEquation =~ s/(=>)([^\s])/$1 $2/;
+    $OriginalEquation =~ s/([^\s])(<=)/$1 $2/;
+    $OriginalEquation =~ s/\s(\[[a-z]\])\s/$1 /ig;
+    $OriginalEquation =~ s/\s(\[[a-z]\])$/$1/ig;
+    
+    return $OriginalEquation;
+}
+
+=head3 translateReactionCode
+Definition:
+	{} = FIGMODELreaction->translateReactionCode({
 		equation => 
 		translations => 
 	});
 	
 	Output = {
 		direction => <=/<=>/=>,
-		code => string:canonical reaction equation with H+ removed,
-		reverseCode => string:reverse canonical equation with H+ removed,
 		fullEquation => string:full equation with H+ included,
 		compartment => string:compartment of reaction,
 		error => string:error message
 	}
 Description:
-	This function is used to convert reaction equations to a standardized form that allows for reaction comparison.
-	This function accepts a string containing a reaction equation and a referece to a hash translating compound IDs in the reaction equation to Argonne compound IDs.
-	This function uses the hash to translate the IDs in the equation to Argonne IDs, and orders the reactants alphabetically.
-	This function returns four strings. The first string is the directionality of the input reaction: <= for reverse, => for forward, <=> for reversible.
-	The second string is the query equation for the reaction, which is the translated and sorted equation minus any cytosolic H+ terms.
-	The third strings is the reverse reaction for the second string, for matching this reaction to an exact reverse version of this reaction.
-	The final string is the full translated and sorted reaction equation with the cytosolic H+.
+    This function is used to convert reaction equations to a standardized form that allows for reaction comparison.
+    This function accepts a string containing a reaction equation and a reference to a hash translating compound IDs in the reaction equation to Argonne compound IDs.
+    This function uses the hash to translate the IDs in the equation to Argonne IDs, and orders the reactants alphabetically.
+    This function returns four strings. 
+    The first string is the directionality of the input reaction: <= for reverse, => for forward, <=> for reversible.
+    The second string is the full translated and sorted reaction equation with the cytosolic H+.
+    The third string is reaction compartment.
+    The final string is error message.
 =cut
-sub createReactionCode {
+sub translateReactionCode {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{
 		equation => undef,
@@ -644,39 +686,16 @@ sub createReactionCode {
 	if (!defined($args->{equation})) {
 		$args->{equation} = $self->ppo()->equation();
 	}
-	my $OriginalEquation = $args->{equation};
+	my $OriginalEquation=$args->{equation};
 	my $CompoundHashRef = $args->{translations};
+
 	#Dealing with the compartment at the front of the equation
 	my $EquationCompartment = "c";
 	if ($OriginalEquation =~ m/^\[[(a-z)]\]\s/i) {
-		$EquationCompartment = lc($1);
-		$OriginalEquation =~ s/^\[[(a-z)]\]\s//i;
-	}
-	$OriginalEquation =~ s/^:\s//;
-	$OriginalEquation =~ s/^\s:\s//;
-
-	#Dealing with obvious errors in equation
-	while ($OriginalEquation =~ m/\s\s/) {
-		$OriginalEquation =~ s/\s\s/ /g;
+	    $EquationCompartment = lc($1);
+	    $OriginalEquation =~ s/^\[[(a-z)]\]\s//i;
 	}
 
-	$OriginalEquation =~ s/([^\+]\s)\+([^\s])/$1+ $2/g;
-	$OriginalEquation =~ s/([^\s])\+(\s[^\+<=])/$1 +$2/g;
-	$OriginalEquation =~ s/-->/=>/;
-	$OriginalEquation =~ s/<--/<=/;
-	$OriginalEquation =~ s/<==>/<=>/;
-	$OriginalEquation =~ s/([^\s^<])(=>)/$1 $2/;
-	$OriginalEquation =~ s/(<=)([^\s^>])/$1 $2/;
-	$OriginalEquation =~ s/(=>)([^\s])/$1 $2/;
-	$OriginalEquation =~ s/([^\s])(<=)/$1 $2/;
-	$OriginalEquation =~ s/\s(\[[a-z]\])\s/$1 /ig;
-	$OriginalEquation =~ s/\s(\[[a-z]\])$/$1/ig;
-
-	#Checking for reactions that have no products, no reactants, or neither products nor reactants
-	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
-		ModelSEED::globals::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
-		return {success => 0,error => "Reaction either has no reactants or no products:".$OriginalEquation};
-	}
 	#Ready to start parsing equation
 	my $Direction = "<=>";
 	my @Data = split(/\s/,$OriginalEquation);
@@ -712,7 +731,7 @@ sub createReactionCode {
 			$CurrentString = "";
 			$CurrentReactant = "";
 		} elsif ($Data[$i] !~ m/[ABCDFGHIJKLMNOPQRSTUVWXYZ\]\[]/i) {
-			#Stripping off perenthesis if present
+			#Stripping off parenthesis if present
 			if ($Data[$i] =~ m/^\((.+)\)$/) {
 				$Data[$i] = $1;
 			}
@@ -883,61 +902,131 @@ sub createReactionCode {
 	if (length($ReactantString) == 0 || length($ProductString) == 0) {
 		$error .= "Empty products or products string.";
 	}
-	#Creating the forward, reverse, and full equations
+
 	my $Equation = $ReactantString." <=> ".$ProductString;
-	my $ReverseEquation = $ProductString." <=> ".$ReactantString;
-	my $FullEquation = $Equation;
-	#Removing protons from the equations used for matching
-	#Protecting external protons/electrons
-	$Equation =~ s/cpd00067\[e\]/TEMPH/gi;
-	#$Equation =~ s/cpd12713\[e\]/TEMPE/gi;
-	$ReverseEquation =~ s/cpd00067\[e\]/TEMPH/gi;
-	#$ReverseEquation =~ s/cpd12713\[e\]/TEMPH/gi;
-	#Remove protons/electrons with coefficients, accounting for beginning or end of line
-	$Equation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
-	$Equation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
-	#$Equation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
-	#$Equation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
-	$ReverseEquation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
-	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
-	#$ReverseEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
-	#$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
-	#Remove protons/electrons without coefficients, accounting for beginning or end of line
-	$Equation =~ s/cpd00067\s\+\s//g;
-	$Equation =~ s/\s\+\scpd00067//g;
-	#$Equation =~ s/cpd12713\s\+\s//g;
-	#$Equation =~ s/\s\+\scpd12713//g;
-	$ReverseEquation =~ s/cpd00067\s\+\s//g;
-	$ReverseEquation =~ s/\s\+\scpd00067//g;
-	#$ReverseEquation =~ s/cpd12713\s\+\s//g;
-	#$ReverseEquation =~ s/\s\+\scpd12713//g;
-	#Put external protons/electrons back in
-	$Equation =~ s/TEMPH/cpd00067\[e\]/g;
-	#$Equation =~ s/TEMPH/cpd12713\[e\]/g;
-	$ReverseEquation =~ s/TEMPH/cpd00067\[e\]/g;
-	#$ReverseEquation =~ s/TEMPH/cpd12713\[e\]/g;
+
 	#Clearing noncytosol compartment notation... compartment data is stored separately to improve reaction comparison
 	if ($EquationCompartment eq "") {
 		$EquationCompartment = "c";
 	} elsif ($EquationCompartment ne "c") {
 		$Equation =~ s/\[$EquationCompartment\]//g;
-		$ReverseEquation =~ s/\[$EquationCompartment\]//g;
-		$FullEquation =~ s/\[$EquationCompartment\]//g;
 	}
-	if ($EquationCompartment ne "c") {
-		#print "\nCompartment:".$EquationCompartment."\n";
-	}
+
 	my $output = {
 		direction => $Direction,
-		code => $Equation,
-		reverseCode => $ReverseEquation,
-		fullEquation => $FullEquation,
+		equation => $Equation,
 		compartment => $EquationCompartment,
 		success => 1
 	};
 	if (length($error) > 0) {
 		$output->{success} = 0;
 		$output->{error} = $error;
+	}
+	return $output;
+}
+
+=head3 createReactionCode
+Definition:
+	{} = FIGMODELreaction->createReactionCode({
+		equation => 
+		translations => 
+                debug => 0
+	});
+	
+	Output = {
+		direction => <=/<=>/=>,
+		code => string:canonical reaction equation with H+ removed,
+		reverseCode => string:reverse canonical equation with H+ removed,
+		fullEquation => string:full equation with H+ included,
+		compartment => string:compartment of reaction,
+		error => string:error message
+	}
+Description:
+	This function is used to convert reaction equations to a standardized form that allows for reaction comparison.
+	This function accepts a string containing a reaction equation and a reference to a hash translating compound IDs in the reaction equation to Argonne compound IDs.
+	This function uses the hash to translate the IDs in the equation to Argonne IDs, and orders the reactants alphabetically.
+	This function returns four strings. The first string is the directionality of the input reaction: <= for reverse, => for forward, <=> for reversible.
+	The second string is the query equation for the reaction, which is the translated and sorted equation minus any cytosolic H+ terms.
+	The third strings is the reverse reaction for the second string, for matching this reaction to an exact reverse version of this reaction.
+	The final string is the full translated and sorted reaction equation with the cytosolic H+.
+=cut
+sub createReactionCode {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		equation => undef,
+		translations => {},
+		debug => 0
+	});
+	if (!defined($args->{equation})) {
+		$args->{equation} = $self->ppo()->equation();
+	}
+	my $OriginalEquation = $self->cleanupEquation({equation=>$args->{equation}});
+
+	#Checking for reactions that have no products, no reactants, or neither products nor reactants
+	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
+		ModelSEED::globals::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
+		return {success => 0,error => "Reaction either has no reactants or no products:".$OriginalEquation,balanced=>0};
+	}
+
+	my $translateResults=$self->translateReactionCode({equation=>$OriginalEquation,translations=>$args->{translations}});
+
+	my $balanced_equation=0;
+	my $balance_status="OK";
+	my $balanceResults;
+	$balanceResults=$self->balanceReaction({equation=>$translateResults->{equation},debug=>$args->{debug}}) unless defined($translateResults->{error}) and length($translateResults->{error})>0;
+
+	#Creating the forward, reverse, and full equations
+	my $ForwardEquation =$balanceResults->{equation};
+	if(!$balanceResults->{equation}){
+	    $ForwardEquation = $translateResults->{equation};
+	}
+	my $FullEquation = $ForwardEquation;
+
+	my ($ReactantString,$ProductString)=split / <=> /,$ForwardEquation;
+	my $ReverseEquation = $ProductString." <=> ".$ReactantString;
+	#Removing protons from the equations used for matching
+	#Protecting external protons/electrons
+	$ForwardEquation =~ s/cpd00067\[e\]/TEMPH/gi;
+	#$ForwardEquation =~ s/cpd12713\[e\]/TEMPE/gi;
+	$ReverseEquation =~ s/cpd00067\[e\]/TEMPH/gi;
+	#$ReverseEquation =~ s/cpd12713\[e\]/TEMPH/gi;
+	#Remove protons/electrons with coefficients, accounting for beginning or end of line
+	$ForwardEquation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
+	$ForwardEquation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
+	#$ForwardEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	#$ForwardEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
+	$ReverseEquation =~ s/\([^\)]+\)\scpd00067\s\+\s//g;
+	$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd00067//g;
+	#$ReverseEquation =~ s/\([^\)]+\)\scpd12713\s\+\s//g;
+	#$ReverseEquation =~ s/\s\+\s\([^\)]+\)\scpd12713//g;
+	#Remove protons/electrons without coefficients, accounting for beginning or end of line
+	$ForwardEquation =~ s/cpd00067\s\+\s//g;
+	$ForwardEquation =~ s/\s\+\scpd00067//g;
+	#$ForwardEquation =~ s/cpd12713\s\+\s//g;
+	#$ForwardEquation =~ s/\s\+\scpd12713//g;
+	$ReverseEquation =~ s/cpd00067\s\+\s//g;
+	$ReverseEquation =~ s/\s\+\scpd00067//g;
+	#$ReverseEquation =~ s/cpd12713\s\+\s//g;
+	#$ReverseEquation =~ s/\s\+\scpd12713//g;
+	#Put external protons/electrons back in
+	$ForwardEquation =~ s/TEMPH/cpd00067\[e\]/g;
+	#$ForwardEquation =~ s/TEMPH/cpd12713\[e\]/g;
+	$ReverseEquation =~ s/TEMPH/cpd00067\[e\]/g;
+	#$ReverseEquation =~ s/TEMPH/cpd12713\[e\]/g;
+
+	my $output = {
+		direction => $translateResults->{direction},
+		code => $ForwardEquation,
+		reverseCode => $ReverseEquation,
+		fullEquation => $FullEquation,
+		compartment => $translateResults->{compartment},
+		success => 1,
+		balanced => $balanceResults->{balanced},
+		status => $balanceResults->{status}
+	};
+	if (defined($translateResults->{error}) && length($translateResults->{error}) > 0) {
+		$output->{success} = 0;
+		$output->{error} = $translateResults->{error};
 	}
 	return $output;
 }
@@ -1538,108 +1627,292 @@ sub get_reaction_reversibility_hash {
 Definition:
 	Output = FIGMODELreaction->balance_reaction();
 Description:
-	This function returns the code of the balanced reaction equation
+	This function returns the code of the balanced reaction equation and the flag as to whether it is balanced
 =cut
 
-sub balance_reaction {
-    my $reaction_code=shift;
+sub balanceReaction {
+    my ($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{
+	equation => undef,debug=>0});
+    if (!defined($args->{equation})) {
+	$args->{equation} = $self->ppo()->equation();
+    }
+    my $OriginalEquation = $args->{equation};
+    my $balanced_equation=0;
 
-#Need to make sure reaction coefficient is +/- for reactants and products respectively
-#possibly need to calculate energy/charge from compounds groups
-#iterate through reactants
-#Add up charge * reactant coefficient
-#Need to translate compound formula to atoms
-#Add up number of atoms of each element * reaction coefficient
-#if charge != zero, unbalanced charge
-#find imbalanced atoms
-#flag reaction as imbalanced if imbalance occurs in any atom other than H or E
-#Check to see if H is in reaction, and add coefficient of H needed
-#If not in reaction, add H to reaction
-#Re-calculate charge of reaction in case
-#If number of E imbalanced, check to see if E is in reaction, and add coefficient of E needed
-#If not in reaction, add E to reaction
+    #Ready to start parsing equation
+    my @Data = split(/\s/,$OriginalEquation);
+    my %ReactantHash;
+    my %ProductHash;
+    my $CurrentReactant = "";
+    my $CurrentCoefficient = 1;
+    my $WorkingOnProducts = 0;
+    my %RepresentedCompartments;
+    for (my $i =0; $i < @Data; $i++) {
+	if ($Data[$i] eq "" || $Data[$i] eq ":"){
+	    #Do nothing
+	} elsif ($Data[$i] eq "+") {
+	    if ($WorkingOnProducts == 0) {
+		$ReactantHash{$CurrentReactant} = -$CurrentCoefficient;
+	    } else {
+		$ProductHash{$CurrentReactant} = $CurrentCoefficient;
+	    }
+	    $CurrentReactant = "";
+	    $CurrentCoefficient = 1;
+	} elsif ($Data[$i] eq "<=>" || $Data[$i] eq "=>" || $Data[$i] eq "<=") {
+	    $WorkingOnProducts = 1;
+	    $ReactantHash{$CurrentReactant} = -$CurrentCoefficient;
+	    $CurrentReactant = "";
+	    $CurrentCoefficient = 1;
+	} elsif ($Data[$i] =~ m/\((.*?)\)/){
+	    #Coefficient
+	    $CurrentCoefficient = $1;
+	} else {
+	    my $CurrentCompartment = "c";
+	    if ($Data[$i] =~ m/(.+)\[(\D)\]$/) {
+		$Data[$i] = $1;
+		$CurrentCompartment = lc($2);
+	    }
+	    $RepresentedCompartments{$CurrentCompartment} = 1;
+	    $CurrentReactant = $Data[$i];
+	}
+    }
+    if (length($CurrentReactant) > 0) {
+	$ProductHash{$CurrentReactant} = $CurrentCoefficient;
+    }
 
-    return $reaction_code;
+    #Only do this for reactions belonging to one compartment
+    if(scalar(keys %RepresentedCompartments)>1){
+	my $output = {
+	    equation => $OriginalEquation,
+	    balanced => 0,
+	    status => "UNKNOWN"
+	};
+	return $output;
+    }
+
+    my %formulas=();
+    my %atoms=();
+    my $charge=0;
+    foreach my $cpd(keys %ReactantHash){
+	my $cpdObj=$self->figmodel()->get_compound($cpd);
+	my $atomKey=$cpdObj->atoms();
+	print "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	foreach my $a(keys %$atomKey){
+	    print $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
+	    $atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+	    print $a,"\t",$atoms{$a},"\n" if $args->{debug};
+	}
+	$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	$charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+    }
+
+    foreach my $cpd(keys %ProductHash){
+	my $cpdObj=$self->figmodel()->get_compound($cpd);
+	my $atomKey=$cpdObj->atoms();
+	print "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	foreach my $a(keys %$atomKey){
+	    print $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
+	    $atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+	    print $a,"\t",$atoms{$a},"\n" if $args->{debug};
+	}
+	$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	$charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+    }
+
+    print $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
+    $balanced_equation=1;
+
+    my $status='';
+    foreach my $a ( grep { $_ ne "H" && $_ ne "cpd12713" } sort keys %atoms){
+	if($atoms{$a}!=0){
+	    $balanced_equation=0;
+	    if(length($status)==0){
+		$status="MI:";
+	    }else{
+		$status.="/";
+	    }
+	    $status.=$a.$atoms{$a};
+	}
+    }
+
+    #Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
+    my @ignore=(')','n','*','noformula');
+    foreach my $ig(@ignore){
+	if(exists($atoms{$ig})){
+	    $balanced_equation=0;
+	    last;
+	}
+    }
+
+    #check protons
+    my $Added_Protons=0;
+    if(exists($atoms{'H'}) && $atoms{'H'} != 0){
+	if(length($status)==0 && $balanced_equation){
+	    #if balanced atoms, then balance protons
+	    print "Proton imbalance for ",$self->id(),"\t",$atoms{'H'},"\n" if $args->{debug};
+	    if($atoms{'H'} < 0){
+		if(exists($ProductHash{'cpd00067'})){
+		    $ProductHash{'cpd00067'}+=-$atoms{'H'};
+		}else{
+		    $ProductHash{'cpd00067'}=-$atoms{'H'};
+		}
+	    }elsif($atoms{'H'} > 0){
+		if(exists($ReactantHash{'cpd00067'})){
+		    $ReactantHash{'cpd00067'}+=-$atoms{'H'};
+		}else{
+		    $ReactantHash{'cpd00067'}=-$atoms{'H'};
+		}
+	    }
+	    $Added_Protons=1;
+	    $status="OK|HB:".$atoms{'H'};
+	}else{
+	    if(length($status)!=0){
+		$status.="|";
+	    }
+	    $status.="HI:".$atoms{'H'};
+	}
+    }
+
+    if($Added_Protons){
+	undef(%atoms);
+	$charge=0;
+	foreach my $cpd(keys %ReactantHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+		print $a,"\t",$atoms{$a},"\n" if $args->{debug};;
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+	}
+	
+	foreach my $cpd(keys %ProductHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+		print $a,"\t",$atoms{$a},"\n" if $args->{debug};
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+	}
+
+	print $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
+    }
+
+    
+
+    my $Added_Electrons=0;
+    if($charge!=0){
+	if(0){
+#	if((length($status)==0 && $balanced_equation) || $status eq "OK|HB"){
+	    #if balanced atoms, or balanced protins, then balance electrons
+	    print "Charge imbalance for ",$self->id(),"\t",$charge,"\n" if $args->{debug};
+	    
+	    if($charge < 0){
+		if(exists($ProductHash{'cpd12713'})){
+		    #$ProductHash{'cpd12713'}+=$charge;
+		}else{
+		    #$ProductHash{'cpd12713'}=$charge;
+		}
+	    }elsif($charge > 0){
+		if(exists($ReactantHash{'cpd12713'})){
+		    #$ReactantHash{'cpd12713'}+=$charge;
+		}else{
+		    #$ReactantHash{'cpd12713'}=$charge;
+		}
+	    }
+	    $Added_Electrons=1;
+	    if(length($status)!=0){
+		$status.="|CB:".$charge;
+	    }else{
+		$status="OK|CB:".$charge;
+	    }
+	}else{
+	    if(length($status)!=0){
+		$status.="|";
+	    }
+	    $status.="CI:".$charge;
+	}
+    }
+
+
+    if($Added_Electrons){
+	undef(%atoms);
+	$charge=0;
+	foreach my $cpd(keys %ReactantHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+		print $a,"\t",$atoms{$a},"\n" if $args->{debug};;
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+	}
+	
+	foreach my $cpd(keys %ProductHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+		print $a,"\t",$atoms{$a},"\n" if $args->{debug};
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+	}
+
+	print $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
+    }
+
+    $status="OK" if $status eq '';
+
+    my $output = {
+	equation => $OriginalEquation,
+	balanced => $balanced_equation,
+	status => $status
+    };
+
+    if($Added_Protons || $Added_Electrons){
+	#Sorting the reactants and products by the cpd ID
+	my @Reactants = sort(keys(%ReactantHash));
+	my $ReactantString = "";
+	for (my $i=0; $i < @Reactants; $i++) {
+	    if ($i > 0) {
+		$ReactantString .= " + ";
+	    }
+	    if($ReactantHash{$Reactants[$i]} ne "0" && $ReactantHash{$Reactants[$i]} ne "1" && $ReactantHash{$Reactants[$i]} ne "-1"){
+		$ReactantHash{$Reactants[$i]} =~ s/^-//;
+		$ReactantString .= "(".$ReactantHash{$Reactants[$i]}.") ";
+	    }
+	    $ReactantString .= $Reactants[$i];
+	}
+	my @Products = sort(keys(%ProductHash));
+	my $ProductString = "";
+	for (my $i=0; $i < @Products; $i++) {
+	    if ($i > 0) {
+		$ProductString .= " + ";
+	    }
+	    if($ProductHash{$Products[$i]} ne "0" && $ProductHash{$Products[$i]} ne "1" && $ProductHash{$Products[$i]} ne "-1"){
+		$ProductHash{$Products[$i]} =~ s/^-//;
+		$ProductString .= "(".$ProductHash{$Products[$i]}.") ";
+	    }
+	    $ProductString .= $Products[$i];
+	}
+
+	$output->{equation}=$ReactantString." <=> ".$ProductString;
+
+    }
+    return $output;
 }
-
-#bool Reaction::BalanceReaction(bool AddH, bool AddE) {
-#int i, j, k;
-#bool Balanced = true;
-#vector<AtomType*> AtomVector;
-#vector<double> NumAtoms;
-#double Charge = 0;
-#for (i=0; i < FNumReactants(); i++) {
-#    if (GetReactant(i)->FNumAtoms() == 0) {
-#	GetReactant(i)->TranslateFormulaToAtoms();
-#    }
-#    Charge += GetReactantCoef(i)*GetReactant(i)->FCharge();
-#    for (j=0; j < GetReactant(i)->FNumAtoms(); j++) {
-#	for (k=0; k < int(AtomVector.size()); k++) {
-#	    if (GetReactant(i)->GetAtom(j)->FType() == AtomVector[k]) {
-#		NumAtoms[k] += GetReactantCoef(i);
-#		break;
-#	    }
-#	}
-#	if (k >= int(AtomVector.size())) {
-#	    AtomVector.push_back(GetReactant(i)->GetAtom(j)->FType());
-#	    NumAtoms.push_back(GetReactantCoef(i));
-#	}
-#    }
-#}
-#
-#bool HEOnly = true;
-#double NumH = 0;
-#double NumE = 0;
-#for (i=0; i < int(AtomVector.size()); i++) {
-#    if (NumAtoms[i] != 0) {
-#	if (AtomVector[i]->FID().compare("H") == 0) {
-#	    NumH = -NumAtoms[i];
-#	} else if (AtomVector[i]->FID().compare("E") == 0) {
-#	    NumE = -NumAtoms[i];
-#	} else {
-#	    HEOnly = false;
-#	}
-#    }
-#}
-#
-#if (HEOnly && NumH != 0) {
-#    for (j=0; j< MainData->FNumSpecies(); j++) {
-#	if (MainData->GetSpecies(j)->FFormula().compare("H") == 0) {
-#	    AddReactant(MainData->GetSpecies(j),NumH,Compartment); 
-#	    break;
-#	}
-#    }
-#    if (j == MainData->FNumSpecies()) {
-#	Species* NewSpecies = MainData->FindSpecies("NAME","H+");
-#	if (NewSpecies != NULL) {
-#	    AddReactant(NewSpecies,NumH,Compartment); 
-#	}
-#    }
-#    NumH = 0;
-#} else if (!HEOnly) {
-#    Balanced = false;
-#}
-#
-#Charge = 0;
-#for (i=0; i < FNumReactants(); i++) {
-#    Charge += GetReactantCoef(i)*GetReactant(i)->FCharge();
-#}	
-#if (HEOnly && Charge != 0) {
-#    for (j=0; j< MainData->FNumSpecies(); j++) {
-#	if (MainData->GetSpecies(j)->FFormula().compare("E") == 0) {
-#	    AddReactant(MainData->GetSpecies(j),Charge,Compartment); 
-#	    break;
-#	}
-#    }
-#    if (j == MainData->FNumSpecies()) {
-#	Species* NewSpecies = MainData->FindSpecies("NAME","e-");
-#	if (NewSpecies != NULL) {
-#	    AddReactant(NewSpecies,Charge,Compartment); 
-#	}
-#    }
-#    Charge = 0;
-#}	
-#return Balanced;
-#}
-
 1;
