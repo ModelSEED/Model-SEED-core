@@ -2749,7 +2749,7 @@ sub import_model {
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
 			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			print "Found using InChI string: ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			print "Found using InChI string ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		    }
 		    if(!defined($cpdals)){
 			$newStrings->{$stringcode}=1;
@@ -2798,14 +2798,14 @@ sub import_model {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-				print "Found using KEGG (",$row->{"KEGG"}->[0],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 			}
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"MetaCyc"}->[0],type => "MetaCyc%"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
 			if (defined($cpdals)) {
 			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 			}
 		}
 
@@ -2850,7 +2850,7 @@ sub import_model {
 		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-		    print "New:".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
+		    print "New ".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 			$row->{"MASS"}->[0] = 10000000;	
 		    }
@@ -2993,7 +2993,7 @@ sub import_model {
 			}
 		}
 		if (defined($rxn)) {
-			print "Found:".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
+			print "Found ".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
@@ -3019,7 +3019,7 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code}."\n";
+			print "New ".$newid." for ".$row->{"ID"}->[0]." with code ".$codeResults->{code}."\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
