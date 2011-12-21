@@ -121,6 +121,7 @@ sub printErrorLog {
     my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
+    $errorFilename =~ s/\\/\//g;
     print $errorFH <<MSG;
 > ModelDriver encountered an unrecoverable error:
 
