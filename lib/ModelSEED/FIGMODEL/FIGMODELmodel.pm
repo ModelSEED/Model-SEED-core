@@ -6019,7 +6019,7 @@ sub PrintSBMLFile {
 			}
 			my $cmpObj = $self->figmodel()->database()->get_object("compartment",{id => $Compartment});
 			#print STDERR $Compartment,"\t",$cmpObj,"\t",$cmpObj->name(),"\n";
-			push(@{$output},'<species id="'.$Compound.'_'.$Compartment.'" name="'.$Name.'" compartment="'.$cmpObj->name().'" charge="'.$Charge.'" boundaryCondition="false"/>');
+			push(@{$output},'<species id="'.$Compound.'_'.$Compartment.'" name="'.$Name.'" compartment="'.$cmpObj->id().'" charge="'.$Charge.'" boundaryCondition="false"/>');
 		}
 	}
 	
