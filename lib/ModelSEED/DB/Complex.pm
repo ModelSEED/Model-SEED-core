@@ -1,6 +1,8 @@
 package ModelSEED::DB::Complex;
 
 use strict;
+use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -20,14 +22,13 @@ __PACKAGE__->meta->setup(
     relationships => [
         complex_role => {
             class      => 'ModelSEED::DB::ComplexRole',
-            column_map => { uuid => 'complex' },
+            column_map => { uuid => 'complex'},
             type       => 'one to many',
         },
 
         mapping_complex => {
-            class      => 'ModelSEED::DB::MappingComplex',
-            column_map => { uuid => 'complex' },
-            type       => 'one to many',
+            map_class  => 'ModelSEED::DB::MappingComplex',
+            type       => 'many to many',
         },
 
         reaction_complex => {
@@ -37,6 +38,26 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
+
+
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 
 1;
 

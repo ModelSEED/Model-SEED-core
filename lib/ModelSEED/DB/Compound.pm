@@ -1,6 +1,8 @@
 package ModelSEED::DB::Compound;
 
 use strict;
+use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -12,8 +14,8 @@ __PACKAGE__->meta->setup(
         modDate          => { type => 'datetime' },
         id               => { type => 'varchar', length => 32 },
         name             => { type => 'varchar', length => 255 },
-        abbreviation     => { type => 'varchar', length => 32 },
-        md5              => { type => 'varchar', length => 255 },
+        abbreviation     => { type => 'varchar', length => 255 },
+        cksum            => { type => 'varchar', length => 255 },
         unchargedFormula => { type => 'varchar', length => 255 },
         formula          => { type => 'varchar', length => 255 },
         mass             => { type => 'scalar', length => 64 },
@@ -31,8 +33,14 @@ __PACKAGE__->meta->setup(
             type       => 'one to many',
         },
 
-        compound_alias => {
+        aliases => {
             class      => 'ModelSEED::DB::CompoundAlias',
+            column_map => { uuid => 'compound' },
+            type       => 'one to many',
+        },
+        
+        structures => {
+            class      => 'ModelSEED::DB::CompoundStructure',
             column_map => { uuid => 'compound' },
             type       => 'one to many',
         },
@@ -67,8 +75,28 @@ __PACKAGE__->meta->setup(
             column_map => { uuid => 'compound' },
             type       => 'one to many',
         },
+        
     ],
 );
+
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 
 1;
 

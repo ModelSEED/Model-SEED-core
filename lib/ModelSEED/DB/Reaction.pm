@@ -1,6 +1,8 @@
 package ModelSEED::DB::Reaction;
 
 use strict;
+use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -12,9 +14,9 @@ __PACKAGE__->meta->setup(
         modDate             => { type => 'datetime' },
         id                  => { type => 'varchar', length => 32 },
         name                => { type => 'varchar', length => 255 },
-        abbreviation        => { type => 'varchar', length => 32 },
-        md5                 => { type => 'varchar', length => 255 },
-        equation            => { type => 'varchar', length => 255 },
+        abbreviation        => { type => 'varchar', length => 255 },
+        cksum               => { type => 'varchar', length => 255 },
+        equation            => { type => 'text' },
         deltaG              => { type => 'scalar', length => 64 },
         deltaGErr           => { type => 'scalar', length => 64 },
         reversibility       => { type => 'character', length => 1 },
@@ -84,5 +86,23 @@ __PACKAGE__->meta->setup(
     ],
 );
 
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 1;
 

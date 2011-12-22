@@ -1,9 +1,9 @@
 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL';
-
-CREATE SCHEMA IF NOT EXISTS `ModelDB`; -- DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
-USE `ModelDB` ;
+-- DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+--CREATE DATABASE IF NOT EXISTS `ModelDB`;
+--USE `ModelDB`;
 
 -- -----------------------------------------------------
 -- Table `compartment`
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `compartment` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `id` VARCHAR(2) NOT NULL,
-  `name` VARCHAR(255) DEFAULT "",
+  `name` VARCHAR(255) DEFAULT '',
   PRIMARY KEY (`uuid`),
   INDEX `compartment_id` (`id`)
 )
@@ -26,18 +26,18 @@ CREATE TABLE IF NOT EXISTS `reaction` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `id` VARCHAR(32) NOT NULL,
-  `name` VARCHAR(255) DEFAULT "",
-  `abbreviation` VARCHAR(32) DEFAULT "",
-  `cksum` VARCHAR(255) DEFAULT "",
-  `equation` VARCHAR(255) DEFAULT "",
-  `deltaG` DOUBLE NULL,              -- scheduled for removal
-  `deltaGErr` DOUBLE NULL,           -- scheduled for removal
-  `reversibility` CHAR(1) DEFAULT "=",
-  `thermoReversibility` CHAR(1) NULL, -- scheduled for removal
-  `defaultProtons` DOUBLE NULL,       -- scheduled for removal
-  `defaultIN` CHAR(36) NULL,          -- scheduled for removal
-  `defaultOUT` CHAR(36) NULL,         -- scheduled for removal
-  `defaultTransproton` DOUBLE NULL,  -- scheduled for removal
+  `name` VARCHAR(255) DEFAULT '',
+  `abbreviation` VARCHAR(255) DEFAULT '',
+  `cksum` VARCHAR(255) DEFAULT '',
+  `equation` TEXT DEFAULT '',
+  `deltaG` DOUBLE NULL,              
+  `deltaGErr` DOUBLE NULL,           
+  `reversibility` CHAR(1) DEFAULT '=',
+  `thermoReversibility` CHAR(1) NULL, 
+  `defaultProtons` DOUBLE NULL,       
+  `defaultIN` CHAR(36) NULL,          
+  `defaultOUT` CHAR(36) NULL,         
+  `defaultTransproton` DOUBLE NULL,  
   PRIMARY KEY (`uuid`),
   INDEX `reaction_id` (`id`),
   INDEX `reaction_cksum` (`cksum`),
@@ -80,14 +80,14 @@ CREATE TABLE IF NOT EXISTS `compound` (
   `modDate` DATETIME NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
-  `abbreviation` VARCHAR(32) NULL,
+  `abbreviation` VARCHAR(255) NULL,
   `cksum` VARCHAR(255) NULL,
   `unchargedFormula` VARCHAR(255) NULL,
   `formula` VARCHAR(255) NULL,
   `mass` DOUBLE NULL,
-  `defaultCharge` DOUBLE NULL,-- scheduled for removal
-  `deltaG` DOUBLE NULL,       -- scheduled for removal
-  `deltaGErr` DOUBLE NULL,    -- scheduled for removal
+  `defaultCharge` DOUBLE NULL,
+  `deltaG` DOUBLE NULL,       
+  `deltaGErr` DOUBLE NULL,    
   PRIMARY KEY (`uuid`),
   INDEX `compound_cksum` (`cksum`),
   INDEX `compound_id` (`id`),
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS `role` (
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `searchname` VARCHAR(255) NULL,
-  `exemplar` CHAR(36) NOT NULL,
+  `exemplar` CHAR(36) NULL,
   PRIMARY KEY (`uuid`),
   INDEX `role_id` (`id`),
   INDEX `role_name` (`name`),
@@ -278,15 +278,15 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `reaction_complex` (
   `reaction` CHAR(36) NOT NULL,
   `complex` CHAR(36) NOT NULL,
-  `primaryCompartment` CHAR(36) NOT NULL,
-  `secondaryCompartment` CHAR(36) NOT NULL,
+  `interiorCompartment` CHAR(36) NOT NULL,
+  `exteriorCompartment` CHAR(36) NOT NULL,
   `direction` CHAR(1) NULL,
-  `transproton` DOUBLE NULL,
+  `transprotonNature` CHAR(255) NULL,
   PRIMARY KEY (`reaction`, `complex`),
   INDEX `reaction_complex_complex_fk` (`complex`),
   INDEX `reaction_complex_reaction_fk` (`reaction`),
-  INDEX `reaction_complex_primaryCompartment_fk` (`primaryCompartment`),
-  INDEX `reaction_complex_secondaryCompartment_fk` (`secondaryCompartment`),
+  INDEX `reaction_complex_interiorCompartment_fk` (`interiorCompartment`),
+  INDEX `reaction_complex_exteriorCompartment_fk` (`exteriorCompartment`),
   CONSTRAINT `reaction_complex_reaction_fk`
     FOREIGN KEY (`reaction`)
     REFERENCES `reaction` (`uuid`)
@@ -297,13 +297,13 @@ CREATE TABLE IF NOT EXISTS `reaction_complex` (
     REFERENCES `complex` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_complex_primaryCompartment_fk`
-    FOREIGN KEY (`primaryCompartment`)
+  CONSTRAINT `reaction_complex_interiorCompartment_fk`
+    FOREIGN KEY (`interiorCompartment`)
     REFERENCES `compartment` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_complex_secondaryCompartment_fk`
-    FOREIGN KEY (`secondaryCompartment`)
+  CONSTRAINT `reaction_complex_exteriorCompartment_fk`
+    FOREIGN KEY (`exteriorCompartment`)
     REFERENCES `compartment` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS `compound_alias` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`compound`, `alias`),
+  PRIMARY KEY (`type`, `alias`),
   INDEX `compound_alias_type` (`type`),
   INDEX `compound_alias_compound_fk` (`compound`),
   CONSTRAINT `compound_alias_compound_fk`
@@ -327,6 +327,25 @@ CREATE TABLE IF NOT EXISTS `compound_alias` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `compound_structure`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `compound_structure` (
+  `compound` CHAR(36) NOT NULL,
+  `structure` TEXT NOT NULL,
+  `modDate` VARCHAR(45) NULL,
+  `type` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`type`, `structure`),
+  INDEX `compound_structure_type` (`type`),
+  INDEX `compound_structure_compound_fk` (`compound`),
+  CONSTRAINT `compound_structure_compound_fk`
+    FOREIGN KEY (`compound`)
+    REFERENCES `compound` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
 
 
 -- -----------------------------------------------------
@@ -337,7 +356,7 @@ CREATE TABLE IF NOT EXISTS `reaction_alias` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`reaction`, `alias`),
+  PRIMARY KEY (`type`, `alias`),
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction`),
   CONSTRAINT `reaction_alias_reaction_fk`
@@ -357,8 +376,15 @@ CREATE TABLE IF NOT EXISTS `mapping` (
   `locked` TINYINT(1)  NULL,
   `public` TINYINT(1)  NULL,
   `name` VARCHAR(255) NULL,
+  `biochemistry` CHAR(36) NOT NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `mapping_public` (`public`)
+  INDEX `mapping_public` (`public`),
+  INDEX `mapping_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `mapping_biochemistry_fk`
+    FOREIGN KEY (`biochemistry`)
+    REFERENCES `biochemistry` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
 )
 ENGINE = InnoDB;
 
@@ -391,10 +417,10 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `reaction_compound` (
   `reaction` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
-  `coefficient` DOUBLE NULL,       -- negative implies reactant
+  `coefficient` DOUBLE NULL,
   `cofactor` TINYINT(1) NULL, 
-  `secondaryCompartment` TINYINT(1) NULL, -- if true, in secondary compartment
-  PRIMARY KEY (`reaction`, `compound`, `secondaryCompartment`),
+  `exteriorCompartment` TINYINT(1) NULL, 
+  PRIMARY KEY (`reaction`, `compound`, `exteriorCompartment`),
   INDEX `reaction_compound_compound_fk` (`compound`),
   INDEX `reaction_compound_reaction_fk` (`reaction`),
   CONSTRAINT `reaction_compound_reaction_fk`
@@ -526,7 +552,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `model_reaction` (
   `model` CHAR(36) NOT NULL,
   `reaction` CHAR(36) NOT NULL,
-  `direction` CHAR(1) NULL,    -- one of <, >, or =
+  `direction` CHAR(1) NULL,
   `transproton` DOUBLE NULL,
   `protons` DOUBLE NULL,
   `primaryModelCompartment` CHAR(36) NOT NULL,
@@ -1184,6 +1210,55 @@ CREATE TABLE IF NOT EXISTS `biomass_compound` (
     REFERENCES `model_compartment` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `biochemistry_alias`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `biochemistry_alias` (
+    `biochemistry` CHAR(36) NOT NULL,
+    `username` CHAR(255) NOT NULL,
+    `id` CHAR(255) NOT NULL,
+    PRIMARY KEY ( `username`, `id` ),
+    INDEX `biochemistry_alias_biochemistry_fk` (`biochemistry`),
+    CONSTRAINT `biochemistry_alias_biochemistry_fk`
+        FOREIGN KEY (`biochemistry`)
+        REFERENCES `biochemistry` (`uuid`)
+        ON DELETE NO ACTION
+        ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `model_alias`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `model_alias` (
+    `model` CHAR(36) NOT NULL,
+    `username` CHAR(255) NOT NULL,
+    `id` CHAR(255) NOT NULL,
+    PRIMARY KEY ( `username`, `id` ),
+    INDEX `model_alias_model_fk` (`model`),
+    CONSTRAINT `model_alias_model_fk`
+        FOREIGN KEY (`model`)
+        REFERENCES `model` (`uuid`)
+        ON DELETE NO ACTION
+        ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+        
+
+-- -----------------------------------------------------
+-- Table `mapping_alias`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mapping_alias` (
+    `mapping` CHAR(36) NOT NULL,
+    `username` CHAR(255) NOT NULL,
+    `id` CHAR(255) NOT NULL,
+    PRIMARY KEY ( `username`, `id` ),
+    INDEX `mapping_alias_mapping_fk` (`mapping`),
+    CONSTRAINT `mapping_alias_mapping_fk`
+        FOREIGN KEY (`mapping`)
+        REFERENCES `mapping` (`uuid`)
+        ON DELETE NO ACTION
+        ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 SET SQL_MODE=@OLD_SQL_MODE;

@@ -1,6 +1,7 @@
 package ModelSEED::DB::ReactionAlias;
 
 use strict;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -14,7 +15,7 @@ __PACKAGE__->meta->setup(
         type     => { type => 'varchar', length => 32, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'reaction', 'alias' ],
+    primary_key_columns => [ 'type', 'alias' ],
 
     foreign_keys => [
         reaction_obj => {
@@ -32,6 +33,13 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 
 1;
 

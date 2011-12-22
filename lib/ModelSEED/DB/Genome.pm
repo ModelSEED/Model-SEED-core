@@ -1,6 +1,8 @@
 package ModelSEED::DB::Genome;
 
 use strict;
+use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -17,7 +19,7 @@ __PACKAGE__->meta->setup(
         source     => { type => 'varchar', length => 32 },
         type       => { type => 'varchar', length => 32 },
         taxonomy   => { type => 'varchar', length => 255 },
-        md5        => { type => 'varchar', length => 255 },
+        cksum      => { type => 'varchar', length => 255 },
         size       => { type => 'integer' },
         genes      => { type => 'integer' },
         gc         => { type => 'scalar', length => 64 },
@@ -50,5 +52,23 @@ __PACKAGE__->meta->setup(
     ],
 );
 
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 1;
 

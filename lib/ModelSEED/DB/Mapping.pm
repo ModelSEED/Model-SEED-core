@@ -1,6 +1,8 @@
 package ModelSEED::DB::Mapping;
 
 use strict;
+use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -9,6 +11,7 @@ __PACKAGE__->meta->setup(
 
     columns => [
         uuid    => { type => 'character', length => 36, not_null => 1 },
+        biochemistry => { type => 'character', length => 36, not_null => 1},
         modDate => { type => 'datetime' },
         locked  => { type => 'integer' },
         public  => { type => 'integer' },
@@ -17,23 +20,27 @@ __PACKAGE__->meta->setup(
 
     primary_key_columns => [ 'uuid' ],
 
+    foreign_keys => [
+        biochemistry_obj => {
+            class => 'ModelSEED::DB::Biochemistry',
+            key_columns => { biochemistry => 'uuid' },
+        },
+    ],
+
     relationships => [
-        mapping_compartment => {
-            class      => 'ModelSEED::DB::MappingCompartment',
-            column_map => { uuid => 'mapping' },
-            type       => 'one to many',
+        compartment => {
+            map_class  => 'ModelSEED::DB::MappingCompartment',
+            type       => 'many to many',
         },
 
-        mapping_complex => {
-            class      => 'ModelSEED::DB::MappingComplex',
-            column_map => { uuid => 'mapping' },
-            type       => 'one to many',
+        complexes => {
+            map_class  => 'ModelSEED::DB::MappingComplex',
+            type       => 'many to many',
         },
 
-        mapping_role => {
-            class      => 'ModelSEED::DB::MappingRole',
-            column_map => { uuid => 'mapping' },
-            type       => 'one to many',
+        role => {
+            map_class  => 'ModelSEED::DB::MappingRole',
+            type       => 'many to many',
         },
 
         model => {
@@ -53,8 +60,32 @@ __PACKAGE__->meta->setup(
             map_to     => 'parent_obj',
             type       => 'many to many',
        },
+       alias => {
+            class => 'ModelSEED::DB::MappingAlias',
+            column_map => { uuid => 'mapping' },
+            type       => 'one to many',
+        },
     ],
 );
+
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 
 1;
 

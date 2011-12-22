@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Fri Dec  2 15:59:44 2011
+-- Created on Wed Dec 21 15:19:09 2011
 -- 
 
 BEGIN TRANSACTION;
@@ -11,10 +11,12 @@ BEGIN TRANSACTION;
 CREATE TABLE compartment (
   uuid CHAR(36) NOT NULL,
   modDate DATETIME,
-  id CHAR(2),
-  name VARCHAR(255),
+  id VARCHAR(2) NOT NULL,
+  name VARCHAR(255) DEFAULT '',
   PRIMARY KEY (uuid)
 );
+
+CREATE INDEX compartment_id ON compartment (id);
 
 --
 -- Table: reaction
@@ -22,14 +24,14 @@ CREATE TABLE compartment (
 CREATE TABLE reaction (
   uuid CHAR(36) NOT NULL,
   modDate DATETIME,
-  id VARCHAR(32),
-  name VARCHAR(255),
-  abbreviation VARCHAR(32),
-  md5 VARCHAR(255),
-  equation VARCHAR(255),
+  id VARCHAR(32) NOT NULL,
+  name VARCHAR(255) DEFAULT '',
+  abbreviation VARCHAR(255) DEFAULT '',
+  cksum VARCHAR(255) DEFAULT '',
+  equation TEXT DEFAULT '',
   deltaG DOUBLE,
   deltaGErr DOUBLE,
-  reversibility CHAR(1),
+  reversibility CHAR(1) DEFAULT '=',
   thermoReversibility CHAR(1),
   defaultProtons DOUBLE,
   defaultIN CHAR(36),
@@ -39,6 +41,12 @@ CREATE TABLE reaction (
   FOREIGN KEY(defaultIN) REFERENCES compartment(uuid),
   FOREIGN KEY(defaultOUT) REFERENCES compartment(uuid)
 );
+
+CREATE INDEX reaction_id ON reaction (id);
+
+CREATE INDEX reaction_cksum ON reaction (cksum);
+
+CREATE INDEX reaction_equation ON reaction (equation);
 
 CREATE INDEX reaction_defaultIN_fk ON reaction (defaultIN);
 
@@ -56,6 +64,8 @@ CREATE TABLE biochemistry (
   PRIMARY KEY (uuid)
 );
 
+CREATE INDEX biochemistry_public ON biochemistry (public);
+
 --
 -- Table: compound
 --
@@ -64,8 +74,8 @@ CREATE TABLE compound (
   modDate DATETIME,
   id VARCHAR(32),
   name VARCHAR(255),
-  abbreviation VARCHAR(32),
-  md5 VARCHAR(255),
+  abbreviation VARCHAR(255),
+  cksum VARCHAR(255),
   unchargedFormula VARCHAR(255),
   formula VARCHAR(255),
   mass DOUBLE,
@@ -74,6 +84,14 @@ CREATE TABLE compound (
   deltaGErr DOUBLE,
   PRIMARY KEY (uuid)
 );
+
+CREATE INDEX compound_cksum ON compound (cksum);
+
+CREATE INDEX compound_id ON compound (id);
+
+CREATE INDEX compound_name ON compound (name);
+
+CREATE INDEX compound_formula ON compound (formula);
 
 --
 -- Table: biochemistry_compound
@@ -102,7 +120,11 @@ CREATE TABLE complex (
   PRIMARY KEY (uuid)
 );
 
-CREATE INDEX searchname ON complex (searchname);
+CREATE INDEX complex_searchname ON complex (searchname);
+
+CREATE INDEX complex_id ON complex (id);
+
+CREATE INDEX complex_name ON complex (name);
 
 --
 -- Table: media
@@ -115,6 +137,10 @@ CREATE TABLE media (
   type CHAR(1),
   PRIMARY KEY (uuid)
 );
+
+CREATE INDEX media_id ON media (id);
+
+CREATE INDEX media_name ON media (name);
 
 --
 -- Table: genome
@@ -129,18 +155,20 @@ CREATE TABLE genome (
   source VARCHAR(32),
   type VARCHAR(32),
   taxonomy VARCHAR(255),
-  md5 VARCHAR(255),
+  cksum VARCHAR(255),
   size int(11),
   genes int(11),
   gc DOUBLE,
-  cellwall CHAR(1),
-  aerobicity CHAR(1),
-  media CHAR(36) NOT NULL,
-  PRIMARY KEY (uuid),
-  FOREIGN KEY(media) REFERENCES media(uuid)
+  gramPositive CHAR(1),
+  aerobic CHAR(1),
+  PRIMARY KEY (uuid)
 );
 
-CREATE INDEX genome_media_fk ON genome (media);
+CREATE INDEX genome_id ON genome (id);
+
+CREATE INDEX genome_source ON genome (source);
+
+CREATE INDEX genome_cksum ON genome (cksum);
 
 --
 -- Table: feature
@@ -149,13 +177,17 @@ CREATE TABLE feature (
   uuid CHAR(36) NOT NULL,
   modDate DATETIME,
   id VARCHAR(32),
-  md5 VARCHAR(255),
+  cksum VARCHAR(255),
   genome CHAR(36) NOT NULL,
   start int(11),
   stop int(11),
   PRIMARY KEY (uuid),
   FOREIGN KEY(genome) REFERENCES genome(uuid)
 );
+
+CREATE INDEX feature_id ON feature (id);
+
+CREATE INDEX feature_cksum ON feature (cksum);
 
 CREATE INDEX feature_genome_fk ON feature (genome);
 
@@ -168,12 +200,18 @@ CREATE TABLE role (
   id VARCHAR(32),
   name VARCHAR(255),
   searchname VARCHAR(255),
-  exemplar CHAR(36) NOT NULL,
+  exemplar CHAR(36),
   PRIMARY KEY (uuid),
   FOREIGN KEY(exemplar) REFERENCES feature(uuid)
 );
 
-CREATE INDEX searchname02 ON role (searchname);
+CREATE INDEX role_id ON role (id);
+
+CREATE INDEX role_name ON role (name);
+
+CREATE INDEX role_searchname ON role (searchname);
+
+CREATE INDEX role_exemplar ON role (exemplar);
 
 CREATE INDEX role_feature_fk ON role (exemplar);
 
@@ -215,24 +253,24 @@ CREATE INDEX biochemistry_reaction_biochemistry_fk ON biochemistry_reaction (bio
 CREATE TABLE reaction_complex (
   reaction CHAR(36) NOT NULL,
   complex CHAR(36) NOT NULL,
-  input CHAR(36) NOT NULL,
-  output CHAR(36) NOT NULL,
+  interiorCompartment CHAR(36) NOT NULL,
+  exteriorCompartment CHAR(36) NOT NULL,
   direction CHAR(1),
-  transproton DOUBLE,
+  transprotonNature CHAR(255),
   PRIMARY KEY (reaction, complex),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid),
   FOREIGN KEY(complex) REFERENCES complex(uuid),
-  FOREIGN KEY(input) REFERENCES compartment(uuid),
-  FOREIGN KEY(output) REFERENCES compartment(uuid)
+  FOREIGN KEY(interiorCompartment) REFERENCES compartment(uuid),
+  FOREIGN KEY(exteriorCompartment) REFERENCES compartment(uuid)
 );
 
 CREATE INDEX reaction_complex_complex_fk ON reaction_complex (complex);
 
 CREATE INDEX reaction_complex_reaction_fk ON reaction_complex (reaction);
 
-CREATE INDEX reaction_complex_in_fk ON reaction_complex (input);
+CREATE INDEX reaction_complex_interiorCompartment_fk ON reaction_complex (interiorCompartment);
 
-CREATE INDEX reaction_complex_out_fk ON reaction_complex (output);
+CREATE INDEX reaction_complex_exteriorCompartment_fk ON reaction_complex (exteriorCompartment);
 
 --
 -- Table: compound_alias
@@ -242,11 +280,29 @@ CREATE TABLE compound_alias (
   alias VARCHAR(255) NOT NULL,
   modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
-  PRIMARY KEY (compound, alias),
+  PRIMARY KEY (type, alias),
   FOREIGN KEY(compound) REFERENCES compound(uuid)
 );
 
+CREATE INDEX compound_alias_type ON compound_alias (type);
+
 CREATE INDEX compound_alias_compound_fk ON compound_alias (compound);
+
+--
+-- Table: compound_structure
+--
+CREATE TABLE compound_structure (
+  compound CHAR(36) NOT NULL,
+  structure TEXT NOT NULL,
+  modDate VARCHAR(45),
+  type VARCHAR(32) NOT NULL,
+  PRIMARY KEY (type, structure),
+  FOREIGN KEY(compound) REFERENCES compound(uuid)
+);
+
+CREATE INDEX compound_structure_type ON compound_structure (type);
+
+CREATE INDEX compound_structure_compound_fk ON compound_structure (compound);
 
 --
 -- Table: reaction_alias
@@ -256,9 +312,11 @@ CREATE TABLE reaction_alias (
   alias VARCHAR(255) NOT NULL,
   modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
-  PRIMARY KEY (reaction, alias),
+  PRIMARY KEY (type, alias),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid)
 );
+
+CREATE INDEX compound_alias_type02 ON reaction_alias (type);
 
 CREATE INDEX reaction_fk ON reaction_alias (reaction);
 
@@ -271,8 +329,14 @@ CREATE TABLE mapping (
   locked TINYINT(1),
   public TINYINT(1),
   name VARCHAR(255),
-  PRIMARY KEY (uuid)
+  biochemistry CHAR(36) NOT NULL,
+  PRIMARY KEY (uuid),
+  FOREIGN KEY(biochemistry) REFERENCES biochemistry(uuid)
 );
+
+CREATE INDEX mapping_public ON mapping (public);
+
+CREATE INDEX mapping_biochemistry_fk ON mapping (biochemistry);
 
 --
 -- Table: mapping_complex
@@ -295,20 +359,17 @@ CREATE INDEX mapping_complex_mapping_fk ON mapping_complex (mapping);
 CREATE TABLE reaction_compound (
   reaction CHAR(36) NOT NULL,
   compound CHAR(36) NOT NULL,
-  compartment CHAR(36) NOT NULL,
   coefficient DOUBLE,
   cofactor TINYINT(1),
-  PRIMARY KEY (reaction, compound, compartment),
+  exteriorCompartment TINYINT(1) NOT NULL,
+  PRIMARY KEY (reaction, compound, exteriorCompartment),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid),
-  FOREIGN KEY(compound) REFERENCES compound(uuid),
-  FOREIGN KEY(compartment) REFERENCES compartment(uuid)
+  FOREIGN KEY(compound) REFERENCES compound(uuid)
 );
 
 CREATE INDEX reaction_compound_compound_fk ON reaction_compound (compound);
 
 CREATE INDEX reaction_compound_reaction_fk ON reaction_compound (reaction);
-
-CREATE INDEX reaction_compound_compartment_fk ON reaction_compound (compartment);
 
 --
 -- Table: reactionset
@@ -324,6 +385,12 @@ CREATE TABLE reactionset (
   PRIMARY KEY (uuid)
 );
 
+CREATE INDEX reactionset_id ON reactionset (id);
+
+CREATE INDEX reactionset_name ON reactionset (name);
+
+CREATE INDEX reactionset_searchname ON reactionset (searchname);
+
 --
 -- Table: annotation
 --
@@ -335,6 +402,8 @@ CREATE TABLE annotation (
   PRIMARY KEY (uuid),
   FOREIGN KEY(genome) REFERENCES genome(uuid)
 );
+
+CREATE INDEX annotation_name ON annotation (name);
 
 CREATE INDEX annotation_genome_fk ON annotation (genome);
 
@@ -375,13 +444,14 @@ CREATE INDEX model_annotation_fk ON model (annotation);
 -- Table: model_compartment
 --
 CREATE TABLE model_compartment (
+  uuid CHAR(36) NOT NULL,
   model CHAR(36) NOT NULL,
   compartment CHAR(36) NOT NULL,
-  compartment_index int(11),
+  compartment_index int(11) NOT NULL,
   label VARCHAR(255),
   pH DOUBLE,
   potential DOUBLE,
-  PRIMARY KEY (model, compartment),
+  PRIMARY KEY (uuid),
   FOREIGN KEY(model) REFERENCES model(uuid),
   FOREIGN KEY(compartment) REFERENCES compartment(uuid)
 );
@@ -389,6 +459,8 @@ CREATE TABLE model_compartment (
 CREATE INDEX model_compartment_compartment_fk ON model_compartment (compartment);
 
 CREATE INDEX model_compartment_model_fk ON model_compartment (model);
+
+CREATE UNIQUE INDEX model_compartment_idx ON model_compartment (model, compartment, compartment_index);
 
 --
 -- Table: model_reaction
@@ -399,22 +471,22 @@ CREATE TABLE model_reaction (
   direction CHAR(1),
   transproton DOUBLE,
   protons DOUBLE,
-  input CHAR(36) NOT NULL,
-  output CHAR(36) NOT NULL,
+  primaryModelCompartment CHAR(36) NOT NULL,
+  secondaryModelCompartment CHAR(36),
   PRIMARY KEY (model, reaction),
   FOREIGN KEY(model) REFERENCES model(uuid),
   FOREIGN KEY(reaction) REFERENCES reaction(uuid),
-  FOREIGN KEY(input) REFERENCES compartment(uuid),
-  FOREIGN KEY(output) REFERENCES compartment(uuid)
+  FOREIGN KEY(primaryModelCompartment) REFERENCES model_compartment(uuid),
+  FOREIGN KEY(secondaryModelCompartment) REFERENCES model_compartment(uuid)
 );
 
 CREATE INDEX model_reaction_reaction_fk ON model_reaction (reaction);
 
 CREATE INDEX model_reaction_model_fk ON model_reaction (model);
 
-CREATE INDEX model_reaction_in_fk ON model_reaction (input);
+CREATE INDEX model_reaction_primaryModelCompartment_fk ON model_reaction (primaryModelCompartment);
 
-CREATE INDEX model_reaction_out_fk ON model_reaction (output);
+CREATE INDEX model_reaction_secondaryModelCompartment_fk ON model_reaction (secondaryModelCompartment);
 
 --
 -- Table: modelfba
@@ -508,6 +580,12 @@ CREATE TABLE roleset (
   PRIMARY KEY (uuid)
 );
 
+CREATE INDEX roleset_id ON roleset (id);
+
+CREATE INDEX roleset_name ON roleset (name);
+
+CREATE INDEX roleset_searchname ON roleset (searchname);
+
 --
 -- Table: roleset_role
 --
@@ -597,6 +675,12 @@ CREATE TABLE compoundset (
   type VARCHAR(32),
   PRIMARY KEY (uuid)
 );
+
+CREATE INDEX compoundset_id ON compoundset (id);
+
+CREATE INDEX compoundset_name ON compoundset (name);
+
+CREATE INDEX compoundset_searchname ON compoundset (searchname);
 
 --
 -- Table: compoundset_compound
@@ -812,5 +896,92 @@ CREATE TABLE permission (
   admin TINYINT(1),
   PRIMARY KEY (object, user)
 );
+
+--
+-- Table: biomass
+--
+CREATE TABLE biomass (
+  uuid CHAR(36) NOT NULL,
+  modDate DATETIME,
+  id VARCHAR(32),
+  name VARCHAR(255),
+  PRIMARY KEY (uuid)
+);
+
+CREATE INDEX biomass_id ON biomass (id);
+
+--
+-- Table: model_biomass
+--
+CREATE TABLE model_biomass (
+  model CHAR(36) NOT NULL,
+  biomass CHAR(36) NOT NULL,
+  PRIMARY KEY (model, biomass),
+  FOREIGN KEY(biomass) REFERENCES biomass(uuid),
+  FOREIGN KEY(model) REFERENCES model(uuid)
+);
+
+CREATE INDEX model_biomass_biomass_fk ON model_biomass (biomass);
+
+CREATE INDEX model_biomass_model_fk ON model_biomass (model);
+
+--
+-- Table: biomass_compound
+--
+CREATE TABLE biomass_compound (
+  biomass CHAR(36) NOT NULL,
+  compound CHAR(36) NOT NULL,
+  compartment CHAR(36) NOT NULL,
+  coefficient DOUBLE,
+  PRIMARY KEY (biomass, compound),
+  FOREIGN KEY(biomass) REFERENCES biomass(uuid),
+  FOREIGN KEY(compound) REFERENCES compound(uuid),
+  FOREIGN KEY(compartment) REFERENCES model_compartment(uuid)
+);
+
+CREATE INDEX biomass_compound_biomass_fk ON biomass_compound (biomass);
+
+CREATE INDEX biomass_compound_compound_fk ON biomass_compound (compound);
+
+CREATE INDEX biomass_compound_compartment_fk ON biomass_compound (compartment);
+
+--
+-- Table: biochemistry_alias
+--
+CREATE TABLE biochemistry_alias (
+  biochemistry CHAR(36) NOT NULL,
+  username CHAR(255) NOT NULL,
+  id CHAR(255) NOT NULL,
+  PRIMARY KEY (username, id),
+  FOREIGN KEY(biochemistry) REFERENCES biochemistry(uuid)
+);
+
+CREATE INDEX biochemistry_alias_biochemistry_fk ON biochemistry_alias (biochemistry);
+
+--
+-- Table: model_alias
+--
+CREATE TABLE model_alias (
+  model CHAR(36) NOT NULL,
+  username CHAR(255) NOT NULL,
+  id CHAR(255) NOT NULL,
+  PRIMARY KEY (username, id),
+  FOREIGN KEY(model) REFERENCES model(uuid)
+);
+
+CREATE INDEX model_alias_model_fk ON model_alias (model);
+
+--
+-- Table: mapping_alias
+--
+CREATE TABLE mapping_alias (
+  mapping CHAR(36) NOT NULL,
+  username CHAR(255) NOT NULL,
+  id CHAR(255) NOT NULL,
+  PRIMARY KEY (username, id),
+  FOREIGN KEY(mapping) REFERENCES mapping(uuid)
+);
+
+CREATE INDEX mapping_alias_mapping_fk ON mapping_alias (mapping);
 
 COMMIT;

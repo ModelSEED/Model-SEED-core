@@ -1,6 +1,7 @@
 package ModelSEED::DB::CompoundPk;
 
 use strict;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -26,5 +27,11 @@ __PACKAGE__->meta->setup(
     ],
 );
 
+__PACKAGE__->meta->column('modDate')->add_trigger(
+    deflate => sub {
+        unless(defined($_[0]->modDate)) {
+            return DateTime->now();
+        }
+});
 1;
 

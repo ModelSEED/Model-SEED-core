@@ -5,28 +5,28 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'reaction_complex',
+   table   => 'reaction_complex',
 
     columns => [
         reaction    => { type => 'character', length => 36, not_null => 1 },
         complex     => { type => 'character', length => 36, not_null => 1 },
-        in          => { type => 'character', length => 36, not_null => 1 },
-        out         => { type => 'character', length => 36, not_null => 1 },
+        interiorCompartment => { type => 'character', length => 36, not_null => 1 },
+        exteriorCompartment => { type => 'character', length => 36, not_null => 1 },
         direction   => { type => 'character', length => 1 },
-        transproton => { type => 'scalar', length => 64 },
+        transprotonNature => { type => 'character', length => 255 },
     ],
 
     primary_key_columns => [ 'reaction', 'complex' ],
 
     foreign_keys => [
-        compartment => {
+        interiorCompartment_obj => {
             class       => 'ModelSEED::DB::Compartment',
-            key_columns => { in => 'uuid' },
+            key_columns => { interiorCompartment => 'uuid' },
         },
 
-        compartment_obj => {
+        exteriorCompartment_obj => {
             class       => 'ModelSEED::DB::Compartment',
-            key_columns => { out => 'uuid' },
+            key_columns => { exteriorCompartment => 'uuid' },
         },
 
         complex_obj => {
