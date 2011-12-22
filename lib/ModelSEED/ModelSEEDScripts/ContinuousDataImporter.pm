@@ -71,11 +71,10 @@ sub _makeTypesToHashFns {
         return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->exemplar || '');
     };
     $f->{compound} = sub {
-        confess "undef here" if(!defined($_[0]));
         return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' );
     };
     $f->{compound_alias} = sub {
-        return $f->{compound}->($_[0]->compound_obj) . $_[0]->alias . $_[0]->type;
+        return $_[0]->alias . $_[0]->type;
     };
     $f->{reaction} = sub {
         return $_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation;
@@ -138,11 +137,11 @@ sub _makeConversionFns {
     };
     $f->{compound_alias} = sub {
         my ($row, $ctx) = @_;
-        my $obj = $ctx->{compounds}->{$row->{COMPOUND}->[0]};
+        my $obj = $ctx->{compound}->{$row->{COMPOUND}->[0]};
         return undef unless($obj);
         return {
             type => $row->{type}->[0],
-            alias => $row->{type}->[0],
+            alias => $row->{alias}->[0],
             compound => $obj->uuid,
         };
     };
@@ -172,7 +171,7 @@ sub _makeConversionFns {
         return undef unless($obj);
         return {
             type => $row->{type}->[0],
-            alias => $row->{type}->[0],
+            alias => $row->{alias}->[0],
             reaction => $obj->uuid,
         };
     };
@@ -276,10 +275,14 @@ sub importBiochemistryFromDir {
         $RDB_biochemistry->add_compound($RDB_compound); 
     }
     # CompoundAliases
+    my $aliasRepeats = {};
     for(my $i=0; $i<$files->{compound_alias}->size(); $i++) {
         my $row = $files->{compound_alias}->get_row($i);
         my $hash = $self->convert("compound_alias", $row, $ctx);
         next unless defined($hash);
+        my $error;
+        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "compound");
+        next if $error;
         my $RDB_compound_alias =
             $self->getOrCreateObject("compound_alias", $hash);
         $RDB_biochemistry->add_compound_alias($RDB_compound_alias);
@@ -295,16 +298,20 @@ sub importBiochemistryFromDir {
         # ReactionCompound - TODO
     }
     # ReactionAlias
+    $aliasRepeats = {};
     for(my $i=0; $i<$files->{reaction_alias}->size(); $i++) {
         my $row = $files->{reaction_alias}->get_row($i);
         my $hash = $self->convert('reaction_alias', $row, $ctx);
         next unless defined($hash);
+        my $error;
+        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "reaction");
+        next if $error;
         my $RDB_reaction_alias =
             $self->getOrCreateObject("reaction_alias", $hash);
         $RDB_biochemistry->add_reaction_alias($RDB_reaction_alias);
     }
     # Media
-    my $defaultMediaObjs = $self->getDefaultMedia(); 
+    my $defaultMediaObjs = $self->getDefaultMedia($ctx); 
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
         # MediaCompound - TODO
@@ -350,7 +357,7 @@ sub importMappingFromDir {
         my $hash = $self->convert("complex", $row, $ctx);
         my $RDB_complexObject = $self->getOrCreateObject('complex', $hash);
         $ctx->{complex}->{$RDB_complexObject->id} = $RDB_complexObject;
-        $RDB_mappingObject->add_complex($RDB_complexObject);
+        $RDB_mappingObject->add_complexes($RDB_complexObject);
     } 
     # Create roles 
     for(my $i=0; $i<$files->{role}->size(); $i++) {
@@ -404,31 +411,33 @@ sub getDefaultCompartments {
 
 sub getDefaultMedia {
     my ($self, $ctx) = @_;
-    if(defined($self->cache->{media})) {
-        return [ values %{$self->cache->{media}} ];
-    } else {
+    if(!defined($self->cache->{media}) || 
+        0 == (keys %{$self->cache->{media}})) {
         my $values = [];
         my $oldMedia = $self->fm->database->get_objects("media");
         foreach my $old (@$oldMedia) {
             my $hash = {
                id => $old->id(),
-               name => $old->name(),
+               name => $old->id(),
             }; 
             my $mediaObj = $self->getOrCreateObject("media", $hash);                  
             my $mediaCpds = $self->fm->database->get_objects('mediacpd', { MEDIA => $old->id() });
             my $newMediaCpds = [];
             foreach my $mediaCpd (@$mediaCpds) {
-                my $compoundObj= $ctx->{compounds}->{$mediaCpd->compound()};
-                next unless $compoundObj;
+                my $compoundObj= $ctx->{compound}->{$mediaCpd->entity()};
+                unless($compoundObj) {
+                    warn "Couldn't find compound " . $mediaCpd->entity() . "\n";
+                    next;
+                }
                 my $hash = {
-                    compound => $compoundObj,
-                    concentration =>
-                    minflux =>
-                    maxflux => 
+                    compound_obj => $compoundObj,
+                    concentration => $mediaCpd->concentration(),
+                    minflux => $mediaCpd->minFlux(),
+                    maxflux => $mediaCpd->maxFlux(),
                 };
                 push(@$newMediaCpds, $hash);
             }
-            $mediaObj->media_compound($newMediaCpds);
+            $mediaObj->add_media_compound(@$newMediaCpds);
             $mediaObj->save();
             $ctx->{media}->{$mediaObj->id} = $mediaObj;
         }
@@ -466,5 +475,21 @@ sub standardizeDirectory {
     $dir =~ s/\/$//;
     return $dir;
 } 
+
+
+sub checkAliases {
+    my ($aliasRepeats, $hash, $type) = @_;
+    my $existing = $aliasRepeats->{$hash->{type}.$hash->{alias}};
+    my $error = 0;
+    if (defined($existing)) {
+        warn "Existing alias: type => " . $hash->{type} .
+            ", alias => " . $hash->{alias} . " for $type: (" .
+            $hash->{$type} . ", $existing)\n";
+        $error = 1;
+    } else {
+        $aliasRepeats->{$hash->{type}.$hash->{alias}} = $hash->{$type};
+    }
+    return ($error, $aliasRepeats);
+}
 
 1;
