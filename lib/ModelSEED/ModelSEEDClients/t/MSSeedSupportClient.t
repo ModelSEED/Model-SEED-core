@@ -2,6 +2,8 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Test::More tests => 5;
+use lib "../../../myRAST/";
+use lib "../";
 use MSSeedSupportClient;
 
 my $mss = MSSeedSupportClient->new();
@@ -13,6 +15,15 @@ my $mss = MSSeedSupportClient->new();
     	password => "reviewer",
     });
     ok defined($usrdata->{username}), "User account not found or authentication failed!";
+    $usrdata = $mss->build_primers({
+    	genome => "224308.1",
+    	start => "3317087",
+    	stop => "3318652",
+    	username => "reviewer",
+    	password => "reviewer"
+    });
+    print STDERR Data::Dumper->Dump([$usrdata]);
+    ok defined($usrdata->{p1}->{sequence}), "Failed to retrieve primers!";
     $usrdata = $mss->blast_sequence({
     	sequences => ["atgaaacgcattagcaccaccattaccaccaccatcaccattaccacagg"],
     	genomes => ["83333.1"]
@@ -27,7 +38,7 @@ my $mss = MSSeedSupportClient->new();
     	username => "reviewer",
     	password => "reviewer"
     });
-    ok defined(@{$usrdata->{features}} > 1000), "Genome not retrieved!";
+    ok defined($usrdata->{features}->size() > 1000), "Genome not retrieved!";
     $usrdata = $mss->users_for_genome({
     	genome => "315750.3",
     	username => "reviewer",

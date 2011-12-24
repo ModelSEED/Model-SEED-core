@@ -4651,7 +4651,6 @@ sub simulatekomedialist {
 	}
 	my $growthRates;
 	my $result = $mdl->fbaMultiplePhenotypeStudy($input);
-	my $result;
 	my $outputHash;
 	foreach my $label (keys(%{$result})) {
 		my $array = [split(/_/,$label)];

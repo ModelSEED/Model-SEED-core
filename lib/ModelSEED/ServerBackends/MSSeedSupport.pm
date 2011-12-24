@@ -617,25 +617,25 @@ sub build_primers {
     	SUCCESS => 1,
     	MESSAGE => "Primers successfully generated for genome ".$args->{genome}." on location ".$location."."
     };
-    $result->{"p2a"}->{sequence} = "CGACCTGCAGGCATGCAAGCT";
+    $result->{"p2b"}->{sequence} = "CGACCTGCAGGCATGCAAGCT";
     $result->{"p3a"}->{sequence} = "CGAGCTCGAATTCACTGGCCGTCG";
     for (my $i=1; $i < @{$output};$i++) {
     	if ($i < 6) {
 	    	chomp($output->[$i-1]);
 	    	my $temp = [split(/\t/,$output->[$i-1])];
-	    	$result->{p.$i}->{sequence} = uc($temp->[1]);
-	    	$result->{p.$i}->{"length"} = $temp->[3];
-	    	$result->{p.$i}->{"start"} = $temp->[2];
-	    	$result->{p.$i}->{"gc"} = $temp->[4];
-	    	$result->{p.$i}->{"tm"} = $temp->[5];
-	    	$result->{p.$i}->{"quality"} = $temp->[6];
+	    	$result->{"p".$i}->{sequence} = uc($temp->[1]);
+	    	$result->{"p".$i}->{"length"} = $temp->[3];
+	    	$result->{"p".$i}->{"start"} = $temp->[2];
+	    	$result->{"p".$i}->{"gc"} = $temp->[4];
+	    	$result->{"p".$i}->{"tm"} = $temp->[5];
+	    	$result->{"p".$i}->{"quality"} = $temp->[6];
     	}
     }
     if (defined($output->[6])) {
     	chomp($output->[6]);
-    	$result->{"p3b"} = $output->[6];
+    	$result->{"p3b"}->{sequence} = $output->[6];
     }
-    $result->{"p2b"} = $result->{"p2"};
+    $result->{"p2a"} = $result->{"p2"};
     delete $result->{"p2"};
     $result->{"p3c"} = $result->{"p3"};
     
