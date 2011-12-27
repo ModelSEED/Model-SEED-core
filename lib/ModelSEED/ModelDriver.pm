@@ -6890,4 +6890,24 @@ sub utilmatrixdist {
 	return $message;
 }
 
+=head
+=CATEGORY
+Temporary
+=DESCRIPTION
+=EXAMPLE
+=cut
+sub cleandb {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+    ],[@Data],"cleandb");
+	my $objs = $self->figmodel()->database()->get_objects("cpxrole");
+	for (my $i=0; $i < @{$objs}; $i++) {
+		my $obj = $self->figmodel()->database()->get_objects("role",{id=>$objs->[$i]->ROLE()});
+		if (!defined($obj)) {
+			print $objs->[$i]->ROLE()."\n";
+		}
+	}
+	return "SUCCESS";
+}
+
 1;
