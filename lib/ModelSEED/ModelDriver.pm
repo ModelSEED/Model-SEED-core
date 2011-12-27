@@ -6902,7 +6902,7 @@ sub cleandb {
     ],[@Data],"cleandb");
 	my $objs = $self->figmodel()->database()->get_objects("cpxrole");
 	for (my $i=0; $i < @{$objs}; $i++) {
-		my $obj = $self->figmodel()->database()->get_objects("role",{id=>$objs->[$i]->ROLE()});
+		my $obj = $self->figmodel()->database()->get_object("role",{id=>$objs->[$i]->ROLE()});
 		if (!defined($obj)) {
 			print $objs->[$i]->ROLE()."\n";
 		}
