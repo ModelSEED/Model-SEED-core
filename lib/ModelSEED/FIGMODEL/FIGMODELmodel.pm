@@ -6635,6 +6635,7 @@ sub provenanceFeatureTable {
 			my $feature_table = $self->genomeObj()->feature_table();
 			$feature_table->save($self->directory()."annotations/features.txt");	
 		}
+		print STDERR "Model directory:".$self->directory()."annotations/features.txt";
 		$self->{_provenanceFeatureTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."annotations/features.txt","\t","`",0,["ID"]);
 		for (my $i=0; $i < $self->{_provenanceFeatureTable}->size(); $i++) {
 			my $row = $self->{_provenanceFeatureTable}->get_row($i);
