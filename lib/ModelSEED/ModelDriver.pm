@@ -6904,7 +6904,7 @@ sub cleandb {
 	for (my $i=0; $i < @{$objs}; $i++) {
 		my $obj = $self->figmodel()->database()->get_object("role",{id=>$objs->[$i]->ROLE()});
 		if (!defined($obj)) {
-			print $objs->[$i]->ROLE()."\n";
+			$objs->[$i]->delete();
 		}
 	}
 	return "SUCCESS";
