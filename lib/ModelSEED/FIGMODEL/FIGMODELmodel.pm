@@ -7844,17 +7844,23 @@ sub fbaMultiplePhenotypeStudy {
 			"0 to 1" => {media => {}, label => {}},
 			"1 to 0" => {media => {}, label => {}}
 		};
+		my $labels;
+		my $phenotypes;
 		foreach my $label (keys(%{$results})) {
 			my $array = [split(/_/,$label)];
 			if (defined($args->{observations}->{$array->[0]}->{$results->{$label}->{media}})) {
 				if ($args->{observations}->{$array->[0]}->{$results->{$label}->{media}} > 0.0001) {
 					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
 						if ($results->{$label}->{fraction} <= 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new FN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new FN"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
 					} else {
 						if ($results->{$label}->{fraction} > 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new CP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new CP"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
@@ -7862,11 +7868,15 @@ sub fbaMultiplePhenotypeStudy {
 				} else {
 					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
 						if ($results->{$label}->{fraction} <= 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new CN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new CN"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
 					} else {
 						if ($results->{$label}->{fraction} > 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new FP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new FP"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
@@ -7875,17 +7885,23 @@ sub fbaMultiplePhenotypeStudy {
 			} else {
 				if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
 					if ($results->{$label}->{fraction} <= 0.0001) {
+						$labels->{$array->[0]} = 1;
+						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 						push(@{$comparison->{"1 to 0"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 						push(@{$comparison->{"1 to 0"}->{label}->{$array->[0]}},$results->{$label}->{media});
 					}
 				} else {
 					if ($results->{$label}->{fraction} > 0.0001) {
+						$labels->{$array->[0]} = 1;
+						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
 						push(@{$comparison->{"0 to 1"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 						push(@{$comparison->{"0 to 1"}->{label}->{$array->[0]}},$results->{$label}->{media});
 					}
 				}
 			}
 		}
+		$comparison->{"Number of strains"} = keys(%{$labels});
+		$comparison->{"Number of phenotypes"} = keys(%{$phenotypes});
 		$results->{comparisonResults} = $comparison;
 	}
 	return $results;
