@@ -4140,15 +4140,40 @@ sub change_reaction {
 		confidence => 3,
 		reference => ""
 	});
-	print $args->{reaction}."[".$args->{compartment}."];".$args->{directionality}.";".$args->{pegs}."\n";
+	my $restoreData = {
+		reaction => $args->{reaction},
+		compartment => $args->{compartment}
+	};
 	my $rxntbl = $self->rxnmdl({clearCache => 1});										
 	my $found = 0;
 	for (my $i=0; $i < @{$rxntbl}; $i++) {
 		if ($rxntbl->[$i]->REACTION() eq $args->{reaction} && $rxntbl->[$i]->compartment() eq $args->{compartment}) {
 			$found = 1;
-			if (defined($args->{directionality})) {
-				$rxntbl->[$i]->directionality($args->{directionality});
-				$rxntbl->[$i]->pegs($args->{pegs});
+			$restoreData = {
+				reaction => $args->{reaction},
+				compartment => $args->{compartment},
+				directionality => $rxntbl->[$i]->directionality(),
+				pegs => $rxntbl->[$i]->pegs(),
+				notes => $rxntbl->[$i]->notes(),
+				confidence => $rxntbl->[$i]->confidence(),
+				reference => $rxntbl->[$i]->reference()
+			};
+			if (defined($args->{directionality}) || defined($args->{pegs})  || defined($args->{notes})  || defined($args->{confidence})  || defined($args->{reference})) {
+				if (defined($args->{directionality})) {
+					$rxntbl->[$i]->directionality($args->{directionality});
+				}
+				if (defined($args->{pegs})) {
+					$rxntbl->[$i]->pegs($args->{pegs});
+				}
+				if (defined($args->{notes})) {
+					$rxntbl->[$i]->notes($args->{notes});
+				}
+				if (defined($args->{confidence})) {
+					$rxntbl->[$i]->confidence($args->{confidence});
+				}
+				if (defined($args->{reference})) {
+					$rxntbl->[$i]->reference($args->{reference});
+				}
 			} else {
 				$rxntbl->[$i]->delete();
 			}
@@ -4166,6 +4191,7 @@ sub change_reaction {
 			reference => $args->{reference}
 		});	
 	}
+	return $restoreData;
 }
 
 =head3 removeReactions
@@ -7835,15 +7861,37 @@ sub fbaMultiplePhenotypeStudy {
 		runProblem => 1,
 		clearOuput => 1
 	});
+	if (defined($args->{observations})) {
+		foreach my $label (keys(%{$results})) {
+			my $array = [split(/_/,$label)];
+			if (defined($args->{observations}->{$array->[0]}->{$results->{$label}->{media}})) {
+				if ($args->{observations}->{$array->[0]}->{$results->{$label}->{media}} > 0.0001) {
+					if ($results->{$label}->{fraction} > 0.0001) {
+						$results->{$label}->{class} = "CP";
+					} else {
+						$results->{$label}->{class} = "FN";
+					}
+				} else {
+					if ($results->{$label}->{fraction} > 0.0001) {
+						$results->{$label}->{class} = "FP";
+					} else {
+						$results->{$label}->{class} = "CN";
+					}
+				}
+			} else {
+				$results->{$label}->{class} = "NA";
+			}
+		}
+	}
 	if (defined($args->{comparisonResults})) {
 		my $comparison = {
 			classes => ["new FP","new FN","new CP","new CN","0 to 1","1 to 0"],
-			"new FP" => {media => {}, label => {}},
-			"new FN" => {media => {}, label => {}},
-			"new CP" => {media => {}, label => {}},
-			"new CN" => {media => {}, label => {}},
-			"0 to 1" => {media => {}, label => {}},
-			"1 to 0" => {media => {}, label => {}}
+			"new FP" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}},
+			"new FN" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}},
+			"new CP" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}},
+			"new CN" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}},
+			"0 to 1" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}},
+			"1 to 0" => {phenotype => {},intervals => 0,phenotypes => 0,media => {}, label => {}}
 		};
 		my $labels;
 		my $phenotypes;
@@ -7853,15 +7901,19 @@ sub fbaMultiplePhenotypeStudy {
 				if ($args->{observations}->{$array->[0]}->{$results->{$label}->{media}} > 0.0001) {
 					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
 						if ($results->{$label}->{fraction} <= 0.0001) {
+							print "New FN:".$args->{comparisonResults}->{$label}->{fraction}."\t".$results->{$label}->{fraction}."\n";
 							$labels->{$array->[0]} = 1;
 							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							$comparison->{"new FN"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new FN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new FN"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
 					} else {
 						if ($results->{$label}->{fraction} > 0.0001) {
+							print "New CP:".$args->{comparisonResults}->{$label}->{fraction}."\t".$results->{$label}->{fraction}."\n";
 							$labels->{$array->[0]} = 1;
 							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							$comparison->{"new CP"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new CP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new CP"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
@@ -7869,15 +7921,19 @@ sub fbaMultiplePhenotypeStudy {
 				} else {
 					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
 						if ($results->{$label}->{fraction} <= 0.0001) {
+							print "New CN:".$args->{comparisonResults}->{$label}->{fraction}."\t".$results->{$label}->{fraction}."\n";
 							$labels->{$array->[0]} = 1;
 							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							$comparison->{"new CN"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new CN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new CN"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
 					} else {
 						if ($results->{$label}->{fraction} > 0.0001) {
+							print "New FP:".$args->{comparisonResults}->{$label}->{fraction}."\t".$results->{$label}->{fraction}."\n";
 							$labels->{$array->[0]} = 1;
 							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							$comparison->{"new FP"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 							push(@{$comparison->{"new FP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 							push(@{$comparison->{"new FP"}->{label}->{$array->[0]}},$results->{$label}->{media});
 						}
@@ -7888,6 +7944,7 @@ sub fbaMultiplePhenotypeStudy {
 					if ($results->{$label}->{fraction} <= 0.0001) {
 						$labels->{$array->[0]} = 1;
 						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+						$comparison->{"1 to 0"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 						push(@{$comparison->{"1 to 0"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 						push(@{$comparison->{"1 to 0"}->{label}->{$array->[0]}},$results->{$label}->{media});
 					}
@@ -7895,14 +7952,19 @@ sub fbaMultiplePhenotypeStudy {
 					if ($results->{$label}->{fraction} > 0.0001) {
 						$labels->{$array->[0]} = 1;
 						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+						$comparison->{"0 to 1"}->{phenotype}->{$array->[0].$results->{$label}->{media}} = 1;
 						push(@{$comparison->{"0 to 1"}->{media}->{$results->{$label}->{media}}},$array->[0]);
 						push(@{$comparison->{"0 to 1"}->{label}->{$array->[0]}},$results->{$label}->{media});
 					}
 				}
 			}
 		}
-		$comparison->{"Number of strains"} = keys(%{$labels});
-		$comparison->{"Number of phenotypes"} = keys(%{$phenotypes});
+		for (my $i=0; $i < @{$comparison->{classes}}; $i++) {
+			$comparison->{$comparison->{classes}->[$i]}->{intervals} = keys(%{$comparison->{$comparison->{classes}->[$i]}->{label}});
+			$comparison->{$comparison->{classes}->[$i]}->{phenotypes} = keys(%{$comparison->{$comparison->{classes}->[$i]}->{phenotype}});
+		}
+		$comparison->{"Total intervals"} = keys(%{$labels});
+		$comparison->{"Total phenotypes"} = keys(%{$phenotypes});
 		$results->{comparisonResults} = $comparison;
 	}
 	return $results;

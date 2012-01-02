@@ -1730,10 +1730,19 @@ sub change_reactant {
 		compartment => "c",
 		coefficient => undef
 	});
+	my $restoreData = {
+		compound => $args->{compound},
+		compartment => $args->{compartment}
+	};
 	my $reactants = $self->substrates_from_equation({singleArray => 1});
 	my $found = 0;
 	for (my $i=0; $i < @{$reactants}; $i++) {
 		if ($reactants->[$i]->{DATABASE}->[0] eq $args->{compound} && $reactants->[$i]->{COMPARTMENT}->[0] eq $args->{compartment}) {
+			$restoreData = {
+				compound => $args->{compound},
+				compartment => $args->{compartment},
+				coefficient => $reactants->[$i]->{COEFFICIENT}->[0]
+			};
 			if (!defined($args->{coefficient}) || $args->{coefficient} == 0) {
 				splice(@{$reactants},$i,1);
 			} else {
@@ -1742,14 +1751,15 @@ sub change_reactant {
 			$found = 1;
 		}
 	}
-	if ($found == 0) {
+	if ($found == 0 && defined($args->{coefficient}) && $args->{coefficient} != 0) {
 		push(@{$reactants},{
 			DATABASE => [$args->{compound}],
 			COMPARTMENT => [$args->{compartment}],
 			COEFFICIENT => [$args->{coefficient}]
 		});
 	}
-	$self->translateReactantArrayToEquation({reactants => $reactants});	
+	$self->translateReactantArrayToEquation({reactants => $reactants});
+	return $restoreData;
 }
 =head3 translateReactantArrayToEquation
 Definition:

@@ -1043,7 +1043,7 @@ sub get_model {
 			id => $id
 		});
         if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
-            $self->setCache({key => $mdl->fullId(), data => $mdl});
+            $self->setCache({key => $mdl->id(), data => $mdl});
         }
     };
     if($@) {

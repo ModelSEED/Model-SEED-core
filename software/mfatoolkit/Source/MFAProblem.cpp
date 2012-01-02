@@ -6123,8 +6123,10 @@ int MFAProblem::CompleteGapFilling(Data* InData, OptimizationParameter* InParame
 	}
 	ClearSolutions();
 	//First we load the complete reaction list from file
-	if (this->LoadGapFillingReactions(InData,InParameters) != SUCCESS) {
-		return FAIL;
+	if (GetParameter("Add DB reactions for gapfilling").compare("1") == 0) {
+		if (this->LoadGapFillingReactions(InData,InParameters) != SUCCESS) {
+			return FAIL;
+		}
 	}
 	//Setting up initial problem to identify unfixable reactions
 	InParameters->ReactionsUse = false;
