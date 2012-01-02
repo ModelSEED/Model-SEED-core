@@ -366,17 +366,17 @@ sub sqblastgenomes {
     	"qend",
     	"bitscore"
     ];
-    my $output = [join("\t",@{$headings})];
+    my $outputFile = [join("\t",@{$headings})];
     foreach my $sequence (keys(%{$output->{RESULTS}})) {
     	foreach my $genome (keys(%{$output->{RESULTS}->{$sequence}})) {
     		my $line = $sequence."\t".$genome;
     		for (my $i=0; $i < @{$headings}; $i++) {
     			$line .= "\t".$output->{RESULTS}->{$sequence}->{$genome}->{$headings->[$i]};
     		}
-    		push(@{$output},$line);
+    		push(@{$outputFile},$line);
     	}
     }
-	ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{"filename"},$output);
+	ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{"filename"},$outputFile);
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
@@ -477,13 +477,13 @@ sub fbaminimalmedia {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{minimalMediaResultsFile})) {
+	if (defined($output->{RESULTS}->{minimalMediaResultsFile})) {
 		push(@{$output->{MESSAGE}},("Essential nutrients successfully identified!","Data on essential and optional nutrients printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt"));
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt",$result->{minimalMediaResultsFile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt",$output->{RESULTS}->{minimalMediaResultsFile});
 	}
-	if (defined($output->{minimalMediaFile})) {
+	if (defined($output->{RESULTS}->{minimalMediaFile})) {
 		push(@{$output->{MESSAGE}},("Essential media formulation successfully designed!","Media formulation printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-minimal.media"));
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-minimal.media",$result->{minimalMediaFile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-minimal.media",$output->{RESULTS}->{minimalMediaFile});
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -515,18 +515,18 @@ sub fbafva {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{compoundTable}) && defined($output->{reactionTable})) {
+	if (defined($output->{RESULTS}->{compoundTable}) && defined($output->{RESULTS}->{reactionTable})) {
 		push(@{$output->{MESSAGE}},"Flux variability analysis of ".$args->{model}." in ".$args->{media}." successful!");
 		if ($args->{saveformat} eq "EXCEL") {
 			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls");
 			ModelSEED::utilities::MAKEXLS({
-				filename => $self->ws()->directory().$args->{filename}.".xls",
+				filename => ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls",
 				sheetnames => ["Compound Bounds","Reaction Bounds"],
-				sheetdata => [$output->{compoundTable},$output->{reactionTable}]
+				sheetdata => [$output->{RESULTS}->{compoundTable},$output->{RESULTS}->{reactionTable}]
 			});
-		} else ($args->{saveformat} eq "TEXT") {
-			$output->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
-			$output->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
+		} elsif ($args->{saveformat} eq "TEXT") {
+			$output->{RESULTS}->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
 			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
 			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
 		}
@@ -561,18 +561,18 @@ sub fbafvabiomass {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{compoundTable}) && defined($output->{reactionTable})) {
+	if (defined($output->{RESULTS}->{compoundTable}) && defined($output->{RESULTS}->{reactionTable})) {
 		push(@{$output->{MESSAGE}},"Flux variability analysis of ".$args->{biomass}." in ".$args->{media}." successful!");
 		if ($args->{saveformat} eq "EXCEL") {
 			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls");
 			ModelSEED::utilities::MAKEXLS({
 				filename => $self->ws()->directory().$args->{filename}.".xls",
 				sheetnames => ["Compound Bounds","Reaction Bounds"],
-				sheetdata => [$output->{compoundTable},$output->{reactionTable}]
+				sheetdata => [$output->{RESULTS}->{compoundTable},$output->{RESULTS}->{reactionTable}]
 			});
-		} else ($args->{saveformat} eq "TEXT") {
-			$output->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{biomass}."-".$args->{media}.".txt");
-			$output->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{biomass}."-".$args->{media}.".txt");
+		} elsif ($args->{saveformat} eq "TEXT") {
+			$output->{RESULTS}->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{biomass}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{biomass}."-".$args->{media}.".txt");
 			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
 			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
 		}
@@ -590,28 +590,28 @@ This function is used to print a table of the compounds across multiple media co
 sub bcprintmediatable {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["media",1,undef,"Name of the media formulation to be printed."],
+		["medias",1,undef,"Name of the media formulation to be printed."],
 		["filename",0,"MediaTable.txt","Filename where media table will be printed."]
 	],[@Data],"print Model SEED media formulation");
-    $args->{media} = ModelSEED::interface::processIDList({
+    $args->{medias} = ModelSEED::interface::processIDList({
 		delimiter => ",",
-		input => $args->{media}
+		input => $args->{medias}
 	});
     my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->bcprintmediatable($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{mediaCompoundTable})) {
-		my $output = ["Compounds\t".join("\t",@{$args->{media}})];
-		foreach my $compound (keys(%{$output->{mediaCompoundTable}})) {
+	if (defined($output->{RESULTS}->{mediaCompoundTable})) {
+		my $outputFile = ["Compounds\t".join("\t",@{$args->{media}})];
+		foreach my $compound (keys(%{$output->{RESULTS}->{mediaCompoundTable}})) {
 			my $line = $compound;
-			for (my $i=0; $i < @{$args->{media}}; $i++) {
-				$line .= "\t".$output->{mediaCompoundTable}->{$compound}->{$mediaIDs->[$i]};
+			for (my $i=0; $i < @{$args->{medias}}; $i++) {
+				$line .= "\t".$output->{RESULTS}->{mediaCompoundTable}->{$compound}->{$args->{medias}->[$i]};
 			}
-			push(@{$output},$line);
+			push(@{$outputFile},$line);
 		}
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename},$output);
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename},$outputFile);
 	    push(@{$output->{MESSAGE}},"Media table printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename});
 	
 	}
@@ -636,9 +636,9 @@ sub bcprintmedia {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-    if (defined($output->{mediaFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{mediaFile});
-	    push(@{$output->{MESSAGE}},"Successfully printed media to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{mediaFile});
+    if (defined($output->{RESULTS}->{mediaFile})) {
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
+	    push(@{$output->{MESSAGE}},"Successfully printed media to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
 	
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -669,8 +669,8 @@ sub bcloadmedia {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-    if (defined($output->{mediaID})) {
-	    push(@{$output->{MESSAGE}},"Successfully loaded media ".$output->{mediaID}." to database!");
+    if (defined($output->{RESULTS}->{mediaID})) {
+	    push(@{$output->{MESSAGE}},"Successfully loaded media ".$output->{RESULTS}->{mediaID}." to database!");
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -704,8 +704,8 @@ sub mdlautocomplete {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{gapfillReportFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt",$output->{gapfillReportFile});
+	if (defined($output->{RESULTS}->{gapfillReportFile})) {
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{gapfillReportFile});
 		push(@{$output->{MESSAGE}},"Successfully autocompleted model ".$args->{model}." in ".$args->{media}." media!");
 		push(@{$output->{MESSAGE}},"Printed autocompletion results to ".ModelSEED::interface::GETWORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt");
 	}
@@ -858,10 +858,10 @@ sub mdlprintsbml {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{sbmlfile})) {
+	if (defined($output->{RESULTS}->{sbmlfile})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed SBML file for ".$args->{model}." in media ".$args->{media}."!");
 		push(@{$output->{MESSAGE}},"SBML file printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml",$output->{sbmlfile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml",$output->{RESULTS}->{sbmlfile});
 	}
 }
 
@@ -887,17 +887,17 @@ sub mdlprintmodel {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{modelfile})) {
+	if (defined($output->{RESULTS}->{modelfile})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed reaction table for ".$args->{model}."!");
 		push(@{$output->{MESSAGE}},"Reaction table printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl",$output->{modelfile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl",$output->{RESULTS}->{modelfile});
 	}
-	if (defined($output->{biomassEquation})) {
-		push(@{$output->{MESSAGE}},"Succesfully printed biomass reaction ".$output->{biomassID}." for ".$args->{model}."!");
-		push(@{$output->{MESSAGE}},"Biomass data printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$output->{biomassID}.".bof");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$output->{biomassID}.".bof",[
-			"DATABASE\t".$output->{biomassID},
-			"EQUATION\t".$output->{biomassEquation}
+	if (defined($output->{RESULTS}->{biomassEquation})) {
+		push(@{$output->{MESSAGE}},"Succesfully printed biomass reaction ".$output->{RESULTS}->{biomassID}." for ".$args->{model}."!");
+		push(@{$output->{MESSAGE}},"Biomass data printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof",[
+			"DATABASE\t".$output->{RESULTS}->{biomassID},
+			"EQUATION\t".$output->{RESULTS}->{biomassEquation}
 		]);
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
@@ -931,39 +931,39 @@ sub mdlprintcytoseed {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	my $dumper = YAML::Dumper->new;
-	if (defined($output->{modeldata})) {
+	if (defined($output->{RESULTS}->{modeldata})) {
 		open(FH, ">".$cmdir."/model_data") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{modeldata});
+		print FH $dumper->dump($output->{RESULTS}->{modeldata});
 		close FH;
 	}
-	if (defined($output->{biomassdata})) {
+	if (defined($output->{RESULTS}->{biomassdata})) {
 		open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{biomassdata});
+		print FH $dumper->dump($output->{RESULTS}->{biomassdata});
 		close FH;
 	}
-	if (defined($output->{compounddata})) {
+	if (defined($output->{RESULTS}->{compounddata})) {
 		open(FH, ">".$cmdir."/compound_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{compounddata});
+		print FH $dumper->dump($output->{RESULTS}->{compounddata});
 		close FH;
 	}
-	if (defined($output->{abstractcompounddata})) {
+	if (defined($output->{RESULTS}->{abstractcompounddata})) {
 		open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{abstractcompounddata});
+		print FH $dumper->dump($output->{RESULTS}->{abstractcompounddata});
 		close FH;
 	}
-	if (defined($output->{reactiondata})) {
+	if (defined($output->{RESULTS}->{reactiondata})) {
 		open(FH, ">".$cmdir."/reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{reactiondata});
+		print FH $dumper->dump($output->{RESULTS}->{reactiondata});
 		close FH;
 	}
-	if (defined($output->{abstractreactiondata})) {
+	if (defined($output->{RESULTS}->{abstractreactiondata})) {
 		open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{abstractreactiondata});
+		print FH $dumper->dump($output->{RESULTS}->{abstractreactiondata});
 		close FH;
 	}
-	if (defined($output->{reactionclassifications})) {
+	if (defined($output->{RESULTS}->{reactionclassifications})) {
 		open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
-		print FH $dumper->dump($output->{reactionclassifications});
+		print FH $dumper->dump($output->{RESULTS}->{reactionclassifications});
 		close FH;
 	}
 	push(@{$output->{MESSAGE}},"Successfully printed cytoseed data for ".$args->{model}." in directory ".$args->{directory}."!");
@@ -988,9 +988,9 @@ sub mdlprintmodelgenes {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{geneList})) {
+	if (defined($output->{RESULTS}->{geneList})) {
 		push(@{$output->{MESSAGE}},"Gene list printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst",$output->{geneList});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst",$output->{RESULTS}->{geneList});
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -1134,7 +1134,7 @@ sub mdlparsesbml {
     }
 	$args->{filedata} = ModelSEED::interface::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{file});
 	if (!defined($args->{name})) {
-		$name = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1);
+		$args->{name} = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1);
 	}
 	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
 	my $output = $cmdapi->mdlparsesbml($args);
@@ -1143,7 +1143,7 @@ sub mdlparsesbml {
 	}
 	foreach my $table (keys(%{$output})) {
 		my $filename = ModelSEED::interface::GETWORKSPACE()->directory().$args->{name}."-".$table.".tbl";
-		$output->{$table}->save($filename);
+		$output->{RESULTS}->{$table}->save($filename);
 		push(@{$output->{MESSAGE}},$table." table printed to ".$filename);
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
@@ -1180,8 +1180,8 @@ sub mdlimportmodel {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{outputFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."ImportReport-".$args->{name}.".txt",$output->{outputFile});
+	if (defined($output->{RESULTS}->{outputFile})) {
+		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."ImportReport-".$args->{name}.".txt",$output->{RESULTS}->{outputFile});
 		push(@{$output->{MESSAGE}},"Model import report printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ImportReport-".$args->{name}.".txt");
 	}	
     return join("\n",@{$output->{MESSAGE}})."\n";
@@ -1215,9 +1215,9 @@ sub utilmatrixdist {
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	if (defined($output->{distfiledata})) {
-		foreach my $filename (keys(%{$output->{distfiledata}})) {
-			ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$filename,$output->{distfiledata}->{$filename});
+	if (defined($output->{RESULTS}->{distfiledata})) {
+		foreach my $filename (keys(%{$output->{RESULTS}->{distfiledata}})) {
+			ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$filename,$output->{RESULTS}->{distfiledata}->{$filename});
 			push(@{$output->{MESSAGE}},"Printed distribution data to ".ModelSEED::interface::GETWORKSPACE()->directory().$filename);
 		}
 	}

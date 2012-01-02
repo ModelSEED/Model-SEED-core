@@ -7,7 +7,7 @@
 # Date of module creation: 12/3/2011
 ########################################################################
 use strict;
-use ModelSEED::globals;
+#use ModelSEED::globals;
 package ModelSEED::ServerBackends::ModelSEEDCommandAPI;
 
 =head3 new
@@ -528,40 +528,40 @@ sub fbaminimalmedia {
 	    if (!defined($mdl)) {
 			ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
 	    }
-	    $result = $mdl->fbaCalculateMinimalMedia({
+	    $results = $mdl->fbaCalculateMinimalMedia({
 	    	fbaStartParameters => $fbaStartParameters,
 	    	numsolutions => $args->{numsolutions}
 	    });
-	    if (defined($result->{essentialNutrients}) && defined($result->{optionalNutrientSets}->[0])) {
+	    if (defined($results->{essentialNutrients}) && defined($results->{optionalNutrientSets}->[0])) {
 			$message .= "Minimal media formulation succesffully identified.\n";
-			my $count = @{$result->{essentialNutrients}};
+			my $count = @{$results->{essentialNutrients}};
 			my $output;
 			my $line = "Essential nutrients (".$count."):";
-			for (my $j=0; $j < @{$result->{essentialNutrients}}; $j++) {
+			for (my $j=0; $j < @{$results->{essentialNutrients}}; $j++) {
 				if ($j > 0) {
 					$line .= ";";
 				}
-				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{essentialNutrients}->[$j]});
-				$line .= $result->{essentialNutrients}->[$j]."(".$cpd->name().")";
+				my $cpd = $self->figmodel()->database()->get_object("compound",{id => $results->{essentialNutrients}->[$j]});
+				$line .= $results->{essentialNutrients}->[$j]."(".$cpd->name().")";
 			}
 			push(@{$output},$line);
-			for (my $i=0; $i < @{$result->{optionalNutrientSets}}; $i++) {
-				my $count = @{$result->{optionalNutrientSets}->[$i]};
+			for (my $i=0; $i < @{$results->{optionalNutrientSets}}; $i++) {
+				my $count = @{$results->{optionalNutrientSets}->[$i]};
 				$line = "Optional nutrients ".($i+1)." (".$count."):";
-				for (my $j=0; $j < @{$result->{optionalNutrientSets}->[$i]}; $j++) {
+				for (my $j=0; $j < @{$results->{optionalNutrientSets}->[$i]}; $j++) {
 					if ($j > 0) {
 						$line .= ";";	
 					}
-					my $cpd = $self->figmodel()->database()->get_object("compound",{id => $result->{optionalNutrientSets}->[$i]->[$j]});
-					$line .= $result->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
+					my $cpd = $self->figmodel()->database()->get_object("compound",{id => $results->{optionalNutrientSets}->[$i]->[$j]});
+					$line .= $results->{optionalNutrientSets}->[$i]->[$j]."(".$cpd->name().")";
 				}
 				push(@{$output},$line);
 			}
 			$message .= join("\n",@{$output});
-			$result->{minimalMediaResultsFile} = $output;
+			$results->{minimalMediaResultsFile} = $output;
 		}
-	    if (defined($result->{minimalMedia})) {
-	    	$result->{minimalMediaFile} = $result->{minimalMedia}->print();
+	    if (defined($results->{minimalMedia})) {
+	    	$results->{minimalMediaFile} = $results->{minimalMedia}->print();
 	    }
 	} catch {
 		my $errorMessage = shift @_;
@@ -576,339 +576,318 @@ sub fbaminimalmedia {
 		RESULTS => $results
 	};
 }
-
 =head
+=NAME
+fbafva
 =CATEGORY
 Flux Balance Analysis Operations
-=DESCRIPTION
-This function performs FVA analysis, calculating minimal and maximal flux through the reactions (range of fluxes) consistent with maximal theoretical growth rate.
-=EXAMPLE
-./fbafva '''-model''' iJR904
-=cut
-sub fbafva {
-    my($self,@Data) = @_;
-    my $args = $self->check([
-		["model",1,undef,"Full ID of the model to be analyzed"],
-		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
-		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
-		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
-		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained."],
-		["variables",0,"FLUX;UPTAKE","A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]]."],	
-		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
-		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
-		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
-	],[@Data],"performs FVA (Flux Variability Analysis) studies");
-	
-	
-    my $fbaStartParameters = ModelSEED::globals::GETFIGMODEL()->fba()->FBAStartParametersFromArguments({arguments => $args});
-    my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
-    if (!defined($mdl)) {
-      ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
-    }
-    if ($args->{filename} eq "FBAFVA_model ID.xls") {
-    	$args->{filename} = undef; 
-    }
-   	if (!defined($fbaStartParameters->{options}->{forceGrowth})
-   		&& !defined($fbaStartParameters->{options}->{nogrowth}) 
-   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
-   		$fbaStartParameters->{options}->{forceGrowth} = 1;
-   	}
-   	$args->{variables} = [split(/\;/,$args->{variables})];
-    my $results = $mdl->fbaFVA({
-	   	variables => $args->{variables},
-	   	fbaStartParameters => $fbaStartParameters,
-		saveFVAResults=>$args->{savetodb},
-	});
-	if (!defined($results) || defined($results->{error})) {
-		return "Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".";
-	}
-	
-	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],undef,["Reaction"],";","|");
-	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
-	my $varAssoc = {
-		FLUX => "reaction",
-		DELTAG => "reaction",
-		SDELTAG => "reaction",
-		UPTAKE => "compound",
-		SDELTAGF => "compound",
-		POTENTIAL => "compound",
-		CONC => "compound"
-	};
-	my $varHeading = {
-		FLUX => "",
-		DELTAG => " DELTAG",
-		SDELTAG => " SDELTAG",
-		UPTAKE => "",
-		SDELTAGF => " SDELTAGF",
-		POTENTIAL => " POTENTIAL",
-		CONC => " CONC"
-	};
-	for (my $i=0; $i < @{$args->{variables}}; $i++) {
-		if (defined($varAssoc->{$args->{variables}->[$i]})) {
-			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "UPTAKE") {
-					$cpdtbl->add_headings(("Class"));
-				}
-			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "FLUX") {
-					$rxntbl->add_headings(("Class"));
-				}
-			}
-		}
-	}
-	foreach my $obj (keys(%{$results->{tb}})) {
-		my $newRow;
-		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Reaction"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			#$newRow->{"Direction"} = [$rxnObj->directionality()];
-			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			#print Data::Dumper->Dump([$newRow]);
-			$rxntbl->add_row($newRow);
-		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Compound"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			$cpdtbl->add_row($newRow);
-		}
-	}
-	#Saving data to file
-        my $result = "Unrecognized format: $args->{saveformat}";
-	if ($args->{saveformat} eq "EXCEL") {
-		ModelSEED::globals::GETFIGMODEL()->make_xls({
-			filename => $self->ws()->directory().$args->{filename}.".xls",
-			sheetnames => ["Compound Bounds","Reaction Bounds"],
-			sheetdata => [$cpdtbl,$rxntbl]
-		});
-		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{filename}.".xls";
-	} elsif ($args->{saveformat} eq "TEXT") {
-		$cpdtbl->save();
-		$rxntbl->save();
-		$result = "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
-	}
-        return $result;
+=DEFINITION
+Output = fbafva({
+	model => string:Full ID of the model to be analyzed,
+	media => string(Complete):Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension,
+	rxnKO => [string](undef):A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension,
+	geneKO => [string](undef):A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension,
+	drainRxn => [string](undef):A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension,
+	uptakeLim => string(undef):Specifies limits on uptake of various atoms. For example 'C:1;S:5',
+	options => string(forcedGrowth):A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained,
+	variables => string(FLUX;UPTAKE):A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]],
+	savetodb => 0/1(0):If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface,
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
 }
+=SHORT DESCRIPTION
+performs FVA (Flux Variability Analysis) studies
+=DESCRIPTION
+This function performs FVA analysis, calculating minimal and maximal flux through the reactions (range of fluxes) consistent with maximal theoretical growth rate
+=cut
 
+sub fbafva {
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["model"],{
+			media => "Complete",
+			rxnKO => undef,
+			geneKO => undef,
+			drainRxn => undef,
+			uptakeLim => undef,
+			options => "forcedGrowth",
+			variables => "FLUX;UPTAKE",
+			savetodb => 0,
+		});
+		my $fbaStartParameters = ModelSEED::globals::GETFIGMODEL()->fba()->FBAStartParametersFromArguments({arguments => $args});
+		my $mdl = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
+	    if (!defined($mdl)) {
+	      ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+	    }
+		if (!defined($fbaStartParameters->{options}->{forceGrowth})
+	   		&& !defined($fbaStartParameters->{options}->{nogrowth}) 
+	   		&& !defined($fbaStartParameters->{options}->{freeGrowth})) {
+	   		$fbaStartParameters->{options}->{forceGrowth} = 1;
+	   	}
+	    $args->{variables} = [split(/\;/,$args->{variables})];
+	    my $results = $mdl->fbaFVA({
+		   	variables => $args->{variables},
+		   	fbaStartParameters => $fbaStartParameters,
+			saveFVAResults=>$args->{savetodb},
+		});
+		if (!defined($results) || defined($results->{error})) {
+			ModelSEED::utilities::ERROR("Flux variability analysis failed for ".$args->{model}." in ".$args->{media}.".");
+		}
+		my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],undef,["Reaction"],";","|");
+		my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
+		my $varAssoc = {
+			FLUX => "reaction",
+			DELTAG => "reaction",
+			SDELTAG => "reaction",
+			UPTAKE => "compound",
+			SDELTAGF => "compound",
+			POTENTIAL => "compound",
+			CONC => "compound"
+		};
+		my $varHeading = {
+			FLUX => "",
+			DELTAG => " DELTAG",
+			SDELTAG => " SDELTAG",
+			UPTAKE => "",
+			SDELTAGF => " SDELTAGF",
+			POTENTIAL => " POTENTIAL",
+			CONC => " CONC"
+		};
+		for (my $i=0; $i < @{$args->{variables}}; $i++) {
+			if (defined($varAssoc->{$args->{variables}->[$i]})) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+					$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+					if ($args->{variables}->[$i] eq "UPTAKE") {
+						$cpdtbl->add_headings(("Class"));
+					}
+				} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+					$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+					if ($args->{variables}->[$i] eq "FLUX") {
+						$rxntbl->add_headings(("Class"));
+					}
+				}
+			}
+		}
+		foreach my $obj (keys(%{$results->{tb}})) {
+			my $newRow;
+			if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+				$newRow->{"Reaction"} = [$1];
+				my $compartment = $2;
+				if (!defined($compartment) || $compartment eq "") {
+					$compartment = "c";
+				}
+				$newRow->{"Compartment"} = [$compartment];
+				#$newRow->{"Direction"} = [$rxnObj->directionality()];
+				#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
+				for (my $i=0; $i < @{$args->{variables}}; $i++) {
+					if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+						if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+							$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+							$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+							if ($args->{variables}->[$i] eq "FLUX") {
+								$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+							}
+						}
+					}
+				}
+				#print Data::Dumper->Dump([$newRow]);
+				$rxntbl->add_row($newRow);
+			} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
+				$newRow->{"Compound"} = [$1];
+				my $compartment = $2;
+				if (!defined($compartment) || $compartment eq "") {
+					$compartment = "c";
+				}
+				$newRow->{"Compartment"} = [$compartment];
+				for (my $i=0; $i < @{$args->{variables}}; $i++) {
+					if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+						if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+							$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+							$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+							if ($args->{variables}->[$i] eq "FLUX") {
+								$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+							}
+						}
+					}
+				}
+				$cpdtbl->add_row($newRow);
+			}
+		}
+    	$results->{compoundTable} = $cpdtbl;
+    	$results->{reactionTable} = $rxntbl;
+		push(@{$message},"Successfully completed flux variability analysis of ".$args->{biomass}." in ".$args->{media}.".");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
+}
 =head
+=NAME
+fbafvabiomass
 =CATEGORY
 Flux Balance Analysis Operations
+=DEFINITION
+Output = fbafvabiomass({
+	biomass => string:ID of biomass reaction to be analyzed,
+	media => string(Complete):Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension,
+	rxnKO => [string](undef):A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension,
+	geneKO => [string](undef):A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension,
+	drainRxn => [string](undef):A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension,
+	uptakeLim => string(undef):Specifies limits on uptake of various atoms. For example 'C:1;S:5',
+	options => string(forcedGrowth):A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained,
+	variables => string(FLUX;UPTAKE):A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]],
+	savetodb => 0/1(0):If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface,
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+performs FVA (Flux Variability Analysis) study of entire database
 =DESCRIPTION
 This function performs FVA analysis, calculating minimal and maximal flux through all reactions in the database subject to the specified biomass reaction
-=EXAMPLE
-./fbafvabiomass '''-biomass''' bio00001
 =cut
 sub fbafvabiomass {
-    my($self,@Data) = @_;
-    my $args = $self->check([
-		["biomass",1,undef,"ID of biomass reaction to be analyzed."],
-		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
-		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
-		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
-		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]. There are three options specifically relevant to the FBAFVA function: (i) the 'forcegrowth' option indicates that biomass must be greater than 10% of the optimal value in all flux distributions explored, (ii) 'nogrowth' means biomass is constrained to zero, and (iii) 'freegrowth' means biomass is left unconstrained."],
-		["variables",0,"FLUX;UPTAKE","A ';' delimited list of the variables that should be explored during the flux variability analysis. See [[List and Description of Variables Types used in Model SEED Flux Balance Analysis]]."],	
-		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
-		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
-		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
-	],[@Data],"performs FVA (Flux Variability Analysis) study of entire database");
-    my $fbaStartParameters = ModelSEED::globals::GETFIGMODEL()->fba()->FBAStartParametersFromArguments({arguments => $args});
-    my $rxn = ModelSEED::globals::GETFIGMODEL()->get_reaction($args->{biomass});
-    if (!defined($rxn)) {
-      ModelSEED::utilities::ERROR("Reaction ".$args->{biomass}." not found in database!");
-    }
-    if ($args->{filename} eq "FBAFVA_model ID.xls") {
-    	$args->{filename} = undef; 
-    }
-    $fbaStartParameters->{options}->{forceGrowth} = 1;
-   	$args->{variables} = [split(/\;/,$args->{variables})];
-    my $results = $rxn->determine_coupled_reactions({
-    	variables => $args->{variables},
-		fbaStartParameters => $fbaStartParameters,
-	   	saveFVAResults => $args->{savetodb}
-	});
-	if (!defined($results->{tb})) {
-		return "Flux variability analysis failed for ".$args->{biomass}." in ".$args->{media}.".";
-	}
-	if (!defined($args->{filename})) {
-		$args->{filename} = $args->{biomass}."-fbafvaResults-".$args->{media};
-	}
-	my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
-	my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
-	my $varAssoc = {
-		FLUX => "reaction",
-		DELTAG => "reaction",
-		SDELTAG => "reaction",
-		UPTAKE => "compound",
-		SDELTAGF => "compound",
-		POTENTIAL => "compound",
-		CONC => "compound"
-	};
-	my $varHeading = {
-		FLUX => "",
-		DELTAG => " DELTAG",
-		SDELTAG => " SDELTAG",
-		UPTAKE => "",
-		SDELTAGF => " SDELTAGF",
-		POTENTIAL => " POTENTIAL",
-		CONC => " CONC"
-	};
-	for (my $i=0; $i < @{$args->{variables}}; $i++) {
-		if (defined($varAssoc->{$args->{variables}->[$i]})) {
-			if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-				$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "UPTAKE") {
-					$cpdtbl->add_headings(("Class"));
-				}
-			} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-				$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
-				if ($args->{variables}->[$i] eq "FLUX") {
-					$rxntbl->add_headings(("Class"));
-				}
-			}
-		}
-	}
-	foreach my $obj (keys(%{$results->{tb}})) {
-		my $newRow;
-		if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Reaction"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			#$newRow->{"Direction"} = [$rxnObj->directionality()];
-			#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			#print Data::Dumper->Dump([$newRow]);
-			$rxntbl->add_row($newRow);
-		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
-			$newRow->{"Compound"} = [$1];
-			my $compartment = $2;
-			if (!defined($compartment) || $compartment eq "") {
-				$compartment = "c";
-			}
-			$newRow->{"Compartment"} = [$compartment];
-			for (my $i=0; $i < @{$args->{variables}}; $i++) {
-				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
-					if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
-						$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
-						$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
-						if ($args->{variables}->[$i] eq "FLUX") {
-							$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
-						}
-					}
-				}
-			}
-			$cpdtbl->add_row($newRow);
-		}
-	}
-	#Saving data to file
-	if ($args->{saveformat} eq "EXCEL") {
-		ModelSEED::globals::GETFIGMODEL()->make_xls({
-			filename => $self->ws()->directory().$args->{filename}.".xls",
-			sheetnames => ["Compound Bounds","Reaction Bounds"],
-			sheetdata => [$cpdtbl,$rxntbl]
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["biomass"],{
+			media => "Complete",
+			rxnKO => undef,
+			geneKO => undef,
+			drainRxn => undef,
+			uptakeLim => undef,
+			options => "forcedGrowth",
+			variables => "FLUX;UPTAKE",
+			savetodb => 0,
 		});
-	} elsif ($args->{saveformat} eq "TEXT") {
-		$cpdtbl->save();
-		$rxntbl->save();
-	}
-	return "Successfully completed flux variability analysis of ".$args->{biomass}." in ".$args->{media}.". Results printed in ".$rxntbl->filename()." and ".$cpdtbl->filename().".";
-}
-=head
-=CATEGORY
-Biochemistry Operations
-=DESCRIPTION
-This function is used to print a table of the compounds across multiple media conditions
-=EXAMPLE
-./bcprintmediatable -media Carbon-D-glucose
-=cut
-sub bcprintmediatable {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["media",1,undef,"Name of the media formulation to be printed."],
-		["filename",0,undef,"Name of the file where the media formulation should be printed."]
-	],[@Data],"print Model SEED media formulation");
-    my $mediaIDs = ModelSEED::interface::PROCESSIDLIST({
-		objectType => "media",
-		delimiter => ",",
-		column => "id",
-		parameters => undef,
-		input => $args->{"media"}
-	});
-	if (!defined($args->{"filename"})) {
-		$args->{"filename"} = $args->{"media"}.".media";
-	}
-	my $mediaHash = ModelSEED::globals::GETFIGMODEL()->database()->get_object_hash({
-		type => "mediacpd",
-		attribute => "MEDIA",
-		parameters => {}
-	});
-	my $compoundHash;
-
-	for (my $i=0; $i < @{$mediaIDs}; $i++) {
-		if (defined($mediaHash->{$mediaIDs->[$i]})) {
-			for (my $j=0; $j < @{$mediaHash->{$mediaIDs->[$i]}}; $j++) {
-				if ($mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux() > 0 && $mediaHash->{$mediaIDs->[$i]}->[$j]->type() eq "COMPOUND") {
-					$compoundHash->{$mediaHash->{$mediaIDs->[$i]}->[$j]->entity()}->{$mediaIDs->[$i]} = $mediaHash->{$mediaIDs->[$i]}->[$j]->maxFlux();
+		my $fbaStartParameters = ModelSEED::globals::GETFIGMODEL()->fba()->FBAStartParametersFromArguments({arguments => $args});
+		my $rxn = ModelSEED::globals::GETFIGMODEL()->get_reaction($args->{biomass});
+	    if (!defined($rxn)) {
+	      ModelSEED::utilities::ERROR("Reaction ".$args->{biomass}." not found in database!");
+	    }
+	    $fbaStartParameters->{options}->{forceGrowth} = 1;
+	    $args->{variables} = [split(/\;/,$args->{variables})];
+	    my $results = $rxn->determine_coupled_reactions({
+	    	variables => $args->{variables},
+			fbaStartParameters => $fbaStartParameters,
+		   	saveFVAResults => $args->{savetodb}
+		});
+		if (!defined($results->{tb})) {
+			ModelSEED::utilities::ERROR("Flux variability analysis failed for ".$args->{biomass}." in ".$args->{media}.".");
+		}
+		my $rxntbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Reaction","Compartment"],$self->ws()->directory()."Reactions-".$args->{filename}.".txt",["Reaction"],";","|");
+		my $cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable->new(["Compound","Compartment"],$self->ws()->directory()."Compounds-".$args->{filename}.".txt",["Compound"],";","|");
+		my $varAssoc = {
+			FLUX => "reaction",
+			DELTAG => "reaction",
+			SDELTAG => "reaction",
+			UPTAKE => "compound",
+			SDELTAGF => "compound",
+			POTENTIAL => "compound",
+			CONC => "compound"
+		};
+		my $varHeading = {
+			FLUX => "",
+			DELTAG => " DELTAG",
+			SDELTAG => " SDELTAG",
+			UPTAKE => "",
+			SDELTAGF => " SDELTAGF",
+			POTENTIAL => " POTENTIAL",
+			CONC => " CONC"
+		};
+		for (my $i=0; $i < @{$args->{variables}}; $i++) {
+			if (defined($varAssoc->{$args->{variables}->[$i]})) {
+				if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+					$cpdtbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+					if ($args->{variables}->[$i] eq "UPTAKE") {
+						$cpdtbl->add_headings(("Class"));
+					}
+				} elsif ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+					$rxntbl->add_headings(("Min ".$args->{variables}->[$i],"Max ".$args->{variables}->[$i]));
+					if ($args->{variables}->[$i] eq "FLUX") {
+						$rxntbl->add_headings(("Class"));
+					}
 				}
 			}
 		}
-	}
-	my $output = ["Compounds\t".join("\t",@{$mediaIDs})];
-	foreach my $compound (keys(%{$compoundHash})) {
-		my $line = $compound;
-		for (my $i=0; $i < @{$mediaIDs}; $i++) {
-			$line .= "\t".$compoundHash->{$compound}->{$mediaIDs->[$i]};
+		foreach my $obj (keys(%{$results->{tb}})) {
+			my $newRow;
+			if ($obj =~ m/([rb][xi][no]\d+)(\[[[a-z]+\])*/) {
+				$newRow->{"Reaction"} = [$1];
+				my $compartment = $2;
+				if (!defined($compartment) || $compartment eq "") {
+					$compartment = "c";
+				}
+				$newRow->{"Compartment"} = [$compartment];
+				#$newRow->{"Direction"} = [$rxnObj->directionality()];
+				#$newRow->{"Associated peg"} = [split(/\|/,$rxnObj->pegs())];
+				for (my $i=0; $i < @{$args->{variables}}; $i++) {
+					if ($varAssoc->{$args->{variables}->[$i]} eq "reaction") {
+						if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+							$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+							$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+							if ($args->{variables}->[$i] eq "FLUX") {
+								$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+							}
+						}
+					}
+				}
+				#print Data::Dumper->Dump([$newRow]);
+				$rxntbl->add_row($newRow);
+			} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
+				$newRow->{"Compound"} = [$1];
+				my $compartment = $2;
+				if (!defined($compartment) || $compartment eq "") {
+					$compartment = "c";
+				}
+				$newRow->{"Compartment"} = [$compartment];
+				for (my $i=0; $i < @{$args->{variables}}; $i++) {
+					if ($varAssoc->{$args->{variables}->[$i]} eq "compound") {
+						if (defined($results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}})) {
+							$newRow->{"Min ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"min".$varHeading->{$args->{variables}->[$i]}};
+							$newRow->{"Max ".$args->{variables}->[$i]}->[0] = $results->{tb}->{$obj}->{"max".$varHeading->{$args->{variables}->[$i]}};
+							if ($args->{variables}->[$i] eq "FLUX") {
+								$newRow->{Class}->[0] = $results->{tb}->{$obj}->{class};
+							}
+						}
+					}
+				}
+				$cpdtbl->add_row($newRow);
+			}
 		}
-		push(@{$output},$line);
+    	$results->{compoundTable} = $cpdtbl;
+    	$results->{reactionTable} = $rxntbl;
+		push(@{$message},"Successfully completed flux variability analysis of ".$args->{biomass}." in ".$args->{media}.".");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
 	}
-	ModelSEED::globals::GETFIGMODEL()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
-    return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
 =head
 =NAME
@@ -916,7 +895,61 @@ bcprintmedia
 =CATEGORY
 Biochemistry Operations
 =DEFINITION
-Output = bcloadmedia({
+Output = bcprintmediatable({
+	medias => [string]:list of media formulations to be compared
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+print table of media formulations for comparison
+=DESCRIPTION
+This function is used to print a table of the compounds across multiple media conditions
+=cut
+sub bcprintmediatable {
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["medias"],{});
+    	my $mediaHash = ModelSEED::globals::GETFIGMODEL()->database()->get_object_hash({
+			type => "mediacpd",
+			attribute => "MEDIA",
+			parameters => {}
+		});
+		for (my $i=0; $i < @{$args->{medias}}; $i++) {
+			if (defined($mediaHash->{$args->{medias}->[$i]})) {
+				for (my $j=0; $j < @{$mediaHash->{$args->{medias}->[$i]}}; $j++) {
+					if ($mediaHash->{$args->{medias}->[$i]}->[$j]->maxFlux() > 0 && $mediaHash->{$args->{medias}->[$i]}->[$j]->type() eq "COMPOUND") {
+						$results->{mediaCompoundTable}->{$mediaHash->{$args->{medias}->[$i]}->[$j]->entity()}->{$args->{medias}->[$i]} = $mediaHash->{$args->{medias}->[$i]}->[$j]->maxFlux();
+					}
+				}
+			}
+		}
+		push(@{$message},"Media data successfully loaded into table");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
+}
+=head
+=NAME
+bcprintmedia
+=CATEGORY
+Biochemistry Operations
+=DEFINITION
+Output = bcprintmedia({
 	media => string:Name of the media formulation to be printed,
 });
 Output: {
@@ -935,7 +968,7 @@ sub bcprintmedia {
 	my $results;
 	my $message = [];
 	try {
-		$args = ModelSEED::utilities::ARGS($args,["media"],{};
+		$args = ModelSEED::utilities::ARGS($args,["media"],{});
     	my $media = ModelSEED::globals::GETFIGMODEL()->database()->get_moose_object("media",{id => $args->{media}});
 		if (!defined($media)) {
 			ModelSEED::utilities::ERROR("Media not valid ".$args->{media});
@@ -954,7 +987,6 @@ sub bcprintmedia {
 		MESSAGE => $message,
 		RESULTS => $results
 	};
-   
 }
 =head
 =NAME
@@ -989,8 +1021,8 @@ sub bcloadmedia {
 			public => 0,
 			owner => ModelSEED::globals::GETFIGMODEL()->user(),
 			overwrite => 0
-		};
-    	$media = ModelSEED::globals::GETFIGMODEL()->database()->create_moose_object("media",{db => ModelSEED::globals::GETFIGMODEL()->database(),filedata => $args->{mediaFile}});
+		});
+    	my $media = ModelSEED::globals::GETFIGMODEL()->database()->create_moose_object("media",{db => ModelSEED::globals::GETFIGMODEL()->database(),filedata => $args->{mediaFile}});
 		$media->syncWithPPODB({overwrite => $args->{overwrite}});
 		$results->{mediaID} = $media->id();
 		push(@{$message},"Successfully loaded media ".$args->{media}." to database as ".$media->id());
@@ -1013,7 +1045,7 @@ mdlreconstruction
 =CATEGORY
 Metabolic Model Operations
 =DEFINITION
-Output = mdlreconstruction({
+Output = mdlautocomplete({
 	model => string:ID of the model to be gapfilled
 	media => string(Complete):The media condition the model will be gapfilled in
 	removegapfilling => 0/1(1):All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'
@@ -1055,12 +1087,12 @@ sub mdlautocomplete {
 			rungapfilling => 1,
 			problemdirectory => undef,
 			startfresh => 1
-		};
+		});
 		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
 	    if (!defined($mdl)) {
 	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
 	    }
-	    $results = $model->completeGapfilling({
+	    $results = $mdl->completeGapfilling({
 			startFresh => $args->{startfresh},
 			problemDirectory => $args->{problemdirectory},
 			rungapfilling=> $args->{rungapfilling},
@@ -1282,7 +1314,7 @@ sub mdlcreatemodel {
 			overwrite => 0
 		});
 		my $mdl = ModelSEED::globals::GETFIGMODEL()->create_model({
-			genome => $output->[0],
+			genome => $args->{genome},
 			id => $args->{id},
 			owner => $args->{owner},
 			biochemSource => $args->{"biochemSource"},
@@ -1505,11 +1537,11 @@ sub mdlprintcytoseed {
 		$results->{biomassdata} = $fbaObj->get_biomass_reaction_data({ model => [$args->{model}] });
 		my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
 		$results->{compounddata} = $fbaObj->get_compound_data({ id => $cids->{$args->{model}} });
-		my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
+		my @abcids = map { exists $cids->{$_}->{"ABSTRACT COMPOUND"} ? $cids->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cids;
 		$results->{abstractcompounddata} = $fbaObj->get_compound_data({ "id" => \@abcids });
 		my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
 		$results->{reactiondata} = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
-		my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
+		my @abrids = map { exists $rids->{$_}->{"ABSTRACT REACTION"} ? $rids->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rids;
 		$results->{abstractreactiondata} = $fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] });
 		$results->{reactionclassifications} = $fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] });
 		push(@{$message},"Successfully retreived data for model ".$args->{model}."!");
@@ -1557,7 +1589,7 @@ sub mdlprintmodelgenes {
 			ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
 		}
 		my $ftrHash = $mdl->featureHash();
-		$output->{geneList} = [keys(%{$ftrHash})];
+		$results->{geneList} = [keys(%{$ftrHash})];
 		push(@{$message},"Successfully retreived gene list for ".$args->{model}."!");
 	} catch {
 		my $errorMessage = shift @_;
@@ -1675,7 +1707,7 @@ sub mdlchangedrains {
 	my $message = [];
 	try {
 		$args = ModelSEED::utilities::ARGS($args,["model"],{
-			drains => undef
+			drains => undef,
 			inputs => undef
 		});
 		my $model = ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
@@ -1741,7 +1773,7 @@ sub mdlloadbiomass {
 	my $message = [];
 	try {
 		$args = ModelSEED::utilities::ARGS($args,["biomassid"],{
-			equation => undef
+			equation => undef,
 			model => undef,
 			overwrite => 0
 		});
@@ -1890,7 +1922,7 @@ sub mdlimportmodel {
 			biochemSource => $args->{"biochemsource"}
 		});
 		if (defined($results->{SUCCESS})) {
-			push(@{$message},"The model has been successfully imported as \"".$id."\"");
+			push(@{$message},"The model has been successfully imported as \"".$results->{"model ID"}."\"");
 		}
 	} catch {
 		my $errorMessage = shift @_;

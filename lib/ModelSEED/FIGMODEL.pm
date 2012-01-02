@@ -2952,6 +2952,7 @@ sub import_model {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);
 	}
 	$mdl->processModel();
+	$result->{"model ID"} = $mdl->id();
 	$result->{SUCCESS} = 1;	
 	return $result;
 }
