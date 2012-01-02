@@ -910,50 +910,103 @@ sub bcprintmediatable {
 	ModelSEED::globals::GETFIGMODEL()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
     return "Media ".$args->{"media"}." successfully printed to ".$self->ws()->directory().$args->{filename};
 }
-
 =head
+=NAME
+bcprintmedia
 =CATEGORY
 Biochemistry Operations
+=DEFINITION
+Output = bcloadmedia({
+	media => string:Name of the media formulation to be printed,
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+print Model SEED media formulation
 =DESCRIPTION
 This function is used to print a media formulation to the current workspace.
-=EXAMPLE
-./bcprintmedia -media Carbon-D-glucose
 =cut
 sub bcprintmedia {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["media",1,undef,"Name of the media formulation to be printed."],
-	],[@Data],"print Model SEED media formulation");
-    my $media = ModelSEED::globals::GETFIGMODEL()->database()->get_moose_object("media",{id => $args->{media}});
-	ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{media}.".media",$media->print());
-	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["media"],{};
+    	my $media = ModelSEED::globals::GETFIGMODEL()->database()->get_moose_object("media",{id => $args->{media}});
+		if (!defined($media)) {
+			ModelSEED::utilities::ERROR("Media not valid ".$args->{media});
+		}
+		$results->{mediaFile} = $media->print();
+		push(@{$message},"Successfully retrieved media '".$args->{media}."' from database!!");
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
+   
 }
-
 =head
+=NAME
+bcloadmedia
 =CATEGORY
 Biochemistry Operations
+=DEFINITION
+Output = bcloadmedia({
+	media => string:The name of the media formulation being created or altered,
+	mediaFile => [string]:File with media specifications
+	public => 0/1(0):Set directory in which FBA problem output files will be stored,
+	owner => string(logged user):Login of the user account who will own this media condition,
+	overwrite => 0/1(0):If you set this parameter to '1', any existing media with the same input name will be overwritten
+});
+Output: {
+	ERROR => string,
+	MESSAGE => string,
+	SUCCESS => 1,
+	RESULST => {}
+}
+=SHORT DESCRIPTION
+Creates (or alters) a media condition in the Model SEED database
 =DESCRIPTION
 This function is used to create or alter a media condition in the Model SEED database given either a list of compounds in the media or a file specifying the media compounds and minimum and maximum uptake rates.
-=EXAMPLE
-./bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
 =cut
 sub bcloadmedia {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["media",1,undef,"The name of the media formulation being created or altered."],
-		["public",0,0,"Set directory in which FBA problem output files will be stored."],
-		["owner",0,(ModelSEED::globals::GETFIGMODEL()->user()),"Login of the user account who will own this media condition."],
-		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
-	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
-    my $media;
-    if (!-e $self->ws()->directory().$args->{media}) {
-    	ModelSEED::utilities::ERROR("Could not find media file ".$self->ws()->directory().$args->{media});
-    }
-    $media = ModelSEED::globals::GETFIGMODEL()->database()->create_moose_object("media",{db => ModelSEED::globals::GETFIGMODEL()->database(),filedata => ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{media})});
-    $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
-    return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
+    my ($self,$args) = @_;
+	my $results;
+	my $message = [];
+	try {
+		$args = ModelSEED::utilities::ARGS($args,["media","mediaFile"],{
+			public => 0,
+			owner => ModelSEED::globals::GETFIGMODEL()->user(),
+			overwrite => 0
+		};
+    	$media = ModelSEED::globals::GETFIGMODEL()->database()->create_moose_object("media",{db => ModelSEED::globals::GETFIGMODEL()->database(),filedata => $args->{mediaFile}});
+		$media->syncWithPPODB({overwrite => $args->{overwrite}});
+		$results->{mediaID} = $media->id();
+		push(@{$message},"Successfully loaded media ".$args->{media}." to database as ".$media->id());
+	} catch {
+		my $errorMessage = shift @_;
+	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+	        $errorMessage = $1;
+	    }
+    	return {SUCCESS => 0,ERROR => $errorMessage};
+	}
+	return {
+		SUCCESS => 1,
+		MESSAGE => $message,
+		RESULTS => $results
+	};
 }
-
 =head
 =NAME
 mdlreconstruction
@@ -964,15 +1017,15 @@ Output = mdlreconstruction({
 	model => string:ID of the model to be gapfilled
 	media => string(Complete):The media condition the model will be gapfilled in
 	removegapfilling => 0/1(1):All existing gapfilled reactions in the model will be deleted prior to the new gapfilling if this flag is set to '1'
-	inactivecoef
-	adddrains
-	iterative
-	testsolution
-	printdbmessage
-	coefficientfile
-	rungapfilling
-	problemdirectory
-	startfresh => 0/1(1):
+	inactivecoef => 0/1(0):The coefficient on the inactive reactions in the gapfilling objective function
+	adddrains => 0/1(0):Drain fluxes will be added for all intracellular metabolites and minimized if this flag is set to '1'
+	iterative => 0/1(0):All inactive reactions in the model will be identified, and they will be iteratively gapfilled one at a time if this flag is set to '1'
+	testsolution => 0/1(0):Set this FLAG to '1' in order to test the gapfilling solution to assess the reason for addition of each gapfilled solution
+	printdbmessage => 0/1(0):Set this FLAG to '1' in order to print a message about gapfilling results to the database
+	coefficientfile => string(undef):Name of a flat file specifying coefficients for gapfilled reactions in objective function
+	rungapfilling => 0/1(1):The gapfilling will not be run unless you set this flag to '1'
+	problemdirectory => string(undef):The name of the job directory where the intermediate gapfilling output will be stored
+	startfresh => 0/1(1):Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'
 });
 Output: {
 	ERROR => string,
@@ -986,37 +1039,43 @@ adds reactions to the model to eliminate inactive reactions
 This function is used to add a minimal number of reactions to a model from the biochemistry database such that one or more inactive reactions is eliminated.
 =cut
 sub mdlautocomplete {
-		["model",1,undef,"The full Model SEED ."],
-		["media",0,"Complete","."],
-		["removegapfilling",0,1,"."],
-		["inactivecoef",0,0,"The coefficient on the inactive reactions in the gapfilling objective function."],
-		["adddrains",0,0,"Drain fluxes will be added for all intracellular metabolites and minimized if this flag is set to '1'."],
-		["iterative",0,0,"All inactive reactions in the model will be identified, and they will be iteratively gapfilled one at a time if this flag is set to '1'."],
-		["testsolution",0,0,"Set this FLAG to '1' in order to test the gapfilling solution to assess the reason for addition of each gapfilled solution."],
-		["printdbmessage",0,0,"Set this FLAG to '1' in order to print a message about gapfilling results to the database."],
-		["coefficientfile",0,undef,"Name of a flat file specifying coefficients for gapfilled reactions in objective function."],
-		["rungapfilling",0,1,"The gapfilling will not be run unless you set this flag to '1'."],
-		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
-		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
-
-    
     my ($self,$args) = @_;
 	my $results;
 	my $message = [];
 	try {
 		$args = ModelSEED::utilities::ARGS($args,["model"],{
-			autocompletion => 0,
-			checkpoint => 0
-		});
-		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{"model"});
+			media => "Complete",
+			removegapfilling => 1,
+			inactivecoef => 0,
+			adddrains => 0,
+			iterative => 0,
+			testsolution => 0,
+			printdbmessage => 0,
+			coefficientfile => undef,
+			rungapfilling => 1,
+			problemdirectory => undef,
+			startfresh => 1
+		};
+		my $mdl =  ModelSEED::globals::GETFIGMODEL()->get_model($args->{model});
 	    if (!defined($mdl)) {
 	    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
 	    }
-		$mdl->reconstruction({
-	    	checkpoint => $args->{"checkpoint"},
-			autocompletion => $args->{"autocompletion"},
+	    $results = $model->completeGapfilling({
+			startFresh => $args->{startfresh},
+			problemDirectory => $args->{problemdirectory},
+			rungapfilling=> $args->{rungapfilling},
+			removeGapfillingFromModel => $args->{removegapfilling},
+			gapfillCoefficientsFile => $args->{coefficientfile},
+			inactiveReactionBonus => $args->{inactivecoef},
+			fbaStartParameters => {
+				media => $args->{"media"}
+			},
+			iterative => $args->{iterative},
+			adddrains => $args->{adddrains},
+			testsolution => $args->{testsolution},
+			globalmessage => $args->{printdbmessage}
 		});
-		push(@{$message},"Successfully generated model ".$args->{model}." from genome annotations");
+		push(@{$message},"Successfully gapfilled model ".$args->{model}." in ".$args->{media}." media!");
 	} catch {
 		my $errorMessage = shift @_;
 	    if($errorMessage =~ /^\"\"(.*)\"\"/) {
@@ -1029,47 +1088,6 @@ sub mdlautocomplete {
 		MESSAGE => $message,
 		RESULTS => $results
 	};
-    
-   
-    #Getting model list
-    my $models = ModelSEED::interface::PROCESSIDLIST({
-		objectType => "model",
-		delimiter => ";",
-		column => "id",
-		parameters => {},
-		input => $args->{model}
-	});
-	#If more than one model was specified, we queue up gapfilling for each model
-	if (@{$models} > 1 || $args->{queue} == 1) {
-	    for (my $i=0; $i < @{$models}; $i++) {
-	    	$args->{model} = $models->[$i]->id();
-	    	ModelSEED::globals::GETFIGMODEL()->queue()->queueJob({
-				function => "mdlautocomplete",
-				arguments => $args,
-			});
-		}
-	}
-	#If only one model was selected, we run gapfilling
-   	my $model = ModelSEED::globals::GETFIGMODEL()->get_model($models->[0]);
-   	if (!defined($model)) {
-   		ModelSEED::utilities::ERROR("Model ".$models->[0]." not found in database!");
-   	}
-   	$model->completeGapfilling({
-		startFresh => $args->{startfresh},
-		problemDirectory => $args->{problemdirectory},
-		rungapfilling=> $args->{rungapfilling},
-		removeGapfillingFromModel => $args->{removegapfilling},
-		gapfillCoefficientsFile => $args->{coefficientfile},
-		inactiveReactionBonus => $args->{inactivecoef},
-		fbaStartParameters => {
-			media => $args->{"media"}
-		},
-		iterative => $args->{iterative},
-		adddrains => $args->{adddrains},
-		testsolution => $args->{testsolution},
-		globalmessage => $args->{printdbmessage}
-	});
-    return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
 =head
 =NAME

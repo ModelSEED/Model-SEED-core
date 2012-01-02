@@ -29,10 +29,10 @@ sub UPDATEENVIRONMENT {
 		}
 	}
     if(!$addedPWD) {
-        $data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "'.ModelSEED::interface::PASSWORD().'";';
+		push(@{$data},'$ENV{FIGMODEL_PASSWORD} = "'.ModelSEED::interface::PASSWORD().'";');
     } 
     if(!$addedUSR) {
-        $data->[$i] = '$ENV{FIGMODEL_USER} = "'.ModelSEED::interface::USERNAME().'";';
+		push(@{$data},'$ENV{FIGMODEL_USER} = "'.ModelSEED::interface::USERNAME().'";');
     } 
 	ModelSEED::utilities::PRINTFILE(ModelSEED::interface::BOOTSTRAPFILE(),$data);	
 }
