@@ -52,11 +52,32 @@ die "Could not find biochemistry $biochem!\n" unless($biochemObj);
 die "Could not find mappingistry $mapping!\n" unless($mappingObj);
 # Now start generating the files
 sub buildTable {
-    my ($filename, $columns, $dataObjects) = @_;
-    open(my $fh, ">", $filename) || die("Could not open file $filename!\n");
-    print $fh join("\t", values %$columns) . "\n";
-    foreach my $object (@$dataObjects) {
-        print $fh join("\t", map { $object->$_ || '' } keys %$columns) ."\n";
+    my ($filename, $columns, $dataObjects, $preimages, $append) = @_;
+    # filename    : file to print to
+    # columns     : hash where keys are column names and the values are either
+    #               strings (in which case they are attributes of RoseDB objects)
+    #               or CODE references (in which case they produce the column value
+    #               when called on the RoseDB object.
+    # dataObjects : array of data objects (RoseDB)
+    # preimages   : array of sortedHashes
+    my $mode = ($append) ? ">>" : ">"; # either append or overwrite
+    open(my $fh, $mode, $filename) || die("Could not open file $filename!\n");
+    my $allColumns = { map { $_ => 1 } keys %$columns };
+    for(my $i=0; $i<@$dataObjects; $i++) {
+        map { $allColumns->{$_} = 1 } keys %{$preimages->[$i]};
+        foreach my $key (sort keys %$columns) {
+            my $val = $columns->{$key};
+            if(ref($val) eq "CODE") {
+                $preimages->[$i]->{$key} = $val->($dataObjects->[$i]);
+            } else {
+                $preimages->[$i]->{$key} = $dataObjects->[$i]->$val || '';
+            } 
+        }
+    }
+    # Print column headers unless we're appending
+    print $fh join("\t", sort keys %$allColumns) . "\n" unless($append);
+    foreach my $preimage (@$preimages) {
+        print $fh join("\t", map { $preimage->{$_} } sort keys %$preimage) . "\n";
     }
     close($fh);
 }
@@ -65,7 +86,7 @@ sub buildTable {
 #                 environment in which a reaction takes place (e.g. cell wall).
 #    
 #        Table: Compartment
-#            id (int): Unique identifier for this Compartment.
+#            id (int): Unique identifier for this Compartment. # FIXME - ids are not ints
 #            mod-date (date): date and time of the last modification to the compartment's
 #                             definition
 #            name (string): common name for the compartment
@@ -73,7 +94,7 @@ sub buildTable {
 {
     my $a = {
         id => 'id',
-        modDate => 'mod-date',
+        'mod-date' => 'modDate',
         name => 'name',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
@@ -90,7 +111,7 @@ sub buildTable {
 {
     my $a = {
         id => 'id',
-        modDate => 'mod-date',
+        'mod-date' => 'modDate',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     buildTable("$directory/complex.dtx", \%columns, [$mappingObj->complexes()]);
@@ -127,13 +148,13 @@ sub buildTable {
 #    
 {
     my $a = {
-        uuid => 'id',
+        id => 'uuid',
         mass => 'mass',
-        modDate => 'mod-date',
-        abbreviation => 'abbr',
+        'mod-date' => 'modDate',
+        abbr => 'abbreviation',
         formula => 'formula',
-        name => 'label',
-        unchargedFormula => 'uncharged-formula',
+        label => 'name',
+        'uncharged-formula' => 'unchargedFormula',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     buildTable("$directory/compound.dtx", \%columns, [$biochemObj->compound()]);
@@ -156,8 +177,8 @@ sub buildTable {
 #            type (string): type of the medium (aerobic or anaerobic)
 {
     my $a = {
-        uuid => 'id',
-        modDate => 'mod-date',
+        id => 'uuid', 
+        'mod-date' => 'modDate',
         name => 'name',
         type => 'type',
     };
@@ -181,10 +202,10 @@ sub buildTable {
 #    
 {
     my $a = {
-        uuid => 'id',
-        modDate => 'mod-date',
-        reversibility => 'reversability', # FIXME SPELLING
-        abbreviation => 'abbr',
+        id => 'uuid',
+        'mod-date' => 'modDate',
+        reversability => 'reversibility', # FIXME SPELLING
+        abbr => 'abbreviation',
         name => 'name',
         equation => 'equation',
     };
@@ -203,9 +224,11 @@ sub buildTable {
 #    
 {
     my $a = {
-        uuid => 'id',
+        id => sub { return $_[0]->reaction . $_[0]->complex; },
+        reaction => 'reaction',
+        complex  => 'complex',
         direction => 'direction',
-        transprotonNature => 'transproton-nature',
+        'transproton-nature' => 'transprotonNature',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     my $rxncpxs = [];
@@ -226,8 +249,8 @@ sub buildTable {
 #
 {
     my $a = { 
-        type => 'from-link',
-        compound => 'to-link',
+        'from-link' => 'type',
+        'to-link' => 'compound',
         alias => 'alias',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
@@ -247,11 +270,11 @@ sub buildTable {
 #    
 {
     my $a = { 
-        media => 'from-link', # FIXME
-        compound => 'to-link',
+        'from-link' => 'media',
+        'to-link' => 'compound',
         concentration => 'concentration',
-        maxflux => 'maximum-flux',
-        minflux => 'minimum-flux',
+        'maximum-flux' => 'maxflux',
+        'minimum-flux' => 'minflux',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     my $mediaCompounds = [];
@@ -272,8 +295,8 @@ sub buildTable {
 #    
 {
     my $a = { 
-        type => 'from-link',
-        reaction => 'to-link',
+        'from-link' => 'type',
+        'to-link' => 'reaction',
         alias => 'alias',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
@@ -289,8 +312,8 @@ sub buildTable {
 #    
 {
     my $a = { 
-        complex => 'from-link',
-        reaction => 'to-link',
+        'from-link' => 'complex',
+        'to-link' => 'reaction',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     my $cpxrxns = [];
@@ -331,14 +354,16 @@ sub buildTable {
 #    
 {
     my $a = { 
-        reaction => 'from-link',
-        compound => 'to-link',
+        'from-link' => 'reaction',
+        'to-link' => 'compound',
         cofactor => 'cofactor',
-        coefficient => 'stoichiometry', 
-        exteriorCompartment => 'exterior-compartment',
+        stoichiometry => 'coefficient', 
+        'exterior-compartment' => 'exteriorCompartment',
+        product => sub { return ($_[0]->coefficient > 0) ? 1 : 0; },
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     my $rxncpd = [];
+    my $preimages = [];
     foreach my $reaction ($biochemObj->reaction()) {
         push(@$rxncpd, $reaction->reaction_compound());
     }
@@ -351,12 +376,41 @@ sub buildTable {
 #                          Transporters take place in two compartments.
 #    
 #        Table: IsProposedLocationOf
-#            from-link (int): id of the source Compartment.
+#            from-link (int): id of the source Compartment. # FIXME ids are not ints
 #            to-link (string): id of the target ReactionComplex.
 #            type (string): role of the compartment in the reaction: 'primary' if
 #                           it is the sole or starting compartment, 'secondary' if
 #                           it is the ending compartment in a multi-compartmental
 #                           reaction
+{
+    my $a = { 
+        'from-link' => 'interiorCompartment',
+        'to-link' => sub { return $_[0]->reaction . $_[0]->complex; },
+        type => sub { return 'interior'; },
+    };
+    tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
+    my $rxncpd = [];
+    my $preimages = [];
+    foreach my $reaction ($biochemObj->reaction()) {
+        push(@$rxncpd, $reaction->reaction_compound());
+    }
+    buildTable("$directory/Involves.dtx", \%columns, $rxncpd);
+}
+{
+    my $a = { 
+        'from-link' => 'exteriorCompartment',
+        'to-link' => sub { return $_[0]->reaction . $_[0]->complex; },
+        type => sub { return 'exterior'; },
+    };
+    tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
+    my $rxncpd = [];
+    my $preimages = [];
+    foreach my $reaction ($biochemObj->reaction()) {
+        push(@$rxncpd, $reaction->reaction_compound());
+    }
+    buildTable("$directory/Involves.dtx", \%columns, $rxncpd, $preimages, "append");
+}
+    
 #    
 #    
 #    IsTriggeredBy: A complex can be triggered by many roles. A role can trigger
@@ -371,8 +425,8 @@ sub buildTable {
 #    
 {
     my $a = { 
-        complex => 'from-link',
-        role => 'to-link',
+        'from-link' => 'complex',
+        'to-link' => 'role',
         optional => 'optional',
         type => 'type',
     };
@@ -389,6 +443,19 @@ sub buildTable {
 #        Table: IsUsedAs
 #            from-link (string): id of the source Reaction.
 #            to-link (string): id of the target ReactionComplex.
+{
+    my $a = { 
+        'from-link' => 'reaction',
+        'to-link' => sub { return $_[0]->reaction . $_[0]->complex; },
+    };
+    my $cpxroles = [];
+    foreach my $complex ($mappingObj->complexes()) {
+        push(@$cpxroles, $complex->reaction_complex());
+    }
+    tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
+    buildTable("$directory/isUsedAs.dtx", \%columns, $cpxroles);
+}
+
 
 __END__
 
