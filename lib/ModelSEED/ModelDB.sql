@@ -1,30 +1,32 @@
-SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
-SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
-SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL';
+-- SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+-- SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+-- SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL';
 -- DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
---CREATE DATABASE IF NOT EXISTS `ModelDB`;
---USE `ModelDB`;
+-- CREATE DATABASE IF NOT EXISTS `ModelDB`;
+-- USE `ModelDB`;
 
 -- -----------------------------------------------------
--- Table `compartment`
+-- Table `compartments`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compartment` (
+CREATE TABLE IF NOT EXISTS `compartments` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(2) NOT NULL,
   `name` VARCHAR(255) DEFAULT '',
   PRIMARY KEY (`uuid`),
-  INDEX `compartment_id` (`id`)
+  INDEX `compartments_id` (`id`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `reaction`
+-- Table `reactions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reaction` (
+CREATE TABLE IF NOT EXISTS `reactions` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NOT NULL,
   `name` VARCHAR(255) DEFAULT '',
   `abbreviation` VARCHAR(255) DEFAULT '',
@@ -35,49 +37,43 @@ CREATE TABLE IF NOT EXISTS `reaction` (
   `reversibility` CHAR(1) DEFAULT '=',
   `thermoReversibility` CHAR(1) NULL, 
   `defaultProtons` DOUBLE NULL,       
-  `defaultIN` CHAR(36) NULL,          
-  `defaultOUT` CHAR(36) NULL,         
+  `defaultCompartment` CHAR(36) NULL,
   `defaultTransproton` DOUBLE NULL,  
   PRIMARY KEY (`uuid`),
-  INDEX `reaction_id` (`id`),
-  INDEX `reaction_cksum` (`cksum`),
-  INDEX `reaction_equation` (`equation`),
-  INDEX `reaction_defaultIN_fk` (`defaultIN`),
-  INDEX `reaction_defaultOUT_fk` (`defaultOUT`),
-  CONSTRAINT `reaction_defaultIN_fk`
-    FOREIGN KEY (`defaultIN`)
-    REFERENCES `compartment` (`uuid`)
+  INDEX `reactions_id` (`id`),
+  INDEX `reactions_cksum` (`cksum`),
+  INDEX `reactions_defaultCompartment_fk` (`defaultCompartment`),
+  CONSTRAINT `reactions_defaultCompartment_fk`
+    FOREIGN KEY (`defaultCompartment`)
+    REFERENCES `compartments` (`uuid`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_defaultOUT_fk`
-    FOREIGN KEY (`defaultOUT`)
-    REFERENCES `compartment` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
+)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biochemistry`
+-- Table `biochemistries`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry` (
+CREATE TABLE IF NOT EXISTS `biochemistries` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `public` TINYINT(1)  NULL,
   `name` VARCHAR(255) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `biochemistry_public` (`public`)
+  INDEX `biochemistries_public` (`public`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `compound`
+-- Table `compounds`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compound` (
+CREATE TABLE IF NOT EXISTS `compounds` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `abbreviation` VARCHAR(255) NULL,
@@ -89,10 +85,10 @@ CREATE TABLE IF NOT EXISTS `compound` (
   `deltaG` DOUBLE NULL,       
   `deltaGErr` DOUBLE NULL,    
   PRIMARY KEY (`uuid`),
-  INDEX `compound_cksum` (`cksum`),
-  INDEX `compound_id` (`id`),
-  INDEX `compound_name` (`name`),
-  INDEX `compound_formula` (`formula`)
+  INDEX `compounds_cksum` (`cksum`),
+  INDEX `compounds_id` (`id`),
+  INDEX `compounds_name` (`name`),
+  INDEX `compounds_formula` (`formula`)
 )
 ENGINE = InnoDB;
 
@@ -100,38 +96,39 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 -- Table `biochemistry_compound`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_compound` (
+CREATE TABLE IF NOT EXISTS `biochemistry_compounds` (
   `biochemistry` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
   PRIMARY KEY (`biochemistry`, `compound`),
-  INDEX `compound_fk` (`compound`),
-  INDEX `biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_compound_biochemistry_fk`
+  INDEX `biochemistry_compounds_compound_fk` (`compound`),
+  INDEX `biochemistry_compounds_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `biochemistry_compounds_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `biochemistry_compound_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `complex`
+-- Table `complexes`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `complex` (
+CREATE TABLE IF NOT EXISTS `complexes` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `searchname` VARCHAR(255) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `complex_searchname` (`searchname`),
-  INDEX `complex_id` (`id`),
-  INDEX `complex_name` (`name`)
+  INDEX `complexes_searchname` (`searchname`),
+  INDEX `complexes_id` (`id`),
+  INDEX `complexes_name` (`name`)
 )
 ENGINE = InnoDB;
 
@@ -142,6 +139,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `media` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `type` CHAR(1) NULL,
@@ -153,9 +151,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `genome`
+-- Table `genomes`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `genome` (
+CREATE TABLE IF NOT EXISTS `genomes` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
@@ -166,70 +164,72 @@ CREATE TABLE IF NOT EXISTS `genome` (
   `type` VARCHAR(32) NULL,
   `taxonomy` VARCHAR(255) NULL,
   `cksum` VARCHAR(255) NULL,
-  `size` INT NULL,
-  `genes` INT NULL,
+  `size` INTEGER NULL,
+  `genes` INTEGER NULL,
   `gc` DOUBLE NULL,
   `gramPositive` CHAR(1) NULL,
   `aerobic` CHAR(1) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `genome_id` (`id`),
-  INDEX `genome_source` (`source`),
-  INDEX `genome_cksum` (`cksum`)
+  INDEX `genomes_id` (`id`),
+  INDEX `genomes_source` (`source`),
+  INDEX `genomes_cksum` (`cksum`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `feature`
+-- Table `features`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `feature` (
+CREATE TABLE IF NOT EXISTS `features` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `cksum` VARCHAR(255) NULL,
   `genome` CHAR(36) NOT NULL,
-  `start` INT NULL,
-  `stop` INT NULL,
+  `start` INTEGER NULL,
+  `stop` INTEGER NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `feature_id` (`id`),
-  INDEX `feature_cksum` (`cksum`),
-  INDEX `feature_genome_fk` (`genome`),
-  CONSTRAINT `feature_genome_fk`
+  INDEX `features_id` (`id`),
+  INDEX `features_cksum` (`cksum`),
+  INDEX `features_genome_fk` (`genome`),
+  CONSTRAINT `features_genome_fk`
     FOREIGN KEY (`genome`)
-    REFERENCES `genome` (`uuid`)
+    REFERENCES `genomes` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `role`
+-- Table `roles`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `role` (
+CREATE TABLE IF NOT EXISTS `roles` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `searchname` VARCHAR(255) NULL,
   `exemplar` CHAR(36) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `role_id` (`id`),
-  INDEX `role_name` (`name`),
-  INDEX `role_searchname` (`searchname`),
-  INDEX `role_exemplar` (`exemplar`),
-  INDEX `role_feature_fk` (`exemplar`),
-  CONSTRAINT `role_feature_fk`
+  INDEX `roles_id` (`id`),
+  INDEX `roles_name` (`name`),
+  INDEX `roles_searchname` (`searchname`),
+  INDEX `roles_exemplar` (`exemplar`),
+  INDEX `roles_feature_fk` (`exemplar`),
+  CONSTRAINT `roles_feature_fk`
     FOREIGN KEY (`exemplar`)
-    REFERENCES `feature` (`uuid`)
+    REFERENCES `features` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `complex_role`
+-- Table `complex_roles`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `complex_role` (
+CREATE TABLE IF NOT EXISTS `complex_roles` (
   `complex` CHAR(36) NOT NULL,
   `role` CHAR(36) NOT NULL,
   `optional` TINYINT(1)  NULL,
@@ -237,111 +237,137 @@ CREATE TABLE IF NOT EXISTS `complex_role` (
   PRIMARY KEY (`complex`, `role`),
   INDEX `role_fk` (`role`),
   INDEX `complex_fk` (`complex`),
-  CONSTRAINT `complex_role_complex_fk`
+  CONSTRAINT `complex_roles_complex_fk`
     FOREIGN KEY (`complex`)
-    REFERENCES `complex` (`uuid`)
+    REFERENCES `complexes` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `complex_role_role_fk`
+  CONSTRAINT `complex_roles_role_fk`
     FOREIGN KEY (`role`)
-    REFERENCES `role` (`uuid`)
+    REFERENCES `roles` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biochemistry_reaction`
+-- Table `biochemistry_reactions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_reaction` (
+CREATE TABLE IF NOT EXISTS `biochemistry_reactions` (
   `biochemistry` CHAR(36) NOT NULL,
   `reaction` CHAR(36) NOT NULL,
   PRIMARY KEY (`biochemistry`, `reaction`),
-  INDEX `biochemistry_reaction_reaction_fk` (`reaction`),
-  INDEX `biochemistry_reaction_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_reaction_biochemistry_fk`
+  INDEX `biochemistry_reactions_reaction_fk` (`reaction`),
+  INDEX `biochemistry_reactions_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `biochemistry_reactions_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `biochemistry_reaction_reaction_fk`
+  CONSTRAINT `biochemistry_reactions_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `reaction_complex`
+-- Table `reaction_rules`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reaction_complex` (
+CREATE TABLE IF NOT EXISTS `reaction_rules` (
   `reaction` CHAR(36) NOT NULL,
   `complex` CHAR(36) NOT NULL,
-  `interiorCompartment` CHAR(36) NOT NULL,
-  `exteriorCompartment` CHAR(36) NOT NULL,
+  `compartment` CHAR(36) NOT NULL,
   `direction` CHAR(1) NULL,
   `transprotonNature` CHAR(255) NULL,
   PRIMARY KEY (`reaction`, `complex`),
-  INDEX `reaction_complex_complex_fk` (`complex`),
-  INDEX `reaction_complex_reaction_fk` (`reaction`),
-  INDEX `reaction_complex_interiorCompartment_fk` (`interiorCompartment`),
-  INDEX `reaction_complex_exteriorCompartment_fk` (`exteriorCompartment`),
-  CONSTRAINT `reaction_complex_reaction_fk`
+  INDEX `reaction_rules_complex_fk` (`complex`),
+  INDEX `reaction_rules_reaction_fk` (`reaction`),
+  INDEX `reaction_rules_compartment_fk` (`compartment`),
+  CONSTRAINT `reaction_rules_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_complex_complex_fk`
+  CONSTRAINT `reaction_rules_complex_fk`
     FOREIGN KEY (`complex`)
-    REFERENCES `complex` (`uuid`)
+    REFERENCES `complexes` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_complex_interiorCompartment_fk`
-    FOREIGN KEY (`interiorCompartment`)
-    REFERENCES `compartment` (`uuid`)
+  CONSTRAINT `reaction_rules_compartment_fk`
+    FOREIGN KEY (`compartment`)
+    REFERENCES `compartments` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `reaction_rule_transports`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `reaction_rule_transports` (
+  `reaction` CHAR(36) NOT NULL,
+  `complex` CHAR(36) NOT NULL,
+  `compartmentIndex` INTEGER NOT NULL,
+  `compartment` CHAR(36) NOT NULL,
+  PRIMARY KEY (`reaction`, `complex`, `compartmentIndex`),
+  INDEX `reaction_rule_transports_complex_fk` (`complex`),
+  INDEX `reaction_rule_transports_reaction_fk` (`reaction`),
+  INDEX `reaction_rule_transports_compartment_fk` (`compartment`),
+  CONSTRAINT `reaction_rule_transports_reaction_fk`
+    FOREIGN KEY (`reaction`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_complex_exteriorCompartment_fk`
-    FOREIGN KEY (`exteriorCompartment`)
-    REFERENCES `compartment` (`uuid`)
+  CONSTRAINT `reaction_rule_transports_complex_fk`
+    FOREIGN KEY (`complex`)
+    REFERENCES `complexes` (`uuid`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION,
+  CONSTRAINT `reaction_rule_transports_compartment_fk`
+    FOREIGN KEY (`compartment`)
+    REFERENCES `compartments` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
 ENGINE = InnoDB;
 
 
+
 -- -----------------------------------------------------
--- Table `compound_alias`
+-- Table `compound_aliases`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compound_alias` (
+CREATE TABLE IF NOT EXISTS `compound_aliases` (
   `compound` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`type`, `alias`),
-  INDEX `compound_alias_type` (`type`),
-  INDEX `compound_alias_compound_fk` (`compound`),
-  CONSTRAINT `compound_alias_compound_fk`
+  INDEX `compound_aliases_type` (`type`),
+  INDEX `compound_aliases_compound_fk` (`compound`),
+  CONSTRAINT `compound_aliases_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `compound_structure`
+-- Table `compound_structures`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compound_structure` (
+CREATE TABLE IF NOT EXISTS `compound_structures` (
   `compound` CHAR(36) NOT NULL,
   `structure` TEXT NOT NULL,
+  `cksum` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`type`, `structure`),
-  INDEX `compound_structure_type` (`type`),
-  INDEX `compound_structure_compound_fk` (`compound`),
-  CONSTRAINT `compound_structure_compound_fk`
+  PRIMARY KEY (`type`, `cksum`),
+  INDEX `compound_structures_type` (`type`),
+  INDEX `compound_structures_compound_fk` (`compound`),
+  CONSTRAINT `compound_structures_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -349,9 +375,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `reaction_alias`
+-- Table `reaction_aliases`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reaction_alias` (
+CREATE TABLE IF NOT EXISTS `reaction_aliases` (
   `reaction` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
@@ -359,18 +385,18 @@ CREATE TABLE IF NOT EXISTS `reaction_alias` (
   PRIMARY KEY (`type`, `alias`),
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction`),
-  CONSTRAINT `reaction_alias_reaction_fk`
+  CONSTRAINT `reaction_aliases_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mapping`
+-- Table `mappings`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping` (
+CREATE TABLE IF NOT EXISTS `mappings` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
@@ -378,11 +404,11 @@ CREATE TABLE IF NOT EXISTS `mapping` (
   `name` VARCHAR(255) NULL,
   `biochemistry` CHAR(36) NOT NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `mapping_public` (`public`),
-  INDEX `mapping_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `mapping_biochemistry_fk`
+  INDEX `mappings_public` (`public`),
+  INDEX `mappings_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `mappings_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION
 )
@@ -390,47 +416,22 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mapping_complex`
+-- Table `mapping_complexes`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping_complex` (
+CREATE TABLE IF NOT EXISTS `mapping_complexes` (
   `mapping` CHAR(36) NOT NULL,
   `complex` CHAR(36) NOT NULL,
   PRIMARY KEY (`mapping`, `complex`),
-  INDEX `mapping_complex_complex_fk` (`complex`),
-  INDEX `mapping_complex_mapping_fk` (`mapping`),
-  CONSTRAINT `mapping_complex_mapping_fk`
+  INDEX `mapping_complexes_complex_fk` (`complex`),
+  INDEX `mapping_complexes_mapping_fk` (`mapping`),
+  CONSTRAINT `mapping_complexes_mapping_fk`
     FOREIGN KEY (`mapping`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `mapping_complex_complex_fk`
+  CONSTRAINT `mapping_complexes_complex_fk`
     FOREIGN KEY (`complex`)
-    REFERENCES `complex` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `reaction_compound`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reaction_compound` (
-  `reaction` CHAR(36) NOT NULL,
-  `compound` CHAR(36) NOT NULL,
-  `coefficient` DOUBLE NULL,
-  `cofactor` TINYINT(1) NULL, 
-  `exteriorCompartment` TINYINT(1) NULL, 
-  PRIMARY KEY (`reaction`, `compound`, `exteriorCompartment`),
-  INDEX `reaction_compound_compound_fk` (`compound`),
-  INDEX `reaction_compound_reaction_fk` (`reaction`),
-  CONSTRAINT `reaction_compound_reaction_fk`
-    FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `reaction_compound_compound_fk`
-    FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `complexes` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION
 )
@@ -438,173 +439,249 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `reactionset`
+-- Table `reagents`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reactionset` (
+CREATE TABLE IF NOT EXISTS `reagents` (
+  `reaction` CHAR(36) NOT NULL,
+  `compound` CHAR(36) NOT NULL,
+  `compartmentIndex` INTEGER NOT NULL,
+  `coefficient` DOUBLE NULL,
+  `cofactor` TINYINT(1) NULL, 
+  PRIMARY KEY (`reaction`, `compound`, `compartmentIndex`),
+  INDEX `reagents_compound_fk` (`compound`),
+  INDEX `reagents_reaction_fk` (`reaction`),
+  CONSTRAINT `reagents_reaction_fk`
+    FOREIGN KEY (`reaction`)
+    REFERENCES `reactions` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `reagents_compound_fk`
+    FOREIGN KEY (`compound`)
+    REFERENCES `compounds` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `reagent_trasports`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `reagent_transports` (
+    `reaction` CHAR(36) NOT NULL,
+    `defaultCompartment` CHAR(36) NOT NULL,
+    `compartmentIndex` INTEGER NOT NULL,
+    PRIMARY KEY (`reaction`, `compartmentIndex`),
+    INDEX `reagent_transports_reaction_fk` (`reaction`),
+    INDEX `reagent_transports_defaultCompartment_fk` (`defaultCompartment`),
+    CONSTRAINT `reagent_transports_reaction_fk`
+        FOREIGN KEY (`reaction`)
+        REFERENCES `reactions` (`uuid`)
+        ON DELETE NO ACTION
+        ON UPDATE NO ACTION,
+    CONSTRAINT `reagent_transports_defaultCompartment_fk`
+        FOREIGN KEY (`defaultCompartment`)
+        REFERENCES `compartments` (`uuid`)
+        ON DELETE NO ACTION
+        ON UPDATE NO ACTION
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `reactionsets`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `reactionsets` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `searchname` VARCHAR(255) NULL,
   `class` VARCHAR(255) NULL,
   `type` VARCHAR(32) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `reactionset_id` (`id`),
-  INDEX `reactionset_name` (`name`),
-  INDEX `reactionset_searchname` (`searchname`)
+  INDEX `reactionsets_id` (`id`),
+  INDEX `reactionsets_name` (`name`),
+  INDEX `reactionsets_searchname` (`searchname`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `annotation`
+-- Table `annotations`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `annotation` (
+CREATE TABLE IF NOT EXISTS `annotations` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `name` VARCHAR(255) NULL,
   `genome` CHAR(36) NOT NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `annotation_name` (`name`),
-  INDEX `annotation_genome_fk` (`genome`),
-  CONSTRAINT `annotation_genome_fk`
+  INDEX `annotations_name` (`name`),
+  INDEX `annotations_genome_fk` (`genome`),
+  CONSTRAINT `annotations_genome_fk`
     FOREIGN KEY (`genome`)
-    REFERENCES `genome` (`uuid`)
+    REFERENCES `genomes` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `model`
+-- Table `models`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `model` (
+CREATE TABLE IF NOT EXISTS `models` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `public` TINYINT(1)  NULL,
   `id` VARCHAR(255) NULL,
   `name` VARCHAR(32) NULL,
-  `version` INT NULL,
+  `version` INTEGER NULL,
   `type` VARCHAR(32) NULL,
   `status` VARCHAR(32) NULL,
-  `reactions` INT NULL,
-  `compounds` INT NULL,
-  `annotations` INT NULL,
+  `reactions` INTEGER NULL,
+  `compounds` INTEGER NULL,
+  `annotations` INTEGER NULL,
   `growth` DOUBLE NULL,
   `current` TINYINT(1)  NULL,
   `mapping` CHAR(36) NOT NULL,
   `biochemistry` CHAR(36) NOT NULL,
   `annotation` CHAR(36) NOT NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `model_mapping_fk` (`mapping`),
-  INDEX `model_biochemistry_fk` (`biochemistry`),
-  INDEX `model_annotation_fk` (`annotation`),
-  CONSTRAINT `model_mapping_fk`
+  INDEX `models_mapping_fk` (`mapping`),
+  INDEX `models_biochemistry_fk` (`biochemistry`),
+  INDEX `models_annotation_fk` (`annotation`),
+  CONSTRAINT `models_mapping_fk`
     FOREIGN KEY (`mapping`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_biochemistry_fk`
+  CONSTRAINT `models_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_annotation_fk`
+  CONSTRAINT `models_annotation_fk`
     FOREIGN KEY (`annotation`)
-    REFERENCES `annotation` (`uuid`)
+    REFERENCES `annotations` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `model_compartment`
+-- Table `model_compartments`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `model_compartment` (
+CREATE TABLE IF NOT EXISTS `model_compartments` (
   `uuid` CHAR(36) NOT NULL,
+  `modDate` DATETIME NOT NULL,
+  `locked` TINYINT(1)  NULL,
   `model` CHAR(36) NOT NULL,
   `compartment` CHAR(36) NOT NULL,
-  `compartment_index` INT NOT NULL,
+  `compartmentIndex` INTEGER NOT NULL,
   `label` VARCHAR(255) NULL,
   `pH` DOUBLE NULL,
   `potential` DOUBLE NULL,
   PRIMARY KEY (`uuid`),
-  UNIQUE INDEX `model_compartment_idx` (`model`, `compartment`, `compartment_index`),
-  INDEX `model_compartment_compartment_fk` (`compartment`),
-  INDEX `model_compartment_model_fk` (`model`),
-  CONSTRAINT `model_compartment_model_fk`
+  UNIQUE INDEX `model_compartments_idx` (`model`, `compartment`, `compartmentIndex`),
+  INDEX `model_compartments_compartment_fk` (`compartment`),
+  INDEX `model_compartments_model_fk` (`model`),
+  CONSTRAINT `model_compartments_model_fk`
     FOREIGN KEY (`model`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_compartment_compartment_fk`
+  CONSTRAINT `model_compartments_compartment_fk`
     FOREIGN KEY (`compartment`)
-    REFERENCES `compartment` (`uuid`)
+    REFERENCES `compartments` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `model_reaction`
+-- Table `model_reactions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `model_reaction` (
+CREATE TABLE IF NOT EXISTS `model_reactions` (
   `model` CHAR(36) NOT NULL,
   `reaction` CHAR(36) NOT NULL,
   `direction` CHAR(1) NULL,
   `transproton` DOUBLE NULL,
   `protons` DOUBLE NULL,
-  `primaryModelCompartment` CHAR(36) NOT NULL,
-  `secondaryModelCompartment` CHAR(36) NULL,
+  `modelCompartment` CHAR(36) NOT NULL,
   PRIMARY KEY (`model`, `reaction`),
-  INDEX `model_reaction_reaction_fk` (`reaction`),
-  INDEX `model_reaction_model_fk` (`model`),
-  INDEX `model_reaction_primaryModelCompartment_fk` (`primaryModelCompartment`),
-  INDEX `model_reaction_secondaryModelCompartment_fk` (`secondaryModelCompartment`),
-  CONSTRAINT `model_reaction_model_fk`
+  INDEX `model_reactions_reaction_fk` (`reaction`),
+  INDEX `model_reactions_model_fk` (`model`),
+  INDEX `model_reactions_modelCompartment_fk` (`modelCompartment`),
+  CONSTRAINT `model_reactions_model_fk`
     FOREIGN KEY (`model`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_reaction_reaction_fk`
+  CONSTRAINT `model_reactions_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_reaction_primaryModelCompartment_fk`
-    FOREIGN KEY (`primaryModelCompartment`)
-    REFERENCES `model_compartment` (`uuid`)
+  CONSTRAINT `model_reactions_modelCompartment_fk`
+    FOREIGN KEY (`modelCompartment`)
+    REFERENCES `model_compartments` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `model_reaction_transports`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `model_reaction_transports` (
+  `model` CHAR(36) NOT NULL,
+  `reaction` CHAR(36) NOT NULL,
+  `transportIndex` INTEGER NOT NULL,
+  `modelCompartment` CHAR(36) NOT NULL,
+  PRIMARY KEY (`model`, `reaction`, `transportIndex`),
+  INDEX `model_reaction_transports_reaction_fk` (`reaction`),
+  INDEX `model_reaction_transports_model_fk` (`model`),
+  INDEX `model_reaction_transports_modelCompartment_fk` (`modelCompartment`),
+  CONSTRAINT `model_reaction_transports_model_fk`
+    FOREIGN KEY (`model`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `model_reaction_secondaryModelCompartment_fk`
-    FOREIGN KEY (`secondaryModelCompartment`)
-    REFERENCES `model_compartment` (`uuid`)
+  CONSTRAINT `model_reaction_transports_reaction_fk`
+    FOREIGN KEY (`reaction`)
+    REFERENCES `reactions` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `model_reaction_transports_modelCompartment_fk`
+    FOREIGN KEY (`modelCompartment`)
+    REFERENCES `model_compartments` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `modelfba`
+-- Table `modelfbas`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `modelfba` (
+CREATE TABLE IF NOT EXISTS `modelfbas` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` VARCHAR(45) NULL,
+  `locked` TINYINT(1)  NULL,
   `model` CHAR(36) NOT NULL,
   `media` CHAR(36) NOT NULL,
   `options` VARCHAR(255) NULL,
   `geneko` VARCHAR(255) NULL,
   `reactionko` VARCHAR(255) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `modelfba_model_fk` (`model`),
-  INDEX `modelfba_media_fk` (`media`),
-  CONSTRAINT `modelfba_model_fk`
+  INDEX `modelfbas_model_fk` (`model`),
+  INDEX `modelfbas_media_fk` (`media`),
+  CONSTRAINT `modelfbas_model_fk`
     FOREIGN KEY (`model`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `modelfba_media_fk`
+  CONSTRAINT `modelfbas_media_fk`
     FOREIGN KEY (`media`)
     REFERENCES `media` (`uuid`)
     ON DELETE NO ACTION
@@ -613,17 +690,17 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `media_compound`
+-- Table `media_compounds`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `media_compound` (
+CREATE TABLE IF NOT EXISTS `media_compounds` (
   `media` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
   `concentration` DOUBLE NULL,
   `minflux` DOUBLE NULL,
   `maxflux` DOUBLE NULL,
   PRIMARY KEY (`media`, `compound`),
-  INDEX `media_compound_compound_fk` (`compound`),
-  INDEX `media_compound_media_fk` (`media`),
+  INDEX `media_compounds_compound_fk` (`compound`),
+  INDEX `media_compounds_media_fk` (`media`),
   CONSTRAINT `media_compound_media_fk`
     FOREIGN KEY (`media`)
     REFERENCES `media` (`uuid`)
@@ -631,70 +708,70 @@ CREATE TABLE IF NOT EXISTS `media_compound` (
     ON UPDATE NO ACTION,
   CONSTRAINT `media_compound_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `modeless_feature`
+-- Table `modeless_features`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `modeless_feature` (
+CREATE TABLE IF NOT EXISTS `modeless_features` (
   `modelfba` CHAR(36) NOT NULL,
   `feature` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `growthFraction` DOUBLE NULL,
   `essential` TINYINT(1)  NULL,
   PRIMARY KEY (`modelfba`, `feature`),
-  INDEX `modeless_feature_feature_fk` (`feature`),
-  INDEX `modeless_feature_modelfba_fk` (`modelfba`),
-  CONSTRAINT `modeless_feature_modelfba_fk`
+  INDEX `modeless_features_feature_fk` (`feature`),
+  INDEX `modeless_features_modelfba_fk` (`modelfba`),
+  CONSTRAINT `modeless_features_modelfba_fk`
     FOREIGN KEY (`modelfba`)
-    REFERENCES `modelfba` (`uuid`)
+    REFERENCES `modelfbas` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `modeless_feature_feature_fk`
+  CONSTRAINT `modeless_features_feature_fk`
     FOREIGN KEY (`feature`)
-    REFERENCES `feature` (`uuid`)
+    REFERENCES `features` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `annotation_feature`
+-- Table `annotation_features`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `annotation_feature` (
+CREATE TABLE IF NOT EXISTS `annotation_features` (
   `annotation` CHAR(36) NOT NULL,
   `feature` CHAR(36) NOT NULL,
   `role` CHAR(36) NOT NULL,
   PRIMARY KEY (`annotation`, `feature`, `role`),
-  INDEX `annotation_feature_feature_fk` (`feature`),
-  INDEX `annotation_feature_annotation_fk` (`annotation`),
-  INDEX `annotation_feature_role_fk` (`role`),
-  CONSTRAINT `annotation_feature_annotation_fk`
+  INDEX `annotation_features_feature_fk` (`feature`),
+  INDEX `annotation_features_annotation_fk` (`annotation`),
+  INDEX `annotation_features_role_fk` (`role`),
+  CONSTRAINT `annotation_features_annotation_fk`
     FOREIGN KEY (`annotation`)
-    REFERENCES `annotation` (`uuid`)
+    REFERENCES `annotations` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `annotation_feature_feature_fk`
+  CONSTRAINT `annotation_features_feature_fk`
     FOREIGN KEY (`feature`)
-    REFERENCES `feature` (`uuid`)
+    REFERENCES `features` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `annotation_feature_role_fk`
+  CONSTRAINT `annotation_features_role_fk`
     FOREIGN KEY (`role`)
-    REFERENCES `role` (`uuid`)
+    REFERENCES `roles` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `roleset`
+-- Table `rolesets`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `roleset` (
+CREATE TABLE IF NOT EXISTS `rolesets` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
@@ -706,207 +783,208 @@ CREATE TABLE IF NOT EXISTS `roleset` (
   `subclass` VARCHAR(255) NULL,
   `type` VARCHAR(32) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `roleset_id` (`id`),
-  INDEX `roleset_name` (`name`),
-  INDEX `roleset_searchname` (`searchname`)
+  INDEX `rolesets_id` (`id`),
+  INDEX `rolesets_name` (`name`),
+  INDEX `rolesets_searchname` (`searchname`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `roleset_role`
+-- Table `roleset_roles`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `roleset_role` (
+CREATE TABLE IF NOT EXISTS `roleset_roles` (
   `roleset` CHAR(36) NOT NULL,
   `role` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
   PRIMARY KEY (`roleset`, `role`),
-  INDEX `roleset_role_role_fk` (`role`),
-  INDEX `roleset_role_roleset_fk` (`roleset`),
-  CONSTRAINT `roleset_role_roleset_fk`
+  INDEX `roleset_roles_role_fk` (`role`),
+  INDEX `roleset_roles_roleset_fk` (`roleset`),
+  CONSTRAINT `roleset_roles_roleset_fk`
     FOREIGN KEY (`roleset`)
-    REFERENCES `roleset` (`uuid`)
+    REFERENCES `rolesets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `roleset_role_role_fk`
+  CONSTRAINT `roleset_roles_role_fk`
     FOREIGN KEY (`role`)
-    REFERENCES `role` (`uuid`)
+    REFERENCES `roles` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mapping_role`
+-- Table `mapping_roles`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping_role` (
+CREATE TABLE IF NOT EXISTS `mapping_roles` (
   `mapping` CHAR(36) NOT NULL,
   `role` CHAR(36) NOT NULL,
   PRIMARY KEY (`mapping`, `role`),
-  INDEX `mapping_role_role_fk` (`role`),
-  INDEX `mapping_role_mapping_fk` (`mapping`),
-  CONSTRAINT `mapping_role_mapping_fk`
+  INDEX `mapping_roles_role_fk` (`role`),
+  INDEX `mapping_roles_mapping_fk` (`mapping`),
+  CONSTRAINT `mapping_roles_mapping_fk`
     FOREIGN KEY (`mapping`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `mapping_role_role_fk`
+  CONSTRAINT `mapping_roles_role_fk`
     FOREIGN KEY (`role`)
-    REFERENCES `role` (`uuid`)
+    REFERENCES `roles` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mapping_compartment`
+-- Table `mapping_compartments`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping_compartment` (
+CREATE TABLE IF NOT EXISTS `mapping_compartments` (
   `mapping` CHAR(36) NOT NULL,
   `compartment` CHAR(36) NOT NULL,
   PRIMARY KEY (`mapping`, `compartment`),
-  INDEX `mapping_compartment_compartment_fk` (`compartment`),
-  INDEX `mapping_compartment_mapping_fk` (`mapping`),
-  CONSTRAINT `mapping_compartment_mapping_fk`
+  INDEX `mapping_compartments_compartment_fk` (`compartment`),
+  INDEX `mapping_compartments_mapping_fk` (`mapping`),
+  CONSTRAINT `mapping_compartments_mapping_fk`
     FOREIGN KEY (`mapping`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `mapping_compartment_compartment_fk`
+  CONSTRAINT `mapping_compartments_compartment_fk`
     FOREIGN KEY (`compartment`)
-    REFERENCES `compartment` (`uuid`)
+    REFERENCES `compartments` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `compound_pk`
+-- Table `compound_pks`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compound_pk` (
+CREATE TABLE IF NOT EXISTS `compound_pks` (
   `compound` CHAR(36) NOT NULL,
   `modDate` VARCHAR(45) NULL,
-  `atom` INT NULL,
+  `atom` INTEGER NULL,
   `pk` DOUBLE NULL,
   `type` CHAR(1) NULL,
   PRIMARY KEY (`compound`),
-  INDEX `compound_pk_compound_fk` (`compound`),
-  CONSTRAINT `compound_pk_compound_fk`
+  INDEX `compound_pks_compound_fk` (`compound`),
+  CONSTRAINT `compound_pks_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `reactionset_reaction`
+-- Table `reactionset_reactions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `reactionset_reaction` (
+CREATE TABLE IF NOT EXISTS `reactionset_reactions` (
   `reactionset` CHAR(36) NOT NULL,
   `reaction` CHAR(36) NOT NULL,
   PRIMARY KEY (`reactionset`, `reaction`),
-  INDEX `reactionset_reaction_reaction_fk` (`reaction`),
-  INDEX `reactionset_reaction_reactionset_fk` (`reactionset`),
-  CONSTRAINT `reactionset_reaction_reactionset_fk`
+  INDEX `reactionset_reactions_reaction_fk` (`reaction`),
+  INDEX `reactionset_reactions_reactionset_fk` (`reactionset`),
+  CONSTRAINT `reactionset_reactions_reactionset_fk`
     FOREIGN KEY (`reactionset`)
-    REFERENCES `reactionset` (`uuid`)
+    REFERENCES `reactionsets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `reactionset_reaction_reaction_fk`
+  CONSTRAINT `reactionset_reactions_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `compoundset`
+-- Table `compoundsets`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compoundset` (
+CREATE TABLE IF NOT EXISTS `compoundsets` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   `searchname` VARCHAR(255) NULL,
   `class` VARCHAR(255) NULL,
   `type` VARCHAR(32) NULL,
   PRIMARY KEY (`uuid`),
-  INDEX `compoundset_id` (`id`),
-  INDEX `compoundset_name` (`name`),
-  INDEX `compoundset_searchname` (`searchname`)
+  INDEX `compoundsets_id` (`id`),
+  INDEX `compoundsets_name` (`name`),
+  INDEX `compoundsets_searchname` (`searchname`)
 )
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `compoundset_compound`
+-- Table `compoundset_compounds`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compoundset_compound` (
+CREATE TABLE IF NOT EXISTS `compoundset_compounds` (
   `compoundset` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
   PRIMARY KEY (`compoundset`, `compound`),
-  INDEX `compoundset_compound_compound_fk` (`compound`),
-  INDEX `compoundset_compound_compoundset_fk` (`compoundset`),
-  CONSTRAINT `compoundset_compound_compoundset_fk`
+  INDEX `compoundset_compounds_compound_fk` (`compound`),
+  INDEX `compoundset_compounds_compoundset_fk` (`compoundset`),
+  CONSTRAINT `compoundset_compounds_compoundset_fk`
     FOREIGN KEY (`compoundset`)
-    REFERENCES `compoundset` (`uuid`)
+    REFERENCES `compoundsets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `compoundset_compound_compound_fk`
+  CONSTRAINT `compoundset_compounds_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `modelfba_reaction`
+-- Table `modelfba_reactions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `modelfba_reaction` (
+CREATE TABLE IF NOT EXISTS `modelfba_reactions` (
   `modelfba` CHAR(36) NOT NULL,
   `reaction` CHAR(36) NOT NULL,
   `min` DOUBLE NULL,
   `max` DOUBLE NULL,
   `class` CHAR(1) NULL,
   PRIMARY KEY (`modelfba`, `reaction`),
-  INDEX `modelfba_reaction_reaction_fk` (`reaction`),
-  INDEX `modelfba_reaction_modelfba_fk` (`modelfba`),
-  CONSTRAINT `modelfba_reaction_modelfba_fk`
+  INDEX `modelfba_reactions_reaction_fk` (`reaction`),
+  INDEX `modelfba_reactions_modelfba_fk` (`modelfba`),
+  CONSTRAINT `modelfba_reactions_modelfba_fk`
     FOREIGN KEY (`modelfba`)
-    REFERENCES `modelfba` (`uuid`)
+    REFERENCES `modelfbas` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `modelfba_reaction_reaction_fk`
+  CONSTRAINT `modelfba_reactions_reaction_fk`
     FOREIGN KEY (`reaction`)
-    REFERENCES `reaction` (`uuid`)
+    REFERENCES `reactions` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `modelfba_compound`
+-- Table `modelfba_compounds`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `modelfba_compound` (
+CREATE TABLE IF NOT EXISTS `modelfba_compounds` (
   `modelfba` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
   `min` DOUBLE NULL,
   `max` DOUBLE NULL,
   `class` CHAR(1) NULL,
   PRIMARY KEY (`modelfba`, `compound`),
-  INDEX `modelfba_compound_compound_fk` (`compound`),
-  INDEX `modelfba_compound_modelfba_fk` (`modelfba`),
-  CONSTRAINT `modelfba_compound_modelfba_fk`
+  INDEX `modelfba_compounds_compound_fk` (`compound`),
+  INDEX `modelfba_compounds_modelfba_fk` (`modelfba`),
+  CONSTRAINT `modelfba_compounds_modelfba_fk`
     FOREIGN KEY (`modelfba`)
-    REFERENCES `modelfba` (`uuid`)
+    REFERENCES `modelfbas` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `modelfba_compound_compound_fk`
+  CONSTRAINT `modelfba_compounds_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -923,7 +1001,7 @@ CREATE TABLE IF NOT EXISTS `biochemistry_media` (
   INDEX `biochemistry_media_biochemistry_fk` (`biochemistry`),
   CONSTRAINT `biochemistry_media_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `biochemistry_media_media_fk`
@@ -935,90 +1013,44 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biochemistry_reactionset`
+-- Table `biochemistry_reactionsets`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_reactionset` (
+CREATE TABLE IF NOT EXISTS `biochemistry_reactionsets` (
   `biochemistry` CHAR(36) NOT NULL,
   `reactionset` CHAR(36) NOT NULL,
   PRIMARY KEY (`biochemistry`, `reactionset`),
-  INDEX `biochemistry_reactionset_reactionset_fk` (`reactionset`),
-  INDEX `biochemistry_reactionset_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_reactionset_biochemistry_fk`
+  INDEX `biochemistry_reactionsets_reactionset_fk` (`reactionset`),
+  INDEX `biochemistry_reactionsets_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `biochemistry_reactionsets_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `biochemistry_reactionset_reactionset_fk`
+  CONSTRAINT `biochemistry_reactionsets_reactionset_fk`
     FOREIGN KEY (`reactionset`)
-    REFERENCES `reactionset` (`uuid`)
+    REFERENCES `reactionsets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biochemistry_compoundset`
+-- Table `biochemistry_compoundsets`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_compoundset` (
+CREATE TABLE IF NOT EXISTS `biochemistry_compoundsets` (
   `biochemistry` CHAR(36) NOT NULL,
   `compoundset` CHAR(36) NOT NULL,
   PRIMARY KEY (`biochemistry`, `compoundset`),
-  INDEX `biochemistry_compoundset_compoundset_fk` (`compoundset`),
-  INDEX `biochemistry_compoundset_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_compoundset_biochemistry_fk`
+  INDEX `biochemistry_compoundsets_compoundset_fk` (`compoundset`),
+  INDEX `biochemistry_compoundsets_biochemistry_fk` (`biochemistry`),
+  CONSTRAINT `biochemistry_compoundsets_biochemistry_fk`
     FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `biochemistry_compoundset_compoundset_fk`
+  CONSTRAINT `biochemistry_compoundsets_compoundset_fk`
     FOREIGN KEY (`compoundset`)
-    REFERENCES `compoundset` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `biochemistry_reaction_alias`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_reaction_alias` (
-  `biochemistry` CHAR(36) NOT NULL,
-  `reaction` CHAR(36) NOT NULL,
-  `alias` VARCHAR(255) NOT NULL,
-  PRIMARY KEY (`biochemistry`, `reaction`, `alias`),
-  INDEX `biochemistry_reaction_alias_reaction_alias_fk` (`reaction`, `alias`),
-  INDEX `biochemistry_reaction_alias_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_reaction_alias_biochemistry_fk`
-    FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `biochemistry_reaction_alias_reaction_alias_fk`
-    FOREIGN KEY (`reaction`, `alias`)
-    REFERENCES `reaction_alias` (`reaction`, `alias`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `biochemistry_compound_alias`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_compound_alias` (
-  `biochemistry` CHAR(36) NOT NULL,
-  `compound` CHAR(36) NOT NULL,
-  `alias` VARCHAR(255) NOT NULL,
-  PRIMARY KEY (`biochemistry`, `compound`, `alias`),
-  INDEX `biochemistry_compound_alias_compound_alias_fk` (`compound`, `alias`),
-  INDEX `biochemistry_compound_alias_biochemistry_fk` (`biochemistry`),
-  CONSTRAINT `biochemistry_compound_alias_biochemistry_fk`
-    FOREIGN KEY (`biochemistry`)
-    REFERENCES `biochemistry` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `biochemistry_compound_alias_compound_alias_fk`
-    FOREIGN KEY (`compound`, `alias`)
-    REFERENCES `compound_alias` (`compound`, `alias`)
+    REFERENCES `compoundsets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -1034,13 +1066,13 @@ CREATE TABLE IF NOT EXISTS `biochemistry_parents` (
   INDEX `biochemistry_parents_parent_fk` (`parent`),
   CONSTRAINT `biochemistry_parents_parent_fk`
     FOREIGN KEY (`parent`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `biochemistry_parents_child_fk` (`child`),
   CONSTRAINT `biochemistry_parents_child_fk`
     FOREIGN KEY (`child`)
-    REFERENCES `biochemistry` (`uuid`)
+    REFERENCES `biochemistries` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -1056,13 +1088,13 @@ CREATE TABLE IF NOT EXISTS `mapping_parents` (
   INDEX `mapping_parents_parent_fk` (`parent`),
   CONSTRAINT `mapping_parents_parent_fk`
     FOREIGN KEY (`parent`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `mapping_parents_child_fk` (`child`),
   CONSTRAINT `mapping_parents_child_fk`
     FOREIGN KEY (`child`)
-    REFERENCES `mapping` (`uuid`)
+    REFERENCES `mappings` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -1078,13 +1110,13 @@ CREATE TABLE IF NOT EXISTS `model_parents` (
   INDEX `model_parents_parent_fk` (`parent`),
   CONSTRAINT `model_parents_parent_fk`
     FOREIGN KEY (`parent`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `model_parents_child_fk` (`child`),
   CONSTRAINT `model_parents_child_fk`
     FOREIGN KEY (`child`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -1100,13 +1132,13 @@ CREATE TABLE IF NOT EXISTS `annotation_parents` (
   INDEX `annotation_parents_parent_fk` (`parent`),
   CONSTRAINT `annotation_parents_parent_fk`
     FOREIGN KEY (`parent`)
-    REFERENCES `annotation` (`uuid`)
+    REFERENCES `annotations` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `annotation_parents_child_fk` (`child`),
   CONSTRAINT `annotation_parents_child_fk`
     FOREIGN KEY (`child`)
-    REFERENCES `annotation` (`uuid`)
+    REFERENCES `annotations` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -1122,22 +1154,22 @@ CREATE TABLE IF NOT EXISTS `roleset_parents` (
   INDEX `roleset_parents_parent_fk` (`parent`),
   CONSTRAINT `roleset_parents_parent_fk`
     FOREIGN KEY (`parent`)
-    REFERENCES `roleset` (`uuid`)
+    REFERENCES `rolesets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `roleset_parents_child_fk` (`child`),
   CONSTRAINT `roleset_parents_child_fk`
     FOREIGN KEY (`child`)
-    REFERENCES `roleset` (`uuid`)
+    REFERENCES `rolesets` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `permission`
+-- Table `permissions`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `permission` (
+CREATE TABLE IF NOT EXISTS `permissions` (
   `object` CHAR(36) NOT NULL,
   `user` VARCHAR(255) NOT NULL,
   `read` TINYINT(1)  NULL,
@@ -1148,11 +1180,12 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biomass`
+-- Table `biomasses`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biomass` (
+CREATE TABLE IF NOT EXISTS `biomasses` (
   `uuid` CHAR(36) NOT NULL,
   `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
   `name` VARCHAR(255) NULL,
   PRIMARY KEY (`uuid`),
@@ -1171,96 +1204,96 @@ CREATE TABLE IF NOT EXISTS `model_biomass` (
   INDEX `model_biomass_biomass_fk` (`biomass`),
   CONSTRAINT `model_biomass_biomass_fk`
     FOREIGN KEY (`biomass`)
-    REFERENCES `biomass` (`uuid`)
+    REFERENCES `biomasses` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   INDEX `model_biomass_model_fk` (`model`),
   CONSTRAINT `model_biomass_model_fk`
     FOREIGN KEY (`model`)
-    REFERENCES `model` (`uuid`)
+    REFERENCES `models` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `biomass_compound`
+-- Table `biomass_compounds`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biomass_compound` (
+CREATE TABLE IF NOT EXISTS `biomass_compounds` (
   `biomass` CHAR(36) NOT NULL,
   `compound` CHAR(36) NOT NULL,
   `compartment` CHAR(36) NOT NULL,
   `coefficient` DOUBLE NULL,
   PRIMARY KEY ( `biomass`, `compound`),
-  INDEX `biomass_compound_biomass_fk` (`biomass`),
-  CONSTRAINT `biomass_compound_biomass_fk`
+  INDEX `biomass_compounds_biomass_fk` (`biomass`),
+  CONSTRAINT `biomass_compounds_biomass_fk`
     FOREIGN KEY (`biomass`)
-    REFERENCES `biomass` (`uuid`)
+    REFERENCES `biomasses` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION, 
-  INDEX `biomass_compound_compound_fk` (`compound`),
-  CONSTRAINT `biomass_compound_compound_fk`
+  INDEX `biomass_compounds_compound_fk` (`compound`),
+  CONSTRAINT `biomass_compounds_compound_fk`
     FOREIGN KEY (`compound`)
-    REFERENCES `compound` (`uuid`)
+    REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION, 
-  INDEX `biomass_compound_compartment_fk` (`compartment`),
-  CONSTRAINT `biomass_compound_compartment_fk`
+  INDEX `biomass_compounds_compartment_fk` (`compartment`),
+  CONSTRAINT `biomass_compounds_compartment_fk`
     FOREIGN KEY (`compartment`)
-    REFERENCES `model_compartment` (`uuid`)
+    REFERENCES `model_compartments` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `biochemistry_alias`
+-- Table `biochemistry_aliases`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `biochemistry_alias` (
+CREATE TABLE IF NOT EXISTS `biochemistry_aliases` (
     `biochemistry` CHAR(36) NOT NULL,
     `username` CHAR(255) NOT NULL,
     `id` CHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
-    INDEX `biochemistry_alias_biochemistry_fk` (`biochemistry`),
-    CONSTRAINT `biochemistry_alias_biochemistry_fk`
+    INDEX `biochemistry_aliases_biochemistry_fk` (`biochemistry`),
+    CONSTRAINT `biochemistry_aliases_biochemistry_fk`
         FOREIGN KEY (`biochemistry`)
-        REFERENCES `biochemistry` (`uuid`)
+        REFERENCES `biochemistries` (`uuid`)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `model_alias`
+-- Table `model_aliases`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `model_alias` (
+CREATE TABLE IF NOT EXISTS `model_aliases` (
     `model` CHAR(36) NOT NULL,
     `username` CHAR(255) NOT NULL,
     `id` CHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
-    INDEX `model_alias_model_fk` (`model`),
-    CONSTRAINT `model_alias_model_fk`
+    INDEX `model_aliases_model_fk` (`model`),
+    CONSTRAINT `model_aliases_model_fk`
         FOREIGN KEY (`model`)
-        REFERENCES `model` (`uuid`)
+        REFERENCES `models` (`uuid`)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION)
 ENGINE = InnoDB;
         
 
 -- -----------------------------------------------------
--- Table `mapping_alias`
+-- Table `mapping_aliases`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping_alias` (
+CREATE TABLE IF NOT EXISTS `mapping_aliases` (
     `mapping` CHAR(36) NOT NULL,
     `username` CHAR(255) NOT NULL,
     `id` CHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
-    INDEX `mapping_alias_mapping_fk` (`mapping`),
-    CONSTRAINT `mapping_alias_mapping_fk`
+    INDEX `mapping_aliases_mapping_fk` (`mapping`),
+    CONSTRAINT `mapping_aliases_mapping_fk`
         FOREIGN KEY (`mapping`)
-        REFERENCES `mapping` (`uuid`)
+        REFERENCES `mappings` (`uuid`)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
-SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+-- SET SQL_MODE=@OLD_SQL_MODE;
+-- SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+-- SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

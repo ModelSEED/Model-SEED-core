@@ -12,7 +12,7 @@ __PACKAGE__->meta->setup(
     columns => [
         uuid    => { type => 'character', length => 36, not_null => 1 },
         modDate => { type => 'datetime' },
-        id      => { type => 'character', length => 2 },
+        id      => { type => 'varchar', length => 2 },
         name    => { type => 'varchar', length => 255 },
     ],
 

@@ -24,6 +24,7 @@ sub new {
     return $self;
 }
 
+
 sub fm {
     return $_[0]->{fm};
 }
@@ -44,6 +45,13 @@ sub convert {
     my $self = shift;
     my $type = shift;
     return $self->{conversionFns}->{$type}->(@_);
+}
+
+sub compartmentHierarchy {
+    my $self = shift;
+    my $set  = shift;
+    $self->{compartmentHierarchy} = $set if(defined($set));
+    return $self->{compartmentHierarchy};
 }
     
 
@@ -77,6 +85,7 @@ sub _makeTypesToHashFns {
         return $_[0]->alias . $_[0]->type;
     };
     $f->{reaction} = sub {
+        confess "got here" unless(defined($_[0]));
         return $_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation;
     };
     $f->{reaction_alias} = sub {
@@ -167,7 +176,7 @@ sub _makeConversionFns {
     };
     $f->{reaction_alias} = sub {
         my ($row, $ctx) = @_;
-        my $obj = $ctx->{reactions}->{$row->{REACTION}->[0]};
+        my $obj = $ctx->{reaction}->{$row->{REACTION}->[0]};
         return undef unless($obj);
         return {
             type => $row->{type}->[0],
@@ -175,6 +184,21 @@ sub _makeConversionFns {
             reaction => $obj->uuid,
         };
     };
+    $f->{reaction_compound} = sub {
+        my ($row, $ctx) = @_;
+        my $rxn = $ctx->{reaction}->{$row->{reaction}->[0]};
+        my $cpd = $ctx->{compound}->{$row->{compound}->[0]};
+        unless(defined($rxn) && defined($cpd)) {
+            return undef;
+        }
+        return {
+            reaction => $rxn->uuid,
+            compound => $cpd->uuid,
+            coefficient => $row->{coefficient}->[0],
+            cofactor => $row->{cofactor}->[0] || undef,
+            exteriorCompartment => $row->{exteriorCompartment}->[0] || undef,
+        };
+    };    
     $f->{role} = sub {
         my ($row, $ctx) = @_;
         return {
@@ -248,10 +272,16 @@ sub importBiochemistryFromDir {
     my $files = {
         reaction => 'reaction.txt',
         compound => 'compound.txt',
+        reaction_compound => 'rxncpd.txt',
         compound_alias => 'cpdals.txt',
         reaction_alias => 'rxnals.txt',
     };        
     my $config = { filename => undef, delimiter => "\t"};
+    unless(-f $files->{reaction_compound}) {
+        $config->{filename} = "$dir/".$files->{reaction},
+        my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
+        $self->generateReactionCompoundFile("$dir/".$files->{reaction_compound}, $tbl);
+    } 
     foreach my $file (values %$files) {
         $file = "$dir/$file";
         unless(-f "$file") {
@@ -289,20 +319,49 @@ sub importBiochemistryFromDir {
     }
     # Reactions
     my $reaction_id_map = {};
+    my $missed_rxn_count = 0;
     for(my $i=0; $i<$files->{reaction}->size(); $i++) {
         my $row = $files->{reaction}->get_row($i);
         my $hash = $self->convert("reaction", $row, $ctx);
+        unless(defined($hash)) {
+            $missed_rxn_count += 1;
+            next;
+        }
         my $RDB_reaction = $self->getOrCreateObject("reaction", $hash);
         $reaction_id_map->{$RDB_reaction->id} = $RDB_reaction;
         $RDB_biochemistry->add_reaction($RDB_reaction);
-        # ReactionCompound - TODO
+    }
+    # Reaction Compound
+    my ($missed_rxn_cpd_count, $missed_rxn_cpd_by_rxn) = (0, {});
+    for(my $i=0; $i<$files->{reaction_compound}->size(); $i++) {
+        my $row = $files->{reaction_compound}->get_row($i);
+        my $hash = $self->convert("reaction_compound", $row, $ctx);
+        unless(defined($hash)) {
+            $missed_rxn_cpd_count += 1;
+            $missed_rxn_cpd_by_rxn->{$hash->{reaction}} =  1 + 
+                ($missed_rxn_cpd_by_rxn->{$hash->{reaction}} || 0);
+            next;
+        }
+        my $RDB_reaction_compound = $self->getOrCreateObject("reaction_compound", $hash);
+    }
+    if($missed_rxn_cpd_count > 0) {
+        # Error cases for reaction compound
+        warn "Failed to add $missed_rxn_cpd_count reactants to database across " .
+            scalar(keys %$missed_rxn_cpd_by_rxn) . " reactions.\n";
+        while( my ($rxn, $count) = each %$missed_rxn_cpd_by_rxn ) {
+            my $total = scalar($files->{reaction_compound}->get_rows_by_key($rxn, "REACTION"));
+            if($total != $count) {
+                warn "Failed to add $count reactants to db for" .
+                " reaction: $rxn, which has $total reactants.\n";
+            }
+        }
     }
     # ReactionAlias
     $aliasRepeats = {};
     for(my $i=0; $i<$files->{reaction_alias}->size(); $i++) {
         my $row = $files->{reaction_alias}->get_row($i);
         my $hash = $self->convert('reaction_alias', $row, $ctx);
-        next unless defined($hash);
+        next unless(defined($hash));
         my $error;
         ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "reaction");
         next if $error;
@@ -314,7 +373,7 @@ sub importBiochemistryFromDir {
     my $defaultMediaObjs = $self->getDefaultMedia($ctx); 
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
-        # MediaCompound - TODO
+        # MediaCompound - handled by getDefaultMedia 
     }
     $RDB_biochemistry->add_alias({ username => $username, id => $name});
     $RDB_biochemistry->save;
@@ -390,13 +449,23 @@ sub importMappingFromDir {
     $RDB_mappingObject->save();
     return $RDB_mappingObject; 
     # Create ComplexReaction - TODO
+    for(my $i=0; $i<$files->{reactionComplex}->size(); $i++) {
+        my $row = $files->{reactionComplex}->get_row($i);
+        my $hash = $self->convert("reactionComplex", $row, $ctx);
+        unless(defined($hash)) {
+            warn "Could not import complexReaction\n";
+            next;
+        }
+        my $RDB_reactionComplex = $self->getOrCreateObject("reaction_complex", $hash);
+        $RDB_reactionComplex->save();
+    }
 }
 
 # returns a set of rdbo objects for compartments
 # if those objects do not already exist, create them
 sub getDefaultCompartments {
     my ($self) = @_;
-    if(defined($self->cache->{compartment})) {
+    if(defined($self->cache->{compartment}) && (keys %{$self->cache->{compartment}}) > 0) {
         return [ values %{$self->cache->{compartment}} ];
     } else {
         my $values = [];
@@ -404,6 +473,18 @@ sub getDefaultCompartments {
         foreach my $old (@$oldCompartments) {
             my $hash = { id => $old->id(), name => $old->name };
             push(@$values, $self->getOrCreateObject("compartment", $hash));
+        }
+        my $defaultHierarchy = {
+            'e' => 0,
+            'w' => 1, 'p' => 1,
+            'c' => 2,
+            'g' => 3, 'r' => 3, 'l' => 3, 'n' => 3,
+            'd' => 3, 'm' => 3, 'x' => 3, 'v' => 3,
+        };
+        foreach my $cmp (@$values) {
+            if(!defined($defaultHierarchy->{$cmp->id})) {
+                warn "No default compartment hierarchy for " . $cmp->name . " (".$cmp->id.")\n";
+            }
         }
         return $values;
     }
@@ -490,6 +571,93 @@ sub checkAliases {
         $aliasRepeats->{$hash->{type}.$hash->{alias}} = $hash->{$type};
     }
     return ($error, $aliasRepeats);
+}
+
+sub parseReactionEquation {
+    my ($args) = @_;
+    my $Equation = $args->{equation};
+    my $Parts = [];
+    if (defined($Equation)) {
+        my @TempArray = split(/\s/,$Equation);
+        my $CurrentlyOnReactants = 1;
+        for (my $i=0; $i < @TempArray; $i++) {
+            my $Coefficient = 1;
+            if ($TempArray[$i] =~ m/^\(([\.\d]+)\)$/ || $TempArray[$i] =~ m/^([\.\d]+)$/) {
+                $Coefficient = $1;
+                $Coefficient *= -1 if($CurrentlyOnReactants);
+            } elsif ($TempArray[$i] =~ m/(cpd\d\d\d\d\d)/) {
+                my $NewRow;
+                $NewRow->{"compound"}->[0] = $1;
+                $NewRow->{"compartment"}->[0] = "c";
+                $NewRow->{"coefficient"}->[0] = $Coefficient;
+                if ($TempArray[$i] =~ m/cpd\d\d\d\d\d\[([a-zA-Z]+)\]/) {
+                    $NewRow->{"compartment"}->[0] = lc($1);
+                }
+                push(@$Parts, $NewRow);
+            } elsif ($TempArray[$i] =~ m/=/) {
+                $CurrentlyOnReactants = 0;
+            }
+        }
+    }
+    return $Parts;
+}
+
+sub determinReactionCompartmentOrdering {
+    my ($self, $reactionRow) = @_;
+    # get reactants and products
+    my $parts = parseReactionEquation({equation => $reactionRow->{equation}->[0]});
+    # Now figure out what compartment will be "interior" based on
+    # compartment hierarchy defined in configuration. Reactions must
+    # have at most two compartments.
+    my ($exCmpId, $inCmpId) = undef;
+    my $allCompartments = {};
+    my $hierarchy = $self->compartmentHierarchy();
+    # Generate mapping compartment_id => position in hierarchy for each compound in reaction
+    map { $allCompartments->{$_} = $hierarchy->{$_} || -1 } # map id to hierarchy or -1
+        map { $_->{compartment}->[0] }  @$parts; # extract compartment for brevity
+    if((keys %$allCompartments) > 2) {
+        warn "Too many compartments for reaction " . $reactionRow->{id}->[0] .
+        "! Got: " . join(", ", keys %$allCompartments) . "\n";
+        return undef;
+    }
+    if((keys %$allCompartments) == 2) {
+        my ($cmpA, $cmpApos, $cmpB, $cmpBpos) = %$allCompartments; # unroll
+        if($cmpApos == $cmpBpos) {
+            warn "Cannot create reaction between two compartments ($cmpA, " .
+            "$cmpB) at the same level in compartment hierarchy ($cmpApos)\n".
+            return undef;
+        }
+        $exCmpId = ($cmpApos < $cmpBpos) ? $cmpA : $cmpB;
+        $inCmpId = ($cmpApos < $cmpBpos) ? $cmpB : $cmpA;
+        return ($inCmpId, $exCmpId);
+    } elsif((keys %$allCompartments) == 1) {
+        my ($cmpA, $cmpApos) = %$allCompartments;
+        return ($cmpA);
+    } else {
+        return ('c');
+    }
+}
+
+sub generateReactionCompoundFile {
+    my ($self, $filename, $reactionTable) = @_;
+    open(my $fh, ">", $filename) || die("Could not open $filename for writing!\n");
+    my $columns = [qw(reaction compound coefficient cofactor exteriorCompartment)];
+    print $fh join("\t", sort @$columns) . "\n";
+    my $compartments = $self->getDefaultCompartments();
+    for(my $i=0; $i<$reactionTable->size(); $i++) {
+        my $row = $reactionTable->get_row($i);
+        # produce row [ reaction, compound, coefficient, cofactor, exteriorCompartment ]
+        my ($in, $ex) = $self->determinReactionCompartmentOrdering($row);
+        next unless(defined($in));        
+        my $parts = parseReactionEquation({equation => $row->{equation}->[0]});
+        foreach my $part (@$parts) {
+            $part->{reaction} = [$row->{id}->[0]];
+            $part->{cofactor} = [""];
+            $part->{exteriorCompartment} = ($part->{compartment}->[0] eq $in) ? [0] : [1];
+            print $fh join("\t", map { join(",", @{($part->{$_} || [])}) } sort @$columns) . "\n";
+        }
+    }
+    close($fh);
 }
 
 1;
