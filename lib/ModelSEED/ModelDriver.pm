@@ -5337,7 +5337,7 @@ sub printgapfilledreactions {
 		$maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
-				$avegap += $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				$avegap += $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
 				$count++;
 				$self->figmodel()->database()->create_object("gapcpdmdl",{
 					cpdid => $cpd,
