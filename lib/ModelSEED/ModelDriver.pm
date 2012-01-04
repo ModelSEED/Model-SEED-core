@@ -5164,7 +5164,7 @@ sub printgapfilledreactions {
 	}
 	foreach my $mdl (keys(%{$mdlcpdgapHash})) {
 		foreach my $cpd (keys(%{$mdlcpdgapHash->{$mdl}})) {
-			foreach my $gap (keys(%{$mdlcpdgapHash->{$mdl}->{$rxn}})) {
+			foreach my $gap (keys(%{$mdlcpdgapHash->{$mdl}->{$cpd}})) {
 				$self->figmodel()->database()->create_object("gapcpdgapmdl",{
 					gapid => $gap,
 					cpdid => $cpd,
@@ -5342,14 +5342,14 @@ sub printgapfilledreactions {
 				$self->figmodel()->database()->create_object("gapcpdmdl",{
 					cpdid => $cpd,
 					model => $modelList->[$i],
-					numgap => $gfMdlTbl->{$rxn}->{$modelList->[$i]}
+					numgap => $mdlCpdTbl->{$modelList->[$i]}->{$cpd}
 				});
 				$line .= "\t".$mdlCpdTbl->{$modelList->[$i]}->{$cpd};
-				if ($mingap > $gfMdlTbl->{$rxn}->{$modelList->[$i]}) {
-					$mingap = $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				if ($mingap > $mdlCpdTbl->{$modelList->[$i]}->{$cpd}) {
+					$mingap = $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
 				}
-				if ($maxgap < $gfMdlTbl->{$rxn}->{$modelList->[$i]}) {
-					$maxgap = $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				if ($maxgap < $mdlCpdTbl->{$modelList->[$i]}->{$cpd}) {
+					$maxgap = $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
 				}
 			} else {
 				$line .= "\tN";
