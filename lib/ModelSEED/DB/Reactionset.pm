@@ -1,16 +1,16 @@
 package ModelSEED::DB::Reactionset;
 
 use strict;
-use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'reactionset',
+    table   => 'reactionsets',
 
     columns => [
         uuid       => { type => 'character', length => 36, not_null => 1 },
         modDate    => { type => 'datetime' },
+        locked     => { type => 'integer' },
         id         => { type => 'varchar', length => 32 },
         name       => { type => 'varchar', length => 255 },
         searchname => { type => 'varchar', length => 255 },
@@ -21,25 +21,21 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     relationships => [
-        biochemistry_reactionset => {
-            class      => 'ModelSEED::DB::BiochemistryReactionset',
-            column_map => { uuid => 'reactionset' },
-            type       => 'one to many',
+        biochemistries => {
+            map_class => 'ModelSEED::DB::BiochemistryReactionset',
+            map_from  => 'reactionset',
+            map_to    => 'biochemistry',
+            type      => 'many to many',
         },
 
-        reactionset_reaction => {
-            class      => 'ModelSEED::DB::ReactionsetReaction',
-            column_map => { uuid => 'reactionset' },
-            type       => 'one to many',
+        reactions => {
+            map_class => 'ModelSEED::DB::ReactionsetReaction',
+            map_from  => 'reactionset',
+            map_to    => 'reaction',
+            type      => 'many to many',
         },
     ],
 );
 
-__PACKAGE__->meta->column('modDate')->add_trigger(
-    deflate => sub {
-        unless(defined($_[0]->modDate)) {
-            return DateTime->now();
-        }
-});
 1;
 

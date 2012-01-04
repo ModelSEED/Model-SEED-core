@@ -8,7 +8,7 @@ use ModelSEED::DB::AnnotationFeature;
 
 sub object_class { 'ModelSEED::DB::AnnotationFeature' }
 
-__PACKAGE__->make_manager_methods('annotation_feature');
+__PACKAGE__->make_manager_methods('annotation_features');
 
 1;
 

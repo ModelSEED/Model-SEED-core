@@ -1,13 +1,11 @@
 package ModelSEED::DB::Biochemistry;
 
 use strict;
-use Data::UUID;
-use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'biochemistry',
+    table   => 'biochemistries',
 
     columns => [
         uuid    => { type => 'character', length => 36, not_null => 1 },
@@ -20,94 +18,74 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     relationships => [
-        compound => {
-            map_class  => 'ModelSEED::DB::BiochemistryCompound',
-            map_from   => 'biochemistry_obj',
-            map_to     => 'compound_obj',
-            type       => 'many to many',
+        biochemistry_aliases => {
+            class      => 'ModelSEED::DB::BiochemistryAlias',
+            column_map => { uuid => 'biochemistry_uuid' },
+            type       => 'one to many',
         },
-        compoundSet => {
-            map_class => 'ModelSEED::DB::BiochemistryCompoundset',
-            map_from  => 'biochemistry_obj',
-            map_to    => 'compoundset_obj',
-            type      => 'many to many',
-        },
+
         media => {
             map_class  => 'ModelSEED::DB::BiochemistryMedia',
-            map_from   => 'biochemistry_obj',
-            map_to     => 'media_obj',
+            map_from   => 'biochemistry',
+            map_to     => 'media',
             type       => 'many to many',
         },
-        reaction => {
-            map_class  => 'ModelSEED::DB::BiochemistryReaction',
-            map_from   => 'biochemistry_obj',
-            map_to     => 'reaction_obj',
-            type       => 'many to many',
-        },
-        reactionSet => {
-            map_class  => 'ModelSEED::DB::BiochemistryReactionset',
-            map_from   => 'biochemistry_obj',
-            map_to     => 'reactionset_obj',
-            type       => 'many to many', 
-        },
-        
-        compound_alias => {
-            map_class => 'ModelSEED::DB::BiochemistryCompoundAlias',
-            map_from  => 'biochemistry_obj',
-            map_to    => 'compound_alias',
-            type      => 'many to many',
-        },
 
-        model => {
-            class      => 'ModelSEED::DB::Model',
-            column_map => { uuid => 'biochemistry' },
-            type       => 'one to many',
-        },
-
-        reaction_alias => {
-            map_class => 'ModelSEED::DB::BiochemistryReactionAlias',
-            map_from  => 'biochemistry_obj',
-            map_to    => 'reaction_alias',
-            type      => 'many to many',
-        },
-        parents => {
-            map_class => 'ModelSEED::DB::BiochemistryParents',
-            map_from  => 'child_obj',
-            map_to    => 'parent_obj',
-            type      => 'many to many',
-        }, 
         children => {
-            map_class => 'ModelSEED::DB::BiochemistryParents',
-            map_from  => 'parent_obj',
-            map_to    => 'child_obj',
+            map_class => 'ModelSEED::DB::BiochemistryParent',
+            map_from  => 'parent',
+            map_to    => 'child',
             type      => 'many to many',
         },
-        alias => {
-            class      => 'ModelSEED::DB::BiochemistryAlias',
-            column_map => { uuid => 'biochemistry' },
+
+        compounds => {
+            map_class => 'ModelSEED::DB::BiochemistryCompound',
+            map_from  => 'biochemistry',
+            map_to    => 'compound',
+            type      => 'many to many',
+        },
+
+        compoundsets => {
+            map_class => 'ModelSEED::DB::BiochemistryCompoundset',
+            map_from  => 'biochemistry',
+            map_to    => 'compoundset',
+            type      => 'many to many',
+        },
+
+        mappings => {
+            class      => 'ModelSEED::DB::Mapping',
+            column_map => { uuid => 'biochemistry_uuid' },
             type       => 'one to many',
+        },
+
+        models => {
+            class      => 'ModelSEED::DB::Model',
+            column_map => { uuid => 'biochemistry_uuid' },
+            type       => 'one to many',
+        },
+
+        parents => {
+            map_class => 'ModelSEED::DB::BiochemistryParent',
+            map_from  => 'child',
+            map_to    => 'parent',
+            type      => 'many to many',
+        },
+
+        reactions => {
+            map_class => 'ModelSEED::DB::BiochemistryReaction',
+            map_from  => 'biochemistry',
+            map_to    => 'reaction',
+            type      => 'many to many',
+        },
+
+        reactionsets => {
+            map_class => 'ModelSEED::DB::BiochemistryReactionset',
+            map_from  => 'biochemistry',
+            map_to    => 'reactionset',
+            type      => 'many to many',
         },
     ],
 );
-
-__PACKAGE__->meta->column('uuid')->add_trigger(
-    deflate => sub {
-        my $uuid = $_[0]->uuid;
-        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
-            return $uuid->to_string();
-        } elsif($uuid) {
-            return $uuid;
-        } else {
-            return Data::UUID->new()->create_str();
-        }   
-});
-
-__PACKAGE__->meta->column('modDate')->add_trigger(
-    deflate => sub {
-        unless(defined($_[0]->modDate)) {
-            return DateTime->now();
-        }
-});
 
 1;
 

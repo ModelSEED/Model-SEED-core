@@ -8,7 +8,7 @@ use ModelSEED::DB::Model;
 
 sub object_class { 'ModelSEED::DB::Model' }
 
-__PACKAGE__->make_manager_methods('model');
+__PACKAGE__->make_manager_methods('models');
 
 1;
 

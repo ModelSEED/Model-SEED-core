@@ -8,7 +8,7 @@ use ModelSEED::DB::Mapping;
 
 sub object_class { 'ModelSEED::DB::Mapping' }
 
-__PACKAGE__->make_manager_methods('mapping');
+__PACKAGE__->make_manager_methods('mappings');
 
 1;
 

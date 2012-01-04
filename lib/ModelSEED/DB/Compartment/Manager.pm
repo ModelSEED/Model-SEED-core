@@ -8,7 +8,7 @@ use ModelSEED::DB::Compartment;
 
 sub object_class { 'ModelSEED::DB::Compartment' }
 
-__PACKAGE__->make_manager_methods('compartment');
+__PACKAGE__->make_manager_methods('compartments');
 
 1;
 

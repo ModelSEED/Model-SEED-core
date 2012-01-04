@@ -5,24 +5,24 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'biochemistry_compound',
+    table   => 'biochemistry_compounds',
 
     columns => [
-        biochemistry => { type => 'character', length => 36, not_null => 1 },
-        compound     => { type => 'character', length => 36, not_null => 1 },
+        biochemistry_uuid => { type => 'character', length => 36, not_null => 1 },
+        compound_uuid     => { type => 'character', length => 36, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'biochemistry', 'compound' ],
+    primary_key_columns => [ 'biochemistry_uuid', 'compound_uuid' ],
 
     foreign_keys => [
-        biochemistry_obj => {
+        biochemistry => {
             class       => 'ModelSEED::DB::Biochemistry',
-            key_columns => { biochemistry => 'uuid' },
+            key_columns => { biochemistry_uuid => 'uuid' },
         },
 
-        compound_obj => {
+        compound => {
             class       => 'ModelSEED::DB::Compound',
-            key_columns => { compound => 'uuid' },
+            key_columns => { compound_uuid => 'uuid' },
         },
     ],
 );

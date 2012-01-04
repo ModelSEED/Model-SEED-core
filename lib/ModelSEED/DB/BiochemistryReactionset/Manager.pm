@@ -8,7 +8,7 @@ use ModelSEED::DB::BiochemistryReactionset;
 
 sub object_class { 'ModelSEED::DB::BiochemistryReactionset' }
 
-__PACKAGE__->make_manager_methods('biochemistry_reactionset');
+__PACKAGE__->make_manager_methods('biochemistry_reactionsets');
 
 1;
 

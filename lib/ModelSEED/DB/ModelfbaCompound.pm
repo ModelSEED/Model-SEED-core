@@ -5,27 +5,27 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'modelfba_compound',
+    table   => 'modelfba_compounds',
 
     columns => [
-        modelfba => { type => 'character', length => 36, not_null => 1 },
-        compound => { type => 'character', length => 36, not_null => 1 },
-        min      => { type => 'scalar', length => 64 },
-        max      => { type => 'scalar', length => 64 },
-        class    => { type => 'character', length => 1 },
+        modelfba_uuid => { type => 'character', length => 36, not_null => 1 },
+        compound_uuid => { type => 'character', length => 36, not_null => 1 },
+        min           => { type => 'scalar' },
+        max           => { type => 'scalar' },
+        class         => { type => 'character', length => 1 },
     ],
 
-    primary_key_columns => [ 'modelfba', 'compound' ],
+    primary_key_columns => [ 'modelfba_uuid', 'compound_uuid' ],
 
     foreign_keys => [
-        compound_obj => {
+        compound => {
             class       => 'ModelSEED::DB::Compound',
-            key_columns => { compound => 'uuid' },
+            key_columns => { compound_uuid => 'uuid' },
         },
 
-        modelfba_obj => {
+        modelfba => {
             class       => 'ModelSEED::DB::Modelfba',
-            key_columns => { modelfba => 'uuid' },
+            key_columns => { modelfba_uuid => 'uuid' },
         },
     ],
 );

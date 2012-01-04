@@ -8,7 +8,7 @@ use ModelSEED::DB::Feature;
 
 sub object_class { 'ModelSEED::DB::Feature' }
 
-__PACKAGE__->make_manager_methods('feature');
+__PACKAGE__->make_manager_methods('features');
 
 1;
 

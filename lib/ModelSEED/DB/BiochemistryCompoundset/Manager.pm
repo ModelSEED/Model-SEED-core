@@ -8,7 +8,7 @@ use ModelSEED::DB::BiochemistryCompoundset;
 
 sub object_class { 'ModelSEED::DB::BiochemistryCompoundset' }
 
-__PACKAGE__->make_manager_methods('biochemistry_compoundset');
+__PACKAGE__->make_manager_methods('biochemistry_compoundsets');
 
 1;
 

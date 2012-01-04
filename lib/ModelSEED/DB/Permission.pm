@@ -5,7 +5,7 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'permission',
+    table   => 'permissions',
 
     columns => [
         object => { type => 'character', length => 36, not_null => 1 },

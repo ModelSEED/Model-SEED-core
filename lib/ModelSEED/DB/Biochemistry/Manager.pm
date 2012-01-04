@@ -6,9 +6,9 @@ use base qw(Rose::DB::Object::Manager);
 
 use ModelSEED::DB::Biochemistry;
 
-sub object_class { return 'ModelSEED::DB::Biochemistry' }
+sub object_class { 'ModelSEED::DB::Biochemistry' }
 
-__PACKAGE__->make_manager_methods('biochemistry');
+__PACKAGE__->make_manager_methods('biochemistries');
 
 1;
 

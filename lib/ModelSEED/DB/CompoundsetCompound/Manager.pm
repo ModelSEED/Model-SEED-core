@@ -8,7 +8,7 @@ use ModelSEED::DB::CompoundsetCompound;
 
 sub object_class { 'ModelSEED::DB::CompoundsetCompound' }
 
-__PACKAGE__->make_manager_methods('compoundset_compound');
+__PACKAGE__->make_manager_methods('compoundset_compounds');
 
 1;
 

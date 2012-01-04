@@ -8,7 +8,7 @@ use ModelSEED::DB::RolesetRole;
 
 sub object_class { 'ModelSEED::DB::RolesetRole' }
 
-__PACKAGE__->make_manager_methods('roleset_role');
+__PACKAGE__->make_manager_methods('roleset_roles');
 
 1;
 

@@ -5,27 +5,27 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'modelfba_reaction',
+    table   => 'modelfba_reactions',
 
     columns => [
-        modelfba => { type => 'character', length => 36, not_null => 1 },
-        reaction => { type => 'character', length => 36, not_null => 1 },
-        min      => { type => 'scalar', length => 64 },
-        max      => { type => 'scalar', length => 64 },
-        class    => { type => 'character', length => 1 },
+        modelfba_uuid => { type => 'character', length => 36, not_null => 1 },
+        reaction_uuid => { type => 'character', length => 36, not_null => 1 },
+        min           => { type => 'scalar' },
+        max           => { type => 'scalar' },
+        class         => { type => 'character', length => 1 },
     ],
 
-    primary_key_columns => [ 'modelfba', 'reaction' ],
+    primary_key_columns => [ 'modelfba_uuid', 'reaction_uuid' ],
 
     foreign_keys => [
-        modelfba_obj => {
+        modelfba => {
             class       => 'ModelSEED::DB::Modelfba',
-            key_columns => { modelfba => 'uuid' },
+            key_columns => { modelfba_uuid => 'uuid' },
         },
 
-        reaction_obj => {
+        reaction => {
             class       => 'ModelSEED::DB::Reaction',
-            key_columns => { reaction => 'uuid' },
+            key_columns => { reaction_uuid => 'uuid' },
         },
     ],
 );

@@ -8,7 +8,7 @@ use ModelSEED::DB::MediaCompound;
 
 sub object_class { 'ModelSEED::DB::MediaCompound' }
 
-__PACKAGE__->make_manager_methods('media_compound');
+__PACKAGE__->make_manager_methods('media_compounds');
 
 1;
 

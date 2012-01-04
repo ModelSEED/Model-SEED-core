@@ -1,109 +1,104 @@
 package ModelSEED::DB::Model;
 
 use strict;
-use Data::UUID;
-use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'model',
+    table   => 'models',
 
     columns => [
-        uuid         => { type => 'character', length => 36, not_null => 1 },
-        modDate      => { type => 'datetime' },
-        locked       => { type => 'integer' },
-        public       => { type => 'integer' },
-        id           => { type => 'varchar', length => 255 },
-        name         => { type => 'varchar', length => 32 },
-        version      => { type => 'integer' },
-        type         => { type => 'varchar', length => 32 },
-        status       => { type => 'varchar', length => 32 },
-        reactions    => { type => 'integer' },
-        compounds    => { type => 'integer' },
-        annotations  => { type => 'integer' },
-        growth       => { type => 'scalar', length => 64 },
-        current      => { type => 'integer' },
-        mapping      => { type => 'character', length => 36, not_null => 1 },
-        biochemistry => { type => 'character', length => 36, not_null => 1 },
-        annotation   => { type => 'character', length => 36, not_null => 1 },
+        uuid              => { type => 'character', length => 36, not_null => 1 },
+        modDate           => { type => 'datetime' },
+        locked            => { type => 'integer' },
+        public            => { type => 'integer' },
+        id                => { type => 'varchar', length => 255 },
+        name              => { type => 'varchar', length => 32 },
+        version           => { type => 'integer' },
+        type              => { type => 'varchar', length => 32 },
+        status            => { type => 'varchar', length => 32 },
+        reactions         => { type => 'integer' },
+        compounds         => { type => 'integer' },
+        annotations       => { type => 'integer' },
+        growth            => { type => 'scalar' },
+        current           => { type => 'integer' },
+        mapping_uuid      => { type => 'character', length => 36, not_null => 1 },
+        biochemistry_uuid => { type => 'character', length => 36, not_null => 1 },
+        annotation_uuid   => { type => 'character', length => 36, not_null => 1 },
     ],
 
     primary_key_columns => [ 'uuid' ],
 
     foreign_keys => [
-        annotation_obj => {
+        annotation => {
             class       => 'ModelSEED::DB::Annotation',
-            key_columns => { annotation => 'uuid' },
+            key_columns => { annotation_uuid => 'uuid' },
         },
 
-        biochemistry_obj => {
+        biochemistry => {
             class       => 'ModelSEED::DB::Biochemistry',
-            key_columns => { biochemistry => 'uuid' },
+            key_columns => { biochemistry_uuid => 'uuid' },
         },
 
-        mapping_obj => {
+        mapping => {
             class       => 'ModelSEED::DB::Mapping',
-            key_columns => { mapping => 'uuid' },
+            key_columns => { mapping_uuid => 'uuid' },
         },
     ],
 
     relationships => [
-        model_compartment => {
-            class      => 'ModelSEED::DB::ModelCompartment',
-            column_map => { uuid => 'model' },
-            type       => 'one to many',
+        biomasses => {
+            map_class => 'ModelSEED::DB::ModelBiomass',
+            map_from  => 'model',
+            map_to    => 'biomass',
+            type      => 'many to many',
         },
 
-        model_reaction => {
-            class      => 'ModelSEED::DB::ModelReaction',
-            column_map => { uuid => 'model' },
-            type       => 'one to many',
+        children => {
+            map_class => 'ModelSEED::DB::ModelParent',
+            map_from  => 'parent',
+            map_to    => 'child',
+            type      => 'many to many',
         },
 
-        modelfba => {
-            class      => 'ModelSEED::DB::Modelfba',
-            column_map => { uuid => 'model' },
-            type       => 'one to many',
+        model_compartments => {
+            class => 'ModelSEED::DB::ModelCompartment',
+            column_map => { uuid => 'model_uuid' },
+            type      => 'one to many',
         },
-        parents  => {
-            map_class  => 'ModelSEED::DB::ModelParents',
-            map_from   => 'parent_obj', 
-            map_to     => 'child_obj',
-            type       => 'many to many',
-        },
-        children  => {
-            map_class  => 'ModelSEED::DB::ModelParents',
-            map_from   => 'parent_obj', 
-            map_to     => 'child_obj',
-            type       => 'many to many',
-        },
-        aliases => {
+
+        model_aliases => {
             class      => 'ModelSEED::DB::ModelAlias',
-            column_map => { uuid => 'model' },
+            column_map => { uuid => 'model_uuid' },
             type       => 'one to many',
+        },
+
+        model_reaction_transports => {
+            class      => 'ModelSEED::DB::ModelReactionTransport',
+            column_map => { uuid => 'model_uuid' },
+            type       => 'one to many',
+        },
+
+        model_reactions => {
+            class      => 'ModelSEED::DB::ModelReaction',
+            column_map => { uuid => 'model_uuid' },
+            type       => 'one to many',
+        },
+
+        modelfbas => {
+            class      => 'ModelSEED::DB::Modelfba',
+            column_map => { uuid => 'model_uuid' },
+            type       => 'one to many',
+        },
+
+        parents => {
+            map_class => 'ModelSEED::DB::ModelParent',
+            map_from  => 'child',
+            map_to    => 'parent',
+            type      => 'many to many',
         },
     ],
 );
-
-__PACKAGE__->meta->column('uuid')->add_trigger(
-    deflate => sub {
-        my $uuid = $_[0]->uuid;
-        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
-            return $uuid->to_string();
-        } elsif($uuid) {
-            return $uuid;
-        } else {
-            return Data::UUID->new()->create_str();
-        }   
-});
-
-__PACKAGE__->meta->column('modDate')->add_trigger(
-    deflate => sub {
-        unless(defined($_[0]->modDate)) {
-            return DateTime->now();
-        }
-});
 
 1;
 

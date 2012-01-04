@@ -8,7 +8,7 @@ use ModelSEED::DB::BiochemistryReaction;
 
 sub object_class { 'ModelSEED::DB::BiochemistryReaction' }
 
-__PACKAGE__->make_manager_methods('biochemistry_reaction');
+__PACKAGE__->make_manager_methods('biochemistry_reactions');
 
 1;
 

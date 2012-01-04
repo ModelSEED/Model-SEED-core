@@ -5,30 +5,30 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'annotation_feature',
+    table   => 'annotation_features',
 
     columns => [
-        annotation => { type => 'character', length => 36, not_null => 1 },
-        feature    => { type => 'character', length => 36, not_null => 1 },
-        role       => { type => 'character', length => 36, not_null => 1 },
+        annotation_uuid => { type => 'character', length => 36, not_null => 1 },
+        feature_uuid    => { type => 'character', length => 36, not_null => 1 },
+        role_uuid       => { type => 'character', length => 36, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'annotation', 'feature', 'role' ],
+    primary_key_columns => [ 'annotation_uuid', 'feature_uuid', 'role_uuid' ],
 
     foreign_keys => [
-        annotation_obj => {
+        annotation => {
             class       => 'ModelSEED::DB::Annotation',
-            key_columns => { annotation => 'uuid' },
+            key_columns => { annotation_uuid => 'uuid' },
         },
 
-        feature_obj => {
+        feature => {
             class       => 'ModelSEED::DB::Feature',
-            key_columns => { feature => 'uuid' },
+            key_columns => { feature_uuid => 'uuid' },
         },
 
-        role_obj => {
+        role => {
             class       => 'ModelSEED::DB::Role',
-            key_columns => { role => 'uuid' },
+            key_columns => { role_uuid => 'uuid' },
         },
     ],
 );

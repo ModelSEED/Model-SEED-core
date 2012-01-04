@@ -8,7 +8,7 @@ use ModelSEED::DB::CompoundStructure;
 
 sub object_class { 'ModelSEED::DB::CompoundStructure' }
 
-__PACKAGE__->make_manager_methods('compound_structure');
+__PACKAGE__->make_manager_methods('compound_structures');
 
 1;
 

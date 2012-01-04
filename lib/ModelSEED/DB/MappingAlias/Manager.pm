@@ -8,7 +8,7 @@ use ModelSEED::DB::MappingAlias;
 
 sub object_class { 'ModelSEED::DB::MappingAlias' }
 
-__PACKAGE__->make_manager_methods('mapping_alias');
+__PACKAGE__->make_manager_methods('mapping_aliases');
 
 1;
 

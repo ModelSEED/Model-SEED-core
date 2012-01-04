@@ -5,39 +5,33 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'model_reaction',
+    table   => 'model_reactions',
 
     columns => [
-        model       => { type => 'character', length => 36, not_null => 1 },
-        reaction    => { type => 'character', length => 36, not_null => 1 },
-        direction   => { type => 'character', length => 1 },
-        transproton => { type => 'scalar', length => 64 },
-        protons     => { type => 'scalar', length => 64 },
-        in          => { type => 'character', length => 36, not_null => 1 },
-        out         => { type => 'character', length => 36, not_null => 1 },
+        model_uuid             => { type => 'character', length => 36, not_null => 1 },
+        reaction_uuid          => { type => 'character', length => 36, not_null => 1 },
+        direction              => { type => 'character', length => 1 },
+        transproton            => { type => 'scalar' },
+        protons                => { type => 'scalar' },
+        model_compartment_uuid => { type => 'character', length => 36, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'model', 'reaction' ],
+    primary_key_columns => [ 'model_uuid', 'reaction_uuid' ],
 
     foreign_keys => [
-        compartment => {
-            class       => 'ModelSEED::DB::Compartment',
-            key_columns => { in => 'uuid' },
-        },
-
-        compartment_obj => {
-            class       => 'ModelSEED::DB::Compartment',
-            key_columns => { out => 'uuid' },
-        },
-
-        model_obj => {
+        model => {
             class       => 'ModelSEED::DB::Model',
-            key_columns => { model => 'uuid' },
+            key_columns => { model_uuid => 'uuid' },
         },
 
-        reaction_obj => {
+        model_compartment => {
+            class       => 'ModelSEED::DB::ModelCompartment',
+            key_columns => { model_compartment_uuid => 'uuid' },
+        },
+
+        reaction => {
             class       => 'ModelSEED::DB::Reaction',
-            key_columns => { reaction => 'uuid' },
+            key_columns => { reaction_uuid => 'uuid' },
         },
     ],
 );

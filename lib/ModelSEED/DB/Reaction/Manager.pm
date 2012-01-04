@@ -8,7 +8,7 @@ use ModelSEED::DB::Reaction;
 
 sub object_class { 'ModelSEED::DB::Reaction' }
 
-__PACKAGE__->make_manager_methods('reaction');
+__PACKAGE__->make_manager_methods('reactions');
 
 1;
 

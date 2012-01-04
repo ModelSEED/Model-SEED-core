@@ -8,7 +8,7 @@ use ModelSEED::DB::Modelfba;
 
 sub object_class { 'ModelSEED::DB::Modelfba' }
 
-__PACKAGE__->make_manager_methods('modelfba');
+__PACKAGE__->make_manager_methods('modelfbas');
 
 1;
 

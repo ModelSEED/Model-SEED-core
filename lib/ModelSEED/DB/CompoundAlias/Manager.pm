@@ -8,7 +8,7 @@ use ModelSEED::DB::CompoundAlias;
 
 sub object_class { 'ModelSEED::DB::CompoundAlias' }
 
-__PACKAGE__->make_manager_methods('compound_alias');
+__PACKAGE__->make_manager_methods('compound_aliases');
 
 1;
 

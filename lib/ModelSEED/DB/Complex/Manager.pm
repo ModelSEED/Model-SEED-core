@@ -8,7 +8,7 @@ use ModelSEED::DB::Complex;
 
 sub object_class { 'ModelSEED::DB::Complex' }
 
-__PACKAGE__->make_manager_methods('complex');
+__PACKAGE__->make_manager_methods('complexes');
 
 1;
 

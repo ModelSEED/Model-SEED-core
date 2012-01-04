@@ -5,24 +5,24 @@ use strict;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'mapping_role',
+    table   => 'mapping_roles',
 
     columns => [
-        mapping => { type => 'character', length => 36, not_null => 1 },
-        role    => { type => 'character', length => 36, not_null => 1 },
+        mapping_uuid => { type => 'character', length => 36, not_null => 1 },
+        role_uuid    => { type => 'character', length => 36, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'mapping', 'role' ],
+    primary_key_columns => [ 'mapping_uuid', 'role_uuid' ],
 
     foreign_keys => [
-        mapping_obj => {
+        mapping => {
             class       => 'ModelSEED::DB::Mapping',
-            key_columns => { mapping => 'uuid' },
+            key_columns => { mapping_uuid => 'uuid' },
         },
 
-        role_obj => {
+        role => {
             class       => 'ModelSEED::DB::Role',
-            key_columns => { role => 'uuid' },
+            key_columns => { role_uuid => 'uuid' },
         },
     ],
 );

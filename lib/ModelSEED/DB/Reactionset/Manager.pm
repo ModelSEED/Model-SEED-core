@@ -8,7 +8,7 @@ use ModelSEED::DB::Reactionset;
 
 sub object_class { 'ModelSEED::DB::Reactionset' }
 
-__PACKAGE__->make_manager_methods('reactionset');
+__PACKAGE__->make_manager_methods('reactionsets');
 
 1;
 

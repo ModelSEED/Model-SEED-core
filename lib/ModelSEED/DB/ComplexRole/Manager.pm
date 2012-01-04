@@ -8,7 +8,7 @@ use ModelSEED::DB::ComplexRole;
 
 sub object_class { 'ModelSEED::DB::ComplexRole' }
 
-__PACKAGE__->make_manager_methods('complex_role');
+__PACKAGE__->make_manager_methods('complex_roles');
 
 1;
 

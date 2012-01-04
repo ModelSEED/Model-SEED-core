@@ -8,7 +8,7 @@ use ModelSEED::DB::Genome;
 
 sub object_class { 'ModelSEED::DB::Genome' }
 
-__PACKAGE__->make_manager_methods('genome');
+__PACKAGE__->make_manager_methods('genomes');
 
 1;
 

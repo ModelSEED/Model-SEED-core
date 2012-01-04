@@ -8,9 +8,8 @@ __PACKAGE__->use_private_registry;
 
 __PACKAGE__->register_db
 (
-  driver   => 'mysql',
-  dsn      => 'dbi:mysql:dbname=ModelDB;host=localhost',
-  username => 'root',
+  driver => 'sqlite',
+  dsn    => 'dbi:SQLite:dbname=/home/devoid/test.db;',
 );
 
 1;

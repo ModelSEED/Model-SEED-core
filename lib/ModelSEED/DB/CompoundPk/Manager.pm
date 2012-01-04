@@ -8,7 +8,7 @@ use ModelSEED::DB::CompoundPk;
 
 sub object_class { 'ModelSEED::DB::CompoundPk' }
 
-__PACKAGE__->make_manager_methods('compound_pk');
+__PACKAGE__->make_manager_methods('compound_pks');
 
 1;
 

@@ -1,30 +1,28 @@
 package ModelSEED::DB::Reaction;
 
 use strict;
-use Data::UUID;
-use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'reaction',
+    table   => 'reactions',
 
     columns => [
         uuid                => { type => 'character', length => 36, not_null => 1 },
         modDate             => { type => 'datetime' },
-        id                  => { type => 'varchar', length => 32 },
-        name                => { type => 'varchar', length => 255 },
-        abbreviation        => { type => 'varchar', length => 255 },
-        cksum               => { type => 'varchar', length => 255 },
-        equation            => { type => 'text' },
-        deltaG              => { type => 'scalar', length => 64 },
-        deltaGErr           => { type => 'scalar', length => 64 },
-        reversibility       => { type => 'character', length => 1 },
+        locked              => { type => 'integer' },
+        id                  => { type => 'varchar', length => 32, not_null => 1 },
+        name                => { type => 'varchar', default => '\'\'', length => 255 },
+        abbreviation        => { type => 'varchar', default => '\'\'', length => 255 },
+        cksum               => { type => 'varchar', default => '\'\'', length => 255 },
+        equation            => { type => 'text', default => '\'\'' },
+        deltaG              => { type => 'scalar' },
+        deltaGErr           => { type => 'scalar' },
+        reversibility       => { type => 'character', default => '=', length => 1 },
         thermoReversibility => { type => 'character', length => 1 },
-        defaultProtons      => { type => 'scalar', length => 64 },
-        defaultIN           => { type => 'character', length => 36 },
-        defaultOUT          => { type => 'character', length => 36 },
-        defaultTransproton  => { type => 'scalar', length => 64 },
+        defaultProtons      => { type => 'scalar' },
+        compartment_uuid    => { type => 'character', length => 36 },
+        defaultTransproton  => { type => 'scalar' },
     ],
 
     primary_key_columns => [ 'uuid' ],
@@ -32,77 +30,76 @@ __PACKAGE__->meta->setup(
     foreign_keys => [
         compartment => {
             class       => 'ModelSEED::DB::Compartment',
-            key_columns => { defaultOUT => 'uuid' },
-        },
-
-        compartment_obj => {
-            class       => 'ModelSEED::DB::Compartment',
-            key_columns => { defaultIN => 'uuid' },
+            key_columns => { compartment_uuid => 'uuid' },
         },
     ],
 
     relationships => [
-        biochemistry_reaction => {
-            class      => 'ModelSEED::DB::BiochemistryReaction',
-            column_map => { uuid => 'reaction' },
+        biochemistries => {
+            map_class => 'ModelSEED::DB::BiochemistryReaction',
+            map_from  => 'reaction',
+            map_to    => 'biochemistry',
+            type      => 'many to many',
+        },
+
+        compartments => {
+            map_class => 'ModelSEED::DB::ReagentTransport',
+            map_from  => 'reaction',
+            map_to    => 'compartment',
+            type      => 'many to many',
+        },
+
+        model_reaction_transports => {
+            class      => 'ModelSEED::DB::ModelReactionTransport',
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
 
-        model_reaction => {
+        model_reactions => {
             class      => 'ModelSEED::DB::ModelReaction',
-            column_map => { uuid => 'reaction' },
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
 
-        modelfba_reaction => {
-            class      => 'ModelSEED::DB::ModelfbaReaction',
-            column_map => { uuid => 'reaction' },
-            type       => 'one to many',
+        modelfbas => {
+            map_class => 'ModelSEED::DB::ModelfbaReaction',
+            map_from  => 'reaction',
+            map_to    => 'modelfba',
+            type      => 'many to many',
         },
 
-        reaction_alias => {
+        reaction_aliases => {
             class      => 'ModelSEED::DB::ReactionAlias',
-            column_map => { uuid => 'reaction' },
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
 
-        reaction_complex => {
-            class      => 'ModelSEED::DB::ReactionComplex',
-            column_map => { uuid => 'reaction' },
+        reaction_rule_transports => {
+            class      => 'ModelSEED::DB::ReactionRuleTransport',
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
 
-        reaction_compound => {
-            class      => 'ModelSEED::DB::ReactionCompound',
-            column_map => { uuid => 'reaction' },
+        reaction_rules => {
+            class      => 'ModelSEED::DB::ReactionRule',
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
 
-        reactionset_reaction => {
-            class      => 'ModelSEED::DB::ReactionsetReaction',
-            column_map => { uuid => 'reaction' },
+        reactionsets => {
+            map_class => 'ModelSEED::DB::ReactionsetReaction',
+            map_from  => 'reaction',
+            map_to    => 'reactionset',
+            type      => 'many to many',
+        },
+
+        reagents => {
+            class      => 'ModelSEED::DB::Reagent',
+            column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },
     ],
 );
 
-__PACKAGE__->meta->column('uuid')->add_trigger(
-    deflate => sub {
-        my $uuid = $_[0]->uuid;
-        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
-            return $uuid->to_string();
-        } elsif($uuid) {
-            return $uuid;
-        } else {
-            return Data::UUID->new()->create_str();
-        }   
-});
-
-__PACKAGE__->meta->column('modDate')->add_trigger(
-    deflate => sub {
-        unless(defined($_[0]->modDate)) {
-            return DateTime->now();
-        }
-});
 1;
 

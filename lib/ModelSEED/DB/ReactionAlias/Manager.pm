@@ -8,7 +8,7 @@ use ModelSEED::DB::ReactionAlias;
 
 sub object_class { 'ModelSEED::DB::ReactionAlias' }
 
-__PACKAGE__->make_manager_methods('reaction_alias');
+__PACKAGE__->make_manager_methods('reaction_aliases');
 
 1;
 

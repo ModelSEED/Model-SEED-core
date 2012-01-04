@@ -8,7 +8,7 @@ use ModelSEED::DB::MappingRole;
 
 sub object_class { 'ModelSEED::DB::MappingRole' }
 
-__PACKAGE__->make_manager_methods('mapping_role');
+__PACKAGE__->make_manager_methods('mapping_roles');
 
 1;
 

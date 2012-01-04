@@ -8,7 +8,7 @@ use ModelSEED::DB::Permission;
 
 sub object_class { 'ModelSEED::DB::Permission' }
 
-__PACKAGE__->make_manager_methods('permission');
+__PACKAGE__->make_manager_methods('permissions');
 
 1;
 
