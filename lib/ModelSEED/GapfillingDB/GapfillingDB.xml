@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project label="ModelSEED::GapfillingDB">
+	<object label="RXN">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="nummodels" type="INTEGER" mandatory="1" />
+		<scalar label="annomodels" type="INTEGER" mandatory="1" />
+		<scalar label="gapmodels" type="INTEGER" mandatory="1" />
+		<scalar label="averepair" type="FLOAT" mandatory="1" />
+		<scalar label="minrepair" type="FLOAT" mandatory="1" />
+		<scalar label="maxrepair" type="FLOAT" mandatory="1" />
+		<scalar label="avegap" type="FLOAT" mandatory="1" />
+		<scalar label="mingap" type="FLOAT" mandatory="1" />
+		<scalar label="maxgap" type="FLOAT" mandatory="1" />
+		<unique index><attribute label="id"/></unique_index>
+	</object>
+	<object label="CPD">
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="nummodels" type="INTEGER" mandatory="1" />
+		<scalar label="gapmodels" type="INTEGER" mandatory="1" />
+		<scalar label="avegap" type="FLOAT" mandatory="1" />
+		<scalar label="mingap" type="FLOAT" mandatory="1" />
+		<scalar label="maxgap" type="FLOAT" mandatory="1" />
+		<unique_index><attribute label="id"/></unique_index>
+	</object>
+	<object label="GAPREP">
+		<scalar label="gapid" type="CHAR(32)" mandatory="1" />
+		<scalar label="repid" type="CHAR(32)" mandatory="1" />
+		<scalar label="nummodel" type="INTEGER" mandatory="1" />
+		<index><attribute label="gapid"/></index>
+		<index><attribute label="repid"/></index>
+	</object>
+	<object label="GAPMDL">
+		<scalar label="gapid" type="CHAR(32)" mandatory="1" />
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<scalar label="numrep" type="INTEGER" mandatory="1" />
+		<scalar label="normnumrep" type="FLOAT" mandatory="1" />
+		<index><attribute label="gapid"/></index>
+		<index><attribute label="model"/></index>
+	</object>
+	<object label="REPMDL">
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<scalar label="repid" type="CHAR(32)" mandatory="1" />
+		<scalar label="numgap" type="INTEGER" mandatory="1" />
+		<scalar label="normnumgap" type="FLOAT" mandatory="1" />
+		<index><attribute label="model"/></index>
+		<index><attribute label="repid"/></index>
+	</object>
+	<object label="GAPREPMDL">
+		<scalar label="gapid" type="CHAR(32)" mandatory="1" />
+		<scalar label="repid" type="CHAR(32)" mandatory="1" />
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="gapid"/></index>
+		<index><attribute label="repid"/></index>
+		<index><attribute label="model"/></index>
+	</object>
+	<object label="CPDGAPMDL">
+		<scalar label="cpdid" type="CHAR(32)" mandatory="1" />
+		<scalar label="gapid" type="CHAR(32)" mandatory="1" />
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<index><attribute label="cpdid"/></index>
+		<index><attribute label="gapid"/></index>
+		<index><attribute label="model"/></index>
+	</object>
+	<object label="CPDGAP">
+		<scalar label="cpdid" type="CHAR(32)" mandatory="1" />
+		<scalar label="gapid" type="CHAR(32)" mandatory="1" />
+		<scalar label="nummodel" type="INTEGER" mandatory="1" />
+		<index><attribute label="cpdid"/></index>
+		<index><attribute label="gapid"/></index>
+	</object>
+	<object label="CPDMDL">
+		<scalar label="cpdid" type="CHAR(32)" mandatory="1" />
+		<scalar label="model" type="CHAR(32)" mandatory="1" />
+		<scalar label="numgap" type="INTEGER" mandatory="1" />
+		<index><attribute label="cpdid"/></index>
+		<index><attribute label="model"/></index>
+	</object>
+</project>

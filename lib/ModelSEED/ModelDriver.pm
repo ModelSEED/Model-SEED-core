@@ -5032,7 +5032,7 @@ sub printgapfilledreactions {
 		input => $args->{"models"}
 	});
 	print "Number of models: ".@{$results}."\n";
-	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap);
+	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap,$mdlcpdgapHash,$mdlrxngapHash);
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
@@ -5095,6 +5095,7 @@ sub printgapfilledreactions {
 						@array = /(cpd\d+)/g;
 						for (my $k=0; $k < @array; $k++) {
 							$mdlCpdTbl->{$results->[$i]}->{$array[$k]}++;
+							$mdlcpdgapHash->{$results->[$i]}->{$array[$k]}->{$rxns->[$j]->REACTION()} = 1;
 							if (!defined($gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
 								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 							}
@@ -5107,6 +5108,7 @@ sub printgapfilledreactions {
 							if (!defined($actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
+							$mdlrxngapHash->{$results->[$i]}->{$array[$k]}->{$rxns->[$j]->REACTION()} = 1;
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
 							if (!defined($gapfilledHash->{$array[$k]})) {
 								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
@@ -5149,6 +5151,28 @@ sub printgapfilledreactions {
 			}
 		}
 	}
+	foreach my $mdl (keys(%{$mdlrxngapHash})) {
+		foreach my $rxn (keys(%{$mdlrxngapHash->{$mdl}})) {
+			foreach my $gap (keys(%{$mdlrxngapHash->{$mdl}->{$rxn}})) {
+				$self->figmodel()->database()->create_object("gapgaprepmdl",{
+					gapid => $gap,
+					repid => $rxn,
+					model => $mdl
+				});
+			}	
+		}
+	}
+	foreach my $mdl (keys(%{$mdlcpdgapHash})) {
+		foreach my $cpd (keys(%{$mdlcpdgapHash->{$mdl}})) {
+			foreach my $gap (keys(%{$mdlcpdgapHash->{$mdl}->{$rxn}})) {
+				$self->figmodel()->database()->create_object("gapcpdgapmdl",{
+					gapid => $gap,
+					cpdid => $cpd,
+					model => $mdl
+				});
+			}	
+		}
+	}
 	#Populating and printing model stats
 	my $modelList = [keys(%{$modelStats})];
 	my $fileData = {
@@ -5165,6 +5189,7 @@ sub printgapfilledreactions {
 	$fileData = {
 		"NumModelPerActRxnPerGap.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$gapRxnList})]
 	};
+	my $repstats;
 	foreach my $rxn (keys(%{$modelRxn})) {
 		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
 		if (defined($modelGaps->{$rxn})) {
@@ -5172,13 +5197,31 @@ sub printgapfilledreactions {
 		} else {
 			$line .= "0";
 		}
+		$repstats->{$rxn}->{averepair} = 0;
+		$repstats->{$rxn}->{minrepair} = 10000;
+		$repstats->{$rxn}->{maxrepair} = 0;
+		my $count = 0;
 		for (my $i=0; $i < @{$gapRxnList}; $i++) {
 			if (defined($actRxnTbl->{$rxn}->{$gapRxnList->[$i]})) {
+				$count++;
+				$repstats->{$rxn}->{averepair} += $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				$self->figmodel()->database()->create_object("gapgaprep",{
+					gapid => $gapRxnList->[$i],
+					repid => $rxn,
+					nummodel => $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}
+				});
 				$line .= "\t".$actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				if ($repstats->{$rxn}->{minrepair} > $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}) {
+					$repstats->{$rxn}->{minrepair} = $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				}
+				if ($repstats->{$rxn}->{maxrepair} < $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}) {
+					$repstats->{$rxn}->{maxrepair} = $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				}
 			} else {
 				$line .= "\t0";
 			}
 		}
+		$repstats->{$rxn}->{averepair} = $repstats->{$rxn}->{averepair}/$count;
 		push(@{$fileData->{"NumModelPerActRxnPerGap.tbl"}},$line);
 	}
 	foreach my $filename (keys(%{$fileData})) {
@@ -5190,24 +5233,57 @@ sub printgapfilledreactions {
 		"NormNumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
 	};
 	foreach my $rxn (keys(%{$modelRxn})) {
+		my $gapmdl = 0;
 		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
 		if (defined($modelGaps->{$rxn})) {
 			$line .= $modelGaps->{$rxn};
+			$gapmdl = $modelGaps->{$rxn};
 		} else {
 			$line .= "0";
 		}
 		my $lineTwo = $line;
+		my $avegap = 0;
+		my $count = 0;
+		my $mingap = 10000;
+		my $maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($actMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$count++;
+				$avegap += $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				$self->figmodel()->database()->create_object("gaprepmdl",{
+					repid => $rxn,
+					model => $modelList->[$i],
+					numgap => $gfMdlTbl->{$rxn}->{$modelList->[$i]},
+					normnumgap => $ngfMdlTbl->{$rxn}->{$modelList->[$i]}
+				});
 				$line .= "\t".$actMdlTbl->{$rxn}->{$modelList->[$i]};
 				$lineTwo .= "\t".$nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				if ($mingap > $nactMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$mingap = $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
+				if ($maxgap < $nactMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$maxgap = $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
 			} else {
 				$line .= "\tN";
 				$lineTwo .= "\tN";
 			}
 		}
+		$avegap = $avegap/$count;
 		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
 		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
+		$self->figmodel()->database()->create_object("gaprxn",{
+			id => $rxn,
+			nummodels => $modelRxn->{$rxn},
+			annomodels => keys(%{$actMdlTbl->{$rxn}}),
+			gapmodels => $gapmdl,
+			averepair => $repstats->{$rxn}->{averepair},
+			minrepair => $repstats->{$rxn}->{minrepair},
+			maxrepair => $repstats->{$rxn}->{maxrepair},
+			avegap => $avegap,
+			mingap => $mingap,
+			maxgap => $maxgap
+		});
 	}
 	foreach my $filename (keys(%{$fileData})) {
 		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
@@ -5222,6 +5298,12 @@ sub printgapfilledreactions {
 		my $lineTwo = $line;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($gfMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$self->figmodel()->database()->create_object("gapgapmdl",{
+					gapid => $rxn,
+					model => $modelList->[$i],
+					numrep => $gfMdlTbl->{$rxn}->{$modelList->[$i]},
+					normnumrep => $ngfMdlTbl->{$rxn}->{$modelList->[$i]}
+				});
 				$line .= "\t".$gfMdlTbl->{$rxn}->{$modelList->[$i]};
 				$lineTwo .= "\t".$ngfMdlTbl->{$rxn}->{$modelList->[$i]};
 			} else {
@@ -5240,20 +5322,49 @@ sub printgapfilledreactions {
 		"NumGapPerBioCpdPerModel.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$modelList})]
 	};
 	foreach my $cpd (keys(%{$modelCpd})) {
+		my ($gapmdl,$avegap,$mingap,$maxgap,$count);
 		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
 		if (defined($modelCpdGap->{$cpd})) {
 			$line .= $modelCpdGap->{$cpd};
+			$gapmdl = $modelCpdGap->{$cpd};
 		} else {
 			$line .= "0";
+			$gapmdl = 0;
 		}
+		$count = 0;
+		$avegap = 0;
+		$mingap = 1000000;
+		$maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
+				$avegap += $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				$count++;
+				$self->figmodel()->database()->create_object("gapcpdmdl",{
+					cpdid => $cpd,
+					model => $modelList->[$i],
+					numgap => $gfMdlTbl->{$rxn}->{$modelList->[$i]}
+				});
 				$line .= "\t".$mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+				if ($mingap > $gfMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$mingap = $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
+				if ($maxgap < $gfMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$maxgap = $gfMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
 			} else {
 				$line .= "\tN";
 			}
 		}
+		$avegap = $avegap/$count;
 		push(@{$fileData->{"NumGapPerBioCpdPerModel.tbl"}},$line);
+		$self->figmodel()->database()->create_object("gapcpd",{
+			id => $cpd,
+			nummodels => $modelCpd->{$cpd},
+			gapmodels => $gapmdl,
+			avegap => $avegap,
+			mingap => $mingap,
+			maxgap => $maxgap
+		});
 	}
 	foreach my $filename (keys(%{$fileData})) {
 		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
@@ -5271,6 +5382,11 @@ sub printgapfilledreactions {
 		}
 		for (my $i=0; $i < @{$gapRxnList}; $i++) {
 			if (defined($gfCpdTbl->{$gapRxnList->[$i]}->{$cpd})) {
+				$self->figmodel()->database()->create_object("gapcpdgap",{
+					cpdid => $cpd,
+					gapid => $gapRxnList->[$i],
+					nummodel => $gfCpdTbl->{$gapRxnList->[$i]}->{$cpd}
+				});
 				$line .= "\t".$gfCpdTbl->{$gapRxnList->[$i]}->{$cpd};
 			} else {
 				$line .= "\t0";
@@ -5698,7 +5814,7 @@ sub fbasimphenotypes {
 	my $args = $self->check([
 		["model",1,undef,"Full ID of the model to be analyzed"],
 		["phenotypes",1,undef,"List of phenotypes to be simulated"],
-		["modifications",1,undef,"List of modifications to be tested"],
+		["modifications",0,undef,"List of modifications to be tested"],
 		["accumulateChanges",0,undef,"Accumulate changes that have no effect"],
 		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
 		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],

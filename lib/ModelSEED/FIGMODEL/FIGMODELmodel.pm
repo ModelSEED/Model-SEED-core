@@ -4135,10 +4135,10 @@ sub change_reaction {
 		"compartment"
 	],{
 		directionality => undef,
-		pegs => "UNKNOWN",
-		notes => "",
-		confidence => 3,
-		reference => ""
+		pegs => undef,
+		notes => undef,
+		confidence => undef,
+		reference => undef
 	});
 	my $restoreData = {
 		reaction => $args->{reaction},
@@ -4180,6 +4180,18 @@ sub change_reaction {
 		}
 	}
 	if ($found == 0 && defined($args->{directionality})) {
+		if (defined($args->{pegs})) {
+			$args->{pegs} = "UNKNOWN";
+		}
+		if (defined($args->{notes})) {
+			$args->{notes} = "";
+		}
+		if (defined($args->{confidence})) {
+			$args->{confidence} = 3;
+		}
+		if (defined($args->{reference})) {
+			$args->{reference} = "";
+		}
 		$self->db()->create_object("rxnmdl",{
 			MODEL => $self->id(),
 			compartment => $args->{compartment},
