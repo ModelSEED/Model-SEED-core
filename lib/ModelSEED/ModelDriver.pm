@@ -5031,6 +5031,14 @@ sub printgapfilledreactions {
 		parameters => {id => "%.796"},
 		input => $args->{"models"}
 	});
+	#Clearing the current gapfilling DB
+	my $types = ["gapcpd","gapcpdgap","gapcpdmdl","gapcpdgapmdl","gaprxn","gapgapmdl","gapgaprep","gapgaprepmdl","gaprepmdl"];
+	for (my $i=0; $i < @{$types}; $i++) {
+		my $objs = $self->figmodel()->database()->get_objects($types->[$i]);
+		for (my $j=0; $j < @{$objs}; $j++) {
+			$objs->[$j]->delete();
+		}
+	}
 	print "Number of models: ".@{$results}."\n";
 	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap,$mdlcpdgapHash,$mdlrxngapHash);
 	for (my $i=0; $i < @{$results}; $i++) {
