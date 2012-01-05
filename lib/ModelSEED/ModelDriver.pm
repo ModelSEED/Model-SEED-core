@@ -5263,8 +5263,8 @@ sub printgapfilledreactions {
 				$self->figmodel()->database()->create_object("gaprepmdl",{
 					repid => $rxn,
 					model => $modelList->[$i],
-					numgap => $gfMdlTbl->{$rxn}->{$modelList->[$i]},
-					normnumgap => $ngfMdlTbl->{$rxn}->{$modelList->[$i]}
+					numgap => $nactMdlTbl->{$rxn}->{$modelList->[$i]},
+					normnumgap => $nactMdlTbl->{$rxn}->{$modelList->[$i]}
 				});
 				$line .= "\t".$actMdlTbl->{$rxn}->{$modelList->[$i]};
 				$lineTwo .= "\t".$nactMdlTbl->{$rxn}->{$modelList->[$i]};
