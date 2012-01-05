@@ -2536,11 +2536,12 @@ sub import_model_file {
 		filename => undef,
 		biomassFile => undef,
 		genome => "NONE",
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"},
-		autoCompleteMedia => $args->{"autoCompleteMedia"}
+		owner => undef,
+		public => undef,
+		overwrite => 0,
+		provenance => undef,
+		autoCompleteMedia => "Complete",
+		generateprovenance => 1
 	});
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
@@ -2578,15 +2579,21 @@ sub import_model_file {
 			autoCompleteMedia => $args->{autoCompleteMedia}
 		});
 		$modelObj = $mdl->ppo();
+		$mdl = $self->get_model($args->{id});
 	} elsif ($args->{overwrite} == 0) {
 		ModelSEED::globals::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
+		$mdl = $self->get_model($args->{id});
+		if ($args->{generateprovenance} == 1) {
+			$mdl->GenerateModelProvenance({
+			    biochemSource => $args->{biochemSource}
+			});
+		}
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
 			ModelSEED::globals::ERROR("No rights to alter model object");
 		}
 	}
-	$mdl = $self->get_model($args->{id});
 	if (!-defined($mdl)) {
 		ModelSEED::globals::ERROR("Could not load/create model ".$mdl."!");
 	}
