@@ -201,7 +201,6 @@ use base qw(DBObject);
 sub attributes {
      return {
 		numgap => [ DB_SCALAR, undef, 1, undef ],
-		normnumgap => [ DB_SCALAR, undef, 1, undef ],
 		model => [ DB_SCALAR, undef, 1, undef ],
 		cpdid => [ DB_SCALAR, undef, 1, undef ],
 	};
