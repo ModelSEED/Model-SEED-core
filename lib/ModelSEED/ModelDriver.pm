@@ -5284,10 +5284,11 @@ sub printgapfilledreactions {
 		}
 		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
 		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
+		my $annomodels = keys(%{$actMdlTbl->{$rxn}});
 		$self->figmodel()->database()->create_object("gaprxn",{
 			id => $rxn,
 			nummodels => $modelRxn->{$rxn},
-			annomodels => keys(%{$actMdlTbl->{$rxn}}),
+			annomodels => $annomodels,
 			gapmodels => $gapmdl,
 			averepair => $repstats->{$rxn}->{averepair},
 			minrepair => $repstats->{$rxn}->{minrepair},
