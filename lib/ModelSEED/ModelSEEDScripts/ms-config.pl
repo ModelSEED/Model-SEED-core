@@ -304,6 +304,7 @@ SCRIPT
 		"fba-singleko",
 		"fba-fva",
 		"fba-minimalmedia",
+		"bc-addbiochemistry",
 		"bc-printmedia",
 		"bc-loadmedia",
 		"mdl-autocomplete",
