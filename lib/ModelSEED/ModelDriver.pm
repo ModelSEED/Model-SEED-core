@@ -6486,7 +6486,45 @@ sub bcloadmedia {
     $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
     return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
 }
-
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Imports a models from other databases into the Model SEED environment.
+=EXAMPLE
+./bcaddbiochemistry -reactions reactions.tbl -compounds compounds.tbl
+=cut
+sub bcaddbiochemistry {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+    	["reactions",0,undef,"Name of a file containing reaction definitions"],
+    	["compounds",0,undef,"Name of a file containing compound definitions"],
+    	["rxnstart",0,"rxn90000","Starting ID space for new reactions"],
+    	["cpdstart",0,"cpd90000","Starting ID space for new compounds"],
+    ],[@Data],"imports new reactions and compounds to the database");
+	my $rxntbl;
+	my $cpdtbl;
+	if (defined($args->{reactions})) {
+		if (!-e $self->ws()->directory().$args->{reactions}) {
+			ModelSEED::globals::ERROR("Reaction file ".$self->ws()->directory().$args->{reactions}." not found!");
+		}
+		$rxntbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->ws()->directory().$args->{reactions},"\t","|",0,["ID"]);
+	}
+	if (defined($args->{compounds})) {
+		if (!-e $self->ws()->directory().$args->{compounds}) {
+			ModelSEED::globals::ERROR("Compound file ".$self->ws()->directory().$args->{compounds}." not found!");
+		}
+		$cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->ws()->directory().$args->{compounds},"\t","|",0,["ID"]);
+	}
+	$self->figmodel()->import_biochem({
+		figmodel => $self->figmodel(),
+		compounds => $cpdtbl,
+		reactions => $rxntbl,
+		reactionstart => $args->{rxnstart},
+		compoundstart => $args->{cpdstart}
+	});
+	return "SUCCESS";
+}
 =head
 =CATEGORY
 Metabolic Model Operations

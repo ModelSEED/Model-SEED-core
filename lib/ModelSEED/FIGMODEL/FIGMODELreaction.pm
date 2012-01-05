@@ -1116,9 +1116,17 @@ Description:
 =cut
 sub get_new_temp_id {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{
+		start => undef
+	});
 	my $newID;
 	my $largestID = 79999;
+	if (defined($args->{start})) {
+		if ($args->{start} =~ m/(\d+)/) {
+			$largestID = $1;
+		}
+		$largestID--;
+	}
 	my $objs = $self->figmodel()->database()->get_objects("reaction");
 	for (my $i=0; $i < @{$objs}; $i++) {
 		if (substr($objs->[$i]->id(),3) > $largestID) {
