@@ -5334,7 +5334,7 @@ sub printgapfilledreactions {
 		"NumGapPerBioCpdPerModel.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$modelList})]
 	};
 	foreach my $cpd (keys(%{$modelCpd})) {
-		my ($gapmdl,$avegap,$mingap,$maxgap,$count);
+		my $gapmdl;
 		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
 		if (defined($modelCpdGap->{$cpd})) {
 			$line .= $modelCpdGap->{$cpd};
@@ -5343,10 +5343,10 @@ sub printgapfilledreactions {
 			$line .= "0";
 			$gapmdl = 0;
 		}
-		$count = 0;
-		$avegap = 0;
-		$mingap = 1000000;
-		$maxgap = 0;
+		my $count = 0;
+		my $avegap = 0;
+		my $mingap = 1000000;
+		my $maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
 				$avegap += $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
