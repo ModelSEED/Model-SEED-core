@@ -5229,7 +5229,9 @@ sub printgapfilledreactions {
 				$line .= "\t0";
 			}
 		}
-		$repstats->{$rxn}->{averepair} = $repstats->{$rxn}->{averepair}/$count;
+		if ($count > 0) {
+			$repstats->{$rxn}->{averepair} = $repstats->{$rxn}->{averepair}/$count;
+		}
 		push(@{$fileData->{"NumModelPerActRxnPerGap.tbl"}},$line);
 	}
 	foreach my $filename (keys(%{$fileData})) {
@@ -5277,7 +5279,9 @@ sub printgapfilledreactions {
 				$lineTwo .= "\tN";
 			}
 		}
-		$avegap = $avegap/$count;
+		if ($count > 0) {
+			$avegap = $avegap/$count;
+		}
 		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
 		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
 		$self->figmodel()->database()->create_object("gaprxn",{
@@ -5363,7 +5367,9 @@ sub printgapfilledreactions {
 				$line .= "\tN";
 			}
 		}
-		$avegap = $avegap/$count;
+		if ($count > 0) {
+			$avegap = $avegap/$count;
+		}
 		push(@{$fileData->{"NumGapPerBioCpdPerModel.tbl"}},$line);
 		$self->figmodel()->database()->create_object("gapcpd",{
 			id => $cpd,
