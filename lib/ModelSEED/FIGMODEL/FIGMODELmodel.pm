@@ -3629,7 +3629,7 @@ sub printModelFileForMFAToolkit {
 	for (my $i=0; $i < @{$objs}; $i++) {
 		if ($args->{removeGapfilling} == 0 || ($objs->[$i]->pegs() !~ m/GAP/ && $objs->[$i]->pegs() !~ m/AUTO/)) {
 			my $line = $objs->[$i]->REACTION().";".$objs->[$i]->directionality().";".$objs->[$i]->compartment().";"
-				.$objs->[$i]->pegs().";NONE;".$objs->[$i]->confidence().";NONE;NONE";
+				.$objs->[$i]->pegs().";NONE;".$objs->[$i]->confidence().";".$objs->[$i]->reference().";".$objs->[$i]->notes;
 			push(@{$output},$line);
 		}
 	}
