@@ -218,7 +218,10 @@ Description:
 =cut
 sub substrates_from_equation {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{equation => undef});
+	$args = $self->figmodel()->process_arguments($args,[],{
+		equation => undef,
+		singleArray => 0
+	});
 	my $Equation = $args->{equation};
 	if (!defined($Equation)) {
 		ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
@@ -231,7 +234,7 @@ sub substrates_from_equation {
 		my $Coefficient = 1;
 		my $CurrentlyOnReactants = 1;
 		for (my $i=0; $i < @TempArray; $i++) {
-			if ($TempArray[$i] =~ m/^\(([\.\d]+)\)$/ || $TempArray[$i] =~ m/^([\.\d]+)$/) {
+			if ($TempArray[$i] =~ m/^\(([e\-\.\d]+)\)$/ || $TempArray[$i] =~ m/^([e\-\.\d]+)$/) {
 				$Coefficient = $1;
 			} elsif ($TempArray[$i] =~ m/(cpd\d\d\d\d\d)/) {
 				my $NewRow;
@@ -251,6 +254,13 @@ sub substrates_from_equation {
 				$CurrentlyOnReactants = 0;
 			}
 		}
+	}
+	if ($args->{singleArray} == 1) {
+		for (my $i=0; $i < @{$Reactants}; $i++) {
+			$Reactants->[$i]->{COEFFICIENT}->[0] = -1*$Reactants->[$i]->{COEFFICIENT}->[0];
+		}
+		push(@{$Reactants},@{$Products});
+		return $Reactants;
 	}
 	return ($Reactants,$Products);
 }
@@ -1621,8 +1631,168 @@ sub get_reaction_reversibility_hash {
 	}
 	return $revHash;
 }
+=head3 compareEquations
+Definition:
+	Output = FIGMODELreaction->compareEquations({
+		reaction => FIGMODELreaction
+	});
+	Output: {
+		compoundDifferences => [{
+			compound => string,
+			compartment => string,
+			compCoef => double,
+			refCoef => double
+		}]
+	}
+Description:
+	This function compares the equations of the input reaction with the current reaction
+=cut
+sub compareEquations {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["reaction"],{});
+	my $substrates = $self->substrates_from_equation({singleArray=>1});
+	my $compSubstrates = $args->{reaction}->substrates_from_equation({singleArray=>1});
+	my $results;
+	for (my $i=0; $i < @{$substrates}; $i++) {
+		my $found = 0;
+		my $coef = 0;
+		for (my $j=0; $j < @{$compSubstrates}; $j++) {
+			if ($substrates->[$i]->{DATABASE}->[0] eq $compSubstrates->[$j]->{DATABASE}->[0]) {
+				if ($substrates->[$i]->{COMPARTMENT}->[0] eq $compSubstrates->[$j]->{COMPARTMENT}->[0]) {
+					$found = 1;
+					if ($substrates->[$i]->{COEFFICIENT}->[0]*$compSubstrates->[$j]->{COEFFICIENT}->[0] < 0) {
+						$coef = $compSubstrates->[$j]->{COEFFICIENT}->[0];
+					}
+				}
+			}
+		}
+		if($found == 0) {
+			push(@{$results->{compoundDifferences}},{
+				compound => $substrates->[$i]->{DATABASE}->[0],
+				compartment => $substrates->[$i]->{COMPARTMENT}->[0],
+				compCoef => 0,
+				refCoef => $substrates->[$i]->{COEFFICIENT}->[0]
+			});
+		} elsif ($coef ne 0) {
+			push(@{$results->{compoundDifferences}},{
+				compound => $substrates->[$i]->{DATABASE}->[0],
+				compartment => $substrates->[$i]->{COMPARTMENT}->[0],
+				compCoef => $coef,
+				refCoef => $substrates->[$i]->{COEFFICIENT}->[0]
+			});
+		}
+	}
+	for (my $i=0; $i < @{$compSubstrates}; $i++) {
+		my $found = 0;
+		my $coef = 0;
+		for (my $j=0; $j < @{$substrates}; $j++) {
+			if ($compSubstrates->[$i]->{DATABASE}->[0] eq $substrates->[$j]->{DATABASE}->[0]) {
+				if ($compSubstrates->[$i]->{COMPARTMENT}->[0] eq $substrates->[$j]->{COMPARTMENT}->[0]) {
+					$found = 1;
+					if ($compSubstrates->[$i]->{COEFFICIENT}->[0]*$substrates->[$j]->{COEFFICIENT}->[0] < 0) {
+						$coef = $substrates->[$j]->{COEFFICIENT}->[0];
+					}
+				}
+			}
+		}
+		if($found == 0) {
+			push(@{$results->{compoundDifferences}},{
+				compound => $compSubstrates->[$i]->{DATABASE}->[0],
+				compartment => $compSubstrates->[$i]->{COMPARTMENT}->[0],
+				refCoef => 0,
+				compCoef => $compSubstrates->[$i]->{COEFFICIENT}->[0]
+			});
+		} elsif ($coef ne 0) {
+			push(@{$results->{compoundDifferences}},{
+				compound => $compSubstrates->[$i]->{DATABASE}->[0],
+				compartment => $compSubstrates->[$i]->{COMPARTMENT}->[0],
+				refCoef => $coef,
+				compCoef => $compSubstrates->[$i]->{COEFFICIENT}->[0]
+			});
+		}
+	}
+	return $results;
+}
 
-
+=head3 change_reactant
+Definition:
+	void FIGMODELreaction->change_reactant({
+		compartment => string,
+		coefficient => double,
+		compound => string
+	});
+Description:
+	Changes a reactant in the reaction
+=cut
+sub change_reactant {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["compound"],{
+		compartment => "c",
+		coefficient => undef
+	});
+	my $reactants = $self->substrates_from_equation({singleArray => 1});
+	my $found = 0;
+	for (my $i=0; $i < @{$reactants}; $i++) {
+		if ($reactants->[$i]->{DATABASE}->[0] eq $args->{compound} && $reactants->[$i]->{COMPARTMENT}->[0] eq $args->{compartment}) {
+			if (!defined($args->{coefficient}) || $args->{coefficient} == 0) {
+				splice(@{$reactants},$i,1);
+			} else {
+				$reactants->[$i]->{COEFFICIENT}->[0] = $args->{coefficient};
+			}
+			$found = 1;
+		}
+	}
+	if ($found == 0) {
+		push(@{$reactants},{
+			DATABASE => [$args->{compound}],
+			COMPARTMENT => [$args->{compartment}],
+			COEFFICIENT => [$args->{coefficient}]
+		});
+	}
+	$self->translateReactantArrayToEquation({reactants => $reactants});	
+}
+=head3 translateReactantArrayToEquation
+Definition:
+	void FIGMODELreaction->translateReactantArrayToEquation({
+		reactants => {
+			DATABASE => string,
+			COMPARTMENT => string,
+			COEFFICIENT => string
+		},
+	});
+Description:
+	Builds reaction equation from reactant list
+=cut
+sub translateReactantArrayToEquation {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["reactants"],{});
+	@{$args->{reactants}} = sort { $a->{DATABASE}->[0] cmp $b->{DATABASE}->[0] } @{$args->{reactants}};
+	my $reactants = "";
+	for (my $i=0; $i < @{$args->{reactants}}; $i++) {
+		if ($args->{reactants}->[$i]->{COEFFICIENT}->[0] =~ m/^-/) {
+			if (length($reactants) > 0) {
+				$reactants .= " + ";
+			}
+			$reactants .= "(".substr($args->{reactants}->[$i]->{COEFFICIENT}->[0],1).") ".$args->{reactants}->[$i]->{DATABASE}->[0];
+			if ($args->{reactants}->[$i]->{COMPARTMENT}->[0] ne "c") {
+				$reactants .= "[".$args->{reactants}->[$i]->{COMPARTMENT}->[0]."]";	
+			}
+		}
+	}
+	my $productions = "";
+	for (my $i=0; $i < @{$args->{reactants}}; $i++) {
+		if ($args->{reactants}->[$i]->{COEFFICIENT}->[0] !~ m/^-/) {
+			if (length($productions) > 0) {
+				$productions .= " + ";
+			}
+			$productions .= "(".$args->{reactants}->[$i]->{COEFFICIENT}->[0].") ".$args->{reactants}->[$i]->{DATABASE}->[0];
+			if ($args->{reactants}->[$i]->{COMPARTMENT}->[0] ne "c") {
+				$productions .= "[".$args->{reactants}->[$i]->{COMPARTMENT}->[0]."]";	
+			}
+		}
+	}
+	$self->ppo()->equation($reactants." <=> ".$productions);
+}
 =head3 balance_reaction
 Definition:
 	Output = FIGMODELreaction->balance_reaction();

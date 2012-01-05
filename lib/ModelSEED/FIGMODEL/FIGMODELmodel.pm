@@ -2617,6 +2617,127 @@ sub compare_two_reaction_tables {
 	return $changeTbl;
 }
 
+=head3 compareModel
+Definition:
+	Output: FIGMODELmodel->compareModel({
+		model => FIGMODELmodel
+	});
+	Output: {
+		changedReactions => {
+			id =>
+			compartment => 
+			compDirectionality =>
+			compPegs => 
+			refDirectionality =>
+			refPegs =>
+			refNotes => 
+			refConfidence => 
+			refReference =>
+			compNotes => 
+			compConfidence => 
+			compReference =>
+		}
+	}
+Description:
+=cut
+sub compareModel {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["model"],{});
+	my $rxntbl = $self->rxnmdl();
+	my $comprxntbl = $args->{model}->rxnmdl();
+	my $output;
+	for (my $i=0; $i < @{$rxntbl}; $i++) {
+		if ($rxntbl->[$i]->pegs() eq "MANUAL|OPEN|PROBLEM") {
+			$rxntbl->[$i]->pegs("GAPFILLING");
+		}
+		my $found = 0;
+		for (my $j=0; $j < @{$comprxntbl}; $j++) {
+			if ($comprxntbl->[$j]->pegs() eq "MANUAL|OPEN|PROBLEM") {
+				$comprxntbl->[$j]->pegs("GAPFILLING");
+			}
+			if ($rxntbl->[$i]->REACTION() eq $comprxntbl->[$j]->REACTION() && $rxntbl->[$i]->compartment() eq $comprxntbl->[$j]->compartment()) {
+				if ($rxntbl->[$i]->directionality() ne $comprxntbl->[$j]->directionality()) {
+					push(@{$output->{changedReactions}},{
+						id => $rxntbl->[$i]->REACTION(),
+						compartment => $rxntbl->[$i]->compartment(),
+						compDirectionality => $comprxntbl->[$j]->directionality(),
+						compPegs => $rxntbl->[$i]->pegs(),
+						refDirectionality => $rxntbl->[$i]->directionality(),
+						refPegs => $rxntbl->[$i]->pegs(),
+						refNotes => $rxntbl->[$i]->notes(),
+						refConfidence => $rxntbl->[$i]->confidence(),
+						refReference => $rxntbl->[$i]->reference(),
+						compNotes => $comprxntbl->[$j]->notes(),
+						compConfidence => $comprxntbl->[$j]->confidence(),
+						compReference =>$comprxntbl->[$j]->reference(),
+						compchange => "Directionality changed from ".$comprxntbl->[$j]->directionality()." to ".$rxntbl->[$i]->directionality()
+					});
+				}
+				if ($rxntbl->[$i]->pegs() ne $comprxntbl->[$j]->pegs()) {
+					push(@{$output->{changedReactions}},{
+						id => $rxntbl->[$i]->REACTION(),
+						compartment => $rxntbl->[$i]->compartment(),
+						compDirectionality => $rxntbl->[$i]->directionality(),
+						compPegs => $comprxntbl->[$j]->pegs(),
+						refDirectionality => $rxntbl->[$i]->directionality(),
+						refPegs => $rxntbl->[$i]->pegs(),
+						refNotes => $rxntbl->[$i]->notes(),
+						refConfidence => $rxntbl->[$i]->confidence(),
+						refReference => $rxntbl->[$i]->reference(),
+						compNotes => $comprxntbl->[$j]->notes(),
+						compConfidence => $comprxntbl->[$j]->confidence(),
+						compReference =>$comprxntbl->[$j]->reference(),
+						compchange => "GPR changed from ".$comprxntbl->[$j]->pegs()." to ".$rxntbl->[$i]->pegs()
+					});
+				}
+				$found = 1;	
+			}
+		}
+		if ($found == 0) {
+			push(@{$output->{changedReactions}},{
+				id => $rxntbl->[$i]->REACTION(),
+				compartment => $rxntbl->[$i]->compartment(),
+				compDirectionality => undef,
+				compPegs => undef,
+				refDirectionality => $rxntbl->[$i]->directionality(),
+				refPegs => $rxntbl->[$i]->pegs(),
+				refNotes => $rxntbl->[$i]->notes(),
+				refConfidence => $rxntbl->[$i]->confidence(),
+				refReference => $rxntbl->[$i]->reference(),
+				compNotes => undef,
+				compConfidence => undef,
+				compReference => undef,
+				compchange => "added"
+			});
+		}
+	}
+	for (my $j=0; $j < @{$comprxntbl}; $j++) {
+		my $found = 0;
+		for (my $i=0; $i < @{$rxntbl}; $i++) {
+			if ($rxntbl->[$i]->REACTION() eq $comprxntbl->[$j]->REACTION() && $rxntbl->[$i]->compartment() eq $comprxntbl->[$j]->compartment()) {
+				$found = 1;	
+			}
+		}
+		if ($found == 0) {
+			push(@{$output->{changedReactions}},{
+				id => $comprxntbl->[$j]->REACTION(),
+				compartment => $comprxntbl->[$j]->compartment(),
+				refDirectionality => undef,
+				refPegs => undef,
+				refNotes => undef,
+				refConfidence => undef,
+				refReference => undef,
+				compNotes => $comprxntbl->[$j]->notes(),
+				compConfidence => $comprxntbl->[$j]->confidence(),
+				compReference => $comprxntbl->[$j]->reference(),
+				compDirectionality => $comprxntbl->[$j]->directionality(),
+				compPegs => $comprxntbl->[$j]->pegs(),
+				compchange => "removed"
+			});
+		}
+	}
+	return $output;
+}
 =head3 calculate_model_changes
 Definition:
 	FIGMODELmodel->calculate_model_changes(FIGMODELTable:original reaction table,string:modification cause);
@@ -3508,7 +3629,7 @@ sub printModelFileForMFAToolkit {
 	for (my $i=0; $i < @{$objs}; $i++) {
 		if ($args->{removeGapfilling} == 0 || ($objs->[$i]->pegs() !~ m/GAP/ && $objs->[$i]->pegs() !~ m/AUTO/)) {
 			my $line = $objs->[$i]->REACTION().";".$objs->[$i]->directionality().";".$objs->[$i]->compartment().";"
-				.$objs->[$i]->pegs().";NONE;".$objs->[$i]->confidence().";NONE;NONE";
+				.$objs->[$i]->pegs().";NONE;".$objs->[$i]->confidence().";".$objs->[$i]->reference().";".$objs->[$i]->notes;
 			push(@{$output},$line);
 		}
 	}
@@ -3997,6 +4118,56 @@ sub add_reactions {
 	#$self->processModel();
 	return $args;
 }
+=head3 change_reaction
+Definition:
+	void FIGMODELmodel->change_reaction({
+		reaction => $reaction->{id},
+		compartment => $reaction->{compartment},
+		directionality => $reaction->{compDirectionality},
+		pegs => $reaction->{compPegs}
+	});
+Description:
+=cut
+sub change_reaction {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[
+		"reaction",
+		"compartment"
+	],{
+		directionality => undef,
+		pegs => "UNKNOWN",
+		notes => "",
+		confidence => 3,
+		reference => ""
+	});
+	print $args->{reaction}."[".$args->{compartment}."];".$args->{directionality}.";".$args->{pegs}."\n";
+	my $rxntbl = $self->rxnmdl({clearCache => 1});										
+	my $found = 0;
+	for (my $i=0; $i < @{$rxntbl}; $i++) {
+		if ($rxntbl->[$i]->REACTION() eq $args->{reaction} && $rxntbl->[$i]->compartment() eq $args->{compartment}) {
+			$found = 1;
+			if (defined($args->{directionality})) {
+				$rxntbl->[$i]->directionality($args->{directionality});
+				$rxntbl->[$i]->pegs($args->{pegs});
+			} else {
+				$rxntbl->[$i]->delete();
+			}
+		}
+	}
+	if ($found == 0 && defined($args->{directionality})) {
+		$self->db()->create_object("rxnmdl",{
+			MODEL => $self->id(),
+			compartment => $args->{compartment},
+			REACTION => $args->{reaction},
+			directionality => $args->{directionality},
+			pegs => $args->{pegs},
+			notes => $args->{notes},
+			confidence => $args->{confidence},
+			reference => $args->{reference}
+		});	
+	}
+}
+
 =head3 removeReactions
 Definition:
 	{}:Output = FIGMODELmodel->removeReactions({
@@ -5694,11 +5865,6 @@ sub BuildSpecificBiomassReaction {
 		#Otherwise, we calculate essential reactions
 		if ($matchFound == 0) {
 			print "NOMATCH!\n";
-			$self->figmodel()->run_or_queue_job({
-				command => "runfigmodelfunction?determine_biomass_essential_reactions?".$biomassID,
-				user => $self->owner(),
-				queue => "fast"
-			});
 		}
 	}
 	return $biomassID;
@@ -6469,6 +6635,7 @@ sub provenanceFeatureTable {
 			my $feature_table = $self->genomeObj()->feature_table();
 			$feature_table->save($self->directory()."annotations/features.txt");	
 		}
+		print STDERR "Model directory:".$self->directory()."annotations/features.txt";
 		$self->{_provenanceFeatureTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."annotations/features.txt","\t","`",0,["ID"]);
 		for (my $i=0; $i < $self->{_provenanceFeatureTable}->size(); $i++) {
 			my $row = $self->{_provenanceFeatureTable}->get_row($i);
@@ -7265,7 +7432,6 @@ sub runFBAStudy {
 	if(!defined($bioRxn) || $bioRxn eq "NONE"){
 		ModelSEED::globals::ERROR("Model ".$self->id()." does not contain a biomass function");
 	}
-	print "Biomass reaction:".$bioRxn."\n";
 	$self->figmodel()->get_reaction($bioRxn)->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$bioRxn});
 	$fbaObj->createProblemDirectory({
 		parameterFile => $args->{parameterFile},
@@ -7607,7 +7773,8 @@ Definition:
 		fbaStartParameters => {},
 		findTightBounds => 0/1,
 		deleteNoncontributingRxn => 0/1,
-		identifyCriticalBiomassCpd => 0/1
+		identifyCriticalBiomassCpd => 0/1,
+		comparisonResults => {}
 	});
 	Output = {
 		string:labels=>{
@@ -7632,7 +7799,9 @@ sub fbaMultiplePhenotypeStudy {
 		fbaStartParameters => {},
 		findTightBounds => 0,
 		deleteNoncontributingRxn => 0,
-		identifyCriticalBiomassCpd => 0 
+		identifyCriticalBiomassCpd => 0,
+		comparisonResults => undef,
+		observations => undef
 	});
 	if (!defined($args->{koList})) {
 		for (my $i=0; $i < @{$args->{labels}}; $i++) {
@@ -7666,6 +7835,76 @@ sub fbaMultiplePhenotypeStudy {
 		runProblem => 1,
 		clearOuput => 1
 	});
+	if (defined($args->{comparisonResults})) {
+		my $comparison = {
+			classes => ["new FP","new FN","new CP","new CN","0 to 1","1 to 0"],
+			"new FP" => {media => {}, label => {}},
+			"new FN" => {media => {}, label => {}},
+			"new CP" => {media => {}, label => {}},
+			"new CN" => {media => {}, label => {}},
+			"0 to 1" => {media => {}, label => {}},
+			"1 to 0" => {media => {}, label => {}}
+		};
+		my $labels;
+		my $phenotypes;
+		foreach my $label (keys(%{$results})) {
+			my $array = [split(/_/,$label)];
+			if (defined($args->{observations}->{$array->[0]}->{$results->{$label}->{media}})) {
+				if ($args->{observations}->{$array->[0]}->{$results->{$label}->{media}} > 0.0001) {
+					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
+						if ($results->{$label}->{fraction} <= 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							push(@{$comparison->{"new FN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+							push(@{$comparison->{"new FN"}->{label}->{$array->[0]}},$results->{$label}->{media});
+						}
+					} else {
+						if ($results->{$label}->{fraction} > 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							push(@{$comparison->{"new CP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+							push(@{$comparison->{"new CP"}->{label}->{$array->[0]}},$results->{$label}->{media});
+						}
+					}
+				} else {
+					if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
+						if ($results->{$label}->{fraction} <= 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							push(@{$comparison->{"new CN"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+							push(@{$comparison->{"new CN"}->{label}->{$array->[0]}},$results->{$label}->{media});
+						}
+					} else {
+						if ($results->{$label}->{fraction} > 0.0001) {
+							$labels->{$array->[0]} = 1;
+							$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+							push(@{$comparison->{"new FP"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+							push(@{$comparison->{"new FP"}->{label}->{$array->[0]}},$results->{$label}->{media});
+						}
+					}
+				}
+			} else {
+				if ($args->{comparisonResults}->{$label}->{fraction} > 0.0001) {
+					if ($results->{$label}->{fraction} <= 0.0001) {
+						$labels->{$array->[0]} = 1;
+						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+						push(@{$comparison->{"1 to 0"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+						push(@{$comparison->{"1 to 0"}->{label}->{$array->[0]}},$results->{$label}->{media});
+					}
+				} else {
+					if ($results->{$label}->{fraction} > 0.0001) {
+						$labels->{$array->[0]} = 1;
+						$phenotypes->{$array->[0].$results->{$label}->{media}} = 1;
+						push(@{$comparison->{"0 to 1"}->{media}->{$results->{$label}->{media}}},$array->[0]);
+						push(@{$comparison->{"0 to 1"}->{label}->{$array->[0]}},$results->{$label}->{media});
+					}
+				}
+			}
+		}
+		$comparison->{"Number of strains"} = keys(%{$labels});
+		$comparison->{"Number of phenotypes"} = keys(%{$phenotypes});
+		$results->{comparisonResults} = $comparison;
+	}
 	return $results;
 }
 =head3 fbaTestGapfillingSolution
@@ -7961,7 +8200,14 @@ sub build_default_model_config {
 	}
 	return $config;
 }
-			
+=head3 FormatModelForViewer
+Formatting model
+=cut
+sub FormatModelForViewer {
+	my ($self) = @_;
+	
+	return;
+}
 =head3 run_default_model_predictions
 REPLACED BY fbaDefaultStudies:MARKED FOR DELETION
 =cut

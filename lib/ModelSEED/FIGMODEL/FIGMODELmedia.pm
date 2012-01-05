@@ -570,4 +570,113 @@ sub printDatabaseTable {
 	$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
 }
 
+=head3 compareMedia
+Definition:
+	Output = FIGMODELmedia->compareMedia({
+		media => FIGMODELmedia
+	});
+	Output: {
+		changedCompounds => [{
+			refMaxUptake => double,
+			refMinUptake => double,
+			compMaxUptake => double,
+			compMinUptake => double,
+			compound => string:compound ID
+		}]
+	};
+Description:
+=cut
+sub compareMedia {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["media"],{});
+	my $compounds = $self->loadCompoundsFromPPO();
+	my $compCompounds = $args->{media}->loadCompoundsFromPPO();
+	my $results;
+	foreach my $cpd (keys(%{$compounds})) {
+		if ($compounds->{$cpd}->{maxFlux} > 0) {
+			if (defined($compCompounds->{$cpd})) {
+				if ($compCompounds->{$cpd}->{maxFlux} <= 0) {
+					push(@{$results->{compoundDifferences}},{
+						refMaxUptake => $compounds->{$cpd}->{maxFlux},
+						refMinUptake => $compounds->{$cpd}->{minFlux},
+						compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
+						compMinUptake => $compCompounds->{$cpd}->{minFlux},
+						compound => $cpd
+					});
+				}	
+			} else {
+				push(@{$results->{compoundDifferences}},{
+					refMaxUptake => $compounds->{$cpd}->{maxFlux},
+					refMinUptake => $compounds->{$cpd}->{minFlux},
+					compound => $cpd
+				});
+			}
+		}
+	}
+	foreach my $cpd (keys(%{$compCompounds})) {
+		if ($compCompounds->{$cpd}->{maxFlux} > 0) {
+			if (defined($compounds->{$cpd})) {
+				if ($compounds->{$cpd}->{maxFlux} <= 0) {
+					push(@{$results->{compoundDifferences}},{
+						refMaxUptake => $compounds->{$cpd}->{maxFlux},
+						refMinUptake => $compounds->{$cpd}->{minFlux},
+						compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
+						compMinUptake => $compCompounds->{$cpd}->{minFlux},
+						compound => $cpd
+					});
+				}	
+			} else {
+				push(@{$results->{compoundDifferences}},{
+					compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
+					compMinUptake => $compCompounds->{$cpd}->{minFlux},
+					compound => $cpd
+				});
+			}
+		}
+	}
+	return $results;
+}
+
+=head3 change_compound
+Definition:
+	void = FIGMODELmedia->change_compound({
+		maxUptake => double,
+		minUptake => double,
+		compound
+	});
+Description:
+=cut
+sub change_compound {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["compound"],{
+		maxUptake => undef,
+		minUptake => undef,
+		concentration => 0.001
+	});
+	my $mediacpds = $self->figmodel()->database()->get_objects("mediacpd",{MEDIA=>$self->id()});
+	for (my $i=0; $i < @{$mediacpds}; $i++) {
+		if ($mediacpds->[$i]->entity() eq $args->{compound}) {
+			if (!defined($args->{maxUptake})) {
+				$mediacpds->[$i]->delete();
+				return;	
+			} else {
+				$mediacpds->[$i]->maxFlux($args->{maxUptake});
+				$mediacpds->[$i]->minFlux($args->{minUptake});
+				$mediacpds->[$i]->concentration($args->{concentration});
+			}
+		}
+	}
+	if (defined($args->{maxUptake})) {
+		$self->figmodel()->database()->create_object("mediacpd",{
+			MEDIA=>$self->id(),
+			entity => $args->{compound},
+			type => "COMPOUND",
+			concentration => $args->{concentration},
+			maxFlux => $args->{maxUptake},
+			minFlux => $args->{minUptake}
+		});	
+	}
+	$self->loadCompoundsFromPPO();	
+}
+
 1;

@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use lib "/vol/model-prod/Model-SEED-core/config/";
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use FIG;
@@ -98,7 +99,8 @@ sub methods {
 			"blast_sequence",
 			"pegs_of_function",
 			"getRastGenomeData",
-			"users_for_genome"
+			"users_for_genome",
+			"build_primers"
         ];
 	}
 	return $self->{_methods};
@@ -144,7 +146,7 @@ sub process_arguments {
     		}
     	}
     }
-	ModelSEED::globals::ERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
+	ModelSEED::utilities::ERROR("Mandatory arguments ".join("; ",@{$args->{_error}})." missing. Usage:".$self->print_usage($mandatoryArguments,$optionalArguments,$args)) if (defined($args->{_error}));
     if (defined($optionalArguments)) {
     	foreach my $argument (keys(%{$optionalArguments})) {
     		if (!defined($args->{$argument})) {
@@ -210,7 +212,7 @@ sub blast_sequence {
 	my($self,$args) = @_;
 	$args = $self->process_arguments($args,["sequences","genomes"],{});
 	if (@{$args->{genomes}} > 10) {
-		ModelSEED::globals::ERROR("This is not the appropriate function to use for blasting > 10 genomes.");
+		ModelSEED::utilities::ERROR("This is not the appropriate function to use for blasting > 10 genomes.");
 	}
 	my $dbname = join(".",sort(@{$args->{genomes}}));
 	if (!-e $self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta") {
@@ -243,7 +245,7 @@ sub blast_sequence {
 		open( TMP, ">".$filename) || die "could not open";
 		print TMP  $fastaString;
 		close(TMP);
-		system("blastall -i ".$filename." -d ".$self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta -p blastn -FF -e 1.0e-5 -m 8 -o ".$filename.".out");
+		system("/vol/rast-bcr/2010-1124/linux-rhel5-x86_64/bin/blastall -i ".$filename." -d ".$self->figmodel()->config("blastdb cache directory")->[0].$dbname."/db.fasta -p blastn -FF -e 1.0e-5 -m 8 -o ".$filename.".out");
 		my $data = $self->figmodel()->database()->load_multiple_column_file($filename.".out","\t");
 		for (my $j=0; $j < @{$data}; $j++) {
 			if (defined($data->[$j]->[11])) {
@@ -341,7 +343,8 @@ sub getRastGenomeData {
 			$output->{source} = "RAST:".$job->id();
 			$directory = "/vol/rast-prod/jobs/".$job->id()."/rp/".$args->{genome};
 			#$FIG_Config::rast_jobs = "/vol/rast-prod/jobs";
-			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
+			$output->{gc} = 0.5;
+			#$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-prod/jobs/".$job->id()."/USER","\t")->[0];
 		}
 	}
@@ -352,7 +355,8 @@ sub getRastGenomeData {
 			$output->{source} = "TESTRAST:".$job->id();
 			$directory = "/vol/rast-test/jobs/".$job->id()."/rp/".$args->{genome};
 			#$FIG_Config::rast_jobs = "/vol/rast-test/jobs";
-			$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
+			$output->{gc} = 0.5;
+			#$output->{gc} = 0.01*$job->metaxml()->get_metadata('genome.gc_content');
 			$output->{owner} = $figmodel->database()->load_single_column_file("/vol/rast-test/jobs/".$job->id()."/USER","\t")->[0];
 		}
 	}
@@ -363,15 +367,15 @@ sub getRastGenomeData {
 	}
 	#Bailing if we still haven't found the genome
 	if (!defined($directory)) {
-		ModelSEED::globals::WARNING("Could not find data for genome".$args->{genome});
+		ModelSEED::utilities::WARNING("Could not find data for genome".$args->{genome});
 		return undef;
 	}
 	#Checking for rights
 	if ($output->{source} =~ m/^MGRAST/ || $output->{source} =~ m/^RAST/ || $output->{source} =~ m/^TESTRAST/) {
 		if ($figmodel->user() eq "PUBLIC") {
-			ModelSEED::globals::WARNING("Must be authenticated to access model");
+			ModelSEED::utilities::WARNING("Must be authenticated to access model");
 			return undef;
-		} elsif (!defined($figmodel->config("super users")->{$figmodel->user()})) {
+		} elsif (!defined($figmodel->config("model administrators")->{$figmodel->user()})) {
 			my $haveRight = 0;
 			my $userScopes = $figmodel->database()->get_objects("userscope",{
 				user => $figmodel->userObj()
@@ -389,7 +393,7 @@ sub getRastGenomeData {
 				}
 			}
 			if ($haveRight == 0) {
-				ModelSEED::globals::WARNING("Do not have rights to requested genome");
+				ModelSEED::utilities::WARNING("Do not have rights to requested genome");
 				return undef;
 			}
 		}
@@ -411,7 +415,7 @@ sub getRastGenomeData {
 	require FIGV;
 	my $figv = new FIGV($directory);	
 	if (!defined($figv)) {
-		ModelSEED::globals::WARNING("Could not create FIGV object for RAST genome:".$args->{genome});
+		ModelSEED::utilities::WARNING("Could not create FIGV object for RAST genome:".$args->{genome});
 		return undef;
 	}
 	if ($args->{getDNASequence} == 1) {
@@ -502,6 +506,143 @@ sub users_for_genome {
     }
     return $result;
 }
+=head3 build_primers
+
+=item Definition:
+
+    Output = MSSeedSupport->build_primers({
+        genome => string,
+        start => string,
+        stop => string,
+        contig => integer(0)  
+    });
+    Output: {
+    	ERROR => string,
+    	MESSAGE => string,
+    	SUCCESS => 0/1,
+    	p1 => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p2a => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p2b => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p3a => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p3b => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p3c => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p4 => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p5 => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    	p6 => {
+    		sequence => string,
+    		length => integer,
+    		start => integer,
+    		gc => double,
+    		tm => double,
+    		quality => double
+    	}
+    }
+    
+=item Description:
+    
+    Designs primers for the specified interval locations
+
+=cut
+sub build_primers {
+    my ($self,$args) = @_;
+    $args = $self->process_arguments($args, ["genome","start","stop"],{
+    	contig => 0
+    });
+    my $location = "NC_000964_".$args->{start}."_".$args->{stop};
+    my $output = $self->figmodel()->runexecutable("/vol/model-prod/Software/primerCode/runprimer.sh ".$args->{genome}." ".$location);
+    if (!defined($output) || !defined($output->[5])) {
+    	return {
+    		SUCCESS => 0,
+    		ERROR => "Primer generation failed!",
+    		MESSAGE => "Primer generation failed!"
+    	};
+    }
+    my $result = {
+    	SUCCESS => 1,
+    	MESSAGE => "Primers successfully generated for genome ".$args->{genome}." on location ".$location."."
+    };
+    $result->{"p2b"}->{sequence} = "CGACCTGCAGGCATGCAAGCT";
+    $result->{"p3a"}->{sequence} = "CGAGCTCGAATTCACTGGCCGTCG";
+    for (my $i=1; $i < @{$output};$i++) {
+    	if ($i < 6) {
+	    	chomp($output->[$i-1]);
+	    	my $temp = [split(/\t/,$output->[$i-1])];
+	    	$result->{"p".$i}->{sequence} = uc($temp->[1]);
+	    	$result->{"p".$i}->{"length"} = $temp->[3];
+	    	$result->{"p".$i}->{"start"} = $temp->[2];
+	    	$result->{"p".$i}->{"gc"} = $temp->[4];
+	    	$result->{"p".$i}->{"tm"} = $temp->[5];
+	    	$result->{"p".$i}->{"quality"} = $temp->[6];
+    	}
+    }
+    if (defined($output->[6])) {
+    	chomp($output->[6]);
+    	$result->{"p3b"}->{sequence} = $output->[6];
+    }
+    $result->{"p2a"} = $result->{"p2"};
+    delete $result->{"p2"};
+    $result->{"p3c"} = $result->{"p3"};
+    
+    delete $result->{"p3"};
+    return $result;
+}
+
 #TODO: These are function specific to the SEED environment that may still be useful, but will not work as they currently stand
 =head3 ParseHopeSEEDReactionFiles
 

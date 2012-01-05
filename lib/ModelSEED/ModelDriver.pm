@@ -4593,7 +4593,11 @@ sub simulatekomedialist {
 		["ko",0,"NONE"],
 		["media",1],
 		["kolabel",0,undef],
-		["filename",0,undef]
+		["obsFile",0,undef],
+		["compareTypes",0,undef,"List of object types to be diffed"],
+		["compareReferences",0,undef,"List of reference objects"],
+		["compareTargets",0,undef,"List of comparison objects"],
+		["singlePerturbation",0,1,"Flag that implements changes one at a time if set to '1'"],
 	],[@Data]);
 	my $medias = $self->figmodel()->processIDList({
 		objectType => "media",
@@ -4639,6 +4643,13 @@ sub simulatekomedialist {
 	$input->{findTightBounds} = 0;
 	$input->{deleteNoncontributingRxn} = 0;
 	$input->{identifyCriticalBiomassCpd} = 0;
+	if (-e $self->ws()->directory().$args->{"obsFile"}) {
+		my $obs = $self->figmodel()->database()->load_single_column_file($args->{"obsFile"},"");
+		for (my $i=1;$i < @{$obs}; $i++) {
+			my $array = [split(/\t/,$obs->[$i])];
+			$input->{observations}->{$array->[0]}->{$array->[1]} = $array->[2];
+		}
+	}
 	my $growthRates;
 	my $result = $mdl->fbaMultiplePhenotypeStudy($input);
 	my $outputHash;
@@ -4674,7 +4685,219 @@ sub simulatekomedialist {
 	if (!defined($args->{"filename"})) {
 		$args->{"filename"} = $mdl->id()."-komedialist.tbl";
 	}
-	
+	my $comparisonResults = [];
+	$input->{comparisonResults} = $result;
+	if (defined($args->{compareTypes})) {
+		$args->{compareTypes} = [split(/;/,$args->{compareTypes})];
+		$args->{compareReferences} = [split(/;/,$args->{compareReferences})];
+		$args->{compareTargets} = [split(/;/,$args->{compareTargets})];
+		for (my $i=0; $i < @{$args->{compareTypes}}; $i++) {
+			if (defined($args->{compareTypes}->[$i])) {
+				if (defined($args->{compareReferences}->[$i])) {
+					if (defined($args->{compareTargets}->[$i])) {
+						if ($args->{compareTypes}->[$i] eq "model") {
+							my $refObj = $mdl->figmodel()->get_model($args->{compareReferences}->[$i]);
+							my $cmpObj = $mdl->figmodel()->get_model($args->{compareTargets}->[$i]);
+							my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+							push(@{$comparisonResults},{
+								type => "model",
+								id => $args->{compareReferences}->[$i],
+								change => $args->{compareTargets}->[$i],
+								changedResults => $newresult->{comparisonResults}
+							});
+							if ($args->{singlePerturbation} == 1) {
+								my $compresults = $refObj->compareModel({model => $cmpObj});
+								if (defined($compresults->{changedReactions})) {
+									foreach my $reaction (@{$compresults->{changedReactions}}) {
+										if (defined($reaction->{compDirectionality})) {
+											print $reaction->{id}."[".$reaction->{compartment}."];".$reaction->{compDirectionality}.";".$reaction->{compPegs}."\n";
+											$refObj->change_reaction({
+												reaction => $reaction->{id},
+												compartment => $reaction->{compartment},
+												directionality => $reaction->{compDirectionality},
+												pegs => $reaction->{compPegs},
+												notes => $reaction->{compNotes},
+												confidence => $reaction->{compConfidence},
+												reference => $reaction->{compReference}
+											});
+										} elsif (!defined($reaction->{compDirectionality})) {
+											print $reaction->{id}."[".$reaction->{compartment}."]\n";
+											$refObj->change_reaction({
+												reaction => $reaction->{id},
+												compartment => $reaction->{compartment}
+											});
+										}
+										if ($reaction->{id} !~ m/^bio\d+/) {
+											my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+											push(@{$comparisonResults},{
+												type => "model",
+												id => $args->{compareReferences}->[$i],
+												change => $reaction->{id}."[".$reaction->{compartment}."] ".$reaction->{compchange},
+												changedResults => $newresult->{comparisonResults}
+											});
+										}
+										if (defined($reaction->{refDirectionality})) {
+											print $reaction->{id}."[".$reaction->{compartment}."];".$reaction->{compDirectionality}.";".$reaction->{compPegs}."\n";
+											$refObj->change_reaction({
+												reaction => $reaction->{id},
+												compartment => $reaction->{compartment},
+												directionality => $reaction->{refDirectionality},
+												pegs => $reaction->{refPegs},
+												notes => $reaction->{refNotes},
+												confidence => $reaction->{refConfidence},
+												reference => $reaction->{refReference}
+											});
+										} elsif (!defined($reaction->{refDirectionality})) {
+											print $reaction->{id}."[".$reaction->{compartment}."]\n";
+											$refObj->change_reaction({
+												reaction => $reaction->{id},
+												compartment => $reaction->{compartment}
+											});
+										}
+									}
+								}
+							}
+						} elsif ($args->{compareTypes}->[$i] eq "media") {
+							my $refObj = $mdl->figmodel()->get_media($args->{compareReferences}->[$i]);
+							my $cmpObj = $mdl->figmodel()->get_media($args->{compareTargets}->[$i]);
+							my $compresults = $refObj->compareMedia({media => $cmpObj});
+							for (my $j=0; $j < @{$input->{mediaList}}; $j++) {
+								if ($input->{mediaList}->[$j] eq $args->{compareReferences}->[$i]) {
+									$input->{mediaList}->[$j] = $args->{compareTargets}->[$i]
+								}
+							}
+							my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+							push(@{$comparisonResults},{
+								type => "media",
+								id => $args->{compareReferences}->[$i],
+								change => $args->{compareTargets}->[$i],
+								changedResults => $newresult->{comparisonResults}
+							});
+							for (my $j=0; $j < @{$input->{mediaList}}; $j++) {
+								if ($input->{mediaList}->[$j] eq $args->{compareTargets}->[$i]) {
+									$input->{mediaList}->[$j] = $args->{compareReferences}->[$i]
+								}
+							}
+							if ($args->{singlePerturbation} == 1) {
+								if (defined($compresults->{compoundDifferences})) {
+									foreach my $compound (@{$compresults->{compoundDifferences}}) {
+										my $change = " removed";
+										if (!defined($compound->{refMaxUptake}) || $compound->{refMaxUptake} eq 0) {
+											$refObj->change_compound({maxUptake => $compound->{compMaxUptake},minUptake => $compound->{compMinUptake},compound => $compound->{compound}});
+										} elsif (!defined($compound->{compMaxUptake}) || $compound->{compMaxUptake} eq 0) {
+											$change = " added";
+											$refObj->change_compound({compound => $compound->{compound}});
+										}
+										my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+										push(@{$comparisonResults},{
+											type => "media",
+											id => $args->{compareReferences}->[$i],
+											change => $compound->{compound}.$change,
+											changedResults => $newresult->{comparisonResults}
+										});
+										if (!defined($compound->{refMaxUptake}) || $compound->{refUptake} eq 0) {
+											$refObj->change_compound({compound => $compound->{compound}});
+										} elsif (!defined($compound->{compMaxUptake}) || $compound->{compUptake} eq 0) {
+											$refObj->change_compound({
+												maxUptake => $compound->{refMaxUptake},
+												minUptake => $compound->{refMinUptake},
+												compound => $compound->{compound}
+											});
+										}
+									}
+								}
+							}
+						} elsif ($args->{compareTypes}->[$i] eq "bof") {
+							my $refObj = $mdl->figmodel()->get_reaction($args->{compareReferences}->[$i]);
+							my $cmpObj = $mdl->figmodel()->get_reaction($args->{compareTargets}->[$i]);
+							$mdl->biomassReaction($args->{compareTargets}->[$i]);
+							my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+							push(@{$comparisonResults},{
+								type => "bof",
+								id => $args->{compareReferences}->[$i],
+								change => $args->{compareTargets}->[$i],
+								changedResults => $newresult->{comparisonResults}
+							});
+							$mdl->biomassReaction($args->{compareReferences}->[$i]);
+							if ($args->{singlePerturbation} == 1) {
+								my $compresults = $refObj->compareEquations({reaction => $cmpObj});
+								if (defined($compresults->{compoundDifferences})) {
+									foreach my $reactant (@{$compresults->{compoundDifferences}}) {
+										my $change = " removed";
+										if ($reactant->{refCoef} eq 0) {
+											$refObj->change_reactant({
+												coefficient => $reactant->{compCoef},
+												compartment => $reactant->{compartment},
+												compound => $reactant->{compound}
+											});
+										} elsif ($reactant->{compCoef} eq 0) {
+											$change = " added";
+											$refObj->change_reactant({
+												compartment => $reactant->{compartment},
+												compound => $reactant->{compound}
+											});
+										}
+										my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+										push(@{$comparisonResults},{
+											type => "bof",
+											id => $args->{compareReferences}->[$i],
+											change => $reactant->{compound}.$change,
+											changedResults => $newresult->{comparisonResults}
+										});
+										if ($reactant->{refCoef} eq 0) {
+											$refObj->change_reactant({
+												compartment => $reactant->{compartment},
+												compound => $reactant->{compound}
+											});
+										} elsif ($reactant->{compCoef} eq 0) {
+											$refObj->change_reactant({
+												coefficient => $reactant->{refCoef},
+												compartment => $reactant->{compartment},
+												compound => $reactant->{compound}
+											});
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		my $comparisonOutput = ["Type\tID\tChange\tNumber of strains\tNumber of phenotypes\tNew FP\tNew FN\tNew CP\tNew CN\t0 to 1\t1 to 0\tNew FP\tNew FN\tNew CP\tNew CN\t0 to 1\t1 to 0"];
+		my $changeTypes = ["new FP","new FN","new CP","new CN","0 to 1","1 to 0"];
+		for (my $i=0; $i < @{$comparisonResults}; $i++) {
+			my $line = $comparisonResults->[$i]->{type}."\t".$comparisonResults->[$i]->{id}."\t".$comparisonResults->[$i]->{change}."\t".$comparisonResults->[$i]->{changedResults}->{"Number of strains"}."\t".$comparisonResults->[$i]->{changedResults}->{"Number of phenotypes"};
+			for (my $j=0; $j < @{$changeTypes};$j++) {
+				$line .= "\t";
+				if (defined($comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{media})) {
+					my $start = 1;
+					foreach my $media (keys(%{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{media}})) {
+						if ($start != 1) {
+							$line .= "|";	
+						}
+						$line .= $media.":".join(";",@{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{media}->{$media}});
+						$start = 0;
+					}
+				}
+			}
+			for (my $j=0; $j < @{$changeTypes};$j++) {
+				$line .= "\t";
+				if (defined($comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{label})) {
+					my $start = 1;
+					foreach my $strain (keys(%{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{label}})) {
+						if ($start != 1) {
+							$line .= "|";	
+						}
+						$line .= $strain.":".join(";",@{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$j]}->{label}->{$strain}});
+						$start = 0;
+					}
+				}
+			}
+			push(@{$comparisonOutput},$line);
+		}
+		$self->figmodel()->database()->print_array_to_file($self->ws()->directory()."Comparison-".$args->{"filename"},$comparisonOutput);
+	}
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$output);
 }
 
@@ -5048,7 +5271,33 @@ sub printgapfilledreactions {
 	}
 	return "Successfully printed all gapfilling stats in ".$self->outputdirectory()."!";
 }
-
+=head
+=CATEGORY
+formatmodelforviewer
+=DESCRIPTION
+This function is called to run a queue job from a job file
+=EXAMPLE
+./queueRunJob -job "job id"
+=cut
+sub formatmodelforviewer {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Model to be formatted"],
+		["accounts",0,undef,"Additional accounts to access model"]
+	],[@Data],"format model for model viewer");
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		return "Model not valid!";
+	}
+	$args->{accounts} = $self->figmodel()->processIDList({
+		objectType => "user",
+		delimiter => ";",
+		column => "id",
+		parameters => undef,
+		input => $args->{accounts}
+	});
+	$mdl->FormatModelForViewer({accounts => $args->{accounts}});
+}
 =head
 =CATEGORY
 Queue Operations
@@ -6639,6 +6888,26 @@ sub utilmatrixdist {
 		$message .= "Printed distributions to ".$self->ws()->directory().$filename."\n";
 	}
 	return $message;
+}
+
+=head
+=CATEGORY
+Temporary
+=DESCRIPTION
+=EXAMPLE
+=cut
+sub cleandb {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+    ],[@Data],"cleandb");
+	my $objs = $self->figmodel()->database()->get_objects("cpxrole");
+	for (my $i=0; $i < @{$objs}; $i++) {
+		my $obj = $self->figmodel()->database()->get_objects("role",{id=>$objs->[$i]->ROLE()});
+		if (!defined($obj)) {
+			print $objs->[$i]->ROLE()."\n";
+		}
+	}
+	return "SUCCESS";
 }
 
 1;
