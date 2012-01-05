@@ -82,7 +82,7 @@ sub check {
 	my @calldata = caller(1);
 	my @temp = split(/:/,$calldata[3]);
     my $function = pop(@temp);
-	if (!defined($data) || @{$data} == 0) {
+	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
 		print $self->usage($function,$array);
 		$self->finish("USAGE PRINTED");
 	}
