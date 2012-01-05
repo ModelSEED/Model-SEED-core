@@ -94,14 +94,14 @@ sub _makeTypesToHashFns {
     $f->{compartment} = sub {
         return $_[0]->id . ( $_[0]->name || '' );
     };
-    $f->{reaction_complex} = sub {
+    $f->{reaction_rule} = sub {
         return $f->{reaction}->($_[0]->reaction_obj) .
             $f->{complex}->($_[0]->complex_obj) .
             ($_[0]->primaryCompartment) ? $f->{compartment}->($_[0]->primaryCompartment_obj) : "" .
             ($_[0]->secondaryCompartment) ? $f->{compartment}->($_[0]->secondaryCompartment_obj) : "" .
             ( $_[0]->direction || "" ) . ( $_[0]->transproton || "")
     };
-    $f->{reaction_compound} = sub {
+    $f->{reagent} = sub {
         return $f->{reaction}->($_[0]->reaction_obj) . $f->{compound}->($_->[0]->compound_obj) .
                $_[0]->coefficient . ($_[0]->cofactor || "") . ( $_->[0]->exteriorCompartment || "0" );
     };
@@ -184,7 +184,7 @@ sub _makeConversionFns {
             reaction => $obj->uuid,
         };
     };
-    $f->{reaction_compound} = sub {
+    $f->{reagent} = sub {
         my ($row, $ctx) = @_;
         my $rxn = $ctx->{reaction}->{$row->{reaction}->[0]};
         my $cpd = $ctx->{compound}->{$row->{compound}->[0]};
@@ -272,15 +272,15 @@ sub importBiochemistryFromDir {
     my $files = {
         reaction => 'reaction.txt',
         compound => 'compound.txt',
-        reaction_compound => 'rxncpd.txt',
+        reagent => 'rxncpd.txt',
         compound_alias => 'cpdals.txt',
         reaction_alias => 'rxnals.txt',
     };        
     my $config = { filename => undef, delimiter => "\t"};
-    unless(-f $files->{reaction_compound}) {
+    unless(-f $files->{reagent}) {
         $config->{filename} = "$dir/".$files->{reaction},
         my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
-        $self->generateReactionCompoundFile("$dir/".$files->{reaction_compound}, $tbl);
+        $self->generateReactionCompoundFile("$dir/".$files->{reagent}, $tbl);
     } 
     foreach my $file (values %$files) {
         $file = "$dir/$file";
@@ -333,23 +333,23 @@ sub importBiochemistryFromDir {
     }
     # Reaction Compound
     my ($missed_rxn_cpd_count, $missed_rxn_cpd_by_rxn) = (0, {});
-    for(my $i=0; $i<$files->{reaction_compound}->size(); $i++) {
-        my $row = $files->{reaction_compound}->get_row($i);
-        my $hash = $self->convert("reaction_compound", $row, $ctx);
+    for(my $i=0; $i<$files->{reagent}->size(); $i++) {
+        my $row = $files->{reagent}->get_row($i);
+        my $hash = $self->convert("reagent", $row, $ctx);
         unless(defined($hash)) {
             $missed_rxn_cpd_count += 1;
             $missed_rxn_cpd_by_rxn->{$hash->{reaction}} =  1 + 
                 ($missed_rxn_cpd_by_rxn->{$hash->{reaction}} || 0);
             next;
         }
-        my $RDB_reaction_compound = $self->getOrCreateObject("reaction_compound", $hash);
+        my $RDB_reagent = $self->getOrCreateObject("reagent", $hash);
     }
     if($missed_rxn_cpd_count > 0) {
         # Error cases for reaction compound
         warn "Failed to add $missed_rxn_cpd_count reactants to database across " .
             scalar(keys %$missed_rxn_cpd_by_rxn) . " reactions.\n";
         while( my ($rxn, $count) = each %$missed_rxn_cpd_by_rxn ) {
-            my $total = scalar($files->{reaction_compound}->get_rows_by_key($rxn, "REACTION"));
+            my $total = scalar($files->{reagent}->get_rows_by_key($rxn, "REACTION"));
             if($total != $count) {
                 warn "Failed to add $count reactants to db for" .
                 " reaction: $rxn, which has $total reactants.\n";
@@ -395,7 +395,7 @@ sub importMappingFromDir {
     my $files = {complex => 'complex.txt',
                  role => 'role.txt',
                  complexRole => 'cpxrole.txt',
-                 reactionComplex => 'rxncpx.txt'};
+                 reactionRule => 'rxncpx.txt'};
     my $config = {filename => undef, delimiter => "\t"};
     foreach my $file (values %$files) {
         $file = "$dir/$file";
@@ -448,16 +448,16 @@ sub importMappingFromDir {
     $RDB_mappingObject->add_alias({username => $username, id => $name});
     $RDB_mappingObject->save();
     return $RDB_mappingObject; 
-    # Create ComplexReaction - TODO
-    for(my $i=0; $i<$files->{reactionComplex}->size(); $i++) {
-        my $row = $files->{reactionComplex}->get_row($i);
-        my $hash = $self->convert("reactionComplex", $row, $ctx);
+    # Create ComplexReaction
+    for(my $i=0; $i<$files->{reactionRule}->size(); $i++) {
+        my $row = $files->{reactionRule}->get_row($i);
+        my $hash = $self->convert("reactionRule", $row, $ctx);
         unless(defined($hash)) {
             warn "Could not import complexReaction\n";
             next;
         }
-        my $RDB_reactionComplex = $self->getOrCreateObject("reaction_complex", $hash);
-        $RDB_reactionComplex->save();
+        my $RDB_reactionRule = $self->getOrCreateObject("reaction_rule", $hash);
+        $RDB_reactionRule->save();
     }
 }
 

@@ -6,15 +6,17 @@ use Data::Dumper;
 use namespace::autoclean;
 
 my $types = [ qw( Annotation AnnotationFeature Biochemistry
-    BiochemistryCompound BiochemistryCompoundAlias BiochemistryCompoundset
-    BiochemistryMedia BiochemistryReaction BiochemistryReactionAlias
-    BiochemistryReactionset Compartment Complex ComplexRole Compound
-    CompoundAlias CompoundPk Compoundset CompoundsetCompound
-    Feature Genome Mapping MappingCompartment MappingComplex MappingRole
-    Media MediaCompound Model ModelCompartment ModelReaction
-    ModelessFeature Modelfba ModelfbaCompound ModelfbaReaction 
-    Permission Reaction ReactionAlias ReactionComplex ReactionCompound
-    Reactionset ReactionsetReaction Role Roleset RolesetRole
+    BiochemistryAlias BiochemistryCompound BiochemistryCompoundset
+    BiochemistryMedia BiochemistryReaction BiochemistryReactionset Biomass
+    BiomassCompound Compartment Complex ComplexRole Compound CompoundAlias
+    CompoundPk CompoundStructure Compoundset CompoundsetCompound
+    Feature Genome Mapping MappingAlias MappingCompartment
+    MappingComplex MappingRole Media MediaCompound Model ModelAlias
+    ModelBiomass ModelCompartment ModelReaction ModelReactionTransport
+    ModelessFeature Modelfba ModelfbaCompound ModelfbaReaction Permission
+    Reaction ReactionAlias ReactionRule ReactionRuleTransport Reagent
+    ReagentTransport Reactionset ReactionsetReaction Role Roleset
+    RolesetRole
 )];
 
 # with 'ModelSEED::Role::ManagerRole' => { types => $types };
@@ -44,6 +46,11 @@ sub BUILD {
         my $Rpkg_base = $Rtype_base;
         $Rpkg_base =~ s/::/\//g;
         $Rpkg_base .= ".pm";
+        # convert type CamelCase into camel_case
+        my $cc = $type;
+        $cc =~ s/([A-Z])/_$1/g; # _Camel_Case
+        $cc = lc($cc);         # _camel_case
+        $cc =~ s/^_//;         # camel_case
         try {
             require $Rpkg; 
             require $Rpkg_base;
@@ -61,6 +68,7 @@ sub BUILD {
         };
         my $tableName = $Rtype_base->meta->table;
         $self->_managers->{$tableName} = $managerObj;
+        $self->_managers->{$cc} = $managerObj;
     }
 }
     

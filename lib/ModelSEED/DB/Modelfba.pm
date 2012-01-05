@@ -40,18 +40,33 @@ __PACKAGE__->meta->setup(
         },
 
         modelfba_features => {
-            map_class => 'ModelSEED::DB::ModelessFeature',
+            class => 'ModelSEED::DB::ModelessFeature',
             column_map => { uuid => 'modelfba_uuid' },
             type      => 'one to many',
         },
 
         modelfba_reactions => {
-            map_class => 'ModelSEED::DB::ModelfbaReaction',
+            class => 'ModelSEED::DB::ModelfbaReaction',
             column_map => { uuid => 'modelfba_uuid' },
             type      => 'one to many',
         },
     ],
 );
+
+
+
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }   
+});
+
 
 1;
 
