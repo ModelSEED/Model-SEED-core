@@ -653,12 +653,20 @@ sub change_compound {
 		minUptake => undef,
 		concentration => 0.001
 	});
+	my $restoreData = {
+		compound => $args->{compound}
+	};
 	my $mediacpds = $self->figmodel()->database()->get_objects("mediacpd",{MEDIA=>$self->id()});
 	for (my $i=0; $i < @{$mediacpds}; $i++) {
 		if ($mediacpds->[$i]->entity() eq $args->{compound}) {
+			$restoreData = {
+				compound => $args->{compound},
+				maxUptake => $mediacpds->[$i]->maxFlux(),
+				minUptake => $mediacpds->[$i]->minFlux(),
+				concentration => $mediacpds->[$i]->concentration()
+			};
 			if (!defined($args->{maxUptake})) {
-				$mediacpds->[$i]->delete();
-				return;	
+				$mediacpds->[$i]->delete();	
 			} else {
 				$mediacpds->[$i]->maxFlux($args->{maxUptake});
 				$mediacpds->[$i]->minFlux($args->{minUptake});
@@ -676,7 +684,8 @@ sub change_compound {
 			minFlux => $args->{minUptake}
 		});	
 	}
-	$self->loadCompoundsFromPPO();	
+	$self->loadCompoundsFromPPO();
+	return $restoreData;	
 }
 
 1;

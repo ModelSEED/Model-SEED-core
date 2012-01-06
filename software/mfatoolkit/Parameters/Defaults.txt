@@ -153,6 +153,7 @@ just print LP file|0|0|MFA parameters
 save gapfilling objective|0|0|MFA parameters
 Perform gap filling|0|0|MFA parameters
 Complete gap filling|0|0|MFA parameters
+Add DB reactions for gapfilling|0|0|MFA parameters
 Solve complete gapfilling only once|0|0|MFA parameters
 Gap filling runs|none|0|MFA parameters
 Balanced reactions in gap filling only|1|0|MFA parameters

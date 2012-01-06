@@ -1116,9 +1116,17 @@ Description:
 =cut
 sub get_new_temp_id {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,[],{
+		start => undef
+	});
 	my $newID;
 	my $largestID = 79999;
+	if (defined($args->{start})) {
+		if ($args->{start} =~ m/(\d+)/) {
+			$largestID = $1;
+		}
+		$largestID--;
+	}
 	my $objs = $self->figmodel()->database()->get_objects("reaction");
 	for (my $i=0; $i < @{$objs}; $i++) {
 		if (substr($objs->[$i]->id(),3) > $largestID) {
@@ -1730,10 +1738,19 @@ sub change_reactant {
 		compartment => "c",
 		coefficient => undef
 	});
+	my $restoreData = {
+		compound => $args->{compound},
+		compartment => $args->{compartment}
+	};
 	my $reactants = $self->substrates_from_equation({singleArray => 1});
 	my $found = 0;
 	for (my $i=0; $i < @{$reactants}; $i++) {
 		if ($reactants->[$i]->{DATABASE}->[0] eq $args->{compound} && $reactants->[$i]->{COMPARTMENT}->[0] eq $args->{compartment}) {
+			$restoreData = {
+				compound => $args->{compound},
+				compartment => $args->{compartment},
+				coefficient => $reactants->[$i]->{COEFFICIENT}->[0]
+			};
 			if (!defined($args->{coefficient}) || $args->{coefficient} == 0) {
 				splice(@{$reactants},$i,1);
 			} else {
@@ -1742,14 +1759,15 @@ sub change_reactant {
 			$found = 1;
 		}
 	}
-	if ($found == 0) {
+	if ($found == 0 && defined($args->{coefficient}) && $args->{coefficient} != 0) {
 		push(@{$reactants},{
 			DATABASE => [$args->{compound}],
 			COMPARTMENT => [$args->{compartment}],
 			COEFFICIENT => [$args->{coefficient}]
 		});
 	}
-	$self->translateReactantArrayToEquation({reactants => $reactants});	
+	$self->translateReactantArrayToEquation({reactants => $reactants});
+	return $restoreData;
 }
 =head3 translateReactantArrayToEquation
 Definition:

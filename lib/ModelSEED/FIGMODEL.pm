@@ -1043,7 +1043,7 @@ sub get_model {
 			id => $id
 		});
         if(defined($mdl) && UNIVERSAL::isa($mdl, "ModelSEED::FIGMODEL::FIGMODELmodel")) {
-            $self->setCache({key => $mdl->fullId(), data => $mdl});
+            $self->setCache({key => $mdl->id(), data => $mdl});
         }
     };
     if($@) {
@@ -2536,11 +2536,12 @@ sub import_model_file {
 		filename => undef,
 		biomassFile => undef,
 		genome => "NONE",
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"},
-		autoCompleteMedia => $args->{"autoCompleteMedia"}
+		owner => undef,
+		public => undef,
+		overwrite => 0,
+		provenance => undef,
+		autoCompleteMedia => "Complete",
+		generateprovenance => 1
 	});
 	if (!defined($args->{filename})) {
 		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
@@ -2578,15 +2579,21 @@ sub import_model_file {
 			autoCompleteMedia => $args->{autoCompleteMedia}
 		});
 		$modelObj = $mdl->ppo();
+		$mdl = $self->get_model($args->{id});
 	} elsif ($args->{overwrite} == 0) {
 		ModelSEED::globals::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
+		$mdl = $self->get_model($args->{id});
+		if ($args->{generateprovenance} == 1) {
+			$mdl->GenerateModelProvenance({
+			    biochemSource => $args->{biochemSource}
+			});
+		}
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
 			ModelSEED::globals::ERROR("No rights to alter model object");
 		}
 	}
-	$mdl = $self->get_model($args->{id});
 	if (!-defined($mdl)) {
 		ModelSEED::globals::ERROR("Could not load/create model ".$mdl."!");
 	}
@@ -2653,6 +2660,353 @@ sub import_model_file {
 #		});
 	}
 	return $modelObj;
+}
+=head3 import_biochem
+Definition:
+	Output:{} FIGMODEL->import_compounds({
+		figmodel => FIGMODEL::targetfigmodel(this),
+		compounds => FIGMODELTable::compound table(undef),
+		reactions => FIGMODELTable::reaction table(undef),
+		reactionstart => string(undef),
+		compoundstart => string(undef),
+		mdl => FIGMODELmodel(undef)
+	});
+	Output: {string => ID};
+Description:
+	Imports a table of compounds into the database
+=cut
+sub import_biochem {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args,[],{
+		figmodel => $self,
+		compounds => undef,
+		reactions => undef,
+		reactionstart => undef,
+		compoundstart => undef,
+		mdl => undef
+	});
+	my $id = "";
+	if (defined($args->{mdl})) {
+		$id = $args->{mdl}->id();
+	}
+	#Loading the compound table
+	my $translation = {};
+	if (defined($args->{compounds})) {
+		my $tbl = $args->{compounds};
+		for (my $i=0; $i < $tbl->size();$i++) {
+			my $row = $tbl->get_row($i);
+			if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
+				next;
+			}
+			#Finding if existing compound shares search name
+			my $cpd;
+			my $newStrings=();
+			foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
+			    next if $stringcode !~ /^InChI=/; #InChIs only
+			    my $cpdals = $args->{figmodel}->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
+			    if (defined($cpdals) && !defined($cpd)) {
+				$cpd =  $args->{figmodel}->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				print "Found using InChI string ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			    }
+			    if(!defined($cpdals)){
+				$newStrings->{$stringcode}=1;
+			    }
+			}
+	
+			my $newNames=();
+			for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
+			    if (length($row->{"NAMES"}->[$j]) > 0) {
+				my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
+				for (my $k=0; $k < @{$searchNames}; $k++) {
+				    #Look for searchname in original 'searchname' type
+				    my $cpdals = $args->{figmodel}->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
+				    
+				    #if not, look for it in previous imports
+				    if (!defined($cpdals)) {
+					my $cpdalss = $args->{figmodel}->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
+					for (my $m = 0; $m < @{$cpdalss}; $m++) {
+					    $cpdals = $cpdalss->[$m];
+					    last;
+					}
+				    }
+				    if (defined($cpdals)) {
+					if (!defined($cpd)) {
+					    $cpd = $args->{figmodel}->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+					    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+					}
+				    } else {
+					#prevent use of names that being with cpd, for obvious confusion
+					#with ModelSEED identifiers
+					next if substr($searchNames->[$k],0,3) eq "cpd";
+					
+					#stopgap to prevent names being inserted that are too close
+					#this occurs because the database doesn't recognize upper/lower case when
+					#using indexes
+					if(!exists($newNames->{search}->{$searchNames->[$k]})){
+					    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+					}
+					$newNames->{search}->{$searchNames->[$k]} = 1;
+					
+				    }
+				}
+			    }
+			}
+			if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
+				my $cpdals = $args->{figmodel}->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
+				if (defined($cpdals)) {
+					$cpd = 	$args->{figmodel}->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+					print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				}
+			}
+			if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
+				my $cpdals = $args->{figmodel}->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+				if (defined($cpdals)) {
+				    $cpd = $args->{figmodel}->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				    print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				}
+			}
+	
+			#If a matching compound was found, we handle this scenario
+			if (defined($cpd)) {
+			    my $Changes="";
+				if (defined($row->{"CHARGE"}->[0])){
+				    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
+					$Changes.="Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."\n";
+				    } 
+				    if (!$cpd->charge() || $cpd->charge() == 10000000){
+					$cpd->charge($row->{"CHARGE"}->[0]);
+				    }
+				}
+				if (defined($row->{"MASS"}->[0])){
+				    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0]){
+					$Changes.="Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]."\n";
+				    } 
+				    if (!$cpd->mass() || $cpd->mass() == 10000000){
+					$cpd->mass($row->{"MASS"}->[0]);
+				    }
+				}
+				if (defined($row->{"FORMULA"}->[0])){
+				    if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
+					$Changes.="Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]."\n";
+				    } 
+				    if (!defined($cpd->formula()) || length($cpd->formula()) == 0 || $cpd->formula() eq "noformula") {
+					$cpd->formula($row->{"FORMULA"}->[0]);
+				    }
+				}
+	
+				if (defined($row->{"STRINGCODE"}->[0])){
+				    if(defined($cpd->stringcode()) && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
+					$Changes.="Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]."\n";
+				    } 
+				    if (!defined($cpd->stringcode()) || length($cpd->stringcode()) == 0 || $cpd->stringcode() eq "nostringcode") {
+					$cpd->stringcode($row->{"STRINGCODE"}->[0]);
+				    }
+				}
+			    if(length($Changes)>0){
+				print $Changes;
+			    }
+			} else {
+			    my $newid = $args->{figmodel}->get_compound()->get_new_temp_id({start => $args->{compoundstart}});
+			    print "New ".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
+			    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
+				$row->{"MASS"}->[0] = 10000000;	
+			    }
+			    if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
+				$row->{"CHARGE"}->[0] = 10000000;	
+			    }
+			    if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
+				$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
+			    }
+			    if (!defined($row->{"FORMULA"}->[0]) || $row->{"FORMULA"}->[0] eq "") {
+				$row->{"FORMULA"}->[0] = "noformula";	
+			    }
+			    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
+				$row->{"STRINGCODE"}->[0] = "nostringcode";
+			    }
+			    $cpd = $args->{figmodel}->database()->create_object("compound",{
+				id => $newid,
+				name => $row->{"NAMES"}->[0],
+				abbrev => $row->{"ABBREV"}->[0],
+				mass => $row->{"MASS"}->[0],
+				charge => $row->{"CHARGE"}->[0],
+				stringcode => $row->{"STRINGCODE"}->[0],
+				formula => $row->{"FORMULA"}->[0],
+				deltaG => 10000000,
+				deltaGErr => 10000000,
+				owner => $args->{owner},
+				modificationDate => time(),
+				creationDate => time(),
+				public => 1,
+				scope => $id
+				});
+			}
+			foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
+			    $args->{figmodel}->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "name".$id, alias => $name});
+			}
+			foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{search}})) {
+			    $args->{figmodel}->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "searchname".$id, alias => $name});
+			}
+			foreach my $stringcode ( keys %$newStrings ){
+			    $args->{figmodel}->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "stringcode".$id, alias => $stringcode});
+			}
+			if (length($id) > 0) {
+				$args->{figmodel}->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
+			}
+			$translation->{$row->{"ID"}->[0]} = $cpd->id();
+		}
+	}
+	if (defined($args->{reactions})) {
+		my $tbl = $args->{reactions};
+		for (my $i=0; $i < $args->{reactions}->size();$i++) {
+			my $row = $tbl->get_row($i);
+			if (!defined($row->{"EQUATION"}->[0])) {
+				next;	
+			}
+			if (!defined($row->{"REFERENCE"})) {
+				$row->{"REFERENCE"}->[0] = "NONE";
+			}
+			if (!defined($row->{"COMPARTMENT"}->[0])) {
+				$row->{"COMPARTMENT"}->[0] = "c";
+			}
+			if (!defined($row->{"CONFIDENCE"}->[0])) {
+				$row->{"CONFIDENCE"}->[0] = "-1";
+			}
+			if (!defined($row->{"REFERENCE"}->[0])) {
+				$row->{"REFERENCE"}->[0] = "NONE";
+			}
+			if (!defined($row->{"NOTES"}->[0])) {
+				$row->{"NOTES"}->[0] = "NONE";
+			}
+			if (!defined($row->{"PEGS"}->[0])) {
+				$row->{"PEGS"}->[0] = "UNKNOWN";
+			}
+			if (!defined($row->{"NAMES"}->[0])) {
+				$row->{"NAMES"}->[0] = $row->{"ID"}->[0];
+			}
+			if (!defined($row->{"ABBREV"}->[0])) {
+				$row->{"ABBREV"}->[0] = $row->{"ID"}->[0];
+			}
+			if (!defined($row->{"ENZYMES"})) {
+				$row->{"ENZYMES"} = [];
+			}
+	
+			#Checking if there is an equation match
+			my $codeResults = $self->get_reaction()->createReactionCode({equation => $row->{"EQUATION"}->[0],translations => $translation});
+			if (defined($codeResults->{error})) {
+				delete $args->{error};
+				$self->new_error_message({message=> "Error mapping reaction for ".$row->{"ID"}->[0].":".$row->{"EQUATION"}->[0]."\tResulting Equation: ".$codeResults->{fullEquation}."\tResulting Error: ".$codeResults->{error},function => "import_model",args => $args});
+				next;
+			}
+			#Checking if this is a biomass reaction
+			if (defined($args->{mdl}) && $codeResults->{code} =~ m/cpd11416/) {
+				my $mdl = $args->{mdl};
+				my $newid;
+				if (defined($mdl->biomassReaction()) && length($mdl->biomassReaction()) > 0 && lc($mdl->biomassReaction()) ne "none") {
+				    print $mdl->biomassReaction(),"mdl\n";
+					$newid = $mdl->biomassReaction();
+				}
+				my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
+					equation => $codeResults->{fullEquation},
+					biomassID => $newid
+				});
+				$newid = $bofobj->id();
+				if ($mdl->ppo()->public() == 0 && $mdl->ppo()->owner() ne "master") {
+					$self->database()->change_permissions({
+						objectID => $newid,
+						permission => "admin",
+						user => $mdl->ppo()->owner(),
+						type => "bof"
+					});
+					$bofobj->public(0);
+					$bofobj->owner($mdl->ppo()->owner());
+				}
+				$mdl->biomassReaction($bofobj->id());			
+				$translation->{$row->{"ID"}->[0]} = $bofobj->id();
+				print "Created Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
+				next;
+			}
+			if (!defined($row->{"DIRECTIONALITY"}->[0])) {
+				$row->{"DIRECTIONALITY"}->[0] = $codeResults->{direction};
+			}
+			if (defined($codeResults->{compartment}) && $codeResults->{compartment} ne "c") {
+				$row->{"COMPARTMENT"}->[0] = $codeResults->{compartment};
+			}
+			if ($row->{"COMPARTMENT"}->[0] =~ m/\[(.)\]/) {
+				$row->{"COMPARTMENT"}->[0] = $1;
+			}
+			my $prior_eqn=$codeResults->{code};
+	
+			($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation}) = $self->ApplyStoichiometryCorrections($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation});
+	
+			my $rxn = $args->{figmodel}->database()->get_object("reaction",{code => $codeResults->{code}});
+			if (!defined($rxn)) {
+				$rxn = $args->{figmodel}->database()->get_object("reaction",{code => $codeResults->{reverseCode}});
+				if (defined($rxn)) {
+					if ($row->{"DIRECTIONALITY"}->[0] eq "=>") {
+						$row->{"DIRECTIONALITY"}->[0] = "<=";
+					} elsif ($row->{"DIRECTIONALITY"}->[0] eq "<=") {
+						$row->{"DIRECTIONALITY"}->[0] = "=>";
+					}
+				}
+			}
+			if (defined($rxn)) {
+				print "Found ".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
+				if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
+					$rxn->reversibility("<=>");
+				}
+				if (defined($row->{"ENZYMES"}->[0])) {
+					my $enzymeHash;
+					for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
+						if ($row->{"ENZYMES"}->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+							$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
+						}
+					}
+					if (defined($rxn->enzyme()) && length($rxn->enzyme()) > 0) {
+						my $list = [split(/\|/,$rxn->enzyme())];
+						for (my $j=0; $j < @{$list}; $j++) {
+							if ($list->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+								$enzymeHash->{$list->[$j]} = 1;
+							}
+						}
+					}
+					my $newString = join("|",sort(keys(%{$enzymeHash})));
+					if ($newString ne $rxn->enzyme()) {
+						$rxn->enzyme($newString);
+					}
+				}
+			} else {
+				my $newid = $args->{figmodel}->get_reaction()->get_new_temp_id({start => $args->{reactionstart}});
+				print "New ".$newid." for ".$row->{"ID"}->[0]." with code ".$codeResults->{code}."\n";
+				$rxn = $args->{figmodel}->database()->create_object("reaction",{
+					id => $newid,
+					name => $row->{"NAMES"}->[0],
+					abbrev => $row->{"ABBREV"}->[0],
+					enzyme => join("|",@{$row->{"ENZYMES"}}),
+					code => $codeResults->{code},
+					equation => $codeResults->{fullEquation},
+					definition => $row->{"EQUATION"}->[0],
+					deltaG => 10000000,
+					deltaGErr => 10000000,
+					reversibility => $row->{"DIRECTIONALITY"}->[0],
+					thermoReversibility => "<=>",
+					owner => $args->{owner},
+					modificationDate => time(),
+					creationDate => time(),
+					public => 1,
+					status => $codeResults->{status},
+					scope => $id
+				});
+			}
+			if (length($id) > 0) {
+				$args->{figmodel}->database()->create_object("rxnals",{
+					REACTION => $rxn->id(),
+					type => $id,
+					alias => $row->{"ID"}->[0]
+				});
+			}
+			$translation->{$row->{"ID"}->[0]} = $rxn->id();
+		}
+	}	
 }
 =head3 import_model
 Definition:

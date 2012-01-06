@@ -82,7 +82,7 @@ sub check {
 	my @calldata = caller(1);
 	my @temp = split(/:/,$calldata[3]);
     my $function = pop(@temp);
-	if (!defined($data) || @{$data} == 0) {
+	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
 		print $self->usage($function,$array);
 		$self->finish("USAGE PRINTED");
 	}
@@ -4644,7 +4644,7 @@ sub simulatekomedialist {
 	$input->{deleteNoncontributingRxn} = 0;
 	$input->{identifyCriticalBiomassCpd} = 0;
 	if (-e $self->ws()->directory().$args->{"obsFile"}) {
-		my $obs = $self->figmodel()->database()->load_single_column_file($args->{"obsFile"},"");
+		my $obs = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{"obsFile"},"");
 		for (my $i=1;$i < @{$obs}; $i++) {
 			my $array = [split(/\t/,$obs->[$i])];
 			$input->{observations}->{$array->[0]}->{$array->[1]} = $array->[2];
@@ -4655,12 +4655,12 @@ sub simulatekomedialist {
 	my $outputHash;
 	foreach my $label (keys(%{$result})) {
 		my $array = [split(/_/,$label)];
-		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction}];
-		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction}];
+		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction},$result->{$label}->{class}];
+		$outputHash->{$array->[0]}->{growth}->{$result->{$label}->{media}} = [$result->{$label}->{growth},$result->{$label}->{fraction},$result->{$label}->{class}];
 		$outputHash->{$array->[0]}->{geneKO} = $result->{$label}->{geneKO};
 		$outputHash->{$array->[0]}->{rxnKO} = $result->{$label}->{rxnKO};
 	}
-	my $output = ["Label\tKO list\tGene KO\tReaction KO\t ".join(" growth\t",@{$medias})." growth\t".join(" fraction\t",@{$medias})." fraction"];
+	my $output = ["Label\tKO list\tGene KO\tReaction KO\t ".join(" growth\t",@{$medias})." growth\t".join(" fraction\t",@{$medias})." fraction\t".join(" class\t",@{$medias})];
 	for (my $i=0; $i < @{$labels}; $i++) {
 		my $line = $labels->[$i]."\t".$kos->[$i]."\t";
 		if (!defined($outputHash->{$labels->[$i]})) {
@@ -4680,6 +4680,12 @@ sub simulatekomedialist {
 				$line .= $outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]}->[1];
 			}
 		}
+		for (my $j=0; $j < @{$medias}; $j++) {
+			$line .= "\t";
+			if (defined($outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]})) {
+				$line .= $outputHash->{$labels->[$i]}->{growth}->{$medias->[$j]}->[2];
+			}
+		}
 		push(@{$output},$line);
 	}
 	if (!defined($args->{"filename"})) {
@@ -4696,15 +4702,21 @@ sub simulatekomedialist {
 				if (defined($args->{compareReferences}->[$i])) {
 					if (defined($args->{compareTargets}->[$i])) {
 						if ($args->{compareTypes}->[$i] eq "model") {
-							my $refObj = $mdl->figmodel()->get_model($args->{compareReferences}->[$i]);
-							my $cmpObj = $mdl->figmodel()->get_model($args->{compareTargets}->[$i]);
-							my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+							my $refObj = $mdl;
+							my $cmpObj = $self->figmodel()->get_model($args->{compareTargets}->[$i]);
+							if (defined($input->{fbaStartParameters}->{model})) {
+								delete $input->{fbaStartParameters}->{model};
+							}
+							my $newresult = $cmpObj->fbaMultiplePhenotypeStudy($input);
 							push(@{$comparisonResults},{
 								type => "model",
 								id => $args->{compareReferences}->[$i],
 								change => $args->{compareTargets}->[$i],
 								changedResults => $newresult->{comparisonResults}
 							});
+							if (defined($input->{fbaStartParameters}->{model})) {
+								delete $input->{fbaStartParameters}->{model};
+							}
 							if ($args->{singlePerturbation} == 1) {
 								my $compresults = $refObj->compareModel({model => $cmpObj});
 								if (defined($compresults->{changedReactions})) {
@@ -5019,8 +5031,16 @@ sub printgapfilledreactions {
 		parameters => {id => "%.796"},
 		input => $args->{"models"}
 	});
+	#Clearing the current gapfilling DB
+	my $types = ["gapcpd","gapcpdgap","gapcpdmdl","gapcpdgapmdl","gaprxn","gapgapmdl","gapgaprep","gapgaprepmdl","gaprepmdl"];
+	for (my $i=0; $i < @{$types}; $i++) {
+		my $objs = $self->figmodel()->database()->get_objects($types->[$i]);
+		for (my $j=0; $j < @{$objs}; $j++) {
+			$objs->[$j]->delete();
+		}
+	}
 	print "Number of models: ".@{$results}."\n";
-	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap);
+	my ($modelStats,$modelGaps,$modelRxn,$actRxnTbl,$actMdlTbl,$nactMdlTbl,$gfMdlTbl,$ngfMdlTbl,$gfCpdTbl,$mdlCpdTbl,$modelCpd,$modelCpdGap,$mdlcpdgapHash,$mdlrxngapHash);
 	for (my $i=0; $i < @{$results}; $i++) {
 		if ($results->[$i] =~ m/Seed(\d+\.\d+)/) {
 			print "Processing model ".$results->[$i]."\n";
@@ -5083,6 +5103,7 @@ sub printgapfilledreactions {
 						@array = /(cpd\d+)/g;
 						for (my $k=0; $k < @array; $k++) {
 							$mdlCpdTbl->{$results->[$i]}->{$array[$k]}++;
+							$mdlcpdgapHash->{$results->[$i]}->{$array[$k]}->{$rxns->[$j]->REACTION()} = 1;
 							if (!defined($gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]})) {
 								$gfCpdTbl->{$rxns->[$j]->REACTION()}->{$array[$k]} = 0;
 							}
@@ -5095,6 +5116,7 @@ sub printgapfilledreactions {
 							if (!defined($actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
 								$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()} = 0;
 							}
+							$mdlrxngapHash->{$results->[$i]}->{$array[$k]}->{$rxns->[$j]->REACTION()} = 1;
 							$actRxnTbl->{$array[$k]}->{$rxns->[$j]->REACTION()}++;
 							if (!defined($gapfilledHash->{$array[$k]})) {
 								if (!defined($tempRxnGapHash->{$array[$k]}->{$rxns->[$j]->REACTION()})) {
@@ -5137,6 +5159,28 @@ sub printgapfilledreactions {
 			}
 		}
 	}
+	foreach my $mdl (keys(%{$mdlrxngapHash})) {
+		foreach my $rxn (keys(%{$mdlrxngapHash->{$mdl}})) {
+			foreach my $gap (keys(%{$mdlrxngapHash->{$mdl}->{$rxn}})) {
+				$self->figmodel()->database()->create_object("gapgaprepmdl",{
+					gapid => $gap,
+					repid => $rxn,
+					model => $mdl
+				});
+			}	
+		}
+	}
+	foreach my $mdl (keys(%{$mdlcpdgapHash})) {
+		foreach my $cpd (keys(%{$mdlcpdgapHash->{$mdl}})) {
+			foreach my $gap (keys(%{$mdlcpdgapHash->{$mdl}->{$cpd}})) {
+				$self->figmodel()->database()->create_object("gapcpdgapmdl",{
+					gapid => $gap,
+					cpdid => $cpd,
+					model => $mdl
+				});
+			}	
+		}
+	}
 	#Populating and printing model stats
 	my $modelList = [keys(%{$modelStats})];
 	my $fileData = {
@@ -5153,6 +5197,7 @@ sub printgapfilledreactions {
 	$fileData = {
 		"NumModelPerActRxnPerGap.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$gapRxnList})]
 	};
+	my $repstats;
 	foreach my $rxn (keys(%{$modelRxn})) {
 		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
 		if (defined($modelGaps->{$rxn})) {
@@ -5160,12 +5205,32 @@ sub printgapfilledreactions {
 		} else {
 			$line .= "0";
 		}
+		$repstats->{$rxn}->{averepair} = 0;
+		$repstats->{$rxn}->{minrepair} = 10000;
+		$repstats->{$rxn}->{maxrepair} = 0;
+		my $count = 0;
 		for (my $i=0; $i < @{$gapRxnList}; $i++) {
 			if (defined($actRxnTbl->{$rxn}->{$gapRxnList->[$i]})) {
+				$count++;
+				$repstats->{$rxn}->{averepair} += $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				$self->figmodel()->database()->create_object("gapgaprep",{
+					gapid => $gapRxnList->[$i],
+					repid => $rxn,
+					nummodel => $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}
+				});
 				$line .= "\t".$actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				if ($repstats->{$rxn}->{minrepair} > $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}) {
+					$repstats->{$rxn}->{minrepair} = $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				}
+				if ($repstats->{$rxn}->{maxrepair} < $actRxnTbl->{$rxn}->{$gapRxnList->[$i]}) {
+					$repstats->{$rxn}->{maxrepair} = $actRxnTbl->{$rxn}->{$gapRxnList->[$i]};
+				}
 			} else {
 				$line .= "\t0";
 			}
+		}
+		if ($count > 0) {
+			$repstats->{$rxn}->{averepair} = $repstats->{$rxn}->{averepair}/$count;
 		}
 		push(@{$fileData->{"NumModelPerActRxnPerGap.tbl"}},$line);
 	}
@@ -5178,24 +5243,60 @@ sub printgapfilledreactions {
 		"NormNumGapPerActRxnPerModel.tbl" => ["Model reaction\tModels with rxn\tModels with gap\t".join("\t",@{$modelList})]
 	};
 	foreach my $rxn (keys(%{$modelRxn})) {
+		my $gapmdl = 0;
 		my $line = $rxn."\t".$modelRxn->{$rxn}."\t";
 		if (defined($modelGaps->{$rxn})) {
 			$line .= $modelGaps->{$rxn};
+			$gapmdl = $modelGaps->{$rxn};
 		} else {
 			$line .= "0";
 		}
 		my $lineTwo = $line;
+		my $avegap = 0;
+		my $count = 0;
+		my $mingap = 10000;
+		my $maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($actMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$count++;
+				$avegap += $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				$self->figmodel()->database()->create_object("gaprepmdl",{
+					repid => $rxn,
+					model => $modelList->[$i],
+					numgap => $nactMdlTbl->{$rxn}->{$modelList->[$i]},
+					normnumgap => $nactMdlTbl->{$rxn}->{$modelList->[$i]}
+				});
 				$line .= "\t".$actMdlTbl->{$rxn}->{$modelList->[$i]};
 				$lineTwo .= "\t".$nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				if ($mingap > $nactMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$mingap = $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
+				if ($maxgap < $nactMdlTbl->{$rxn}->{$modelList->[$i]}) {
+					$maxgap = $nactMdlTbl->{$rxn}->{$modelList->[$i]};
+				}
 			} else {
 				$line .= "\tN";
 				$lineTwo .= "\tN";
 			}
 		}
+		if ($count > 0) {
+			$avegap = $avegap/$count;
+		}
 		push(@{$fileData->{"NumGapPerActRxnPerModel.tbl"}},$line);
 		push(@{$fileData->{"NormNumGapPerActRxnPerModel.tbl"}},$lineTwo);
+		my $annomodels = keys(%{$actMdlTbl->{$rxn}});
+		$self->figmodel()->database()->create_object("gaprxn",{
+			id => $rxn,
+			nummodels => $modelRxn->{$rxn},
+			annomodels => $annomodels,
+			gapmodels => $gapmdl,
+			averepair => $repstats->{$rxn}->{averepair},
+			minrepair => $repstats->{$rxn}->{minrepair},
+			maxrepair => $repstats->{$rxn}->{maxrepair},
+			avegap => $avegap,
+			mingap => $mingap,
+			maxgap => $maxgap
+		});
 	}
 	foreach my $filename (keys(%{$fileData})) {
 		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
@@ -5210,6 +5311,12 @@ sub printgapfilledreactions {
 		my $lineTwo = $line;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($gfMdlTbl->{$rxn}->{$modelList->[$i]})) {
+				$self->figmodel()->database()->create_object("gapgapmdl",{
+					gapid => $rxn,
+					model => $modelList->[$i],
+					numrep => $gfMdlTbl->{$rxn}->{$modelList->[$i]},
+					normnumrep => $ngfMdlTbl->{$rxn}->{$modelList->[$i]}
+				});
 				$line .= "\t".$gfMdlTbl->{$rxn}->{$modelList->[$i]};
 				$lineTwo .= "\t".$ngfMdlTbl->{$rxn}->{$modelList->[$i]};
 			} else {
@@ -5228,20 +5335,51 @@ sub printgapfilledreactions {
 		"NumGapPerBioCpdPerModel.tbl" => ["Biomass compound\tModels with cpd\tModels with gf cpd\t".join("\t",@{$modelList})]
 	};
 	foreach my $cpd (keys(%{$modelCpd})) {
+		my $gapmdl;
 		my $line = $cpd."\t".$modelCpd->{$cpd}."\t";
 		if (defined($modelCpdGap->{$cpd})) {
 			$line .= $modelCpdGap->{$cpd};
+			$gapmdl = $modelCpdGap->{$cpd};
 		} else {
 			$line .= "0";
+			$gapmdl = 0;
 		}
+		my $count = 0;
+		my $avegap = 0;
+		my $mingap = 1000000;
+		my $maxgap = 0;
 		for (my $i=0; $i < @{$modelList}; $i++) {
 			if (defined($mdlCpdTbl->{$modelList->[$i]}->{$cpd})) {
+				$avegap += $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+				$count++;
+				$self->figmodel()->database()->create_object("gapcpdmdl",{
+					cpdid => $cpd,
+					model => $modelList->[$i],
+					numgap => $mdlCpdTbl->{$modelList->[$i]}->{$cpd}
+				});
 				$line .= "\t".$mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+				if ($mingap > $mdlCpdTbl->{$modelList->[$i]}->{$cpd}) {
+					$mingap = $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+				}
+				if ($maxgap < $mdlCpdTbl->{$modelList->[$i]}->{$cpd}) {
+					$maxgap = $mdlCpdTbl->{$modelList->[$i]}->{$cpd};
+				}
 			} else {
 				$line .= "\tN";
 			}
 		}
+		if ($count > 0) {
+			$avegap = $avegap/$count;
+		}
 		push(@{$fileData->{"NumGapPerBioCpdPerModel.tbl"}},$line);
+		$self->figmodel()->database()->create_object("gapcpd",{
+			id => $cpd,
+			nummodels => $modelCpd->{$cpd},
+			gapmodels => $gapmdl,
+			avegap => $avegap,
+			mingap => $mingap,
+			maxgap => $maxgap
+		});
 	}
 	foreach my $filename (keys(%{$fileData})) {
 		$self->figmodel()->database()->print_array_to_file($self->outputdirectory().$filename,$fileData->{$filename});
@@ -5259,6 +5397,11 @@ sub printgapfilledreactions {
 		}
 		for (my $i=0; $i < @{$gapRxnList}; $i++) {
 			if (defined($gfCpdTbl->{$gapRxnList->[$i]}->{$cpd})) {
+				$self->figmodel()->database()->create_object("gapcpdgap",{
+					cpdid => $cpd,
+					gapid => $gapRxnList->[$i],
+					nummodel => $gfCpdTbl->{$gapRxnList->[$i]}->{$cpd}
+				});
 				$line .= "\t".$gfCpdTbl->{$gapRxnList->[$i]}->{$cpd};
 			} else {
 				$line .= "\t0";
@@ -5627,6 +5770,7 @@ sub fbacheckgrowth {
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
 		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
 	],[@Data],"tests if a model is growing under a specific media");
+	$args->{media} =~ s/\_/ /g;
 	my $models = $self->figmodel()->processIDList({
 		objectType => "model",
 		delimiter => ",",
@@ -5670,6 +5814,198 @@ sub fbacheckgrowth {
 		}
 	}
 	return $message;
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function simulates phenotype data
+=EXAMPLE
+fbasimphenotypes '''-model''' iJR904 -phenotypes InPhenotype.lst
+=cut
+sub fbasimphenotypes {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["phenotypes",1,undef,"List of phenotypes to be simulated"],
+		["modifications",0,undef,"List of modifications to be tested"],
+		["accumulateChanges",0,undef,"Accumulate changes that have no effect"],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
+	],[@Data],"tests if a model is growing under a specific media");
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    my $data = ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{phenotypes});
+	my $input = {
+		fbaStartParameters => {},
+		findTightBounds => 0,
+		deleteNoncontributingRxn => 0,
+		identifyCriticalBiomassCpd => 0
+	};
+	my $phenotypes;
+	my $labelArray;
+	for (my $i=1; $i < @{$data}; $i++) {
+		my $array = [split(/\t/,$data->[$i])];
+		push(@{$input->{labels}},$array->[0]."_".$array->[2]);
+		push(@{$input->{mediaList}},$array->[2]);
+		push(@{$input->{koList}},[split(",",$array->[1])]);
+		$phenotypes->{$array->[0]."_".$array->[2]} = {
+			label => $array->[0],
+			growth => $array->[3],
+			media => $array->[2],
+			ko => $array->[1]
+		};
+		$input->{observations}->{$array->[0]}->{$array->[2]} = $array->[3];
+	}
+	my $result = $mdl->fbaMultiplePhenotypeStudy($input);
+	$input->{comparisonResults} = $result;
+	my $comparisonResults;
+	if (defined($args->{modifications})) {
+		#Parsing specified modifications
+		my $mods;
+		$data = ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{modifications});
+		my $current = 0;
+		for (my $i=1; $i < @{$data}; $i++) {
+			my $array = [split(/\t/,$data->[$i])];
+			if ($array->[4] eq "new" && $i > 1) {
+				$current++;
+			}
+			push(@{$mods->[$current]},{
+				type => $array->[0],
+				id => $array->[1],
+				attribute => $array->[2],
+				value => $array->[3]
+			});
+		}
+		#Implementing and testing each set of modifications
+		for (my $i=0; $i < @{$mods}; $i++) {
+			for (my $j=0; $j < @{$mods->[$i]}; $j++) {
+				if ($mods->[$i]->[$j]->{type} eq "model") {
+					my $changeInput = {reaction => $mods->[$i]->[$j]->{id},compartment => "c"};
+					if ($changeInput->{reaction} =~ m/(rxn.+)\[(.+)\]$/) {
+						$changeInput->{reaction} = $1;
+						$changeInput->{compartment} = $2;
+					}
+					if ($mods->[$i]->[$j]->{attribute} ne "remove") {
+						my $attArray = [split(/;/,$mods->[$i]->[$j]->{attribute})];
+						my $valArray = [split(/;/,$mods->[$i]->[$j]->{value})];
+						for (my $k=0; $k < @{$attArray}; $k++) {
+							$changeInput->{$attArray->[$k]} = $valArray->[$k]
+						}
+					}
+					$mods->[$i]->[$j]->{restoreInput} = $mdl->change_reaction($changeInput);
+				} elsif ($mods->[$i]->[$j]->{type} eq "media") {
+					my $array = [split(/\:/,$mods->[$i]->[$j]->{id})];
+					my $mediaObj = $mdl->figmodel()->get_media($array->[0]);
+					my $changeInput = {compound => $array->[1]};
+					if ($mods->[$i]->[$j]->{attribute} eq "uptake" && $mods->[$i]->[$j]->{value} != 0) {
+						$changeInput->{maxUptake} = $mods->[$i]->[$j]->{value};
+						$changeInput->{minUptake} = -100;
+					}
+					$mods->[$i]->[$j]->{restoreInput} = $mediaObj->change_compound($changeInput);
+				} elsif ($mods->[$i]->[$j]->{type} eq "bof") {
+					my $changeInput = {compound => $mods->[$i]->[$j]->{id},compartment => "c"};
+					if ($changeInput->{compound} =~ m/(cpd.+)\[(.+)\]$/) {
+						$changeInput->{compound} = $1;
+						$changeInput->{compartment} = $2;
+					}
+					if ($mods->[$i]->[$j]->{value} != 0) {
+						$changeInput->{coefficient} = $mods->[$i]->[$j]->{value};
+					}
+					my $bofObj = $mdl->figmodel()->get_reaction($mdl->biomassReaction());
+					$mods->[$i]->[$j]->{restoreInput} = $bofObj->change_reactant($changeInput);
+				}
+			}
+			my $newresult = $mdl->fbaMultiplePhenotypeStudy($input);
+			if ($args->{accumulateChanges} == 0 ||  $newresult->{comparisonResults}->{"new FP"}->{intervals} > 0 || $newresult->{comparisonResults}->{"new FN"}->{intervals} > 0) {
+				push(@{$comparisonResults},{
+					status => "rolledback",
+					changes => $mods->[$i],
+					changedResults => $newresult->{comparisonResults}
+				});
+				for (my $j=0; $j < @{$mods->[$i]}; $j++) {
+					if ($mods->[$i]->[$j]->{type} eq "model") {
+						$mdl->change_reaction($mods->[$i]->[$j]->{restoreInput});
+					} elsif ($mods->[$i]->[$j]->{type} eq "media") {
+						my $array = [split(/\:/,$mods->[$i]->[$j]->{id})];
+						my $mediaObj = $mdl->figmodel()->get_media($array->[0]);
+						$mediaObj->change_compound($mods->[$i]->[$j]->{restoreInput});
+					} elsif ($mods->[$i]->[$j]->{type} eq "bof") {
+						my $bofObj = $mdl->figmodel()->get_reaction($mdl->biomassReaction());
+						$bofObj->change_reactant($mods->[$i]->[$j]->{restoreInput});
+					}
+				}
+			} else {
+				push(@{$comparisonResults},{
+					status => "retained",
+					changes => $mods->[$i],
+					changedResults => $newresult->{comparisonResults}
+				});	
+			}
+		}
+		my $comparisonOutput = ["New set\tType\tID\tAttribute\tValue\tStatus\tTotal intervals\tTotal phenotypes\tNew FP\tNew FN\tNew CP\tNew CN\t0 to 1\t1 to 0\tNew FP\tNew FN\tNew CP\tNew CN\t0 to 1\t1 to 0\tNew FP\tNew FN\tNew CP\tNew CN\t0 to 1\t1 to 0"];
+		my $changeTypes = ["new FP","new FN","new CP","new CN","0 to 1","1 to 0"];
+		for (my $i=0; $i < @{$comparisonResults}; $i++) {
+			for (my $j=0; $j < @{$comparisonResults->[$i]->{changes}}; $j++) {
+				my $line = $i."\t".$comparisonResults->[$i]->{changes}->[$j]->{type}."\t".$comparisonResults->[$i]->{changes}->[$j]->{id}
+					."\t".$comparisonResults->[$i]->{changes}->[$j]->{attribute}."\t".$comparisonResults->[$i]->{changes}->[$j]->{value}
+					."\t".$comparisonResults->[$i]->{status}."\t".$comparisonResults->[$i]->{changedResults}->{"Total intervals"}
+					."\t".$comparisonResults->[$i]->{changedResults}->{"Total phenotypes"};
+				for (my $k=0; $k < @{$changeTypes};$k++) {
+					$line .= "\t".$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{intervals}."|".$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{phenotypes};
+				}
+				for (my $k=0; $k < @{$changeTypes};$k++) {
+					$line .= "\t";
+					if (defined($comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{media})) {
+						my $start = 1;
+						foreach my $media (keys(%{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{media}})) {
+							if ($start != 1) {
+								$line .= "|";	
+							}
+							$line .= $media.":".join(";",@{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{media}->{$media}});
+							$start = 0;
+						}
+					}
+				}		
+				for (my $k=0; $k < @{$changeTypes};$k++) {
+					$line .= "\t";
+					if (defined($comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{label})) {
+						my $start = 1;
+						foreach my $strain (keys(%{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{label}})) {
+							if ($start != 1) {
+								$line .= "|";	
+							}
+							$line .= $strain.":".join(";",@{$comparisonResults->[$i]->{changedResults}->{$changeTypes->[$k]}->{label}->{$strain}});
+							$start = 0;
+						}
+					}
+				}
+				push(@{$comparisonOutput},$line);
+			}
+		}
+		$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{model}."-Comparison.tbl",$comparisonOutput);
+	}
+	my $output = ["Label\tStrain\tGene KO\tReaction KO\tPredicted growth\tPredicted fraction\tObserved growth\tClass"];
+	foreach my $label (@{$input->{labels}}) {
+		my $line = $label."\t".$phenotypes->{$label}->{label}."\t".$phenotypes->{$label}->{ko}."\t";
+		if (defined($result->{$label})) {
+			$line .= $result->{$label}->{rxnKO}."\t".$result->{$label}->{growth}."\t".$result->{$label}->{fraction}."\t";
+			$line .= $phenotypes->{$label}->{growth}."\t".$result->{$label}->{class};
+		} else {
+			$line .= "NA\tNA\tNA\t".$phenotypes->{$label}->{growth}."\tNA";
+		}
+		push(@{$output},$line);
+	}
+	ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-Phenotypes.tbl",$output);
 }
 
 =head
@@ -5796,6 +6132,7 @@ sub fbafva {
 		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
 		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
 	],[@Data],"performs FVA (Flux Variability Analysis) studies");
+	$args->{media} =~ s/\_/ /g;
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
@@ -6149,7 +6486,45 @@ sub bcloadmedia {
     $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
     return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
 }
-
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Imports a models from other databases into the Model SEED environment.
+=EXAMPLE
+./bcaddbiochemistry -reactions reactions.tbl -compounds compounds.tbl
+=cut
+sub bcaddbiochemistry {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+    	["reactions",0,undef,"Name of a file containing reaction definitions"],
+    	["compounds",0,undef,"Name of a file containing compound definitions"],
+    	["rxnstart",0,"rxn90000","Starting ID space for new reactions"],
+    	["cpdstart",0,"cpd90000","Starting ID space for new compounds"],
+    ],[@Data],"imports new reactions and compounds to the database");
+	my $rxntbl;
+	my $cpdtbl;
+	if (defined($args->{reactions})) {
+		if (!-e $self->ws()->directory().$args->{reactions}) {
+			ModelSEED::globals::ERROR("Reaction file ".$self->ws()->directory().$args->{reactions}." not found!");
+		}
+		$rxntbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->ws()->directory().$args->{reactions},"\t","|",0,["ID"]);
+	}
+	if (defined($args->{compounds})) {
+		if (!-e $self->ws()->directory().$args->{compounds}) {
+			ModelSEED::globals::ERROR("Compound file ".$self->ws()->directory().$args->{compounds}." not found!");
+		}
+		$cpdtbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->ws()->directory().$args->{compounds},"\t","|",0,["ID"]);
+	}
+	$self->figmodel()->import_biochem({
+		figmodel => $self->figmodel(),
+		compounds => $cpdtbl,
+		reactions => $rxntbl,
+		reactionstart => $args->{rxnstart},
+		compoundstart => $args->{cpdstart}
+	});
+	return "SUCCESS";
+}
 =head
 =CATEGORY
 Metabolic Model Operations
@@ -6174,6 +6549,7 @@ sub mdlautocomplete {
 		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
 		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
 	],[@Data],"adds reactions to the model to eliminate inactive reactions");
+    $args->{media} =~ s/\_/ /g;
     #Getting model list
     my $models = $self->figmodel()->processIDList({
 		objectType => "model",
@@ -6586,6 +6962,7 @@ sub mdlloadmodel {
 	my $args = $self->check([
 		["name",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
     	["genome",0,undef,"The SEED genome ID associated with the model to be loaded."],
+    	["generateprovenance",0,1,"Regenerate provenance from the database"],
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
     	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
     	["owner",0,$self->figmodel()->user(),"The login name of the user that should own the loaded model"],
@@ -6896,17 +7273,31 @@ Temporary
 =DESCRIPTION
 =EXAMPLE
 =cut
-sub cleandb {
+sub coordtogenes {
     my($self,@Data) = @_;
     my $args = $self->check([
-    ],[@Data],"cleandb");
-	my $objs = $self->figmodel()->database()->get_objects("cpxrole");
-	for (my $i=0; $i < @{$objs}; $i++) {
-		my $obj = $self->figmodel()->database()->get_objects("role",{id=>$objs->[$i]->ROLE()});
-		if (!defined($obj)) {
-			print $objs->[$i]->ROLE()."\n";
+    	["filename",1,undef,"Filename"]
+    ],[@Data],"coordtogenes");
+	my $data = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{filename});
+	my $genes;
+	my $mdl = $self->figmodel()->get_model("iBsuNew.796");
+	my $features = $mdl->provenanceFeatureTable();
+	for (my $i=1; $i < @{$data}; $i++) {
+		my $array = [split(/\t/,$data->[$i])];
+		my $geneList;
+		for (my $j=0; $j < $features->size(); $j++) {
+			my $row = $features->get_row($j);
+			if ($row->{"MIN LOCATION"}->[0] < $array->[1]) {
+				if ($row->{"MAX LOCATION"}->[0] > $array->[0]) {
+					if ($row->{ID}->[0] =~ m/(peg\.\d+)/) {
+						push(@{$geneList},$1);
+					}	
+				}
+			}
 		}
+		push(@{$genes},join(",",@{$geneList}));
 	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory()."GeneList.lst",$genes);
 	return "SUCCESS";
 }
 
