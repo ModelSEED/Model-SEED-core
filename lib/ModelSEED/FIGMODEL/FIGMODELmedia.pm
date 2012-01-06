@@ -34,7 +34,7 @@ sub new {
 		});
 		if (!defined($medias->{$self->{_id}})) {
 			if ($self->{_id} eq "Empty") {
-				$medias->{$self->{_id}} = $self->figmodel()->database()->create_object("media",{
+				$medias->{$self->{_id}}->[0] = $self->figmodel()->database()->create_object("media",{
 					id => "Empty",
 					owner => "master",
 					modificationDate => time(),
