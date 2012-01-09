@@ -12,6 +12,7 @@ use strict;
 use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
+use Getopt::Long qw(GetOptionsFromArray);
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
@@ -5593,7 +5594,13 @@ sub mslistworkspace {
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
-This command is used to login as a user in the Model SEED environment. If you have a SEED account already, use those credentials to log in here. Your account information will automatically be imported and used locally. You will remain logged in until you use either the '''mslogin''' or '''mslogout''' command. Once you login, you will automatically switch to the current workspace for the account you log into.
+This command is used to login as a user in the Model SEED environment.
+If you have a SEED account already, use those credentials to log
+in here. Your account information will automatically be imported
+and used locally. You will remain logged in until you use either
+the '''mslogin''' or '''mslogout''' command. Once you login, you
+will automatically switch to the current workspace for the account
+you log into.
 =EXAMPLE
 ./mslogin -username public -password public
 =cut
@@ -5655,9 +5662,37 @@ sub mslogin {
 
 =head
 =CATEGORY
+Workpsace Operations
+=DESCRIPTION
+This function will tell the user what account is currently logged
+into the Model SEED environment. Use -v flag for a detailed description
+including currently active workspace.
+=EXAMPLE
+./ms-whoami
+=cut
+sub mswhoami {
+    my ($self, @Data) = @_;
+    #my $args = $self->check([["verbose"]], [@Data], "print the currently logged in user in the environment");
+    my $username = $self->figmodel()->user();
+    return "No logged in user" unless(defined($username));
+    my $str = $username;
+    #if($args->{v}) {
+    #    my $ws = $self->figmodel()->ws()->id();
+    #    $str = "Currently logged in as: $username\nwith workspace: $ws\n";
+    #}
+    return $str;
+}
+    
+    
+    
+
+=head
+=CATEGORY
 Workspace Operations
 =DESCRIPTION
-This function is used to log a user out of the Model SEED environment. Effectively, this switches the currently logged user to the "public" account and switches to the current workspace for the public account.
+This function is used to log a user out of the Model SEED environment.
+Effectively, this switches the currently logged user to the "public"
+account and switches to the current workspace for the public account.
 =EXAMPLE
 ./mslogout
 =cut
