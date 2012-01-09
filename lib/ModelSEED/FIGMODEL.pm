@@ -2617,6 +2617,9 @@ sub import_model_file {
 			compartment => $row->{COMPARTMENT}->[0]
 		});
 		if (!defined($rxnObj)) {
+			if ($row->{CONFIDENCE}->[0] !~ m/^\d+$/) {
+				$row->{CONFIDENCE}->[0] = 3;	
+			}
 			$self->database()->create_object("rxnmdl",{
 				REACTION => $row->{LOAD}->[0],
 				MODEL => $args->{id},

@@ -6981,7 +6981,8 @@ sub mdlloadmodel {
 		public => $args->{"public"},
 		overwrite => $args->{"overwrite"},
 		provenance => $args->{"provenance"},
-		autoCompleteMedia => $args->{"autoCompleteMedia"}
+		autoCompleteMedia => $args->{"autoCompleteMedia"},
+		generateprovenance => $args->{"generateprovenance"}
 	});
 	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
 }

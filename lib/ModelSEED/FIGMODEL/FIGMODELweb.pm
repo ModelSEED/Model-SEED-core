@@ -1092,4 +1092,19 @@ sub printMediaCompounds {
     return join(", ",@{$output});
 }
 
+sub display_hash_data {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["hash","data","key"],{seckey => undef,tertkey => undef});
+	if (!defined($args->{hash}->{$args->{data}})) {
+		return "NA";
+	}
+	my $output = $args->{hash}->{$args->{data}}->{$args->{key}};
+	if (defined($args->{tertkey})) {
+		$output .= "/".$args->{hash}->{$args->{data}}->{$args->{seckey}}."/".$args->{hash}->{$args->{data}}->{$args->{tertkey}};
+	} elsif (defined($args->{seckey})) {
+		$output .= " (".$args->{hash}->{$args->{data}}->{$args->{seckey}}.")";
+	}
+	return $output;
+}
+
 1;

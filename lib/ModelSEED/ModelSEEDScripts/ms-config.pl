@@ -304,6 +304,7 @@ SCRIPT
 		"fba-singleko",
 		"fba-fva",
 		"fba-minimalmedia",
+		"fba-simphenotypes",
 		"bc-addbiochemistry",
 		"bc-printmedia",
 		"bc-loadmedia",

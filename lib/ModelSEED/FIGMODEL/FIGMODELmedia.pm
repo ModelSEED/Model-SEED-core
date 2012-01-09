@@ -33,8 +33,20 @@ sub new {
 			useCache => 1
 		});
 		if (!defined($medias->{$self->{_id}})) {
-			ModelSEED::globals::WARNING("Could not find media in database:".$args->{id});
-			return undef;
+			if ($self->{_id} eq "Empty") {
+				$medias->{$self->{_id}}->[0] = $self->figmodel()->database()->create_object("media",{
+					id => "Empty",
+					owner => "master",
+					modificationDate => time(),
+					creationDate => time(),
+					aliases => "",
+					aerobic => 0,
+					public => 1
+				});
+			} else {
+				ModelSEED::globals::WARNING("Could not find media in database:".$args->{id});
+				return undef;
+			}
 		}
 		$self->{_ppo} = $medias->{$self->{_id}}->[0];
 	}
