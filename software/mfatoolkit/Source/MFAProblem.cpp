@@ -7048,7 +7048,50 @@ int MFAProblem::GapGeneration(Data* InData, OptimizationParameter* InParameters)
 				}
 			}
 		}
-	} else {
+	}
+	//Implementing KO of gapgen
+	vector<string> gapgenRxn;
+	string KO = GetParameter("Gap generation KO genes");
+	if (KO.length() > 0 && KO.compare("none") != 0) {
+		vector<string>* Strings = StringToStrings(KO,";,");
+		for (int i=0; i < InData->FNumGenes(); i++) {
+			InData->GetGene(i)->SetMark(false);
+		}
+		for (int i=0; i < int(Strings->size()); i++) {
+			Gene* Temp = InData->FindGene("DATABASE",(*Strings)[i].data());
+			if (Temp != NULL) {
+				Temp->SetMark(true);
+			}
+		}
+		for (int j=0; j < InData->FNumReactions(); j++) {
+			if (InData->GetReaction(j)->CheckForKO()) {
+				gapgenRxn.push_back(InData->GetReaction(j)->GetData("DATABASE",STRING));
+			}
+		}
+		for (int i=0; i < InData->FNumGenes(); i++) {
+			InData->GetGene(i)->SetMark(false);
+		}
+		delete Strings;
+	}
+	KO = GetParameter("Gap generation KO reactions");
+	if (KO.length() > 0 && KO.compare("none") != 0) {
+		vector<string>* Strings = StringToStrings(KO,";,");
+		for (int i=0; i < int(Strings->size()); i++) {
+			gapgenRxn.push_back((*Strings)[i]);
+		}
+		delete Strings;
+	}
+	for (int i=0; i < int(gapgenRxn.size()); i++) {
+		for (int j=0; j < int(SecondNetworkVariables.size()); j++) {
+			if (SecondNetworkVariables[j]->Type == FLUX || SecondNetworkVariables[j]->Type == FORWARD_FLUX || SecondNetworkVariables[j]->Type == REVERSE_FLUX) {
+				if (SecondNetworkVariables[j]->AssociatedReaction != NULL && SecondNetworkVariables[j]->AssociatedReaction->GetData("DATABASE",STRING).compare(gapgenRxn[i]) == 0) {
+					SecondNetworkVariables[j]->UpperBound = 0;
+					SecondNetworkVariables[j]->LowerBound = 0;
+				}
+			}
+		}
+	}
+	if (GetParameter("Gap generation media").compare(GetParameter("user bounds filename")) != 0 && GetParameter("Gap generation media").compare("none") != 0) {
 		//Undoing the previous media settings
 		for (int i=0; i < NumOriginalVariables; i++) {
 			if (GetVariable(i)->Type == DRAIN_FLUX) {
@@ -7079,48 +7122,45 @@ int MFAProblem::GapGeneration(Data* InData, OptimizationParameter* InParameters)
 			}
 		}
 		//Loading gap generation media
-		string Filename = GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("Gap generation media");
-		if (FileExists(Filename)) {
-			FileBounds* NewBounds = ReadBounds(Filename.data());
-			for (int i=0; i < int(NewBounds->VarName.size()); i++) {
-				if (NewBounds->VarType[i] == DRAIN_FLUX) {
-					Species* MediaSpecies = InData->FindSpecies("DATABASE;ENTRY;NAME",NewBounds->VarName[i].data());
-					if (MediaSpecies != NULL) {
-						MFAVariable* TempVariable = MediaSpecies->GetMFAVar(DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
+		FileBounds* NewBounds = ReadBounds(GetParameter("Gap generation media"));
+		for (int i=0; i < int(NewBounds->VarName.size()); i++) {
+			if (NewBounds->VarType[i] == DRAIN_FLUX) {
+				Species* MediaSpecies = InData->FindSpecies("DATABASE;ENTRY;NAME",NewBounds->VarName[i].data());
+				if (MediaSpecies != NULL) {
+					MFAVariable* TempVariable = MediaSpecies->GetMFAVar(DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
+					if (TempVariable != NULL) {
+						TempVariable = SecondNetworkVariables[TempVariable->Index];
+						TempVariable->UpperBound = NewBounds->VarMax[i];
+						TempVariable->LowerBound = NewBounds->VarMin[i];
+					} else {
+						TempVariable = MediaSpecies->GetMFAVar(FORWARD_DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
 						if (TempVariable != NULL) {
 							TempVariable = SecondNetworkVariables[TempVariable->Index];
-							TempVariable->UpperBound = NewBounds->VarMax[i];
-							TempVariable->LowerBound = NewBounds->VarMin[i];
-						} else {
-							TempVariable = MediaSpecies->GetMFAVar(FORWARD_DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
-							if (TempVariable != NULL) {
-								TempVariable = SecondNetworkVariables[TempVariable->Index];
-								if (NewBounds->VarMax[i] > 0) {
-									TempVariable->UpperBound = NewBounds->VarMax[i];
-									if (NewBounds->VarMin[i] > 0) {
-										TempVariable->LowerBound = NewBounds->VarMin[i];
-									} else {
-										TempVariable->LowerBound = 0;
-									}
+							if (NewBounds->VarMax[i] > 0) {
+								TempVariable->UpperBound = NewBounds->VarMax[i];
+								if (NewBounds->VarMin[i] > 0) {
+									TempVariable->LowerBound = NewBounds->VarMin[i];
 								} else {
-									TempVariable->UpperBound = 0;
 									TempVariable->LowerBound = 0;
 								}
+							} else {
+								TempVariable->UpperBound = 0;
+								TempVariable->LowerBound = 0;
 							}
-							TempVariable = MediaSpecies->GetMFAVar(REVERSE_DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
-							if (TempVariable != NULL) {
-								TempVariable = SecondNetworkVariables[TempVariable->Index];
-								if (NewBounds->VarMin[i] < 0) {
-									TempVariable->UpperBound = -NewBounds->VarMin[i];
-									if (NewBounds->VarMax[i] > 0) {
-										TempVariable->LowerBound = 0;
-									} else {
-										TempVariable->LowerBound = -NewBounds->VarMax[i];
-									}
-								} else {
-									TempVariable->UpperBound = 0;
+						}
+						TempVariable = MediaSpecies->GetMFAVar(REVERSE_DRAIN_FLUX,GetCompartment(NewBounds->VarCompartment[i].data())->Index);
+						if (TempVariable != NULL) {
+							TempVariable = SecondNetworkVariables[TempVariable->Index];
+							if (NewBounds->VarMin[i] < 0) {
+								TempVariable->UpperBound = -NewBounds->VarMin[i];
+								if (NewBounds->VarMax[i] > 0) {
 									TempVariable->LowerBound = 0;
+								} else {
+									TempVariable->LowerBound = -NewBounds->VarMax[i];
 								}
+							} else {
+								TempVariable->UpperBound = 0;
+								TempVariable->LowerBound = 0;
 							}
 						}
 					}
@@ -7180,12 +7220,10 @@ int MFAProblem::GapGeneration(Data* InData, OptimizationParameter* InParameters)
 		WriteLPFile();
 		return SUCCESS;
 	}
-
 	if (RecursiveMILP(InData,InParameters,VariableTypes,true) <= 0) {
 		Note.append("No gap generation solution exists.");
 		PrintProblemReport(FLAG,InParameters,Note);
 	}
-
 	return SUCCESS;
 }
 

@@ -2807,116 +2807,6 @@ sub calculate_model_changes {
 	}
 }
 
-=head3 GapGenModel
-Definition:
-	FIGMODELmodel->GapGenModel();
-Description:
-	Runs the gap generation algorithm to correct a single false positive prediction. Results are loaded into a table.
-=cut
-
-sub GapGenModel {
-	my ($self,$Media,$KOList,$NoKOList,$Experiment,$SolutionLimit) = @_;
-	
-	#Enforcing nonoptional arguments
-	if (!defined($Media)) {
-		return undef;
-	}
-	if (!defined($KOList)) {
-		$KOList->[0] = "none";
-	}
-	if (!defined($NoKOList)) {
-		$NoKOList->[0] = "none";
-	}
-	if (!defined($Experiment)) {
-		$Experiment= "ReactionKO";
-	}
-	if (!defined($SolutionLimit)) {
-		$SolutionLimit = "10";
-	}
-	
-	#Translating the KO lists into arrays
-	if (ref($KOList) ne "ARRAY") {
-		my $temp = $KOList;
-		$KOList = ();
-		push(@{$KOList},split(/[,;]/,$temp));	
-	}
-	my $noKOHash;
-	if (defined($NoKOList) && ref($NoKOList) ne "ARRAY") {
-		my $temp = $NoKOList;
-		$NoKOList = ();
-		push(@{$NoKOList},split(/[,;]/,$temp));
-		foreach my $rxn (@{$NoKOList}) {
-			$noKOHash->{$rxn} = 1;
-		}
-	}
-	
-	#Checking if solutions exist for the input parameters
-	$self->aquireModelLock();
-	my $tbl = $self->load_model_table("GapGenSolutions");
-	my $solutionRow = $tbl->get_table_by_key($Experiment,"Experiment")->get_table_by_key($Media,"Media")->get_row_by_key(join(",",@{$KOList}),"KOlist");
-	my $solutions;
-	if (defined($solutionRow)) {
-		#Checking if any solutions conform to the no KO list
-		foreach my $solution (@{$solutionRow->{Solutions}}) {
-			my @reactions = split(/,/,$solution);
-			my $include = 1;
-			foreach my $rxn (@reactions) {
-				if ($rxn =~ m/(rxn\d\d\d\d\d)/) {
-					if (defined($noKOHash->{$1})) {
-						$include = 0;
-					}
-				}
-			}
-			if ($include == 1) {
-				push(@{$solutions},$solution);
-			}
-		}
-	} else {
-		$solutionRow = {Media => [$Media],Experiment => [$Experiment],KOlist => [join(",",@{$KOList})]};
-		$tbl->add_row($solutionRow);
-		$tbl->save();
-	}
-	$self->releaseModelLock();
-	
-	#Returning solution list of solutions were found
-	if (defined($solutions) && @{$solutions} > 0) {
-		return $solutions;
-	}
-	
-	#Getting unique filename
-	my $Filename = $self->figmodel()->filename();
-
-	#Running the gap generation
-	system($self->figmodel()->GenerateMFAToolkitCommandLineCall($Filename,$self->id().$self->selectedVersion(),$Media,["GapGeneration"],{"Recursive MILP solution limit" => $SolutionLimit ,"Reactions that should always be active" => join(";",@{$NoKOList}),"Reactions to knockout" => join(";",@{$KOList}),"Reactions that are always blocked" => "none"},"Gapgeneration-".$self->id().$self->selectedVersion()."-".$Filename.".log",undef,undef));
-	my $ProblemReport = $self->figmodel()->LoadProblemReport($Filename);
-	if (!defined($ProblemReport)) {
-		ModelSEED::globals::ERROR("No problem report;".$Filename.";".$self->id().$self->selectedVersion().";".$Media.";".$KOList.";".$NoKOList);
-	}
-	
-	#Clearing the output folder and log file
-	$self->figmodel()->clearing_output($Filename,"Gapgeneration-".$self->id().$self->selectedVersion()."-".$Filename.".log");
-	
-	#Saving the solution
-	$self->aquireModelLock();
-	$tbl = $self->load_model_table("GapGenSolutions");
-	$solutionRow = $tbl->get_table_by_key($Experiment,"Experiment")->get_table_by_key($Media,"Media")->get_row_by_key(join(",",@{$KOList}),"KOlist");
-	for (my $j=0; $j < $ProblemReport->size(); $j++) {
-		if ($ProblemReport->get_row($j)->{"Notes"}->[0] =~ m/^Recursive\sMILP\s([^)]+)/) {
-			my @SolutionList = split(/\|/,$1);
-			for (my $k=0; $k < @SolutionList; $k++) {
-				if ($SolutionList[$k] =~ m/(\d+):(.+)/) {
-					push(@{$solutionRow->{Solutions}},$2);
-					push(@{$solutions},$2);
-				}
-			}
-		}
-	}
-	$tbl->save();
-	$self->releaseModelLock();
-	
-	return $solutions;
-}
-
 =head3 datagapfill
 Definition:
 	success()/fail() = FIGMODELmodel->datagapfill();
@@ -7801,6 +7691,42 @@ sub fbaSubmitGeneActivityAnalysis {
 	my $fbaObj = $self->fba();
 	return $fbaObj->setGeneActivityAnalysis($args);
 }
+=head3 fbaGeneActivityAnalysis
+=item Definition:
+	$results = FIGMODELmodel->fbaGeneActivityAnalysis({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  geneCalls => {string:gene ID => double:call},
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaGeneActivityAnalysis {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["geneCalls","labels","descriptions","media"],{
+		fbaStartParameters => {},
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setGeneActivityAnalysis",
+			arguments => {
+				geneCalls=>$args->{geneCalls},
+				media=>$args->{media},
+				labels=>$args->{labels},
+				descriptions=>$args->{descriptions},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "GeneActivityAnalysis.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
 =head3 fbaMultiplePhenotypeStudy
 Definition:
 	Output = FIGMODELmodel->fbaMultiplePhenotypeStudy({
@@ -8107,6 +8033,43 @@ sub fbaBiomassPrecursorDependancy {
 	#Saving the model to file
 	$rxnTbl->save();
 	return {};
+}
+
+=head3 fbaCorrectFP
+Definition:
+	FIGMODELmodel->fbaCorrectFP({
+		numSolutions => integer,
+	   	targetReaction => [string]:reaction IDs,
+	   	fbaStartParameters => FBAstart
+	});
+Description:
+	Runs the gap generation algorithm to correct a single false positive prediction. Results are loaded into a table.
+=cut
+
+sub fbaGapGen {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		targetParameters => {},
+		referenceParameters => {},
+		numSolutions => 1
+	});
+	return $self->runFBAStudy({
+		fbaStartParameters => $args->{targetParameters},
+		setupParameters => {
+			function => "setGapGenStudy",
+			arguments => {
+				targetParameters => $args->{targetParameters},
+				referenceParameters => $args->{referenceParameters},
+				numSolutions=>$args->{numSolutions}
+			} 
+		},
+		parameterFile => "GapGenStudy.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
 }
 
 =head2 Database Integration Methods
