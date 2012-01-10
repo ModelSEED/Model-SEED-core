@@ -7413,4 +7413,42 @@ sub coordtogenes {
 	return "SUCCESS";
 }
 
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functions present
+=EXAMPLE
+=cut
+sub genclassifyrespiration {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $genomeObj = $self->figmodel()->get_genome($args->{genome});
+	return $genomeObj->classifyrespiration();
+}
+
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functions present
+=EXAMPLE
+=cut
+sub genlistsubsystemgenes {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"],
+		["subsystem",1,undef,"Subsystem for which genes should be listed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+	my $subsys = $sap->ids_in_subsystems({
+		-subsystems => [$args-> {subsystem}],
+		-genome => $args -> {genome},
+		-roleForm => "full",
+	});
+	print Data::Dumper->Dump([$subsys]);
+}
+
 1;

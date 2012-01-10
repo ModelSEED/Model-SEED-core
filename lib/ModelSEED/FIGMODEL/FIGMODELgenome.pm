@@ -558,4 +558,30 @@ sub get_genome_sequence {
 	return undef;
 }
 
+=head3 classifyrespiration
+Definition:
+	[string] = FIGMODELgenome->classifyrespiration();
+Description:
+	This function returns a list of the DNA sequence for every contig of the genome
+=cut
+sub classifyrespiration {
+    my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		genome => $self->genome(),
+	});
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+	my $subsys = $sap->ids_in_subsystems({
+		-subsystems => ["TCA Cycle"],
+		-genome => $args->{genome},
+		-roleForm => "full",
+	});
+	if (defined($subsys->{"TCA Cycle"})) {
+		if (defined($subsys->{"TCA Cycle"}->{"Malate dehydrogenase (EC 1.1.1.37)"})) {
+			if (@{$subsys->{"TCA Cycle"}->{"Malate dehydrogenase (EC 1.1.1.37)"}} > 0) {
+				return $args->{genome}." is an aerobic organism!";
+			}
+		}
+	}
+	return $args->{genome}." is not handled by our current tests!";
+}
 1;
