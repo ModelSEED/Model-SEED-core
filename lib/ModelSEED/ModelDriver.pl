@@ -87,7 +87,7 @@ for (my $i=0; $i < @ARGV; $i++) {
 		}
         #Calling function
         try {
-            $Status .= $driv->$FunctionName(@Data)."\n";
+            $Status .= $driv->$FunctionName(@Data);
             print $Status."\n";
         } catch {
             printErrorLog($_);

@@ -1730,6 +1730,77 @@ sub parseMinimalMediaStudy {
 	return {error => "parseMinimalMediaStudy:could not find specified output directory"};
 }
 
+=head3 setGeneActivityAnalysisOld
+=item Definition:
+	Output:{} = FIGMODELfba->setGeneActivityAnalysis({
+		geneCalls => {string:gene ID => double:negative for off/positive for on/zero for unknown}
+	});
+=item Description:
+=cut
+sub setGeneActivityAnalysisOld {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["geneCalls"],{
+		user => $self->figmodel()->user(),
+		password => undef,
+		media => [],
+		labels => [],
+		descriptions => [],
+	});
+	if (defined($args->{error})) {return $self->error_message({function => "setGeneActivityAnalysis",args => $args});}
+	#Setting default values for media, labels, and descriptions
+	my $filenameList;
+	my $jobs;
+	$self->parameter_files(["ProductionMFA"]);
+	for (my $i=0; $i < @{$args->{labels}}; $i++) {
+		if (!defined($args->{media}->[$i])) {
+			$args->{media}->[$i] = "Complete";
+		}
+		if (!defined($args->{labels}->[$i])) {
+			$args->{labels}->[$i] = "Experiment ".$i;
+		}
+		if (!defined($args->{descriptions}->[$i])) {
+			$args->{descriptions}->[$i] = "Experiment ".$i;
+		}
+		#Setting simulation parameters 
+		$self->media($args->{media}->[$i]);
+		my $geneCallData = $self->model().";1";
+		foreach my $gene (keys(%{$args->{geneCalls}})) {
+			if (defined($args->{geneCalls}->{$gene}->[$i])) {
+				$geneCallData .= ";".$gene.":".$args->{geneCalls}->{$gene}->[$i];
+			}
+		}
+		$self->set_parameters({
+			"FIGMODELfba_type"=>"slave",
+			"FIGMODELfba_label"=>$args->{labels}->[$i],
+			"FIGMODELfba_description"=>$args->{descriptions}->[$i],
+			"Microarray assertions" => $geneCallData
+		});
+		#Creating a job to analyze a single gene call set
+		delete $self->{_filename};
+		$self->filename($self->figmodel()->filename());
+		$self->filename();
+		my $jobData = $self->queueFBAJob({queue => "cplex",priority => 3});
+		#Saving the job ID so we can check on the status of these jobs later
+		if (defined($jobData->{jobid})) {
+			push(@{$jobs},$jobData->{jobid});
+		}
+		sleep(2);
+	}
+	#Configuring and queueing the master job
+	delete $self->{_filename};
+	$self->filename($self->figmodel()->filename());
+	$self->filename();
+	$self->media("Complete");
+	delete $self->parameters()->{"Microarray assertions"};
+	$self->set_parameters({
+		"classify model genes"=> 1,
+		"FIGMODELfba_type"=>"master",
+		"FIGMODELfba_joblist"=>join(",",@{$jobs})
+	});
+	$self->parsingFunction("parseGeneActivityAnalysis");
+	return $self->queueFBAJob({queue => "fast",priority => 3});
+}
+
 =head3 setGeneActivityAnalysis
 =item Definition:
 	Output:{} = FIGMODELfba->setGeneActivityAnalysis({
@@ -1740,8 +1811,6 @@ sub parseMinimalMediaStudy {
 sub setGeneActivityAnalysis {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["geneCalls"],{
-		user => $self->figmodel()->user(),
-		password => undef,
 		media => [],
 		labels => [],
 		descriptions => [],
@@ -2188,6 +2257,78 @@ sub parseWebFBASimulation {
 		$self->figmodel()->database()->create_object("fbaresult",$newFBAResult);
 	}
 	return;
+}
+=head3 setGapGenStudy
+=item Definition:
+	Output:{} = FIGMODELfba->setGapGenStudy({
+		targetStartParameters => {},
+		fbaStartParameters => {}
+	});
+	Output: {error => string:error message}
+=item Description:
+=cut
+sub setGapGenStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		targetParameters => {},
+		referenceParameters => {},
+		filename => $self->filename(),
+		numSolutions => 1
+	});
+	$self->filename($args->{filename});
+	$self->parameter_files(["GapGeneration"]);
+	$self->makeOutputDirectory();
+	$self->set_parameters({
+		"Recursive MILP solution limit" => $args->{numSolutions},
+		"Gap generation media" => $args->{referenceParameters}->{media},
+		"Gap generation KO reactions" => join(",",@{$args->{referenceParameters}->{rxnKO}}),
+		"Gap generation KO genes" => join(",",@{$args->{referenceParameters}->{geneKO}}),
+		"Perform gap generation" => 1
+	});
+	$self->studyArguments($args);
+	$self->parsingFunction("parseGapGenStudy");
+	return {};
+}
+=head3 parseGapGenStudy
+=item Definition:
+	Output:{} = FIGMODELfba->parseGapGenStudy({
+		filename => string
+	});
+    Output: {
+    	solutions => [{
+    		objective => INTERGER,
+    		reactions => [string]
+    	}];
+    }
+=item Description:
+=cut
+sub parseGapGenStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{
+		filename => $self->filename()
+	});
+	$self->filename($args->{filename});
+	my $report = $self->loadProblemReport();
+	if (!defined($report) || !defined($report->get_row(0))) {
+		ModelSEED::globals::ERROR("No problem report for gapgen of model ".$self->model());
+	}
+	my $results = {
+		solutions => []
+	};
+	for (my $j=0; $j < $report->size(); $j++) {
+		if ($report->get_row($j)->{"Notes"}->[0] =~ m/^Recursive\sMILP\s([^)]+)/) {
+			my @SolutionList = split(/\|/,$1);
+			for (my $k=0; $k < @SolutionList; $k++) {
+				if ($SolutionList[$k] =~ m/(\d+):(.+)/) {
+					push(@{$results->{solutions}},{
+						objective => $1,
+						reactions => [split(/,/,$2)]
+					});
+				}
+			}
+		}
+	}
+	return $results;
 }
 
 1;

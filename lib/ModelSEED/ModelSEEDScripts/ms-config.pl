@@ -299,6 +299,7 @@ SCRIPT
 		"ms-listworkspace",
 		"ms-login",
 		"ms-logout",
+        "ms-whoami",
 		"sq-blastgenomes",
 		"fba-checkgrowth",
 		"fba-singleko",

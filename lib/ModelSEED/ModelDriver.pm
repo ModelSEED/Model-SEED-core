@@ -12,6 +12,7 @@ use strict;
 use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
+use Getopt::Long qw(GetOptionsFromArray);
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
@@ -1233,23 +1234,6 @@ sub changemodelautocompletemedia {
 	if (defined($model)) {
 		$model->autocompleteMedia($Data[2]);
 	}
-}
-
-sub manualgapgen {
-    my($self,@Data) = @_;
-
-	#Checking the argument to ensure all required parameters are present
-    if (@Data < 4) {
-        print "Syntax for this command: manualgapgen?(Model ID)?(Media)?(Reaction list).\n\n";
-        return "ARGUMENT SYNTAX FAIL";
-    }
-	my $model = $self->figmodel()->get_model($Data[1]);
-	my $GapGenResultTable = $model->datagapgen($Data[2],$Data[3]);
-	if (!defined($GapGenResultTable)) {
-		return "FAIL";
-	}
-	$GapGenResultTable->save();
-	return "SUCCESS";
 }
 
 sub rungapgeneration {
@@ -5594,7 +5578,13 @@ sub mslistworkspace {
 =CATEGORY
 Workspace Operations
 =DESCRIPTION
-This command is used to login as a user in the Model SEED environment. If you have a SEED account already, use those credentials to log in here. Your account information will automatically be imported and used locally. You will remain logged in until you use either the '''mslogin''' or '''mslogout''' command. Once you login, you will automatically switch to the current workspace for the account you log into.
+This command is used to login as a user in the Model SEED environment.
+If you have a SEED account already, use those credentials to log
+in here. Your account information will automatically be imported
+and used locally. You will remain logged in until you use either
+the '''mslogin''' or '''mslogout''' command. Once you login, you
+will automatically switch to the current workspace for the account
+you log into.
 =EXAMPLE
 ./mslogin -username public -password public
 =cut
@@ -5656,9 +5646,37 @@ sub mslogin {
 
 =head
 =CATEGORY
+Workpsace Operations
+=DESCRIPTION
+This function will tell the user what account is currently logged
+into the Model SEED environment. Use -v flag for a detailed description
+including currently active workspace.
+=EXAMPLE
+./ms-whoami
+=cut
+sub mswhoami {
+    my ($self, @Data) = @_;
+    #my $args = $self->check([["verbose"]], [@Data], "print the currently logged in user in the environment");
+    my $username = $self->figmodel()->user();
+    return "No logged in user" unless(defined($username));
+    my $str = $username;
+    #if($args->{v}) {
+    #    my $ws = $self->figmodel()->ws()->id();
+    #    $str = "Currently logged in as: $username\nwith workspace: $ws\n";
+    #}
+    return $str;
+}
+    
+    
+    
+
+=head
+=CATEGORY
 Workspace Operations
 =DESCRIPTION
-This function is used to log a user out of the Model SEED environment. Effectively, this switches the currently logged user to the "public" account and switches to the current workspace for the public account.
+This function is used to log a user out of the Model SEED environment.
+Effectively, this switches the currently logged user to the "public"
+account and switches to the current workspace for the public account.
 =EXAMPLE
 ./mslogout
 =cut
@@ -6008,7 +6026,54 @@ sub fbasimphenotypes {
 	}
 	ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-Phenotypes.tbl",$output);
 }
-
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION
+This function is used to identify what must be removed from a model to correct a false positive prediction
+=EXAMPLE
+./fba-correctfp -model iJR904
+=cut
+sub fbaGapGen {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["numsolutions",0,1,"number of solutions requested"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["controlRxnKO",0,"none","reaction KO in control condition"],
+		["controlGeneKO",0,"none","gene KO in control condition"],
+		["controlMedia",0,"none","media control condition"]
+	],[@Data],"remove reactions to make reactions essential or eliminate growth in media");
+    my $targetParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $referenceParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => {
+    	media => $args->{controlMedia},
+    	rxnKO => $args->{controlRxnKO},
+    	geneKO => $args->{controlGeneKO}
+    }});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    my $results = $mdl->fbaGapGen({
+	   	numSolutions => $args->{numsolutions},
+	   	targetParameters => $targetParameters,
+	   	referenceParameters => $referenceParameters
+	});
+	if (!defined($results) || !defined($results->{solutions})) {
+		return "Gap generation failed for ".$args->{model}." in ".$args->{media}." media.";
+	}
+	my $output = ["Objective\tReactions"];
+	for (my $i=0; $i < @{$results->{solutions}}; $i++) {
+		push(@{$output},$results->{solutions}->[$i]->{objective}."\t".join(",",@{$results->{solutions}->[$i]->{reactions}}));
+	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{model}."-fbaGapGene.txt",$output);
+	return "Successfully completed gapgen analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{model}."-fbaGapGene.txt";
+}
 =head
 =CATEGORY
 Flux Balance Analysis Operations
@@ -6050,7 +6115,49 @@ sub fbasingleko {
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{"filename"},$results->{essentialGenes});
 	return "Successfully completed flux variability analysis of ".$args->{model}." in ".$args->{media}.". Results printed in ".$self->ws()->directory().$args->{"filename"}.".";
 }
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION 
+=EXAMPLE
 
+=cut
+sub fbageneactivityanalysis {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["geneCalls",1,undef,"File with gene calls"],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+	],[@Data],"");
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+		ModelSEED::globals::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!-e $self->ws()->directory().$args->{geneCalls}) {
+    	ModelSEED::globals::ERROR("Could not find gene call file ".$self->ws()->directory().$args->{geneCalls});
+    }
+    my $data = ModelSEED::globals::LOADFILE($self->ws()->directory().$args->{geneCalls});
+    my $calls;
+    for (my $i=0; $i < @{$data}; $i++) {
+    	my $array = [split(/\t/,$data->[$i])];
+    	for (my $j=1; $j < @{$array}; $j++) {
+    		push(@{$calls->{$array->[0]}},$array->[$j]);
+    	}
+    }
+    my $result = $mdl->fbaGeneActivityAnalysis({
+    	fbaStartParameters => $fbaStartParameters,
+    	geneCalls => $calls
+    });
+	#if (defined($result->{})) {
+		my $output;
+		ModelSEED::globals::PRINTFILE($self->ws()->directory().$args->{model}."-GeneActivityAnalysis.txt",$output);
+	#}
+}
 =head
 =CATEGORY
 Flux Balance Analysis Operations
@@ -6133,7 +6240,7 @@ sub fbafva {
 		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
 		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
 	],[@Data],"performs FVA (Flux Variability Analysis) studies");
-	$args->{media} =~ s/\_/ /g;
+	#$args->{media} =~ s/\_/ /g;
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
@@ -6943,7 +7050,11 @@ sub mdlprintmodelgenes {
 		$args->{filename} = $mdl->id()."-GeneList.lst";
 	}
 	my $ftrHash = $mdl->featureHash();
-	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{filename},[keys(%{$ftrHash})]);
+	my $output = ["Genes\tReactions"];
+	foreach my $ftr (keys(%{$ftrHash})) {
+		push(@{$output},$ftr."\t".join(",",keys(%{$ftrHash->{$ftr}->{reactions}})));	
+	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory().$args->{filename},$output);
 	return "Successfully printed genelist for ".$args->{model}." in ".$self->ws()->directory().$args->{filename}."!\n";
 }
 
@@ -7301,6 +7412,44 @@ sub coordtogenes {
 	}
 	$self->figmodel()->database()->print_array_to_file($self->ws()->directory()."GeneList.lst",$genes);
 	return "SUCCESS";
+}
+
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functions present
+=EXAMPLE
+=cut
+sub genclassifyrespiration {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $genomeObj = $self->figmodel()->get_genome($args->{genome});
+	return $genomeObj->classifyrespiration();
+}
+
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functions present
+=EXAMPLE
+=cut
+sub genlistsubsystemgenes {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"],
+		["subsystem",1,undef,"Subsystem for which genes should be listed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+	my $subsys = $sap->ids_in_subsystems({
+		-subsystems => [$args-> {subsystem}],
+		-genome => $args -> {genome},
+		-roleForm => "full",
+	});
+	print Data::Dumper->Dump([$subsys]);
 }
 
 1;
