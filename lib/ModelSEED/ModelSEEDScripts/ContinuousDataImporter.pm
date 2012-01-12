@@ -11,6 +11,11 @@ use List::Util qw(reduce);
 use Try::Tiny;
 $Data::Dumper::Maxdepth = 3;
 
+# TODO - need to divide ctx caching of "object hashes"
+# from caching of object "ids" and have these in separate
+# CTX bins. Need this because ids like rxn01234 might not
+# be the same across different biochemistries, for example.
+
 sub new {
     my ($class, $config) = @_;
     my $self = {};
@@ -24,6 +29,7 @@ sub new {
     $self->{conversionFns}  = _makeConversionFns();
     bless $self, $class;
     $self->{cache} = {};
+    $self->{sap} = SAPserver->new();
     $self->_buildLookupData();
     return $self;
 }
@@ -35,6 +41,10 @@ sub fm {
 
 sub om {
     return $_[0]->{om};
+}
+
+sub sap {
+    return $_[0]->{sap};
 }
 
 sub cache {
@@ -94,8 +104,16 @@ sub _makeTypesToHashFns {
     $f->{reaction} = sub {
         return $_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation;
     };
+    $f->{reactionset} = sub {
+        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
+        join(',', sort map { $f->{reaction}->($_) } $_[0]->reactions );
+    };
+    $f->{compoundset} = sub {
+        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
+        join(',', sort map { $f->{compound}->($_) } $_[0]->compounds );
+    };
     $f->{reaction_alias} = sub {
-        return $f->{reaction}->($_[0]->reaction) . $_[0]->alias . $_[0]->type;
+        return $f->{reaction}->($_[0]->reaction) . $_[0]->type;
     };
     $f->{compartment} = sub {
         return $_[0]->id . ( $_[0]->name || '' );
@@ -124,6 +142,40 @@ sub _makeTypesToHashFns {
     };
     $f->{media_compound} = sub {
         return $f->{media}->($_[0]->media) . $f->{compound}->($_[0]->compound);
+    };
+    $f->{biochemistry} = sub {
+        join(',', sort map { $f->{media}->($_) } $_[0]->media ) .
+        join(',', sort map { $f->{compartment}->($_) } $_[0]->compartments ) .
+        join(',', sort map { $f->{compound}->($_) } $_[0]->compounds) .
+        join(',', sort map { $f->{reaction}->($_) } $_[0]->reactions) .
+        join(',', sort map { $f->{reactionset}->($_) } $_[0]->reactionsets) .
+        join(',', sort map { $f->{compoundset}->($_) } $_[0]->compoundsets)
+    };
+    $f->{mapping} = sub {
+        $f->{biochemistry}->($_[0]->biochemistry) .
+        join(',', sort map { $f->{complex}->($_) } $_[0]->complexes) .
+        join(',', sort map { $f->{reaction_rule}->($_) } $_[0]->reaction_rules) .
+        join(',', sort map { $f->{reaction_rule}->($_) } $_[0]->reaction_rules) .
+        join(',', sort map { $f->{role}->($_) } $_[0]->roles);
+    };
+    $f->{role} = sub {
+        return $_[0]->name . $_[0]->id;
+    };
+    $f->{roleset} = sub {
+        return join(',', sort map { $f->{role}->($_) } $_[0]->roles); 
+    };
+    $f->{genome} = sub {
+        return $_[0]->id;
+    };
+    $f->{feature} = sub {
+        return $f->{genome}->($_[0]->genome) . $_[0]->id . $_[0]->start . $_[0]->stop;
+    };
+    $f->{annotation_feature} = sub {
+        return $f->{feature}->($_[0]->feature) . $f->{role}->($_[0]->role);
+    };
+    $f->{annotation} = sub {
+        return $f->{genome}->($_[0]->genome) . ( $_[0]->name || '' ) . 
+        join(',', sort map { $f->{annotation_feature}->($_) } $_[0]->annotation_features);
     };
     return $f;
 };
@@ -286,6 +338,21 @@ sub _makeConversionFns {
             return undef;
         }
     };
+    $f->{feature} = sub {
+        my ($self, $row, $ctx) = @_;
+        my $genome = $ctx->{genome}->{$row->{GENOME}->[0]};
+        return undef unless(defined($genome));
+        my $min = $row->{"MIN LOCATION"}->[0];
+        my $max = $row->{"MAX LOCATION"}->[0];
+        my $start = ($row->{DIRECTION}->[0] eq 'for') ? $min : $max;
+        my $stop  = ($row->{DIRECTION}->[0] eq 'for') ? $max : $min;
+        return {
+            start => $start,
+            stop  => $stop,
+            id => $row->{ID}->[0],
+            genome => $genome,
+        };
+    }; 
     return $f;
 } 
         
@@ -301,6 +368,9 @@ sub addNewValueToLookupData {
         my $secondKey = $rdbo->id;
         $self->cache->{$type}->{$secondKey} = $rdbo;
     };
+    if($type eq 'biochemistry') {
+        warn $key ."\n";
+    }
 }
 
 # _buildLookupData - construct hash-keys for each
@@ -318,6 +388,7 @@ sub _buildLookupData {
         }
         warn "Prefetched $type, ".scalar(keys %{$self->cache->{$type}})." objects\n";
     }
+    die;
     return $hash;
 }
 
@@ -443,18 +514,25 @@ sub importBiochemistryFromDir {
         next if $error;
         my $RDB_reaction_alias =
             $self->getOrCreateObject("reaction_alias", $hash);
-        #$RDB_biochemistry->add_reaction_aliases($RDB_reaction_alias);
     }
     # Media
     my $defaultMediaObjs = $self->getDefaultMedia($self->cache); 
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
-        # MediaCompound - handled by getDefaultMedia 
     }
-    $RDB_biochemistry->add_biochemistry_aliases({ username => $username, id => $name});
-    $RDB_biochemistry->save;
+    # Now create if it doesn't already exist
+    my $biochem_hash = $self->hash->{biochemistry}->($RDB_biochemistry);
+    unless(defined($self->cache->{biochemistry}->{$biochem_hash})) {
+        $RDB_biochemistry->save;
+        $self->cache->{biochemistry}->{$biochem_hash} = $RDB_biochemistry;
+    }
+    # Add alias that we wanted
+    my $bio = $self->cache->{biochemistry}->{$biochem_hash};
+    $bio->add_biochemistry_aliases({ username => $username, id => $name});
+    # TODO - check if we've added this already, lock if not already locked
+    $bio->save();
     $self->om->db->commit;
-    return $RDB_biochemistry;
+    return $bio;
 }
     
     
@@ -515,7 +593,6 @@ sub importMappingFromDir {
     warn "Got $cpxRoleFailures complex_role failures, ".
         "this is probably normal.\n" if $cpxRoleFailures > 0;
     $RDB_mappingObject->add_mapping_aliases({username => $username, id => $name});
-    $RDB_mappingObject->save();
     # Create reactionRule 
     for(my $i=0; $i<$files->{reactionRule}->size(); $i++) {
         my $row = $files->{reactionRule}->get_row($i);
@@ -532,6 +609,7 @@ sub importMappingFromDir {
         my $RDB_reactionRule = $self->getOrCreateObject("reaction_rule", $hash);
         my $rxn = $RDB_reactionRule->reaction;
         $cpx->add_reaction_rules($RDB_reactionRule);
+        $cpx->save();
         $RDB_mappingObject->add_reaction_rules($RDB_reactionRule);
         # Create reaction_rule_transport
         foreach my $dtr ($rxn->default_transported_reagents) {
@@ -547,7 +625,19 @@ sub importMappingFromDir {
             my $RDB_reactionRuleTransport = $self->getOrCreateObject("reaction_rule_transport", $hash);
         } 
     }
-    return $RDB_mappingObject; 
+    # Now create if it doesn't already exist
+    my $mapping_hash = $self->hash->{mapping}->($RDB_mappingObject);
+    unless(defined($self->cache->{mapping}->{$mapping_hash})) {
+        $RDB_mappingObject->save;
+        $self->cache->{mapping}->{$mapping_hash} = $RDB_mappingObject;
+    }
+    # Add alias that we wanted
+    my $map = $self->cache->{mapping}->{$mapping_hash};
+    $map->add_mapping_aliases({ username => $username, id => $name});
+    # TODO - check if we've added this already, lock if not already locked
+    $map->save();
+    $self->om->db->commit;
+    return $map; 
 }
 
 sub getGenomeObject {
@@ -558,7 +648,19 @@ sub getGenomeObject {
             -ids => [ $genomeID ],
             -data => $columns,
         });
-
+        my $hash = {
+            id => $genomeID, 
+            name => $genomeData->{$genomeID}->[3],
+            source => 'SEED',
+            cksum => $genomeData->{$genomeID}->[5],
+            size => $genomeData->{$genomeID}->[0],
+            genes => $genomeData->{$genomeID}->[2],
+            gc => $genomeData->{$genomeID}->[1],
+            taxonomy => $genomeData->{$genomeID}->[4],
+        };
+        my $obj = $self->getOrCreateObject("genome", $hash); 
+        warn "Unable to create genome object $genomeID:\n".
+            Dumper($hash) . "\n" unless(defined($obj));
     }
     return $self->cache->{genome}->{$genomeID};
 }
@@ -569,7 +671,7 @@ sub importAnnotationFromDir {
     my $file = "$dir/features.txt";
     my $config = { filename => $file, delimiter => "\t" };
     my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
-    my $RDB_genome = undef;
+    my ($RDB_annotation, $RDB_genome);
     # Rows in the table have columns: 
     # ID  GENOME  ESSENTIALITY    ALIASES TYPE    LOCATION    LENGTH
     # DIRECTION   MIN LOCATION    MAX LOCATION    ROLES   SOURCE  SEQUENCE
@@ -580,8 +682,32 @@ sub importAnnotationFromDir {
             print "Could not retrive genome for " . $row->{GENOME}->[0] . "\n";
             return undef;
         }
+        unless(defined($RDB_annotation)) {
+            $RDB_annotation = $self->om->create_object("annotation", { genome => $RDB_genome });
+        }
         my $hash = $self->convert("feature", $row); 
+        unless(defined($hash)) {
+            warn "Could not create feature for genome " . $RDB_genome->id . " ($i)\n";
+            next;
+        }
+        my $RDB_feature = $self->getOrCreateObject("feature", $hash);
+        unless(defined($RDB_feature)) {
+            warn "Could not create feature: " . Dumper($hash) . "\n"; 
+            next;
+        }
+        my $RDB_role = $self->cache->{role}->{$row->{ROLES}->[0]};
+        if(!defined($RDB_role)) {
+            warn "Could not find role " . $row->{ROLES}->[0] . "\n";
+            next;
+        }
+        my $annotation_feature = $self->getOrCreateObject(
+            "annotation_feature", { 
+                genome => $RDB_genome,
+                role => $RDB_role,
+                feature => $RDB_feature,
+        });
     }
+    return $RDB_annotation;
 }
     
 
