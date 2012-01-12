@@ -1,6 +1,8 @@
 package ModelSEED::DB::Biochemistry;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -35,6 +37,13 @@ __PACKAGE__->meta->setup(
             map_class => 'ModelSEED::DB::BiochemistryParent',
             map_from  => 'parent',
             map_to    => 'child',
+            type      => 'many to many',
+        },
+
+        compartments => {
+            map_class => 'ModelSEED::DB::BiochemistryCompartment',
+            map_from  => 'biochemistry',
+            map_to    => 'compartment',
             type      => 'many to many',
         },
 
@@ -98,9 +107,8 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return $uuid;
         } else {
             return Data::UUID->new()->create_str();
-        }   
+        }
 });
 
 
 1;
-

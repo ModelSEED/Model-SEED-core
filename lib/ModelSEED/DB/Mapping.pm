@@ -1,6 +1,8 @@
 package ModelSEED::DB::Mapping;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -33,17 +35,17 @@ __PACKAGE__->meta->setup(
             type      => 'many to many',
         },
 
-        compartments => {
-            map_class => 'ModelSEED::DB::MappingCompartment',
-            map_from  => 'mapping',
-            map_to    => 'compartment',
-            type      => 'many to many',
-        },
-
         complexes => {
             map_class => 'ModelSEED::DB::MappingComplex',
             map_from  => 'mapping',
             map_to    => 'complex',
+            type      => 'many to many',
+        },
+
+        reaction_rules => {
+            map_class => 'ModelSEED::DB::MappingReactionRule',
+            map_from  => 'mapping',
+            map_to    => 'reaction_rule',
             type      => 'many to many',
         },
 
@@ -86,9 +88,8 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return $uuid;
         } else {
             return Data::UUID->new()->create_str();
-        }   
+        }
 });
 
 
 1;
-

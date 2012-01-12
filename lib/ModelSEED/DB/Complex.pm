@@ -1,6 +1,8 @@
 package ModelSEED::DB::Complex;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -33,9 +35,10 @@ __PACKAGE__->meta->setup(
         },
 
         reaction_rules => {
-            class      => 'ModelSEED::DB::ReactionRule',
-            column_map => { uuid => 'complex_uuid' },
-            type       => 'one to many',
+            map_class  => 'ModelSEED::DB::ComplexReactionRule',
+            map_from   => 'complex',
+            map_to     => 'reaction_rule',
+            type       => 'many to many',
         },
 
         roles => {
@@ -46,8 +49,6 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
-
-
 
 __PACKAGE__->meta->column('uuid')->add_trigger(
     deflate => sub {
@@ -61,6 +62,4 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
         }   
 });
 
-
 1;
-

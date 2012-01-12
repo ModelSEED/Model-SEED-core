@@ -1,6 +1,8 @@
 package ModelSEED::DB::Annotation;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -53,8 +55,6 @@ __PACKAGE__->meta->setup(
     ],
 );
 
-
-
 __PACKAGE__->meta->column('uuid')->add_trigger(
     deflate => sub {
         my $uuid = $_[0]->uuid;
@@ -64,9 +64,7 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return $uuid;
         } else {
             return Data::UUID->new()->create_str();
-        }   
+        }
 });
 
-
 1;
-

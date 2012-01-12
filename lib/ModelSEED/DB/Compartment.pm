@@ -1,6 +1,8 @@
 package ModelSEED::DB::Compartment;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -18,10 +20,10 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     relationships => [
-        mappings => {
-            map_class => 'ModelSEED::DB::MappingCompartment',
+        biochemistries => {
+            map_class => 'ModelSEED::DB::BiochemistryCompartment',
             map_from  => 'compartment',
-            map_to    => 'mapping',
+            map_to    => 'biochemistry',
             type      => 'many to many',
         },
 

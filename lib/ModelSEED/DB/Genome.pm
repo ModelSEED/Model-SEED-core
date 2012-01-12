@@ -1,6 +1,8 @@
 package ModelSEED::DB::Genome;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 

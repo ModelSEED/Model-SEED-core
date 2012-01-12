@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Wed Jan  4 17:04:34 2012
+-- Created on Thu Jan 12 11:55:46 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -250,42 +250,75 @@ CREATE INDEX biochemistry_reactions_biochemistry_fk ON biochemistry_reactions (b
 -- Table: reaction_rules
 --
 CREATE TABLE reaction_rules (
+  uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
-  complex_uuid CHAR(36) NOT NULL,
   compartment_uuid CHAR(36) NOT NULL,
   direction CHAR(1),
   transprotonNature CHAR(255),
-  PRIMARY KEY (reaction_uuid, complex_uuid),
+  PRIMARY KEY (uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
-  FOREIGN KEY(complex_uuid) REFERENCES complexes(uuid),
   FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid)
 );
-
-CREATE INDEX reaction_rules_complex_fk ON reaction_rules (complex_uuid);
 
 CREATE INDEX reaction_rules_reaction_fk ON reaction_rules (reaction_uuid);
 
 CREATE INDEX reaction_rules_compartment_fk ON reaction_rules (compartment_uuid);
 
 --
+-- Table: complex_reaction_rules
+--
+CREATE TABLE complex_reaction_rules (
+  reaction_rule_uuid CHAR(36) NOT NULL,
+  complex_uuid ChAR(36) NOT NULL,
+  PRIMARY KEY (reaction_rule_uuid, complex_uuid),
+  FOREIGN KEY(complex_uuid) REFERENCES complexes(uuid),
+  FOREIGN KEY(reaction_rule_uuid) REFERENCES reaction_rules(uuid)
+);
+
+CREATE INDEX complex_reaction_rules_complex_fk ON complex_reaction_rules (complex_uuid);
+
+CREATE INDEX complex_reaction_rules_reaction_rule_fk ON complex_reaction_rules (reaction_rule_uuid);
+
+--
 -- Table: reaction_rule_transports
 --
 CREATE TABLE reaction_rule_transports (
+  reaction_rule_uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
-  complex_uuid CHAR(36) NOT NULL,
+  compound_uuid CHAR(36) NOT NULL,
   compartmentIndex int(11) NOT NULL,
   compartment_uuid CHAR(36) NOT NULL,
-  PRIMARY KEY (reaction_uuid, complex_uuid, compartmentIndex),
+  transportCoefficient int(11) NOT NULL,
+  isImport TINYINT(1),
+  PRIMARY KEY (reaction_rule_uuid, compound_uuid, compartmentIndex),
+  FOREIGN KEY(reaction_rule_uuid) REFERENCES reaction_rules(uuid),
+  FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
-  FOREIGN KEY(complex_uuid) REFERENCES complexes(uuid),
-  FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid)
+  FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
 
-CREATE INDEX reaction_rule_transports_complex_fk ON reaction_rule_transports (complex_uuid);
+CREATE INDEX reaction_rule_transports_reaction_rule_fk ON reaction_rule_transports (reaction_rule_uuid);
+
+CREATE INDEX reaction_rule_transports_compartment_fk ON reaction_rule_transports (compartment_uuid);
 
 CREATE INDEX reaction_rule_transports_reaction_fk ON reaction_rule_transports (reaction_uuid);
 
-CREATE INDEX reaction_rule_transports_compartment_fk ON reaction_rule_transports (compartment_uuid);
+CREATE INDEX compound_rule_transports_compound_fk ON reaction_rule_transports (compound_uuid);
+
+--
+-- Table: mapping_reaction_rules
+--
+CREATE TABLE mapping_reaction_rules (
+  reaction_rule_uuid CHAR(36) NOT NULL,
+  mapping_uuid CHAR(36) NOT NULL,
+  PRIMARY KEY (reaction_rule_uuid, mapping_uuid),
+  FOREIGN KEY(reaction_rule_uuid) REFERENCES reaction_rules(uuid),
+  FOREIGN KEY(mapping_uuid) REFERENCES mappings(uuid)
+);
+
+CREATE INDEX mapping_reaction_rules_mapping_fk ON mapping_reaction_rules (mapping_uuid);
+
+CREATE INDEX mapping_reaction_rules_reaction_rule_fk ON mapping_reaction_rules (mapping_uuid);
 
 --
 -- Table: compound_aliases
@@ -376,7 +409,7 @@ CREATE TABLE reagents (
   reaction_uuid CHAR(36) NOT NULL,
   compound_uuid CHAR(36) NOT NULL,
   compartmentIndex int(11) NOT NULL,
-  coefficient DOUBLE,
+  coefficient int(11),
   cofactor TINYINT(1),
   PRIMARY KEY (reaction_uuid, compound_uuid, compartmentIndex),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
@@ -388,20 +421,26 @@ CREATE INDEX reagents_compound_fk ON reagents (compound_uuid);
 CREATE INDEX reagents_reaction_fk ON reagents (reaction_uuid);
 
 --
--- Table: reagent_transports
+-- Table: default_transported_reagents
 --
-CREATE TABLE reagent_transports (
+CREATE TABLE default_transported_reagents (
   reaction_uuid CHAR(36) NOT NULL,
+  compound_uuid CHAR(36) NOT NULL,
   compartment_uuid CHAR(36) NOT NULL,
   compartmentIndex int(11) NOT NULL,
-  PRIMARY KEY (reaction_uuid, compartmentIndex),
+  transportCoefficient int(11) NOT NULL,
+  isImport TINYINT(1),
+  PRIMARY KEY (reaction_uuid, compartmentIndex, compound_uuid),
+  FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
-  FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid)
+  FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
 
-CREATE INDEX reagent_transports_reaction_fk ON reagent_transports (reaction_uuid);
+CREATE INDEX default_transported_reagents_reaction_fk ON default_transported_reagents (reaction_uuid);
 
-CREATE INDEX reagent_transports_defaultCompartment_fk ON reagent_transports (compartment_uuid);
+CREATE INDEX default_transported_reagents_compartment_fk ON default_transported_reagents (compartment_uuid);
+
+CREATE INDEX default_transported_reagents_compound_fk ON default_transported_reagents (compound_uuid);
 
 --
 -- Table: reactionsets
@@ -504,6 +543,7 @@ CREATE UNIQUE INDEX model_compartments_idx ON model_compartments (model_uuid, co
 CREATE TABLE model_reactions (
   model_uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
+  reaction_rule_uuid CHAR(36) NOT NULL,
   direction CHAR(1),
   transproton DOUBLE,
   protons DOUBLE,
@@ -511,7 +551,8 @@ CREATE TABLE model_reactions (
   PRIMARY KEY (model_uuid, reaction_uuid),
   FOREIGN KEY(model_uuid) REFERENCES models(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
-  FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid)
+  FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid),
+  FOREIGN KEY(reaction_rule_uuid) REFERENCES reaction_rules(uuid)
 );
 
 CREATE INDEX model_reactions_reaction_fk ON model_reactions (reaction_uuid);
@@ -520,25 +561,33 @@ CREATE INDEX model_reactions_model_fk ON model_reactions (model_uuid);
 
 CREATE INDEX model_reactions_modelCompartment_fk ON model_reactions (model_compartment_uuid);
 
+CREATE INDEX model_reactions_reaction_rule_fk ON model_reactions (reaction_rule_uuid);
+
 --
--- Table: model_reaction_transports
+-- Table: model_transported_reagents
 --
-CREATE TABLE model_reaction_transports (
+CREATE TABLE model_transported_reagents (
   model_uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
+  compound_uuid CHAR(36) NOT NULL,
   transportIndex int(11) NOT NULL,
   model_compartment_uuid CHAR(36) NOT NULL,
+  transportCoefficient int(11) NOT NULL,
+  isImport TINYINT(1),
   PRIMARY KEY (model_uuid, reaction_uuid, transportIndex),
   FOREIGN KEY(model_uuid) REFERENCES models(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
+  FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid),
   FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid)
 );
 
-CREATE INDEX model_reaction_transports_reaction_fk ON model_reaction_transports (reaction_uuid);
+CREATE INDEX model_transported_reagents_reaction_fk ON model_transported_reagents (reaction_uuid);
 
-CREATE INDEX model_reaction_transports_model_fk ON model_reaction_transports (model_uuid);
+CREATE INDEX model_transported_reagents_model_fk ON model_transported_reagents (model_uuid);
 
-CREATE INDEX model_reaction_transports_modelCompartment_fk ON model_reaction_transports (model_compartment_uuid);
+CREATE INDEX model_transported_reagents_compound_fk ON model_transported_reagents (compound_uuid);
+
+CREATE INDEX model_transported_reagents_modelCompartment_fk ON model_transported_reagents (model_compartment_uuid);
 
 --
 -- Table: modelfbas
@@ -671,19 +720,19 @@ CREATE INDEX mapping_roles_role_fk ON mapping_roles (role_uuid);
 CREATE INDEX mapping_roles_mapping_fk ON mapping_roles (mapping_uuid);
 
 --
--- Table: mapping_compartments
+-- Table: biochemistry_compartments
 --
-CREATE TABLE mapping_compartments (
-  mapping_uuid CHAR(36) NOT NULL,
+CREATE TABLE biochemistry_compartments (
+  biochemistry_uuid CHAR(36) NOT NULL,
   compartment_uuid CHAR(36) NOT NULL,
-  PRIMARY KEY (mapping_uuid, compartment_uuid),
-  FOREIGN KEY(mapping_uuid) REFERENCES mappings(uuid),
+  PRIMARY KEY (biochemistry_uuid, compartment_uuid),
+  FOREIGN KEY(biochemistry_uuid) REFERENCES biochemistries(uuid),
   FOREIGN KEY(compartment_uuid) REFERENCES compartments(uuid)
 );
 
-CREATE INDEX mapping_compartments_compartment_fk ON mapping_compartments (compartment_uuid);
+CREATE INDEX biochemistry_compartments_compartment_fk ON biochemistry_compartments (compartment_uuid);
 
-CREATE INDEX mapping_compartments_mapping_fk ON mapping_compartments (mapping_uuid);
+CREATE INDEX biochemistry_compartments_biochemistry_fk ON biochemistry_compartments (biochemistry_uuid);
 
 --
 -- Table: compound_pks

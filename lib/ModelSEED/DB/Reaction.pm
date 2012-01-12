@@ -1,6 +1,8 @@
 package ModelSEED::DB::Reaction;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -28,7 +30,7 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     foreign_keys => [
-        compartment => {
+        defaultCompartment => {
             class       => 'ModelSEED::DB::Compartment',
             key_columns => { compartment_uuid => 'uuid' },
         },
@@ -95,6 +97,12 @@ __PACKAGE__->meta->setup(
 
         reagents => {
             class      => 'ModelSEED::DB::Reagent',
+            column_map => { uuid => 'reaction_uuid' },
+            type       => 'one to many',
+        },
+
+        default_transported_reagents => {
+            class      => 'ModelSEED::DB::DefaultTransportedReagent',
             column_map => { uuid => 'reaction_uuid' },
             type       => 'one to many',
         },

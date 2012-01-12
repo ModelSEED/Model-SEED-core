@@ -1,6 +1,8 @@
 package ModelSEED::DB::Role;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -20,7 +22,7 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     foreign_keys => [
-        feature => {
+        exemplar => {
             class       => 'ModelSEED::DB::Feature',
             key_columns => { feature_uuid => 'uuid' },
         },
@@ -62,8 +64,6 @@ __PACKAGE__->meta->setup(
     ],
 );
 
-
-
 __PACKAGE__->meta->column('uuid')->add_trigger(
     deflate => sub {
         my $uuid = $_[0]->uuid;
@@ -73,9 +73,7 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return $uuid;
         } else {
             return Data::UUID->new()->create_str();
-        }   
+        }
 });
 
-
 1;
-

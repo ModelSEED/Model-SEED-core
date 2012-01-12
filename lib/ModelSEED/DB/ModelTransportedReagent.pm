@@ -1,22 +1,30 @@
-package ModelSEED::DB::ModelReactionTransport;
+package ModelSEED::DB::ModelTransportedReagent;
 
 use strict;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 __PACKAGE__->meta->setup(
-    table   => 'model_reaction_transports',
+    table   => 'model_transported_reagents',
 
     columns => [
         model_uuid             => { type => 'character', length => 36, not_null => 1 },
         reaction_uuid          => { type => 'character', length => 36, not_null => 1 },
+        compound_uuid          => { type => 'character', length => 36, not_null => 1 },
         transportIndex         => { type => 'integer', not_null => 1 },
         model_compartment_uuid => { type => 'character', length => 36, not_null => 1 },
+        transportCoefficient   => { type => 'integer', not_null => 1 },
+        isImport               => { type => 'integer' },
     ],
 
     primary_key_columns => [ 'model_uuid', 'reaction_uuid', 'transportIndex' ],
 
     foreign_keys => [
+        compound => {
+            class       => 'ModelSEED::DB::Compound',
+            key_columns => { compound_uuid => 'uuid' },
+        },
+
         model => {
             class       => 'ModelSEED::DB::Model',
             key_columns => { model_uuid => 'uuid' },
@@ -33,21 +41,6 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
-
-
-
-__PACKAGE__->meta->column('uuid')->add_trigger(
-    deflate => sub {
-        my $uuid = $_[0]->uuid;
-        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
-            return $uuid->to_string();
-        } elsif($uuid) {
-            return $uuid;
-        } else {
-            return Data::UUID->new()->create_str();
-        }   
-});
-
 
 1;
 

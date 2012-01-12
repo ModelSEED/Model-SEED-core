@@ -1,6 +1,8 @@
 package ModelSEED::DB::Roleset;
 
+
 use strict;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 

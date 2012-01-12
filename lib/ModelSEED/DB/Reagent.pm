@@ -23,27 +23,24 @@ __PACKAGE__->meta->setup(
             key_columns => { compound_uuid => 'uuid' },
         },
 
+
         reaction => {
             class       => 'ModelSEED::DB::Reaction',
             key_columns => { reaction_uuid => 'uuid' },
         },
     ],
+
+    relationships => [
+        default_transported_reagent => {
+            class      => 'ModelSEED::DB::DefaultTransportedReagent',
+            column_map => { reaction_uuid => 'reaction_uuid',
+                            compound_uuid => 'compound_uuid',
+                            compartmentIndex => 'compartmentIndex',
+                          },
+            type       => 'one to one',
+        },
+    ],
+        
 );
 
-
-
-__PACKAGE__->meta->column('uuid')->add_trigger(
-    deflate => sub {
-        my $uuid = $_[0]->uuid;
-        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
-            return $uuid->to_string();
-        } elsif($uuid) {
-            return $uuid;
-        } else {
-            return Data::UUID->new()->create_str();
-        }   
-});
-
-
 1;
-
