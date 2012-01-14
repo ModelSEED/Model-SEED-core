@@ -2697,6 +2697,7 @@ sub import_biochem {
 	if (defined($args->{compounds})) {
 		my $tbl = $args->{compounds};
 		for (my $i=0; $i < $tbl->size();$i++) {
+			print "Processing compound ".$row->{"ID"}."\n";
 			my $row = $tbl->get_row($i);
 			if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
 				next;
@@ -2861,6 +2862,7 @@ sub import_biochem {
 	if (defined($args->{reactions})) {
 		my $tbl = $args->{reactions};
 		for (my $i=0; $i < $args->{reactions}->size();$i++) {
+			print "Processing compound ".$row->{"EQUATION"}."\n";
 			my $row = $tbl->get_row($i);
 			if (!defined($row->{"EQUATION"}->[0])) {
 				next;	
