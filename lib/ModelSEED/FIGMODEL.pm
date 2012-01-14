@@ -2694,11 +2694,13 @@ sub import_biochem {
 	}
 	#Loading the compound table
 	my $translation = {};
+	print "Test1\n";
 	if (defined($args->{compounds})) {
 		my $tbl = $args->{compounds};
+		print "Test2\n";
 		for (my $i=0; $i < $tbl->size();$i++) {
-			print "Processing compound ".$row->{"ID"}."\n";
 			my $row = $tbl->get_row($i);
+			print "Processing compound ".$row->{"ID"}."\n";
 			if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
 				next;
 			}
@@ -2859,11 +2861,13 @@ sub import_biochem {
 			$translation->{$row->{"ID"}->[0]} = $cpd->id();
 		}
 	}
+	print "Test3\n";
 	if (defined($args->{reactions})) {
+		print "Test4\n";
 		my $tbl = $args->{reactions};
 		for (my $i=0; $i < $args->{reactions}->size();$i++) {
-			print "Processing compound ".$row->{"EQUATION"}."\n";
 			my $row = $tbl->get_row($i);
+			print "Processing compound ".$row->{"EQUATION"}."\n";
 			if (!defined($row->{"EQUATION"}->[0])) {
 				next;	
 			}
