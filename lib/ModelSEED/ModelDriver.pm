@@ -757,7 +757,8 @@ sub processreaction {
 	ModelSEED::globals::ERROR("Reaction ".$args->{reaction}." not found in database!");
 	return "FAIL";
     }else{
-	print $model->fullId(),"\t",$rxn->id(),"\n";
+	print $model->fullId(),"\t" if $model;
+	print $rxn->id(),"\n";
 	$rxn->processReactionWithMFAToolkit($args);
 	return "SUCCESS";
     }

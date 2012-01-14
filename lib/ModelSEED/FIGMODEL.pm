@@ -3372,7 +3372,7 @@ sub import_model {
 					}
 				}
 				my $newString = join("|",sort(keys(%{$enzymeHash})));
-				if ($newString ne $rxn->enzyme()) {
+				if (!defined($rxn->enzyme()) || $newString ne $rxn->enzyme()) {
 					$rxn->enzyme($newString);
 				}
 			}
