@@ -7426,6 +7426,7 @@ sub genclassifyrespiration {
 		["genome",1,undef,"SEED ID of the genome to be analyzed"]
 	],[@Data],"classifying the type of respiration of a genome based on the functions present");
 	my $genomeObj = $self->figmodel()->get_genome($args->{genome});
+	print "test successfull\n";
 	return $genomeObj->classifyrespiration();
 }
 
