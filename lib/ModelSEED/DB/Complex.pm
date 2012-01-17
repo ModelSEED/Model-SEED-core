@@ -41,11 +41,10 @@ __PACKAGE__->meta->setup(
             type       => 'many to many',
         },
 
-        roles => {
-            map_class => 'ModelSEED::DB::ComplexRole',
-            map_from  => 'complex',
-            map_to    => 'role',
-            type      => 'many to many',
+        complex_roles => {
+            class      => 'ModelSEED::DB::ComplexRole',
+            column_map => { uuid => 'complex_uuid' },
+            type      => 'one to many',
         },
     ],
 );
