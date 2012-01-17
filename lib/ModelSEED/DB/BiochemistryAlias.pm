@@ -9,8 +9,8 @@ __PACKAGE__->meta->setup(
 
     columns => [
         biochemistry_uuid => { type => 'character', length => 36, not_null => 1 },
-        username          => { type => 'character', length => 255, not_null => 1 },
-        id                => { type => 'character', length => 255, not_null => 1 },
+        username          => { type => 'varchar', length => 255, not_null => 1 },
+        id                => { type => 'varchar', length => 255, not_null => 1 },
     ],
 
     primary_key_columns => [ 'username', 'id' ],

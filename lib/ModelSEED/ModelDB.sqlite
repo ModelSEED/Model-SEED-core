@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Thu Jan 12 11:55:46 2012
+-- Created on Tue Jan 17 10:18:22 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -1022,8 +1022,8 @@ CREATE INDEX biomass_compounds_compartment_fk ON biomass_compounds (compartment_
 --
 CREATE TABLE biochemistry_aliases (
   biochemistry_uuid CHAR(36) NOT NULL,
-  username CHAR(255) NOT NULL,
-  id CHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  id VARCHAR(255) NOT NULL,
   PRIMARY KEY (username, id),
   FOREIGN KEY(biochemistry_uuid) REFERENCES biochemistries(uuid)
 );
@@ -1035,8 +1035,8 @@ CREATE INDEX biochemistry_aliases_biochemistry_fk ON biochemistry_aliases (bioch
 --
 CREATE TABLE model_aliases (
   model_uuid CHAR(36) NOT NULL,
-  username CHAR(255) NOT NULL,
-  id CHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  id VARCHAR(255) NOT NULL,
   PRIMARY KEY (username, id),
   FOREIGN KEY(model_uuid) REFERENCES models(uuid)
 );
@@ -1048,8 +1048,8 @@ CREATE INDEX model_aliases_model_fk ON model_aliases (model_uuid);
 --
 CREATE TABLE mapping_aliases (
   mapping_uuid CHAR(36) NOT NULL,
-  username CHAR(255) NOT NULL,
-  id CHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  id VARCHAR(255) NOT NULL,
   PRIMARY KEY (username, id),
   FOREIGN KEY(mapping_uuid) REFERENCES mappings(uuid)
 );

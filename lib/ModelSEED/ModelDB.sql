@@ -1319,8 +1319,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `biochemistry_aliases` (
     `biochemistry_uuid` CHAR(36) NOT NULL,
-    `username` CHAR(255) NOT NULL,
-    `id` CHAR(255) NOT NULL,
+    `username` VARCHAR(255) NOT NULL,
+    `id` VARCHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
     INDEX `biochemistry_aliases_biochemistry_fk` (`biochemistry_uuid`),
     CONSTRAINT `biochemistry_aliases_biochemistry_fk`
@@ -1335,8 +1335,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `model_aliases` (
     `model_uuid` CHAR(36) NOT NULL,
-    `username` CHAR(255) NOT NULL,
-    `id` CHAR(255) NOT NULL,
+    `username` VARCHAR(255) NOT NULL,
+    `id` VARCHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
     INDEX `model_aliases_model_fk` (`model_uuid`),
     CONSTRAINT `model_aliases_model_fk`
@@ -1352,8 +1352,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mapping_aliases` (
     `mapping_uuid` CHAR(36) NOT NULL,
-    `username` CHAR(255) NOT NULL,
-    `id` CHAR(255) NOT NULL,
+    `username` VARCHAR(255) NOT NULL,
+    `id` VARCHAR(255) NOT NULL,
     PRIMARY KEY ( `username`, `id` ),
     INDEX `mapping_aliases_mapping_fk` (`mapping_uuid`),
     CONSTRAINT `mapping_aliases_mapping_fk`
