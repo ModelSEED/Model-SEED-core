@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/perl -w
 
 ########################################################################
@@ -757,7 +759,8 @@ sub processreaction {
 	ModelSEED::globals::ERROR("Reaction ".$args->{reaction}." not found in database!");
 	return "FAIL";
     }else{
-	print $model->fullId(),"\t",$rxn->id(),"\n";
+	print $model->fullId(),"\t" if $model;
+	print $rxn->id(),"\n";
 	$rxn->processReactionWithMFAToolkit($args);
 	return "SUCCESS";
     }
@@ -7420,15 +7423,88 @@ Genome Operations
 Classifying the type of respiration of a genome based on the functions present
 =EXAMPLE
 =cut
+
 sub genclassifyrespiration {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["genome",1,undef,"SEED ID of the genome to be analyzed"]
 	],[@Data],"classifying the type of respiration of a genome based on the functions present");
 	my $genomeObj = $self->figmodel()->get_genome($args->{genome});
-	print "test successfull\n";
 	return $genomeObj->classifyrespiration();
 }
+
+
+sub testsub{
+	
+	
+	my $sap = SAPserver->new();
+	my $genomes = $sap->all_genomes(-prokaryotic => 1);
+
+	foreach my $genome_id (keys %$genomes)
+		{
+    my $genome_name = $genomes->{$genome_id};
+    print "$genome_id\t$genome_name\n";
+		}
+	
+}
+
+sub testsub1{
+	
+	  my $sapObject = SAPserver->new();
+   my $protHash = $sapObject->all_proteins(-id => 360108.3);
+   
+   for my $geneID (sort { by_fig_id($a,$b) } keys %$protHash) {
+      print "$geneID: $protHash->{$geneID}\n";
+	
+	}
+
+}
+
+
+sub testsub2{
+	
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"],
+		["subsystem",1,undef,"Subsystem for which genes should be listed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+    
+        my $subsysHash = $sap->pegs_in_subsystems({
+                                -genomes => $args -> {genome},
+                                -subsystems => [$args->{subsystem}]
+                            });
+
+			           #print Data::Dumper->Dump([$subsysHash]);
+			           
+	my $genomes = $args->{'genome'};
+	my $ss      = [$args->{'subsystem'}];
+	my $ssH        = $sap->pegs_in_subsystems(-genomes => $genomes, -subsystems => $ss);
+
+foreach my $s(@$ss)
+{
+	
+       my $roleH = $ssH->{$s};
+       my @roles = keys(%$roleH);
+       foreach my $role (@roles)
+       {
+           my $pegs = $roleH->{$role};
+           #print ($s,$role,$pegs);
+           print "$role\n";
+           
+           foreach my $p (@$pegs){
+           	
+           	print "$p,";
+           }
+           print "\n";
+       }
+
+}		     
+	
+}
+
+
+
 
 =head
 =CATEGORY
@@ -7444,12 +7520,17 @@ sub genlistsubsystemgenes {
 		["subsystem",1,undef,"Subsystem for which genes should be listed"]
 	],[@Data],"classifying the type of respiration of a genome based on the functions present");
 	my $sap = $self->figmodel()->sapSvr($args->{source});
+
 	my $subsys = $sap->ids_in_subsystems({
 		-subsystems => [$args-> {subsystem}],
 		-genome => $args -> {genome},
 		-roleForm => "full",
 	});
-	print Data::Dumper->Dump([$subsys]);
+	
+
+ 	
+ 	
+ 	print Data::Dumper->Dump([$subsys]);
 }
 
 1;
