@@ -1929,6 +1929,9 @@ sub update_model_stats {
 	$self->ppo()->transporters($counts->{transporters});
 	$self->ppo()->autoCompleteReactions($counts->{autocompletion});
 	$self->ppo()->associatedSubsystemGenes($counts->{genes});
+	if (defined($self->genomeObj())) {
+		$self->ppo()->name($self->genomeObj()->name());
+	}
 	#Setting the model class
 	my $class = "";
 	for (my $i=0; $i < @{$self->figmodel()->config("class list")}; $i++) {
