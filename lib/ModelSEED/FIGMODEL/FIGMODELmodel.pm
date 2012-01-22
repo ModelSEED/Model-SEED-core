@@ -5815,7 +5815,7 @@ sub PrintSBMLFile {
 	
 	#Handling media formulation for SBML file
 	my $mediaCpd;
-	if ($args->{media} ne "Complete" && ref($args->{media}) eq "SCALAR") {
+	if ($args->{media} ne "Complete") {
 		$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
 	}
 	if (!defined($args->{media})) {
