@@ -12,7 +12,7 @@ Description:
 	Returns a workspace object
 =cut
 sub new { 
-	my ($self,$args) = @_;
+	my ($class,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[
 		"owner",
 		"root",
@@ -21,9 +21,12 @@ sub new {
 		clear => 0,
 		copy => undef
 	});
-	$self->{_owner} = $args->{owner};
-	$self->{_root} = $args->{root};
-	$self->{_binDirectory} = $args->{binDirectory};
+	my $self = {
+		_owner => $args->{owner},
+		_root => $args->{root},
+		_binDirectory => $args->{binDirectory}
+	};
+	bless $self;
 	if($args->{clear} eq 1) {
         $self->clear();
     }
@@ -32,7 +35,7 @@ sub new {
     }
 	File::Path::mkpath($self->directory) unless(-f $self->directory);
 	$self->printWorkspaceEnvFiles();
-    return bless $self;
+    return $self;
 }
 =head3 id
 Definition:

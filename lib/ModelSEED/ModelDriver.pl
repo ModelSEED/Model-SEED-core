@@ -23,7 +23,7 @@ try {
     exit(1);
 };
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
-    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->figmodel()->user().".\n";
+    print "Welcome to the Model SEED! You are currently logged in as: ".ModelSEED::Interface::interface::USERNAME().".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";
     print "Possible usage:\n\n";
     print "1.) ModelDriver usage \"name of function\"\n";

@@ -4496,7 +4496,7 @@ sub printgapfilledreactions {
 	my $args = $self->check([
 		["models",1]
 	],[@Data]);
-	my $results = ModelSEED::interface::processIDList({
+	my $results = ModelSEED::Interface::interface::processIDList({
 		objectType => "model",
 		delimiter => ",",
 		column => "id",

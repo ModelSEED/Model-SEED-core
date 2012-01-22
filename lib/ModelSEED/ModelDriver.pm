@@ -19,7 +19,7 @@ Description:
 	Returns a driver object
 =cut
 sub new { 
-	my $self;
+	my $self = {};
 	ModelSEED::Interface::interface::CREATEWORKSPACE({});
     return bless $self;
 }
@@ -98,7 +98,7 @@ Description:
 =cut
 sub finish {
 	my ($self,$message) = @_;
-	if (defined($self->{_finishedfile} ne "NONE")) {
+	if (defined($self->{_finishedfile}) && $self->{_finishedfile} ne "NONE") {
 	    if ($self->{_finishedfile} =~ m/^\//) {
 	        ModelSEED::utilities::PRINTFILE($self->finishFile(),[$message]);
 	    } else {
@@ -171,7 +171,7 @@ sub mscreateuser {
 		["lastname",1,undef,"Last name of the new proposed user."],
 		["email",1,undef,"Email of the new proposed user."]
 	],[@Data],"creating a new local account for a model SEED installation");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mscreateuser($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -193,7 +193,7 @@ sub msdeleteuser {
 		["login",0,undef,"Login of the useraccount to be deleted."],
 		["password",0,undef,"Password of the useraccount to be deleted."],
 	],[@Data],"deleting the local instantiation of the specified user account");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->msdeleteuser($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -216,14 +216,14 @@ sub msswitchworkspace {
 		["clear",0,0,"Indicates that the workspace should be cleared upon switching to it."],
 		["copy",0,undef,"The name of an existing workspace that should be copied into the new specified workspace."],
 	],[@Data],"switch to a new workspace");
-	my $id = ModelSEED::interface::GETWORKSPACE()->id();
-	ModelSEED::interface::GETWORKSPACE()->switchWorkspace({
+	my $id = ModelSEED::Interface::interface::WORKSPACE()->id();
+	ModelSEED::Interface::interface::WORKSPACE()->switchWorkspace({
 		id => $args->{name},
 		copy => $args->{copy},
 		clear => $args->{clear}
 	});
 	my $output = {MESSAGE => [
-		"Switched from workspace ".$id." to workspace ".ModelSEED::interface::GETWORKSPACE()->id()."!"
+		"Switched from workspace ".$id." to workspace ".ModelSEED::Interface::interface::WORKSPACE()->id()."!"
 	]};
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -241,7 +241,7 @@ sub msworkspace {
 	my $args = $self->check([
 		["verbose",0,0,"Set this FLAG to '1' to print more details about workspace contents and metadata."]
 	],[@Data],"prints workspace information");
-	my $output = {MESSAGE => ModelSEED::interface::GETWORKSPACE()->printWorkspace({
+	my $output = {MESSAGE => ModelSEED::Interface::interface::WORKSPACE()->printWorkspace({
 		verbose => $args->{verbose}
 	})};
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -258,9 +258,9 @@ Prints a list of all workspaces owned by the specified or currently logged user.
 sub mslistworkspace {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["user",0,ModelSEED::interface::USERNAME(),"username to list workspaces for"]
+		["user",0,ModelSEED::Interface::interface::USERNAME(),"username to list workspaces for"]
 	],[@Data],"print list of workspaces for user");
-	my $list = ModelSEED::interface::GETWORKSPACE()->listWorkspaces({
+	my $list = ModelSEED::Interface::interface::WORKSPACE()->listWorkspaces({
 		owner => $args->{user}
 	});
 	my $output = {MESSAGE => [
@@ -285,19 +285,19 @@ sub mslogin {
 		["password",1,undef,"password of user account you wish to log into or import from the SEED"],
 		["noimport",0,0,undef,"username of user account you wish to log into"]
 	],[@Data],"login as new user and import user account from SEED");
-	my $oldws = ModelSEED::interface::USERNAME().":".ModelSEED::interface::GETWORKSPACE()->id();
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $oldws = ModelSEED::Interface::interface::USERNAME().":".ModelSEED::Interface::interface::WORKSPACE()->id();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mslogin($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
-	ModelSEED::interface::USERNAME($args->{username});
-	ModelSEED::interface::PASSWORD($args->{password});
-	ModelSEED::interface::CREATEWORKSPACE();
-	ModelSEED::interface::UPDATEENVIRONMENT();
+	ModelSEED::Interface::interface::USERNAME($args->{username});
+	ModelSEED::Interface::interface::PASSWORD($args->{password});
+	ModelSEED::Interface::interface::CREATEWORKSPACE();
+	ModelSEED::Interface::interface::UPDATEENVIRONMENT();
 	$output->{MESSAGE} = [
 		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.",
-		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".ModelSEED::interface::GETWORKSPACE()->id()."\"!"
+		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".ModelSEED::Interface::interface::WORKSPACE()->id()."\"!"
 	];
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -314,15 +314,15 @@ sub mslogout {
     my($self,@Data) = @_;
 	my $args = $self->check([
 	],[@Data],"logout of the Model SEED environment");
-	my $oldws = ModelSEED::interface::USERNAME().":".ModelSEED::interface::GETWORKSPACE()->id();
-	ModelSEED::interface::USERNAME("public");
-	ModelSEED::interface::PASSWORD("public");
-	ModelSEED::interface::CREATEWORKSPACE();
-	ModelSEED::interface::UPDATEENVIRONMENT();
+	my $oldws = ModelSEED::Interface::interface::USERNAME().":".ModelSEED::Interface::interface::WORKSPACE()->id();
+	ModelSEED::Interface::interface::USERNAME("public");
+	ModelSEED::Interface::interface::PASSWORD("public");
+	ModelSEED::Interface::interface::CREATEWORKSPACE();
+	ModelSEED::Interface::interface::UPDATEENVIRONMENT();
 	my $output = {MESSAGE => [
 		"Logout Successful!",
 		"You will not be able to access user-associated data anywhere unless you log in again.",
-		"You have switched from workspace \"".$oldws."\" to workspace \"public:".ModelSEED::interface::GETWORKSPACE()->id()."\"!"
+		"You have switched from workspace \"".$oldws."\" to workspace \"public:".ModelSEED::Interface::interface::WORKSPACE()->id()."\"!"
 	]};
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -341,15 +341,15 @@ sub sqblastgenomes {
 		["genomes",1,undef,"A ',' delimited list of the genome IDs that the input sequence should be blasted against. You may also provide the name of a file in the workspace where genome IDs have been listed. The file must have the '.lst' extension."],
 		["filename",0,"sqblastgenomes.out","The name of the file where the output from the blast should be saved."]
 	],[@Data],"blast sequences against genomes");
-	$args->{genomes} = ModelSEED::interface::PROCESSIDLIST({
+	$args->{genomes} = ModelSEED::Interface::interface::PROCESSIDLIST({
 		delimiter => ",",
 		input => $args->{"genomes"}
 	});
-	$args->{sequences} = ModelSEED::interface::PROCESSIDLIST({
+	$args->{sequences} = ModelSEED::Interface::interface::PROCESSIDLIST({
 		delimiter => ",",
 		input => $args->{"sequences"}
 	});
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->sqblastgenomes($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -376,7 +376,7 @@ sub sqblastgenomes {
     		push(@{$outputFile},$line);
     	}
     }
-	ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{"filename"},$outputFile);
+	ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{"filename"},$outputFile);
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
 
@@ -399,22 +399,22 @@ sub fbacheckgrowth {
 		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 	],[@Data],"tests if a model is growing under a specific media");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->fbacheckgrowth($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{reactionFluxFile})) {
-		push(@{$output->{MESSAGE}},"Reaction fluxes printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFluxes-".$args->{model}."-".$args->{media}.".txt");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFluxes-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{reactionFluxFile});	
+		push(@{$output->{MESSAGE}},"Reaction fluxes printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFluxes-".$args->{model}."-".$args->{media}.".txt");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFluxes-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{reactionFluxFile});	
 	}
 	if (defined($output->{RESULTS}->{compoundFluxFile})) {
-		push(@{$output->{MESSAGE}},"Compound fluxes printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFluxes-".$args->{model}."-".$args->{media}.".txt");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFluxes-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{compoundFluxFile});	
+		push(@{$output->{MESSAGE}},"Compound fluxes printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFluxes-".$args->{model}."-".$args->{media}.".txt");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFluxes-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{compoundFluxFile});	
 	}
 	if (defined($output->{RESULTS}->{lpfile})) {
-		push(@{$output->{MESSAGE}},"FBA LP file printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."FBAProblem-".$args->{model}."-".$args->{media}.".lp");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."FBAProblem-".$args->{model}."-".$args->{media}.".lp",$output->{RESULTS}->{lpfile});	
+		push(@{$output->{MESSAGE}},"FBA LP file printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."FBAProblem-".$args->{model}."-".$args->{media}.".lp");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."FBAProblem-".$args->{model}."-".$args->{media}.".lp",$output->{RESULTS}->{lpfile});	
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -440,13 +440,13 @@ sub fbasingleko {
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["savetodb",0,0,"A FLAG that indicates that results should be saved to the database if set to '1'."],
 	],[@Data],"simulate knockout of all combinations of one or more genes");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->fbasingleko($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{essentialGenes})) {
-		my $filename = ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-EssentialGenes.lst";
+		my $filename = ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}."-EssentialGenes.lst";
 		ModelSEED::utilities::PRINTFILE($filename,$output->{RESULTS}->{essentialGenes});
 		push(@{$output->{MESSAGE}},("Essential genes identified.","Essential genes listed in ".$filename));
 	}
@@ -472,18 +472,18 @@ sub fbaminimalmedia {
 		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 	],[@Data],"calculates the minimal media for the specified model");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->fbaminimalmedia($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{minimalMediaResultsFile})) {
-		push(@{$output->{MESSAGE}},("Essential nutrients successfully identified!","Data on essential and optional nutrients printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt"));
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt",$output->{RESULTS}->{minimalMediaResultsFile});
+		push(@{$output->{MESSAGE}},("Essential nutrients successfully identified!","Data on essential and optional nutrients printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt"));
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}."-MinimalMediaAnalysis.txt",$output->{RESULTS}->{minimalMediaResultsFile});
 	}
 	if (defined($output->{RESULTS}->{minimalMediaFile})) {
-		push(@{$output->{MESSAGE}},("Essential media formulation successfully designed!","Media formulation printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-minimal.media"));
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}."-minimal.media",$output->{RESULTS}->{minimalMediaFile});
+		push(@{$output->{MESSAGE}},("Essential media formulation successfully designed!","Media formulation printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}."-minimal.media"));
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}."-minimal.media",$output->{RESULTS}->{minimalMediaFile});
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -510,7 +510,7 @@ sub fbafva {
 		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
 		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
 	],[@Data],"performs FVA (Flux Variability Analysis) studies");   	
-   	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+   	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->fbafva($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -518,17 +518,17 @@ sub fbafva {
 	if (defined($output->{RESULTS}->{compoundTable}) && defined($output->{RESULTS}->{reactionTable})) {
 		push(@{$output->{MESSAGE}},"Flux variability analysis of ".$args->{model}." in ".$args->{media}." successful!");
 		if ($args->{saveformat} eq "EXCEL") {
-			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls");
+			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{filename}.".xls");
 			ModelSEED::utilities::MAKEXLS({
-				filename => ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls",
+				filename => ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{filename}.".xls",
 				sheetnames => ["Compound Bounds","Reaction Bounds"],
 				sheetdata => [$output->{RESULTS}->{compoundTable},$output->{RESULTS}->{reactionTable}]
 			});
 		} elsif ($args->{saveformat} eq "TEXT") {
-			$output->{RESULTS}->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
-			$output->{RESULTS}->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
-			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
-			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{compoundTable}->save(ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{reactionTable}->save(ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
+			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
+			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
 		}
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -556,7 +556,7 @@ sub fbafvabiomass {
 		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
 		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
 	],[@Data],"performs FVA (Flux Variability Analysis) study of entire database");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->fbafvabiomass($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -564,17 +564,17 @@ sub fbafvabiomass {
 	if (defined($output->{RESULTS}->{compoundTable}) && defined($output->{RESULTS}->{reactionTable})) {
 		push(@{$output->{MESSAGE}},"Flux variability analysis of ".$args->{biomass}." in ".$args->{media}." successful!");
 		if ($args->{saveformat} eq "EXCEL") {
-			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename}.".xls");
+			push(@{$output->{MESSAGE}},"Results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{filename}.".xls");
 			ModelSEED::utilities::MAKEXLS({
 				filename => $self->ws()->directory().$args->{filename}.".xls",
 				sheetnames => ["Compound Bounds","Reaction Bounds"],
 				sheetdata => [$output->{RESULTS}->{compoundTable},$output->{RESULTS}->{reactionTable}]
 			});
 		} elsif ($args->{saveformat} eq "TEXT") {
-			$output->{RESULTS}->{compoundTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{biomass}."-".$args->{media}.".txt");
-			$output->{RESULTS}->{reactionTable}->save(ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{biomass}."-".$args->{media}.".txt");
-			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
-			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{compoundTable}->save(ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFVA-".$args->{biomass}."-".$args->{media}.".txt");
+			$output->{RESULTS}->{reactionTable}->save(ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFVA-".$args->{biomass}."-".$args->{media}.".txt");
+			push(@{$output->{MESSAGE}},"Reaction FVA results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."ReactionFVA-".$args->{model}."-".$args->{media}.".txt");
+			push(@{$output->{MESSAGE}},"Compound FVA results printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."CompoundFVA-".$args->{model}."-".$args->{media}.".txt");
 		}
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -593,11 +593,11 @@ sub bcprintmediatable {
 		["medias",1,undef,"Name of the media formulation to be printed."],
 		["filename",0,"MediaTable.txt","Filename where media table will be printed."]
 	],[@Data],"print Model SEED media formulation");
-    $args->{medias} = ModelSEED::interface::processIDList({
+    $args->{medias} = ModelSEED::Interface::interface::processIDList({
 		delimiter => ",",
 		input => $args->{medias}
 	});
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->bcprintmediatable($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -611,8 +611,8 @@ sub bcprintmediatable {
 			}
 			push(@{$outputFile},$line);
 		}
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename},$outputFile);
-	    push(@{$output->{MESSAGE}},"Media table printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{filename});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{filename},$outputFile);
+	    push(@{$output->{MESSAGE}},"Media table printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{filename});
 	
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -631,14 +631,14 @@ sub bcprintmedia {
 	my $args = $self->check([
 		["media",1,undef,"Name of the media formulation to be printed."],
 	],[@Data],"print Model SEED media formulation");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->bcprintmedia($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
     if (defined($output->{RESULTS}->{mediaFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
-	    push(@{$output->{MESSAGE}},"Successfully printed media to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
+	    push(@{$output->{MESSAGE}},"Successfully printed media to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media}.".media",$output->{RESULTS}->{mediaFile});
 	
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
@@ -657,14 +657,14 @@ sub bcloadmedia {
 	my $args = $self->check([
 		["media",1,undef,"The name of the media formulation being created or altered."],
 		["public",0,0,"Set directory in which FBA problem output files will be stored."],
-		["owner",0,ModelSEED::interface::USERNAME(),"Login of the user account who will own this media condition."],
+		["owner",0,ModelSEED::Interface::interface::USERNAME(),"Login of the user account who will own this media condition."],
 		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
 	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
-    if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}) {
-    	ModelSEED::utilities::ERROR("Could not find specified media file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media});
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
+    if (!-e ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media}) {
+    	ModelSEED::utilities::ERROR("Could not find specified media file ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media});
     }
-    $args->{mediaFile} = ModelSEED::utilities::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media});
+    $args->{mediaFile} = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media});
 	my $output = $cmdapi->bcloadmedia($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -699,15 +699,15 @@ sub mdlautocomplete {
 		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
 		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
 	],[@Data],"adds reactions to the model to eliminate inactive reactions");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlautocomplete($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{gapfillReportFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{gapfillReportFile});
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt",$output->{RESULTS}->{gapfillReportFile});
 		push(@{$output->{MESSAGE}},"Successfully autocompleted model ".$args->{model}." in ".$args->{media}." media!");
-		push(@{$output->{MESSAGE}},"Printed autocompletion results to ".ModelSEED::interface::GETWORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt");
+		push(@{$output->{MESSAGE}},"Printed autocompletion results to ".ModelSEED::Interface::interface::WORKSPACE()->directory()."AutocompletionReport-".$args->{model}."-".$args->{media}.".txt");
 	}
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -727,7 +727,7 @@ sub mdlreconstruction {
 		["autocompletion",0,0,"Set this FLAG to '1' in order to run the autocompletion process immediately after the reconstruction is complete."],
 		["checkpoint",0,0,"Set this FLAG to '1' in order to check in the model prior to the reconstruction process so the current model will be preserved."],
 	],[@Data],"run model reconstruction from genome annotations");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlreconstruction($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -749,7 +749,7 @@ sub mdlmakedbmodel {
 	my $args = $self->check([
 		["model",1,undef,"The name of the model that will contain all the database reactions."],
 	],[@Data],"construct a model with all database reactions");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlmakedbmodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -773,7 +773,7 @@ sub mdladdright {
 		["user",1,undef,"Login of the user account for which rights should be added."],
 		["right",0,"view","Type of right that should be added. Possibilities include 'view' and 'admin'."]
 	],[@Data],"add rights to a model to another user");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdladdright($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -795,13 +795,13 @@ sub mdlcreatemodel {
 		["genome",1,undef,"Genome for which new model should be created."],
 		["id",0,undef,"ID that the new model should have in the Model SEED database."],
 		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
-		["owner",0,ModelSEED::interface::USERNAME(),"The login of the user account that should own the new model."],
+		["owner",0,ModelSEED::Interface::interface::USERNAME(),"The login of the user account that should own the new model."],
 		["biochemSource",0,undef,"Path to an existing biochemistry provenance database that should be used for provenance in the new model."],
 		["reconstruction",0,1,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
 		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
 		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
 	],[@Data],"create new Model SEED models");
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlcreatemodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -822,7 +822,7 @@ sub mdlinspectstate {
 	my $args = $self->check([
 		["model",1,undef,"ID of model to be inspected"],
 	],[@Data],"inspect that model consistency with biochemistry database");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlinspectstate($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -846,22 +846,22 @@ sub mdlprintsbml {
 		["media",0,"Complete","ID of a media condition or media file for which SBML should be printed"],
 	],[@Data],"prints model(s) in SBML format");
 	if ($args->{media} =~ m/\.media$/) {
-		if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}) {
-			ModelSEED::utilities::USERERROR("Media file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{media}." not found");
+		if (!-e ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media}) {
+			ModelSEED::utilities::USERERROR("Media file ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media}." not found");
 		}
 		$args->{media} = {
-			filedata => ModelSEED::interface::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{media})
+			filedata => ModelSEED::Interface::interface::LOADFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{media})
 		}; 
 	}
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlprintsbml($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{sbmlfile})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed SBML file for ".$args->{model}." in media ".$args->{media}."!");
-		push(@{$output->{MESSAGE}},"SBML file printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml",$output->{RESULTS}->{sbmlfile});
+		push(@{$output->{MESSAGE}},"SBML file printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."SBML-".$args->{model}."-".$args->{media}.".xml",$output->{RESULTS}->{sbmlfile});
 	}
 }
 
@@ -882,20 +882,20 @@ sub mdlprintmodel {
 	my $args = $self->check([
 		["model",1,undef,"The full Model SEED ID of the model to be printed."]
 	],[@Data],"prints a model to flatfile for alteration and reloading");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlprintmodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{modelfile})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed reaction table for ".$args->{model}."!");
-		push(@{$output->{MESSAGE}},"Reaction table printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl",$output->{RESULTS}->{modelfile});
+		push(@{$output->{MESSAGE}},"Reaction table printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}.".mdl");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}.".mdl",$output->{RESULTS}->{modelfile});
 	}
 	if (defined($output->{RESULTS}->{biomassEquation})) {
 		push(@{$output->{MESSAGE}},"Succesfully printed biomass reaction ".$output->{RESULTS}->{biomassID}." for ".$args->{model}."!");
-		push(@{$output->{MESSAGE}},"Biomass data printed to ".ModelSEED::interface::GETWORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof",[
+		push(@{$output->{MESSAGE}},"Biomass data printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$output->{RESULTS}->{biomassID}.".bof",[
 			"DATABASE\t".$output->{RESULTS}->{biomassID},
 			"EQUATION\t".$output->{RESULTS}->{biomassEquation}
 		]);
@@ -919,13 +919,13 @@ sub mdlprintcytoseed {
 		["directory",0,undef,"The full path and name of the directory where the model should be printed."],
 	],[@Data],"prints a model to format expected by CytoSEED");
 	if (!defined($args->{directory})) {
-		$args->{directory} = ModelSEED::interface::GETWORKSPACE()->directory();
+		$args->{directory} = ModelSEED::Interface::interface::WORKSPACE()->directory();
 	}
 	my $cmdir = $args->{directory}."/".$args->{model};
 	if (!-d $cmdir) {
 	    mkdir($cmdir) or ModelSEED::utilities::ERROR("Could not create $cmdir: $!\n");
 	}
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlprintcytoseed($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -983,14 +983,14 @@ sub mdlprintmodelgenes {
 	my $args = $self->check([
 		["model",1,undef,"Name of the model for which the genes should be printed."],
 	],[@Data],"print all genes in model");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlprintmodelgenes($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{geneList})) {
-		push(@{$output->{MESSAGE}},"Gene list printed to ".ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst");
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."GeneList-".$args->{model}.".lst",$output->{RESULTS}->{geneList});
+		push(@{$output->{MESSAGE}},"Gene list printed to ".ModelSEED::Interface::interface::WORKSPACE()->directory()."GeneList-".$args->{model}.".lst");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."GeneList-".$args->{model}.".lst",$output->{RESULTS}->{geneList});
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -1013,19 +1013,19 @@ sub mdlloadmodel {
     	["genome",1,undef,"The SEED genome ID associated with the model to be loaded."],
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
     	["biomassFile",0,undef,"The full path and name of the file where the biomass reaction for the model to be imported is located. [[Example biomass file]]."],
-    	["owner",0,ModelSEED::interface::USERNAME(),"The login name of the user that should own the loaded model"],
+    	["owner",0,ModelSEED::Interface::interface::USERNAME(),"The login name of the user that should own the loaded model"],
     	["biochemSource",0,undef,"Name of the model whose biochem database should be copied with this new model. If not provided, the Model SEED will generate a new provenance database from scratch using current system data."],
     	["overwrite",0,0,"If you are attempting to load a model that already exists in the database, you MUST set this argument to '1'."],
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."],
     	["autoCompleteMedia",0,"Complete","Name of the media used for auto-completing this model."]
 	],[@Data],"reload a model from a flatfile");
 	if (!defined($args->{filename})) {
-		$args->{filename} = ModelSEED::interface::GETWORKSPACE()->directory().$args->{model}.".mdl";
+		$args->{filename} = ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{model}.".mdl";
 	}
 	if (!-e $args->{filename}) {
 		ModelSEED::utilities::USEERROR("Model file ".$args->{filename}." not found. Check file and input.");
 	}
-	$args->{modelfiledata} = ModelSEED::interface::LOADFILE($args->{filename});
+	$args->{modelfiledata} = ModelSEED::Interface::interface::LOADFILE($args->{filename});
 	if (!defined($args->{biomassFile})) {
 		my $biomassID;
 		for (my $i=0; $i < @{$args->{modelfiledata}};$i++) {
@@ -1033,14 +1033,14 @@ sub mdlloadmodel {
 				$biomassID = $1;
 			}
 		}
-		$args->{biomassFile} = ModelSEED::interface::GETWORKSPACE()->directory().$biomassID.".bof";
+		$args->{biomassFile} = ModelSEED::Interface::interface::WORKSPACE()->directory().$biomassID.".bof";
 	}
 	if (-e $args->{biomassFile}) {
 		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
 		$args->{biomassEquation} = $obj->{EQUATION}->[0];
 		$args->{biomassid} = $obj->{DATABASE}->[0];
 	}
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlloadmodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -1063,7 +1063,7 @@ sub mdlchangedrains {
     	["drains",0,undef,"\";\" delimited list of compounds for which drains should be added"],
     	["inputs",0,undef,"\";\" delimited list of compounds for which inputs should be added"],
 	],[@Data],"change drain fluxes associated with model");
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlchangedrains($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -1087,15 +1087,15 @@ sub mdlloadbiomass {
     	["equation",0,undef,"The stoichiometric equation for the biomass reaction."],
     	["overwrite",0,0,"If you are attempting to alter and existing biomass reaction, you MUST set this argument to '1'"]
 	],[@Data],"Loads a model biomass reaction into the database from a flatfile");
-	if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{biomass}) {
-    	ModelSEED::utilities::ERROR("Could not find specified SBML file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{file});
+	if (!-e ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{biomass}) {
+    	ModelSEED::utilities::ERROR("Could not find specified SBML file ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{file});
     }
     $args->{biomassid} = $args->{biomass};
 	if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
 		my $filename = $args->{biomass};
 		if ($filename =~ m/^bio\d+$/) {
-			$filename = ModelSEED::interface::GETWORKSPACE()->directory().$args->{biomass}.".bof";
+			$filename = ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
 		ModelSEED::utilities::ERROR("Could not find specified biomass file ".$filename."!") if (!-e $filename);
@@ -1107,7 +1107,7 @@ sub mdlloadbiomass {
 		}
 		$args->{biomassid} = $obj->{DATABASE}->[0];
 	}
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlloadbiomass($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
@@ -1129,20 +1129,20 @@ sub mdlparsesbml {
 		["file",1,undef,"The name of the SBML file to be parsed. It is assumed the file is present in the workspace."],
 		["name",0,undef,"The name of the model being parsed, which will be used to name the output files"],
 	],[@Data],"parsing SBML file into compound and reaction tables");
-	if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{file}) {
-    	ModelSEED::utilities::ERROR("Could not find specified SBML file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{file});
+	if (!-e ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{file}) {
+    	ModelSEED::utilities::ERROR("Could not find specified SBML file ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{file});
     }
-	$args->{filedata} = ModelSEED::interface::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{file});
+	$args->{filedata} = ModelSEED::Interface::interface::LOADFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{file});
 	if (!defined($args->{name})) {
 		$args->{name} = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1);
 	}
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlparsesbml($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	foreach my $table (keys(%{$output})) {
-		my $filename = ModelSEED::interface::GETWORKSPACE()->directory().$args->{name}."-".$table.".tbl";
+		my $filename = ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{name}."-".$table.".tbl";
 		$output->{RESULTS}->{$table}->save($filename);
 		push(@{$output->{MESSAGE}},$table." table printed to ".$filename);
 	}
@@ -1162,8 +1162,8 @@ sub mdlimportmodel {
     my $args = $self->check([
     	["name",1,undef,"The ID in the Model SEED that the imported model should have, or the ID of the model to be overwritten by the imported model."],
     	["genome",0,"NONE","SEED ID of the genome the imported model should be associated with."],
-    	["owner",0,ModelSEED::interface::USERNAME(),"Name of the user account that will own the imported model."],
-    	["path",0,ModelSEED::interface::GETWORKSPACE()->directory(),"The path where the compound and reaction files containing the model data to be imported are located."],
+    	["owner",0,ModelSEED::Interface::interface::USERNAME(),"Name of the user account that will own the imported model."],
+    	["path",0,ModelSEED::Interface::interface::WORKSPACE()->directory(),"The path where the compound and reaction files containing the model data to be imported are located."],
     	["overwrite",0,0,"Set this FLAG to '1' to overwrite an existing model with the same name."],
     	["biochemsource",0,undef,"The path to the directory where the biochemistry database that the model should be imported into is located."]
     ],[@Data],"import a model into the Model SEED environment");
@@ -1175,14 +1175,14 @@ sub mdlimportmodel {
 	}
 	$args->{reactionTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-reactions.tbl","\t","|",0,["ID"]);
 	$args->{compoundTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-compounds.tbl","\t","|",0,["ID"]);
-	my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->mdlimportmodel($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{outputFile})) {
-		ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory()."ImportReport-".$args->{name}.".txt",$output->{RESULTS}->{outputFile});
-		push(@{$output->{MESSAGE}},"Model import report printed in ".ModelSEED::interface::GETWORKSPACE()->directory()."ImportReport-".$args->{name}.".txt");
+		ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory()."ImportReport-".$args->{name}.".txt",$output->{RESULTS}->{outputFile});
+		push(@{$output->{MESSAGE}},"Model import report printed in ".ModelSEED::Interface::interface::WORKSPACE()->directory()."ImportReport-".$args->{name}.".txt");
 	}	
     return join("\n",@{$output->{MESSAGE}})."\n";
 }
@@ -1206,19 +1206,19 @@ sub utilmatrixdist {
 		["endrow",0,undef,"Row of the input data table where the numerical data ends.","Defaults to the number of rows in the input file."],
 		["delimiter",0,"\\t","Delimiter used in the input data table."]
 	],[@Data],"binning numerical matrix data into a histogram");
-	if (!-e ModelSEED::interface::GETWORKSPACE()->directory().$args->{matrixfile}) {
-		ModelSEED::utilities::ERROR("Could not find matrix file ".ModelSEED::interface::GETWORKSPACE()->directory().$args->{matrixfile}."!");
+	if (!-e ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{matrixfile}) {
+		ModelSEED::utilities::ERROR("Could not find matrix file ".ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{matrixfile}."!");
 	}
-	$args->{matrix} = ModelSEED::utilities::LOADFILE(ModelSEED::interface::GETWORKSPACE()->directory().$args->{matrixfile});
-    my $cmdapi = ModelSEED::interface::GETCOMMANDAPI();
+	$args->{matrix} = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$args->{matrixfile});
+    my $cmdapi = ModelSEED::Interface::interface::COMMANDAPI();
 	my $output = $cmdapi->utilmatrixdist($args);
 	if (defined($output->{ERROR})) {
 		ModelSEED::utilities::ERROR($output->{ERROR});
 	}
 	if (defined($output->{RESULTS}->{distfiledata})) {
 		foreach my $filename (keys(%{$output->{RESULTS}->{distfiledata}})) {
-			ModelSEED::utilities::PRINTFILE(ModelSEED::interface::GETWORKSPACE()->directory().$filename,$output->{RESULTS}->{distfiledata}->{$filename});
-			push(@{$output->{MESSAGE}},"Printed distribution data to ".ModelSEED::interface::GETWORKSPACE()->directory().$filename);
+			ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::WORKSPACE()->directory().$filename,$output->{RESULTS}->{distfiledata}->{$filename});
+			push(@{$output->{MESSAGE}},"Printed distribution data to ".ModelSEED::Interface::interface::WORKSPACE()->directory().$filename);
 		}
 	}
     return join("\n",@{$output->{MESSAGE}})."\n";
