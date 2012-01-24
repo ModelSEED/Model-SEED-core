@@ -41,7 +41,7 @@ use ModelSEED::FIGMODEL::FIGMODELgenome;
 use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
-use ModelSEED::FIGMODEL::workspace;
+use ModelSEED::Interface::workspace;
 use ModelSEED::FIGMODEL::queue;
 use ModelSEED::MooseDB::user;
 
@@ -1523,7 +1523,7 @@ sub parseSBMLToTable {
 		}
     } elsif(defined($args->{filedata})){
     	#Printing the file data to a temporary file
-    	my ($fh, $args->{file}) = File::Temp::tempfile("sbml-XXXXXXX");
+    	(my $fh, $args->{file}) = File::Temp::tempfile("sbml-XXXXXXX");
 		close($fh);
     	ModelSEED::utilities::PRINTFILE($args->{file},$args->{filedata});
     	$args = $self->process_arguments($args,["file"],{
@@ -2532,11 +2532,11 @@ sub import_model_file {
 			equation => $args->{biomassEquation},
 			biomassID => $args->{biomassID}
 	    });
-	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
+	    $modelObj->biomassReaction($args->{biomassID});
 	}
 	if ($found == 0) {
 		$self->database()->create_object("rxnmdl",{
-			REACTION => $row->{LOAD}->[0],
+			REACTION => $args->{biomassID},
 			MODEL => $args->{id},
 			directionality => "=>",
 			compartment => "c",

@@ -14,6 +14,7 @@ Description:
 sub new { 
 	my ($class,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[
+		"id",
 		"owner",
 		"root",
 		"binDirectory"
@@ -22,6 +23,7 @@ sub new {
 		copy => undef
 	});
 	my $self = {
+		_id => $args->{id},
 		_owner => $args->{owner},
 		_root => $args->{root},
 		_binDirectory => $args->{binDirectory}
@@ -47,15 +49,6 @@ sub id {
 	my ($self,$id) = @_;
 	if (defined($id)) {
 		$self->{_id} = $id;
-	}
-	if (!defined($self->{_id})) {
-		my $currentFile = $self->root().$self->owner()."/current.txt";
-		if(-f $currentFile) {
-	    	my $data = ModelSEED::utilities::LOADFILE($self->root().$self->owner()."/current.txt");
-	    	$self->{_id} = $data->[0]; 
-	    } else {
-	    	$self->{_id} = 'default';
-	    }
 	}
 	return $self->{_id};
 }
@@ -139,7 +132,8 @@ Description:
 =cut
 sub printWorkspaceEnvFiles {
     my ($self) = @_;
-    ModelSEED::utilities::PRINTFILE($self->root().$self->owner()."/current.txt",[$self->id()]);
+    ModelSEED::Interface::interface::WORKSPACE($self->id());
+	ModelSEED::Interface::interface::SAVEENVIRONMENT();
     ModelSEED::utilities::PRINTFILE($self->binDirectory()."ms-goworkspace",["cd ".$self->directory()]);
 	chmod 0775, $self->binDirectory()."ms-goworkspace";
 }

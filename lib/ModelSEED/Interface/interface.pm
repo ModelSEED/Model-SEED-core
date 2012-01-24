@@ -30,18 +30,18 @@ Description:
 sub LOADENVIRONMENT {
 	my ($args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{});
-	if (!-e ModelSEED::Interface::interface->ENVIRONMENTFILE()) {
+	if (!-e ModelSEED::Interface::interface::ENVIRONMENTFILE()) {
 		if (defined($ENV{FIGMODEL_USER}) && defined($ENV{FIGMODEL_PASSWORD})) {
 			my $workspace = "default";
-			if (-e ModelSEED::Interface::interface->WORKSPACEDIRECTORY()."/".$ENV{FIGMODEL_USER}."/current.txt") {
-				my $data = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface->WORKSPACEDIRECTORY()."/".$ENV{FIGMODEL_USER}."/current.txt");
+			if (-e ModelSEED::Interface::interface::WORKSPACEDIRECTORY()."/".$ENV{FIGMODEL_USER}."/current.txt") {
+				my $data = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface::WORKSPACEDIRECTORY()."/".$ENV{FIGMODEL_USER}."/current.txt");
 				$workspace = $data->[0];
 			}
 			$environment = {
 				USERNAME => $ENV{FIGMODEL_USER},
 				PASSWORD => $ENV{FIGMODEL_PASSWORD},
 				WORKSPACEFOLDER => $workspace,
-				REGISTEREDSEEDS => {},
+				REGISTEREDSEED => {},
 				SEED => "local"
 			};
 			ModelSEED::Interface::interface->SAVEENVIRONMENT();
@@ -52,23 +52,23 @@ sub LOADENVIRONMENT {
 					push(@{$newData},$data->[$i]);
 				#}
 			}
-			ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface->ENVIRONMENTFILE(),$newData);
+			ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::ENVIRONMENTFILE(),$newData);
 		} else {
-			ModelSEED::utilities::ERROR("Environment file ".ModelSEED::Interface::interface->ENVIRONMENTFILE()." not found!");	
+			ModelSEED::utilities::ERROR("Environment file ".ModelSEED::Interface::interface::ENVIRONMENTFILE()." not found!");	
 		}
 	}
-	my $data = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface->ENVIRONMENTFILE());
-	$environment->{REGISTEREDSEEDS} = {};
+	my $data = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface::ENVIRONMENTFILE());
+	$environment->{REGISTEREDSEED} = {};
 	for (my $i=1; $i < @{$data}; $i++) {
 		my $array = [split(/\t/,$data->[$i])];
-		if (defined($array->[1]) && $array->[0] eq "REGISTEREDSEEDS" && $array->[1] ne "NONE") {
+		if (defined($array->[1]) && $array->[0] eq "REGISTEREDSEED" && $array->[1] ne "NONE") {
 			my $seedarray = [split(/;/,$array->[1])];
 			for (my $j=0; $j < @{$seedarray}; $j++) {
 				if ($seedarray->[$j] =~ m/^([^\:]+):(.+)$/) {
-					$environment->{REGISTEREDSEEDS}->{$1} = $2;
+					$environment->{REGISTEREDSEED}->{$1} = $2;
 				}
 			}
-		} elsif (defined($array->[1]) && $array->[0] ne "REGISTEREDSEEDS") {
+		} elsif (defined($array->[1]) && $array->[0] ne "REGISTEREDSEED") {
 			$environment->{$array->[0]} = $array->[1];
 		}
 	}	
@@ -90,17 +90,17 @@ sub SAVEENVIRONMENT {
 	}
 	my $env = ModelSEED::Interface::interface::ENVIRONMENT();
 	my $seeddata = "NONE";
-	if (defined(ModelSEED::Interface::interface::SEED()) && keys(%{ModelSEED::Interface::interface::SEED()}) > 0) {
-		foreach my $seedid (keys(%{ModelSEED::Interface::interface::SEED()})) {
+	if (defined(ModelSEED::Interface::interface::REGISTEREDSEED()) && keys(%{ModelSEED::Interface::interface::REGISTEREDSEED()}) > 0) {
+		foreach my $seedid (keys(%{ModelSEED::Interface::interface::REGISTEREDSEED()})) {
 			if ($seeddata eq "NONE") {
-				$seeddata = $seedid.":".ModelSEED::Interface::interface::SEED()->{$seedid};
+				$seeddata = $seedid.":".ModelSEED::Interface::interface::REGISTEREDSEED()->{$seedid};
 			} else {
-				$seeddata .= ";".$seedid.":".ModelSEED::Interface::interface::SEED()->{$seedid};
+				$seeddata .= ";".$seedid.":".ModelSEED::Interface::interface::REGISTEREDSEED()->{$seedid};
 			}
 		}
 	}
-	push(@{$output},"REGISTEREDSEEDS\t".$seeddata);
-	ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface->ENVIRONMENTFILE(),$output);
+	push(@{$output},"REGISTEREDSEED\t".$seeddata);
+	ModelSEED::utilities::PRINTFILE(ModelSEED::Interface::interface::ENVIRONMENTFILE(),$output);
 }
 =head3 ENVIRONMENT
 Definition:
@@ -206,6 +206,7 @@ Description:
 sub CREATEWORKSPACE {
 	my ($args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
+		id => ModelSEED::Interface::interface::WORKSPACEFOLDER(),
 		owner => ModelSEED::Interface::interface::USERNAME(),
 		root => ModelSEED::Interface::interface::WORKSPACEDIRECTORY(),
 		binDirectory => ModelSEED::Interface::interface::BINDIRECTORY(),

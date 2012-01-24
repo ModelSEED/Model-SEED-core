@@ -12,8 +12,37 @@ my $fbamodel = FBAMODELClient->new();
     my $pubmodel = "iJR904";
     my $privatemodel = "iJR904.796";
     my $media = "Carbon-D-Glucose";
-    my $genome = "83333.1";
-	my $output = $fbamodel->get_reaction_id_list({id => ["ALL",$pubmodel]});
+    my $genome = "83333.1";	
+	#Testing printing of all roles
+	my $output = $fbamodel->modelseed_roles();
+	ok defined($output->{roles}->[0]), "FBAMODEL->modelseed_roles function is returning at least one functional role.";
+	my $roleHash;
+	for (my $i=0; $i < @{$output->{roles}}; $i++) {
+		$roleHash->{$output->{roles}->[$i]} = 1;
+	}
+	ok defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "Light-dependent protochlorophyllide reductase (EC 1.3.1.33) role exists.";
+	#Testing name change of a role
+	$output = $fbamodel->changeModelRole({
+        oldRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+        newRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+        syntaxOnly  => 1,
+        user        => "chenry" 
+	});
+	$output = $fbamodel->modelseed_roles();
+	$roleHash = {};
+	for (my $i=0; $i < @{$output->{roles}}; $i++) {
+		$roleHash->{$output->{roles}->[$i]} = 1;
+	}
+	ok defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "FBAMODEL->changeModelRole function works to change role name.";
+	#Restoring previous name
+	$output = $fbamodel->changeModelRole({
+        oldRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+        newRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+        syntaxOnly  => 1,
+        user        => "chenry" 
+	});
+	exit();
+	$output = $fbamodel->get_reaction_id_list({id => ["ALL",$pubmodel]});
     my $rxn = $output->{$pubmodel}->[0];
 	ok defined($rxn), "get_reaction_id_list for public model ".$pubmodel.
         " should return at least 1 reaction, got ". scalar(@{$output->{$pubmodel}});

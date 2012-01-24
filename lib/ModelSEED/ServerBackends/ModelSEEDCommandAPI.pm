@@ -7,7 +7,7 @@
 # Date of module creation: 12/3/2011
 ########################################################################
 use strict;
-#use ModelSEED::globals;
+use ModelSEED::globals;
 package ModelSEED::ServerBackends::ModelSEEDCommandAPI;
 
 =head3 new
@@ -17,7 +17,7 @@ Description:
 	Returns a ModelSEEDCommandAPI object
 =cut
 sub new { 
-	my $self;
+	my $self = {};
 	ModelSEED::globals::CREATEFIGMODEL();
     return bless $self;
 }
