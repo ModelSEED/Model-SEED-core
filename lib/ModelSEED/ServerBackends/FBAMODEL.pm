@@ -2250,15 +2250,13 @@ sub changeModelRole {
     if (!defined($old)) {     
         # if we don't have the old one, just note that in the log
         $log_entry->{log_note} = "no old role, so just ignoreing";
-        $self->figmodel()->toLogfile($logfile,
-            join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+        $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry))],1);
     } elsif(!defined($new)) {
         # if we don't have the new one, just change the name
         $old->name($args->{newRole});
         $old->searchname($self->figmodel()->convert_to_search_role($args->{newRole}));
         $log_entry->{log_note} = "no new role, so just changing name, searchname";
-        $self->figmodel()->toLogfile($logfile,
-            join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+        $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry))],1);
     } else {                  
         if($args->{syntaxOnly} == 1) {
             # if we have both, only merge if syntaxOnly == 1 
@@ -2279,15 +2277,12 @@ sub changeModelRole {
             }
             $old->delete();
             $log_entry->{log_note} = "auto-merging, deleting duplicates, renaming non-duplicates";
-            $self->figmodel()->toLogfile($logfile,
-                join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+            $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry))],1);
         } else {
             # too difficult to merge if not clearly syntax issues 
             # so I leave this up to Chris.
             $log_entry->{log_note} = "not-merging";
-            $self->figmodel()->toLogfile($errfile,
-                join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
-        
+            $self->figmodel()->database()->print_array_to_file($errfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry))],1);
         }
     } 
 }
