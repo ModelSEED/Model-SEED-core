@@ -5487,7 +5487,7 @@ sub dblistobjects {
     	return "No objects found matching input type and query!";
     }
     my $attributes = [keys(%{$objs->[0]->attributes()})];
-    my $output = [join("\t",@{$attributes}];
+    my $output = [join("\t",@{$attributes})];
     for (my $i=0; $i < @{$objs}; $i++) {
     	my $line;
     	for (my $j=0; $j < @{$attributes}; $j++) {
