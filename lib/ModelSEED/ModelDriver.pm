@@ -5477,6 +5477,7 @@ sub dblistobjects {
     		}
     	}
     }
+    my $objs;
     if ($args->{sudo} == 1) {
     	$objs = $self->figmodel()->database()->sudo_get_objects($args->{type},$query);
     } else {
