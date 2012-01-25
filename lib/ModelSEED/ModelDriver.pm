@@ -5452,7 +5452,56 @@ sub queueRunJob {
 	$self->figmodel()->queue()->clearJobFile({job => $args->{job}});
 	return $args->{job}." completed!";
 }
-
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
+This function lists all objects matching the input type and query
+=EXAMPLE
+./db-listobjects
+=cut
+sub dblistobjects {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["type",1,undef,"Type of object to be listed"],
+		["query",0,undef,"A '|' delimited list of queries described as 'field=A'"],
+		["sudo",0,0,"Set to '1' to list all objects in database regardless of rights"]
+	],[@Data],"blast sequences against genomes");
+    my $query = {};
+    if (defined($args->{query})) {
+    	my $queries = [split(/\|/,$args->{query})];
+    	for (my $i=0; $i < @{$queries}; $i++) {
+    		my $array = [split(/\=/,$queries->[$i])];
+    		if (defined($array->[1])) {
+    			$query->{$array->[0]} = $array->[1];
+    		}
+    	}
+    }
+    if ($args->{sudo} == 1) {
+    	$objs = $self->figmodel()->database()->sudo_get_objects($args->{type},$query);
+    } else {
+    	$objs = $self->figmodel()->database()->get_objects($args->{type},$query);
+    }
+    if (!defined($objs) || !defined($objs->[0])) {
+    	return "No objects found matching input type and query!";
+    }
+    my $attributes = [keys(%{$objs->[0]->attributes()})];
+    my $output = [join("\t",@{$attributes}];
+    for (my $i=0; $i < @{$objs}; $i++) {
+    	my $line;
+    	for (my $j=0; $j < @{$attributes}; $j++) {
+    		if ($j > 0) {
+    			$line .= "\t";	
+    		}
+    		my $function = $attributes->[$j];
+    		$line .= $objs->[$i]->$function();
+    	}
+    	push(@{$output},$line);
+    }
+    my $num = @{$objs};
+    $self->figmodel()->database()->print_array_to_file($self->ws()->directory()."Query-".$args->{type}.".tbl",$output);
+    return "Successfully printed ".$num." objects to file ".$self->ws()->directory()."Query-".$args->{type}.".tbl";
+}
 =head
 =CATEGORY
 Workspace Operations
@@ -5643,7 +5692,6 @@ sub mslogin {
 		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n".
 		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
-
 =head
 =CATEGORY
 Workpsace Operations
@@ -5666,10 +5714,6 @@ sub mswhoami {
     #}
     return $str;
 }
-    
-    
-    
-
 =head
 =CATEGORY
 Workspace Operations
