@@ -95,9 +95,10 @@ sub buildTable {
 #    
 {
     my $a = {
-        id => 'id',
+        id => 'uuid',
         'mod-date' => 'modDate',
         name => 'name',
+        abbr => 'id',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     buildTable("$directory/compartment.dtx", \%columns, [$biochemObj->compartments()]);
@@ -324,7 +325,7 @@ sub buildTable {
     my $rxnrules = [];
     foreach my $cpx ($mappingObj->complexes) {
         foreach my $rule ($cpx->reaction_rules) {
-            push(@$rxnrules, { 'complex_uuid' => $cpx->uuid, 'reaction_uuid' => $rule->reaction_uuid });
+            push(@$rxnrules, { 'complex_uuid' => $cpx->uuid, 'reaction_rule_uuid' => $rule->uuid });
         }
     }
     buildTable("$directory/hasStep.dtx", \%columns, $rxnrules);

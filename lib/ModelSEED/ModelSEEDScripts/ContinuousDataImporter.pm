@@ -29,7 +29,7 @@ sub new {
     $self->{conversionFns}  = _makeConversionFns();
     bless $self, $class;
     $self->{cache} = {};
-    $self->{sap} = SAPserver->new();
+    #$self->{sap} = SAPserver->new();
     $self->_buildLookupData();
     return $self;
 }
@@ -388,7 +388,6 @@ sub _buildLookupData {
         }
         warn "Prefetched $type, ".scalar(keys %{$self->cache->{$type}})." objects\n";
     }
-    die;
     return $hash;
 }
 
@@ -420,7 +419,7 @@ sub importBiochemistryFromDir {
     }
     # Now create biochemistry object
     my $RDB_biochemistry = $self->om->create_object('biochemistry');
-    # Create compartments - for reactions, default_transported_reagenters
+    # Create compartments - for reactions, default_transported_reagents
     my $compartments = $self->getDefaultCompartments();
     $RDB_biochemistry->add_compartments(@$compartments);
     # Compounds
@@ -848,6 +847,11 @@ sub parseReactionEquation {
     my ($row) = @_;
     my $Equation = $row->{equation}->[0];
     my $Reaction = $row->{id}->[0];
+    return parseReactionEquationBase($Equation, $Reaction);
+}
+
+sub parseReactionEquationBase {
+    my ($Equation, $Reaction) = @_;
     my $Parts = [];
     if (defined($Equation)) {
         my @TempArray = split(/\s/,$Equation);
@@ -872,14 +876,15 @@ sub parseReactionEquation {
             }
         }
     }
-    return $Parts;
 }
+
 
 sub generateReactionDataset {
     my ($self, $reactionRow) = @_;
     my $seenCompartments = {};
     my $rxn = $reactionRow->{id}->[0];
     my $parts = parseReactionEquation($reactionRow);
+    warn Dumper($parts);
     my $reactionCompartment = $self->determinePrimaryCompartment($parts);
     my $final = { reagents => [], default_transported_reagents => [] };
     # 2 A[e] + B => C + A[p] + A
