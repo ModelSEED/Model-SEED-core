@@ -1,8 +1,19 @@
 package ModelSEED::DB::Reagent;
-
 use strict;
-
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+use ModelSeed::ApiHelpers;
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes($self,
+        [$self->meta->columns], $hash);
+    $hash->{compound} = $ctx->reference($self->compound);
+    $hash->{default_transported_reagent} =
+        $self->default_transported_reagent->serialize($args, $ctx)
+        if(defined($self->default_transported_reagent));
+    return $hash;
+}
 
 __PACKAGE__->meta->setup(
     table   => 'reagents',

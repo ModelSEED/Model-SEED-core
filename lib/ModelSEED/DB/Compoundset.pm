@@ -1,10 +1,26 @@
 package ModelSEED::DB::Compoundset;
-
-
 use strict;
 use Data::UUID;
-
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+use ModelSEED::ApiHelpers;
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes(
+        $self, [$self->meta->columns], $hash);
+    foreach my $compound ($self->compounds) {
+        if(defined($args->{with}->{compounds})) {
+            my $subargs = (ref($args->{with}->{compounds}) eq 'HASH') ?
+                $args->{with}->{compounds} : {};
+            push(@{$hash->{compounds}}, $compound->serialize($subargs, $ctx));
+        } else {
+            push(@{$hash->{compounds}}, $ctx->reference($compound));
+        }
+    } 
+    return $hash;
+}
+
 
 __PACKAGE__->meta->setup(
     table   => 'compoundsets',

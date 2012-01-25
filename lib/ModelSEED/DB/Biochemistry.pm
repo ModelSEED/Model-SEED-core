@@ -1,10 +1,58 @@
 package ModelSEED::DB::Biochemistry;
-
-
 use strict;
 use Data::UUID;
+use ModelSEED::ApiHelpers qw(serializeAttributes serializeRelationships);
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes(
+        $self, [$self->meta->columns], $hash);
+    my $rels = [ qw( reactions compounds reactionsets compoundsets
+        media compartments parents children )];
+    ModelSEED::ApiHelpers::serializeRelationships(
+        $self, $rels, $hash, $args, $ctx);
+    return $hash;
+}    
+
+sub deserialize {
+    my ($self, $obj, $args, $ctx) = @_;
+    foreach my $columnName ($self->meta->column_names) {
+        $self->$columnName = $obj->{$columnName} || undef;
+    }
+    foreach my $relationship ($self->meta->relationships) {
+        my $name = $relationship->name;
+        if(defined($obj->{$name}) && ref($obj->{$name}) eq "ARRAY") {
+            $self->$name = [];
+            my $array = [];
+            foreach my $relObject ($obj->{$name}) {
+                if(ref($relObject) eq 'HASH') {
+                    $relObject = $ctx->deserialize(
+                        $self->reference("biochem/".$self->uuid, $obj),
+                        $obj);
+                } else {
+                    $relObject = $ctx->dereference($relObject);
+                }
+                push(@$array, $relObject);
+            }
+            $self->$name = $array;
+        } elsif(defined($obj->{$name})) {
+            my $ref = $obj->{$name};
+            my $relObjects = $ctx->dereference($ref);
+            $self->$name = $relObjects;
+        } else {
+            $self->$name = [];
+        }
+    }
+    return $self;
+}
+
+        
+
+        
+    
 
 __PACKAGE__->meta->setup(
     table   => 'biochemistries',
