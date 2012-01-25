@@ -13,6 +13,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
+use YAML;
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
