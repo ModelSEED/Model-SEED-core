@@ -17,10 +17,11 @@ use Cwd qw(abs_path);
 use ModelSEED::ObjectManager;
 use Tie::Hash::Sorted;
 
-my ($mapping, $biochem, $directory, $help);
+my ($mapping, $biochem, $directory, $database, $help);
 GetOptions( "directory|dir|d=s" => \$directory,
             "biochemistry|b|bio=s" => \$biochem,
             "mapping|m|map=s"   => \$mapping,
+            "db|database=s" => \$database,
             "help|h|?" => \$help ) || pod2usage(2);
 pod2usage(1) if $help;
 unless(defined($directory) && -d $directory && defined($mapping) && defined($biochem)) {
@@ -31,7 +32,7 @@ $directory = abs_path($directory);
 $directory =~ s/\/$//;
 # Get the biochemistry and mapping objects
 my $om = ModelSEED::ObjectManager->new({
-    database => "/tmp/devoid/test.db",
+    database => abs_path($database),
     driver   => "SQLite",
 });
 my ($Busername, $Bname) = split(/\//, $biochem);
@@ -371,7 +372,8 @@ sub buildTable {
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
     my $reagents = [];
     foreach my $reaction ($biochemObj->reactions()) {
-        my $dtrs = {};
+        my $mainCompartment = $reaction->compartment_uuid;
+        my $dtrs = {0 => $mainCompartment};
         foreach my $dtr ($reaction->default_transported_reagents) {
             $dtrs->{ $dtr->compound_uuid . $dtr->compartmentIndex } = $dtr;
         } 
@@ -387,6 +389,10 @@ sub buildTable {
                 my $dtr = $dtrs->{$cpd.$cmpIdx};
                 $hash->{compartment} = $dtr->compartment_uuid;
                 $hash->{transportCoefficient} = $dtr->transportCoefficient;
+            } else {
+                $hash->{compartment} = $dtrs->{0};
+                $hash->{compartmentIndex} = 0;
+                $hash->{transportCoefficient} = 0;
             } 
             push(@$reagents, $hash);
         } 

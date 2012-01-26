@@ -489,7 +489,7 @@ CREATE TABLE IF NOT EXISTS `reagents` (
   `reaction_uuid` CHAR(36) NOT NULL,
   `compound_uuid` CHAR(36) NOT NULL,
   `compartmentIndex` INTEGER NOT NULL,
-  `coefficient` INTEGER NULL,
+  `coefficient` FLOAT NULL,
   `cofactor` TINYINT(1) NULL, 
   PRIMARY KEY (`reaction_uuid`, `compound_uuid`, `compartmentIndex`),
   INDEX `reagents_compound_fk` (`compound_uuid`),

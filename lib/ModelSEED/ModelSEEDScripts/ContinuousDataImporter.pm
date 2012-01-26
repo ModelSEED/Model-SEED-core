@@ -10,6 +10,8 @@ use SAPserver;
 use List::Util qw(reduce);
 use Try::Tiny;
 $Data::Dumper::Maxdepth = 3;
+use Exporter qw( import );
+our @EXPORT_OK = qw(parseReactionEquationBase);
 
 # TODO - need to divide ctx caching of "object hashes"
 # from caching of object "ids" and have these in separate
@@ -220,9 +222,16 @@ sub _makeConversionFns {
         my ($self, $row, $ctx) = @_;
         my $codes = { reversibility => '', thermoReversibility => ''};
         foreach my $key (keys %$codes) {
-            my $forward = 1 if defined($row->{$key}->[0]) && $row->{$key}->[0] =~ />/;
-            my $reverse = 1 if defined($row->{$key}->[0]) && $row->{$key}->[0] =~ />/;
-            $codes->{$key} = ($forward && $reverse) ? "=" : ($forward) ? ">" : "<";
+            my ($forward, $reverse) = (0, 0);
+            $forward = 1 if(defined($row->{$key}->[0]) && $row->{$key}->[0] =~ />/);
+            $reverse = 1 if(defined($row->{$key}->[0]) && $row->{$key}->[0] =~ /</);
+            if(!$forward && $reverse) {
+                $codes->{$key} = "<";
+            } elsif(!$reverse && $forward) {
+                $codes->{$key} = ">";
+            } else {
+                $codes->{$key} = "=";
+            }
         }
         my $parts = parseReactionEquation($row);
         unless(@$parts) {
@@ -307,6 +316,7 @@ sub _makeConversionFns {
         return {
             id => $row->{id}->[0],
             name => $row->{name}->[0] || undef,
+            modDate => $date->($row),
         };
     };
     $f->{complexRole} = sub {
@@ -353,6 +363,14 @@ sub _makeConversionFns {
             genome => $genome,
         };
     }; 
+    $f->{compartment} = sub {
+        my ($self, $row, $ctx) = @_;    
+        return {
+            id => $row->{ID}->[0],
+            name => $row->{NAME}->[0],
+            modDate => $date->($row),
+        };
+    };
     return $f;
 } 
         
@@ -368,9 +386,6 @@ sub addNewValueToLookupData {
         my $secondKey = $rdbo->id;
         $self->cache->{$type}->{$secondKey} = $rdbo;
     };
-    if($type eq 'biochemistry') {
-        warn $key ."\n";
-    }
 }
 
 # _buildLookupData - construct hash-keys for each
@@ -720,7 +735,8 @@ sub getDefaultCompartments {
         my $values = [];
         my $oldCompartments = $self->fm->database->get_objects("compartment");
         foreach my $old (@$oldCompartments) {
-            my $hash = { id => $old->id, name => $old->name };
+            my $hash = { ID => [$old->id], NAME => [$old->name] };
+            $hash = $self->convert("compartment", $hash);
             my $obj = $self->getOrCreateObject("compartment", $hash) if(defined($hash->{id}));
             unless(defined($obj)) {
                 warn "Failed to add default compartment " . $old->name . "\n";
@@ -734,7 +750,7 @@ sub getDefaultCompartments {
             'w' => 1, 'p' => 1,
             'c' => 2,
             'g' => 3, 'r' => 3, 'l' => 3, 'n' => 3,
-            'd' => 3, 'm' => 3, 'x' => 3, 'v' => 3,
+            'd' => 3, 'm' => 3, 'x' => 3, 'v' => 3, 'h' => '3'
         };
         foreach my $cmp (@$values) {
             if(!defined($defaultHierarchy->{$cmp->id})) {
@@ -856,12 +872,12 @@ sub parseReactionEquationBase {
     if (defined($Equation)) {
         my @TempArray = split(/\s/,$Equation);
         my $CurrentlyOnReactants = 1;
+        my $Coefficient = 1;
         for (my $i=0; $i < @TempArray; $i++) {
-            my $Coefficient = 1;
             if ($TempArray[$i] =~ m/^\(([\.\d]+)\)$/ || $TempArray[$i] =~ m/^([\.\d]+)$/) {
                 $Coefficient = $1;
-                $Coefficient *= -1 if($CurrentlyOnReactants);
             } elsif ($TempArray[$i] =~ m/(cpd\d\d\d\d\d)/) {
+                $Coefficient *= -1 if($CurrentlyOnReactants);
                 my $NewRow;
                 $NewRow->{"reaction"}->[0] = $Reaction;
                 $NewRow->{"compound"}->[0] = $1;
@@ -871,11 +887,13 @@ sub parseReactionEquationBase {
                     $NewRow->{"compartment"}->[0] = lc($1);
                 }
                 push(@$Parts, $NewRow);
+                $Coefficient = 1;
             } elsif ($TempArray[$i] =~ m/=/) {
                 $CurrentlyOnReactants = 0;
             }
         }
     }
+    return $Parts;
 }
 
 
@@ -884,7 +902,6 @@ sub generateReactionDataset {
     my $seenCompartments = {};
     my $rxn = $reactionRow->{id}->[0];
     my $parts = parseReactionEquation($reactionRow);
-    warn Dumper($parts);
     my $reactionCompartment = $self->determinePrimaryCompartment($parts);
     my $final = { reagents => [], default_transported_reagents => [] };
     # 2 A[e] + B => C + A[p] + A

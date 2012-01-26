@@ -11,7 +11,7 @@ __PACKAGE__->meta->setup(
         reaction_uuid    => { type => 'character', length => 36, not_null => 1 },
         compound_uuid    => { type => 'character', length => 36, not_null => 1 },
         compartmentIndex => { type => 'integer', not_null => 1 },
-        coefficient      => { type => 'scalar' },
+        coefficient      => { type => 'float' },
         cofactor         => { type => 'integer' },
     ],
 

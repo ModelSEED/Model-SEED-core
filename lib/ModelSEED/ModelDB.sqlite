@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Tue Jan 17 10:18:22 2012
+-- Created on Wed Jan 25 14:42:08 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -409,7 +409,7 @@ CREATE TABLE reagents (
   reaction_uuid CHAR(36) NOT NULL,
   compound_uuid CHAR(36) NOT NULL,
   compartmentIndex int(11) NOT NULL,
-  coefficient int(11),
+  coefficient FLOAT,
   cofactor TINYINT(1),
   PRIMARY KEY (reaction_uuid, compound_uuid, compartmentIndex),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
