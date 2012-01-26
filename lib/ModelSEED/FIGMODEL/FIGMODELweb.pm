@@ -365,7 +365,7 @@ sub display_reaction_flux {
 		my @tempArray = split(/_/,$args->{fluxid});
 		my $obj = $self->figmodel()->database()->get_object("fbaresult",{_id => $tempArray[1]});
 		if (defined($obj)) {
-			if ($args->{fluxobj}->flux() eq "none") {
+			if ($obj->flux() eq "none") {
 				return "None";	
 			}
 			my @temp = split(/;/,$obj->flux());
