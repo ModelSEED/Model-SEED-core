@@ -387,6 +387,8 @@ sub display_reaction_flux {
 	}
 	if (defined($self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}})) {
 		return 	$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}};
+	} else {
+		return 0.0;	
 	}
 	#if (defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
 		#return $self->{_fluxes}->{$args->{fluxid}}->{model}->get_reaction_flux({fluxobj => $self->{_fluxes}->{$args->{fluxid}}->{object}, id => $args->{data}});
