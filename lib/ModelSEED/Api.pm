@@ -50,6 +50,13 @@ sub paginate {
     return $hash;
 }
     
+
+# /biochem/:uuid
+# /biochem/:username/:id
+#  +
+#                           /reaction/:uuid
+#                           (nothing)
+#                           /reaction
 sub parseReference {
     my ($self, $reference) = @_;
     my $root = $self->url_root;

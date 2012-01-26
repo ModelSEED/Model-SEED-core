@@ -8,10 +8,13 @@ sub serialize {
     my $hash = {};
     ModelSEED::ApiHelpers::serializeAttributes($self,
         [$self->meta->columns], $hash);
-    $hash->{compound} = $ctx->reference($self->compound);
-    $hash->{default_transported_reagent} =
-        $self->default_transported_reagent->serialize($args, $ctx)
-        if(defined($self->default_transported_reagent));
+    ModelSEED::ApiHelpers::serializeRelationships($self,
+        ['compound', 'default_transported_reagent'], $hash,
+        $args, $ctx); 
+    #$hash->{compound} = $ctx->reference($self->compound);
+    #$hash->{default_transported_reagent} =
+    #    $self->default_transported_reagent->serialize($args, $ctx)
+    #    if(defined($self->default_transported_reagent));
     return $hash;
 }
 

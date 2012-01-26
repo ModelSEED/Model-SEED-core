@@ -10,7 +10,6 @@ sub serialize {
     my $hash = {};
     ModelSEED::ApiHelpers::serializeAttributes($self,
         [$self->meta->columns], $hash);
-    #$hash->{defaultCompartment} = $self->defaultCompartment->serialize($args, $ctx);
     ModelSEED::ApiHelpers::inlineRelationships($self,
         { reagents => 1,
           reaction_aliases => sub {
@@ -19,6 +18,13 @@ sub serialize {
           },
         }, $hash, $args, $ctx);
     return $hash;
+}
+
+sub deserialize {
+    my ($self, $payload, $args, $ctx, $method) = @_;
+    # apply basic attributes from payload to self
+    # apply reference attributes if they are "different"
+    #   dereference, then apply
 }
         
 
