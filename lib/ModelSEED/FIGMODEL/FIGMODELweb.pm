@@ -346,7 +346,7 @@ sub display_reaction_enzymes {
 	my $enzymes = $rxnObj->enzyme();
 	$enzymes =~ s/^\|//g;
 	$enzymes =~ s/\|$//g;
-	$enzymes =~ s/\|/<br>/g;
+	$enzymes =~ s/\|/,/g;
 	return $enzymes;
 }
 
