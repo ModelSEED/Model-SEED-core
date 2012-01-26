@@ -371,8 +371,8 @@ sub display_reaction_flux {
 			my @temp = split(/;/,$obj->flux());
 			for (my $i =0; $i < @temp; $i++) {
 				my @temptemp = split(/:/,$temp[$i]);
-				if (@temptemp >= 2) {
-					$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$temptemp[0]} = $temptemp[1];
+				if (@temptemp >= 2 && $temptemp[0] =~ m/([cr][px][nd]\d+)/) {
+					$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$1} = $temptemp[1];
 				}
 			}
 			$self->{_fluxes}->{$args->{fluxid}}->{object} = $obj;
