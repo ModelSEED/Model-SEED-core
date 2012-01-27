@@ -13,6 +13,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
+use YAML;
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
@@ -7037,39 +7038,38 @@ sub mdlprintcytoseed {
 	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
 	print FH $dumper->dump($md->{$args->{model}});
 	close FH;
-
+	print "Model data printed...\n";
 	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Biomass data printed...\n";
 	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
 	print FH $dumper->dump($cpds);
 	close FH;
-
+	print "Compound data printed...\n";
 	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
 
 	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
 	close FH;
-
+	print "Abstract compound data printed...\n";
 	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
 	print FH $dumper->dump($rxns);
 	close FH;
-
+	print "Reaction data printed...\n";
 	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
-
 	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
 	close FH;
-
+	print "Abstract reaction data printed...\n";
 	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Reaction class data printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 
