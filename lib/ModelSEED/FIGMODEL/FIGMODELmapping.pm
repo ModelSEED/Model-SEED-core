@@ -360,14 +360,16 @@ sub get_subsy_rxn_hash {
 	if (!defined($self->{_subsysrxnhash})) {
 		my $roleHash = $self->get_role_rxn_hash();
 		my $subsysroles = $self->figmodel()->database()->get_objects("ssroles");
-		my $subsystems = $self->figmodel()->database()->get_objects("subsystem");
+		my $subsystems = $self->figmodel()->database()->get_objects("subsystem",{status => "core"});
 		my $subsysHash;
 		for (my $i=0; $i < @{$subsystems}; $i++) {
 			$subsysHash->{$subsystems->[$i]->id()} = $subsystems->[$i];
 		}
 		my $subsysRoleHash;
 		for (my $i=0; $i < @{$subsysroles}; $i++) {
-			$subsysRoleHash->{$subsysroles->[$i]->ROLE()}->{$subsysroles->[$i]->SUBSYSTEM()} = $subsysHash->{$subsysroles->[$i]->SUBSYSTEM()};
+			if (defined($subsysHash->{$subsysroles->[$i]->SUBSYSTEM()})) {
+				$subsysRoleHash->{$subsysroles->[$i]->ROLE()}->{$subsysroles->[$i]->SUBSYSTEM()} = $subsysHash->{$subsysroles->[$i]->SUBSYSTEM()};
+			}
 		}
 		my $roleObjs = $self->figmodel()->database()->get_objects("cpxrole");
 		foreach my $rxn (keys(%{$roleHash})) {
