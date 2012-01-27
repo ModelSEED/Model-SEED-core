@@ -1415,6 +1415,116 @@ sub optimizeClusters {
 	}
 	$self->database()->print_array_to_file($args->{directory}."New".$args->{filename},$output);
 }
+
+=head3 compareModels
+Definition:
+	{} = FIGMODEL->compareModels({
+		modellist => []
+	});
+Description:
+	This function calculates the all vs all distances between the input set of models
+=cut
+sub compareModels {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args,["modellist"],{});
+	my $rxnMdlHash;
+	for (my $i=0; $i < @{$args->{modellist}}; $i++) {
+		my $rxnMdls = $self->database()->get_objects("rxnmdl",{MODEL=>$args->{modellist}->[$i]});
+		for (my $j=0; $j < @{$rxnMdls}; $j++) {
+			if ($rxnMdls->[$j]->pegs() !~ m/GAP/ && $rxnMdls->[$j]->pegs() !~ m/AUTO/ && $rxnMdls->[$j]->pegs() !~ m/GROW/) {
+				$rxnMdlHash->{$rxnMdls->[$j]->REACTION()}->{$args->{modellist}->[$i]} = $rxnMdls->[$j]->pegs();
+			}
+		}
+	}
+	my $headings = ["Reaction","Rowtype","Roles","Subsystem","KEGG Map","KEGG ID","Equation","EC"];
+	push(@{$headings},@{$args->{modellist}});
+	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,"",undef,"\t","|",undef);
+	my $objs = $self->database()->get_objects("rxnals",{type=>"KEGG"});
+	my $keggIDs;
+	for (my $i=0; $i < @{$objs}; $i++) {
+		$keggIDs->{$objs->[$i]->REACTION()}->{$objs->[$i]->alias()} = 1;
+	}
+	my $roleHash = $self->mapping()->get_role_rxn_hash();
+	my $roles;
+	foreach my $rxn (keys(%{$roleHash})) {
+		foreach my $role (keys(%{$roleHash->{$rxn}})) {
+			$roles->{$rxn}->{$roleHash->{$rxn}->{$role}->name()} = 1;
+		}
+	}
+	my $mapHash = $self->get_map_hash({type => "reaction"});
+	my $rxnKEGGMap;
+	foreach my $rxn (keys(%{$mapHash})) {
+		foreach my $diagram (keys(%{$mapHash->{$rxn}})) {
+			$rxnKEGGMap->{$rxn}->{$mapHash->{$rxn}->{$diagram}->name()} = 1;
+		}
+	}
+	my $rxnSubsys;
+	my $subsysHash = $self->mapping()->get_subsy_rxn_hash();
+	foreach my $rxn (keys(%{$subsysHash})) {
+		foreach my $subsys (keys(%{$subsysHash->{$rxn}})) {
+			$rxnSubsys->{$rxn}->{$subsysHash->{$rxn}->{$subsys}->name()} = 1;
+		}
+	}
+	my $rxnHash;
+	$objs = $self->database()->get_objects("reaction");
+	for (my $i=0; $i < @{$objs}; $i++) {
+		$rxnHash->{$objs->[$i]->id()} = $objs->[$i];
+	}
+	foreach my $rxn (keys(%{$rxnMdlHash})) {
+		if (defined($rxnHash->{$rxn})) {
+			if (defined($rxnSubsys->{$rxn}) || defined($rxnKEGGMap->{$rxn})) {
+				foreach my $subsys (keys(%{$rxnSubsys->{$rxn}})) {
+					my $row = {
+						Rowtype => ["Subsystem"],
+						Reaction => [$rxn],
+						Roles => [keys(%{$roles->{$rxn}})],
+						Subsystem => [$subsys],
+						"KEGG Map" => [keys(%{$rxnKEGGMap->{$rxn}})],
+						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+						Equation => [$rxnHash->{$rxn}->definition()]
+					};
+					foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+						$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+					}
+					$tbl->add_row($row);
+				}
+				foreach my $map (keys(%{$rxnKEGGMap->{$rxn}})) {
+					my $row = {
+						Rowtype => ["Map"],
+						Reaction => [$rxn],
+						Roles => [keys(%{$roles->{$rxn}})],
+						Subsystem => [keys(%{$rxnSubsys->{$rxn}})],
+						"KEGG Map" => [$map],
+						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+						Equation => [$rxnHash->{$rxn}->definition()]
+					};
+					foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+						$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+					}
+					$tbl->add_row($row);
+				}
+			} else {
+				my $row = {
+					Rowtype => ["None"],
+					Reaction => [$rxn],
+					Roles => [keys(%{$roles->{$rxn}})],
+					Subsystem => ["None"],
+					"KEGG Map" => ["None"],
+					"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+					EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+					Equation => [$rxnHash->{$rxn}->definition()]
+				};
+				foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+					$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+				}
+				$tbl->add_row($row);	
+			}
+		}
+	}
+	return {"reaction comparison" => $tbl};
+}
 =head3 calculateModelDistances
 Definition:
 	{} = FIGMODEL->calculateModelDistances({

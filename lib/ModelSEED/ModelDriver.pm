@@ -6744,7 +6744,43 @@ sub mdlautocomplete {
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
-
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to compare the reactions associated with a list of input models
+=EXAMPLE
+./mdlcomparemodels
+=cut
+sub mdlcomparemodels {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["modellist",1,undef,"List of models you want to compare."],
+		["saveformat",0,"EXCEL"]
+	],[@Data],"compare the reactions associated with input models");
+    my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{modellist}
+	});
+	my $output = $self->figmodel()->compareModels({modellist => $models});
+	my $extension = ".xls";
+	if (defined($output->{"reaction comparison"})) {
+		if ($args->{saveformat} eq "EXCEL") {
+			$self->figmodel()->make_xls({
+				filename => $self->ws()->directory()."Comparison.xls",
+				sheetnames => ["Reaction comparison"],
+				sheetdata => [$output->{"reaction comparison"}]
+			});
+		} elsif ($args->{saveformat} eq "TEXT") {
+			$extension = ".tbl";
+			$output->{"reaction comparison"}->save($self->ws()->directory()."Comparison.tbl");
+		}
+	}
+	return "Successfully completed model comparison. Results printed in ".$self->ws()->directory()."Comparison".$extension;
+}
 =head
 =CATEGORY
 Metabolic Model Operations
