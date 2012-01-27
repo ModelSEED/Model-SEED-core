@@ -1436,7 +1436,7 @@ sub compareModels {
 			}
 		}
 	}
-	my $headings = ["Reaction","Rowtype","Roles","Subsystem","KEGG Map","KEGG ID","Equation","EC"];
+	my $headings = ["Reaction","Rowtype","Roles","Subsystem","SS class one","SS class two","KEGG Map","KEGG ID","Equation","EC"];
 	push(@{$headings},@{$args->{modellist}});
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,"",undef,"\t","|",undef);
 	my $objs = $self->database()->get_objects("rxnals",{type=>"KEGG"});
@@ -1459,10 +1459,12 @@ sub compareModels {
 		}
 	}
 	my $rxnSubsys;
+	my $ssdata;
 	my $subsysHash = $self->mapping()->get_subsy_rxn_hash();
 	foreach my $rxn (keys(%{$subsysHash})) {
 		foreach my $subsys (keys(%{$subsysHash->{$rxn}})) {
 			$rxnSubsys->{$rxn}->{$subsysHash->{$rxn}->{$subsys}->name()} = 1;
+			$ssdata->{$subsysHash->{$rxn}->{$subsys}->name()} = $subsysHash->{$rxn}->{$subsys};
 		}
 	}
 	my $rxnHash;
@@ -1479,6 +1481,8 @@ sub compareModels {
 						Reaction => [$rxn],
 						Roles => [keys(%{$roles->{$rxn}})],
 						Subsystem => [$subsys],
+						"SS class one" => [$ssdata->{$subsys}->classOne()],
+						"SS class two" => [$ssdata->{$subsys}->classTwo()],
 						"KEGG Map" => [keys(%{$rxnKEGGMap->{$rxn}})],
 						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
 						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
@@ -1495,6 +1499,8 @@ sub compareModels {
 						Reaction => [$rxn],
 						Roles => [keys(%{$roles->{$rxn}})],
 						Subsystem => [keys(%{$rxnSubsys->{$rxn}})],
+						"SS class one" => [],
+						"SS class two" => [],
 						"KEGG Map" => [$map],
 						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
 						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],

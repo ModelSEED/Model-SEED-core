@@ -360,10 +360,12 @@ sub get_subsy_rxn_hash {
 	if (!defined($self->{_subsysrxnhash})) {
 		my $roleHash = $self->get_role_rxn_hash();
 		my $subsysroles = $self->figmodel()->database()->get_objects("ssroles");
-		my $subsystems = $self->figmodel()->database()->get_objects("subsystem",{status => "core"});
+		my $subsystems = $self->figmodel()->database()->get_objects("subsystem");
 		my $subsysHash;
 		for (my $i=0; $i < @{$subsystems}; $i++) {
-			$subsysHash->{$subsystems->[$i]->id()} = $subsystems->[$i];
+			if ($subsystems->[$i]->status() eq "core" && $subsystems->[$i]->classOne() ne "Clustering-based subsystems") {
+				$subsysHash->{$subsystems->[$i]->id()} = $subsystems->[$i];
+			}
 		}
 		my $subsysRoleHash;
 		for (my $i=0; $i < @{$subsysroles}; $i++) {
