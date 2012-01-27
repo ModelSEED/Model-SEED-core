@@ -7497,4 +7497,22 @@ sub genlistsubsystemgenes {
 	print Data::Dumper->Dump([$subsys]);
 }
 
+sub gengetgenehits {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    
+    # code here
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+
+    my $result = $fig_genome->getGeneSimilarityHitTable();
+
+    return $result;
+}
+
+sub gengettreehits {
+
+}
+
 1;
