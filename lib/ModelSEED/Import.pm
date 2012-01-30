@@ -1,38 +1,48 @@
-package ModelSEED::ModelSEEDScripts::ContinuousDataImporter;
+package ModelSEED::Import;
 use strict;
 use warnings;
 use Cwd qw( abs_path );
+use ModelSEED::Import::Cache::Tiered;
 use ModelSEED::ObjectManager;
 use ModelSEED::FIGMODEL;
+use Digest::MD5 qw(md5_hex);
 use DateTime;
 use Carp;
 use SAPserver;
 use List::Util qw(reduce);
 use Try::Tiny;
+use BerkeleyDB;
+use JSON::XS;
+
 $Data::Dumper::Maxdepth = 3;
 use Exporter qw( import );
 our @EXPORT_OK = qw(parseReactionEquationBase);
 
-# TODO - need to divide ctx caching of "object hashes"
-# from caching of object "ids" and have these in separate
-# CTX bins. Need this because ids like rxn01234 might not
-# be the same across different biochemistries, for example.
+# TODO - need to fix hashes of biochemsitry, compounds, etc.
 
 sub new {
     my ($class, $config) = @_;
     my $self = {};
+    if(defined($config->{clearOnStart}) && $config->{clearOnStart}) {
+        rmtree($config->{berkeleydb}) if (-d $config->{berkeleydb});
+        unlink($config->{database}) if(
+            -f $config->{database} && $config->{driver} eq 'SQLite');
+        system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$config->{database});
+    }
     $self->{om} = ModelSEED::ObjectManager->new({
-        database => $config->{DATABASE},
-        driver   => $config->{DRIVER},
+        database => $config->{database},
+        driver   => $config->{driver},
     });
     $self->{fm} = ModelSEED::FIGMODEL->new(); 
     $self->{fm}->authenticate({username => "sdevoid", password => "marcopolo"});
     $self->{typesToHashFns} = _makeTypesToHashFns();
     $self->{conversionFns}  = _makeConversionFns();
+    $self->{objectToQueryFns} = _makeObjectToQueryFns();
     bless $self, $class;
-    $self->{cache} = {};
-    #$self->{sap} = SAPserver->new();
-    $self->_buildLookupData();
+    $self->{cache} = ModelSEED::Import::Cache::Tiered->new({ importer => $self,
+        cacheSize => $config->{cacheSize}, directory => $config->{berkeleydb},
+        om => $self->{om}, types => [keys %{$self->{typesToHashFns}}], debug => 1
+    });
     return $self;
 }
 
@@ -49,22 +59,76 @@ sub sap {
     return $_[0]->{sap};
 }
 
+# cache is the standard key-value store where keys are computed by the
+# hash() function associated with that type. value is the rose db object
+# which may be returned from memory or from the database.
 sub cache {
-    return $_[0]->{cache};
+    my ($self, $type, $key, $value) = @_;
+    if(defined($value)) {
+        return $self->{cache}->set($type, $key, $value);
+    } else {
+        return $self->{cache}->get($type, $key);
+    }
 }
 
+# idCache is the key-value store where keys are "old" ids like
+# cpd00001 and rxn12345. Values are rose db objects. Note that this
+# uses cache() on the backside so it is as efficient as that function.
+sub idCache {
+    my ($self, $type, $key, $hash) = @_;
+    if(defined($hash)) {
+        return $self->{id_cache}->{$type}->{$key} = $hash;
+    } elsif(defined($key)) {
+        my $hash = $self->{id_cache}->{$type}->{$key};
+        return $self->cache($type, $hash);
+    } else {
+        return $self->{id_cache};
+    }
+}
+
+# clearIdCache - clears a set of id => object caches
+# this is used whenever you are switching from one provenance object
+# of a specific type to another provenance object (e.g. biochemistry
+# to biochemistry). It accepts an array of object names (or removes
+# everything).
+sub clearIdCache {
+    my ($self, $types) = @_;
+    $types = [keys %{$self->{id_cache}} ] unless(defined($types));
+    foreach my $type (@$types) {
+        $self->{id_cache}->{$type} = {};
+    }
+}
+
+
+# hash - returns an md5 hash (hex) of the (type, object) supplied.
+# The hash functions are implemented per-type, and designed specifically
+# to produce the same hash-sum for an "identical" object.
 sub hash {
-    return $_[0]->{typesToHashFns};
+    my ($self, $type, $object) = @_;
+    return $self->{typesToHashFns}->{$type}->($object);
 }
 
+# makeQuery - returns a HashRef "query object", which is essentially
+# key => value pairs that would return a single object from the
+# rose db database (specifically the object passed in).
+sub makeQuery {
+    my ($self, $type, $rdbObject) = @_;
+    return $self->{objectToQueryFns}->{$type}->($rdbObject);
+}
+
+# convert - converts a (type, object) pair where the object
+# is generally a FIGMODELTable row into a hashRef suitable
+# to be passed to a rose db object constructor.
 sub convert {
     my $self = shift;
     my $type = shift;
     my $obj  = shift;
-    my $ctx  = shift @_ || $self->cache;
+    my $ctx  = shift @_ || $self->idCache();
     return $self->{conversionFns}->{$type}->($self, $obj, $ctx);
 }
 
+# returns the compartment hierarchy (hash of 'id' => level)
+# e.g. e => 0, c => 2
 sub compartmentHierarchy {
     my $self = shift;
     my $set  = shift;
@@ -91,96 +155,158 @@ sub printDBMappingsToDir {
     }
 }
 
+# hash()
 sub _makeTypesToHashFns {
     my $f = {};
-    $f->{complex} = sub { return $_[0]->id . ($_[0]->name || ''); };
+    $f->{complex} = sub { return md5_hex($_[0]->id . ($_[0]->name || '')); };
     $f->{role} = sub {
-        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->exemplar || '');
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->exemplar || ''));
     };
     $f->{compound} = sub {
-        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' );
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' ));
     };
     $f->{compound_alias} = sub {
         return $_[0]->alias . $_[0]->type;
     };
     $f->{reaction} = sub {
-        return $_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation;
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation);
     };
     $f->{reactionset} = sub {
-        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
-        join(',', sort map { $f->{reaction}->($_) } $_[0]->reactions );
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
+        join(',', sort map { $f->{reaction}->($_) } $_[0]->reactions ));
     };
     $f->{compoundset} = sub {
-        return $_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
-        join(',', sort map { $f->{compound}->($_) } $_[0]->compounds );
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->class || '' ) .
+        join(',', sort map { $f->{compound}->($_) } $_[0]->compounds ));
     };
     $f->{reaction_alias} = sub {
-        return $f->{reaction}->($_[0]->reaction) . $_[0]->type;
+        return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->type);
     };
     $f->{compartment} = sub {
-        return $_[0]->id . ( $_[0]->name || '' );
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ));
     };
     $f->{reaction_rule_transport} = sub {
-        return $f->{reaction}->($_[0]->reaction) . $_[0]->compartmentIndex . $f->{compound}->($_[0]->compound);
+        return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->compartmentIndex . $f->{compound}->($_[0]->compound));
     };
     $f->{reaction_rule} = sub {
-        return $f->{reaction}->($_[0]->reaction) . $f->{compartment}->($_[0]->compartment) .
-            join(',', sort map { $f->{reaction_rule_transport}->($_) } $_[0]->reaction_rule_transports );
+        return md5_hex($f->{reaction}->($_[0]->reaction) . $f->{compartment}->($_[0]->compartment) .
+            join(',', sort map { $f->{reaction_rule_transport}->($_) } $_[0]->reaction_rule_transports ));
 
     };
     $f->{reagent} = sub {
         my ($obj) = @_;
-        return $f->{reaction}->($obj->reaction) . $f->{compound}->($obj->compound) . $obj->compartmentIndex;
+        return md5_hex($f->{reaction}->($obj->reaction) . $f->{compound}->($obj->compound) . $obj->compartmentIndex);
     };
     $f->{default_transported_reagent} = sub {
-        return $f->{reaction}->($_[0]->reaction) . $f->{compound}->($_[0]->compound) . $_[0]->compartmentIndex;
+        return md5_hex($f->{reaction}->($_[0]->reaction) . $f->{compound}->($_[0]->compound) . $_[0]->compartmentIndex);
     }; 
     $f->{complex_role} = sub {
-        return $f->{complex}->($_[0]->complex) .
-               $f->{role}->($_[0]->role);
+        return md5_hex($f->{complex}->($_[0]->complex) .
+               $f->{role}->($_[0]->role));
     };
     $f->{media} = sub {
-        return $_[0]->id . ($_[0]->name || '') . ($_[0]->type || '');
+        return md5_hex($_[0]->id . ($_[0]->name || '') . ($_[0]->type || ''));
     };
     $f->{media_compound} = sub {
-        return $f->{media}->($_[0]->media) . $f->{compound}->($_[0]->compound);
+        return md5_hex($f->{media}->($_[0]->media) . $f->{compound}->($_[0]->compound));
     };
     $f->{biochemistry} = sub {
+        return md5_hex(
         join(',', sort map { $f->{media}->($_) } $_[0]->media ) .
         join(',', sort map { $f->{compartment}->($_) } $_[0]->compartments ) .
         join(',', sort map { $f->{compound}->($_) } $_[0]->compounds) .
         join(',', sort map { $f->{reaction}->($_) } $_[0]->reactions) .
         join(',', sort map { $f->{reactionset}->($_) } $_[0]->reactionsets) .
-        join(',', sort map { $f->{compoundset}->($_) } $_[0]->compoundsets)
+        join(',', sort map { $f->{compoundset}->($_) } $_[0]->compoundsets));
     };
     $f->{mapping} = sub {
+        return md5_hex(
         $f->{biochemistry}->($_[0]->biochemistry) .
         join(',', sort map { $f->{complex}->($_) } $_[0]->complexes) .
         join(',', sort map { $f->{reaction_rule}->($_) } $_[0]->reaction_rules) .
         join(',', sort map { $f->{reaction_rule}->($_) } $_[0]->reaction_rules) .
-        join(',', sort map { $f->{role}->($_) } $_[0]->roles);
+        join(',', sort map { $f->{role}->($_) } $_[0]->roles));
     };
     $f->{role} = sub {
-        return $_[0]->name . $_[0]->id;
+        return md5_hex($_[0]->name . $_[0]->id);
     };
     $f->{roleset} = sub {
-        return join(',', sort map { $f->{role}->($_) } $_[0]->roles); 
+        return md5_hex(join(',', sort map { $f->{role}->($_) } $_[0]->roles)); 
     };
     $f->{genome} = sub {
-        return $_[0]->id;
+        return md5_hex($_[0]->id);
     };
     $f->{feature} = sub {
-        return $f->{genome}->($_[0]->genome) . $_[0]->id . $_[0]->start . $_[0]->stop;
+        return md5_hex($f->{genome}->($_[0]->genome) . $_[0]->id . $_[0]->start . $_[0]->stop);
     };
     $f->{annotation_feature} = sub {
-        return $f->{feature}->($_[0]->feature) . $f->{role}->($_[0]->role);
+        return md5_hex($f->{feature}->($_[0]->feature) . $f->{role}->($_[0]->role));
     };
     $f->{annotation} = sub {
-        return $f->{genome}->($_[0]->genome) . ( $_[0]->name || '' ) . 
-        join(',', sort map { $f->{annotation_feature}->($_) } $_[0]->annotation_features);
+        return md5_hex($f->{genome}->($_[0]->genome) . ( $_[0]->name || '' ) . 
+        join(',', sort map { $f->{annotation_feature}->($_) } $_[0]->annotation_features));
     };
     return $f;
 };
+
+# makeQuery()
+sub _makeObjectToQueryFns {
+    my $f = {};
+    $f->{complex} = sub { return { uuid => $_[0]->uuid }};
+    $f->{role} = sub { return  { uuid => $_[0]->uuid }};
+    $f->{compound} = sub { return { uuid => $_[0]->uuid }};
+    $f->{compound_alias} = sub { return { alias => $_[0]->alias, type => $_[0]->type }};
+    $f->{reaction} = sub { return { uuid => $_[0]->uuid }};
+    $f->{reactionset} = sub { return { uuid => $_[0]->uuid }};
+    $f->{compoundset} = sub { return { uuid => $_[0]->uuid }};
+    $f->{reaction_alias} = sub { return { alias => $_[0]->alias, type => $_[0]->type }};
+    $f->{compartment} = sub { return { uuid => $_[0]->uuid }};
+    $f->{reaction_rule_transport} = sub {
+        return {
+            reaction_uuid => $_[0]->reaction_uuid,
+            compound_uuid => $_[0]->compound_uuid,
+            compartmentIndex => $_[0]->compartmentIndex,
+        };
+    };
+    $f->{reaction_rule} = sub { return { uuid => $_[0]->uuid }};
+    $f->{reagent} = sub {
+        return {
+            reaction_uuid => $_[0]->reaction_uuid,
+            compound_uuid => $_[0]->compound_uuid,
+            compartmentIndex => $_[0]->compartmentIndex,
+        };
+    };
+    $f->{default_transported_reagent} = sub {
+        return {
+            reaction_uuid => $_[0]->reaction_uuid,
+            compound_uuid => $_[0]->compound_uuid,
+            compartmentIndex => $_[0]->compartmentIndex,
+        };
+    };
+    $f->{complex_role} = sub {
+        return {
+            complex_uuid => $_[0]->complex_uuid,
+            role_uuid => $_[0]->role_uuid,
+        };
+    };
+    $f->{media} = sub { return { uuid => $_[0]->uuid }};
+    $f->{media_compound} = sub {
+        return {
+            media_uuid => $_[0]->media_uuid,
+            compound_uuid => $_[0]->compound_uuid,
+        };
+    };
+    $f->{biochemistry} = sub { return { uuid => $_[0]->uuid }};
+    $f->{mapping} = sub { return { uuid => $_[0]->uuid }};
+    $f->{role} = sub { return { uuid => $_[0]->uuid }};
+    $f->{roleset} = sub { return { uuid => $_[0]->uuid }};
+    $f->{genome} = sub { return { uuid => $_[0]->uuid }};
+    $f->{feature} = sub { return { uuid => $_[0]->uuid }};
+    $f->{annotation_feature} = sub { return { uuid => $_[0]->uuid }};
+    $f->{annotation} = sub { return { uuid => $_[0]->uuid }};
+    return $f;
+}
+
 
 # This is a set of functions converting a row object
 # into a hash that can be used by getOrCreateObject()
@@ -192,7 +318,6 @@ sub _makeConversionFns {
             ($row->{creationDate}->[0]) ? DateTime->from_epoch(epoch => $row->{creationDate}->[0]) : 
             DateTime->now();
     };
-        
     my $f = {};
     $f->{compound} = sub {
         my ($self, $row, $ctx) = @_;
@@ -210,7 +335,7 @@ sub _makeConversionFns {
     };
     $f->{compound_alias} = sub {
         my ($self, $row, $ctx) = @_;
-        my $obj = $ctx->{compound}->{$row->{COMPOUND}->[0]};
+        my $obj = $self->idCache("compound", $row->{COMPOUND}->[0]);
         return undef unless($obj);
         return {
             type => $row->{type}->[0],
@@ -239,7 +364,7 @@ sub _makeConversionFns {
             return undef;
         }
         my $cmp = $self->determinePrimaryCompartment($parts);
-        my $cmpObj = $ctx->{compartment}->{$cmp};
+        my $cmpObj = $self->idCache("compartment", $cmp);
         unless($cmpObj) {
             warn "Could not identify compartment for reaction: " .
             $row->{id}->[0] . " with compartment " . $cmp . "\n";
@@ -260,7 +385,7 @@ sub _makeConversionFns {
     };
     $f->{reaction_alias} = sub {
         my ($self, $row, $ctx) = @_;
-        my $obj = $ctx->{reaction}->{$row->{REACTION}->[0]};
+        my $obj = $self->idCache("reaction", $row->{REACTION}->[0]);
         return undef unless($obj);
         return {
             type => $row->{type}->[0],
@@ -270,8 +395,8 @@ sub _makeConversionFns {
     };
     $f->{reagent} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $ctx->{reaction}->{$row->{reaction}->[0]};
-        my $cpd = $ctx->{compound}->{$row->{compound}->[0]};
+        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
         unless(defined($rxn) && defined($cpd)) {
             return undef;
         }
@@ -285,9 +410,9 @@ sub _makeConversionFns {
     };    
     $f->{default_transported_reagent} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $ctx->{reaction}->{$row->{reaction}->[0]};
-        my $cpd = $ctx->{compound}->{$row->{compound}->[0]};
-        my $cmp = $ctx->{compartment}->{$row->{compartment}->[0]};
+        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
+        my $cmp = $self->idCache("compartment", $row->{compartment}->[0]);
         unless(defined($rxn) && defined($cmp) && defined($cpd)) {
             my $str = (!defined($rxn)) ? "no reaction\n" : 
                       (!defined($cpd)) ? "no cpd\n" : "no compartment\n";
@@ -321,8 +446,8 @@ sub _makeConversionFns {
     };
     $f->{complexRole} = sub {
         my ($self, $row, $ctx) = @_;
-        my $complex = $ctx->{complex}->{$row->{COMPLEX}->[0]};
-        my $role    = $ctx->{role}->{$row->{ROLE}->[0]};
+        my $complex = $self->idCache("complex", $row->{COMPLEX}->[0]);
+        my $role    = $self->idCache("role", $row->{ROLE}->[0]);
         if(defined($role) && defined($complex)) {
             return { 
                 complex => $complex,
@@ -336,7 +461,7 @@ sub _makeConversionFns {
 
     $f->{reactionRule} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $ctx->{reaction}->{$row->{REACTION}->[0]};
+        my $rxn = $self->idCache("reaction", $row->{REACTION}->[0]);
         my $cmp = $rxn->defaultCompartment;
         if(defined($rxn) && defined($cmp)) {
             return {
@@ -350,7 +475,7 @@ sub _makeConversionFns {
     };
     $f->{feature} = sub {
         my ($self, $row, $ctx) = @_;
-        my $genome = $ctx->{genome}->{$row->{GENOME}->[0]};
+        my $genome = $self->idCache("genome", $row->{GENOME}->[0]);
         return undef unless(defined($genome));
         my $min = $row->{"MIN LOCATION"}->[0];
         my $max = $row->{"MAX LOCATION"}->[0];
@@ -375,36 +500,6 @@ sub _makeConversionFns {
 } 
         
     
-# addNewValueToLookupData - simple wrapper
-# to generate rdbo to hash key and insert into lookup table
-sub addNewValueToLookupData {
-    my ($self, $type, $rdbo) = @_;
-    my $key = $self->hash->{$type}->($rdbo);
-    $self->cache->{$type}->{$key} = $rdbo;
-    # Try to add $rdbo->id as key value
-    try {
-        my $secondKey = $rdbo->id;
-        $self->cache->{$type}->{$secondKey} = $rdbo;
-    };
-}
-
-# _buildLookupData - construct hash-keys for each
-# 
-# Input:  ( hash<type, subroutine> )
-# Output: hash<type, hash<key,RDBO> >
-sub _buildLookupData {
-    my ($self) = @_;
-    my $hash = {};
-    foreach my $type (sort keys %{$self->hash}) {
-        $self->cache->{$type} = {};
-        my $objs = $self->om()->get_objects($type);
-        foreach my $obj (@$objs) {
-           $self->addNewValueToLookupData($type, $obj);
-        }
-        warn "Prefetched $type, ".scalar(keys %{$self->cache->{$type}})." objects\n";
-    }
-    return $hash;
-}
 
 sub importBiochemistryFromDir {
     my ($self, $dir, $username, $name) = @_;
@@ -437,15 +532,17 @@ sub importBiochemistryFromDir {
     # Create compartments - for reactions, default_transported_reagents
     my $compartments = $self->getDefaultCompartments();
     $RDB_biochemistry->add_compartments(@$compartments);
+    warn "importing compounds\n";
     # Compounds
     my $compound_id_map = {};
     for(my $i=0; $i<$files->{compound}->size(); $i++) {
         my $row = $files->{compound}->get_row($i);
         my $hash = $self->convert("compound", $row);
         my $RDB_compound = $self->getOrCreateObject("compound", $hash); 
-        $self->cache->{compound}->{$RDB_compound->id} = $RDB_compound;
         $RDB_biochemistry->add_compounds($RDB_compound); 
     }
+    warn "imported " . scalar(keys %{$self->idCache()->{"compound"}}) . " compounds\n";
+    warn "importing compound aliases\n";
     # CompoundAliases
     my $aliasRepeats = {};
     for(my $i=0; $i<$files->{compound_alias}->size(); $i++) {
@@ -458,7 +555,7 @@ sub importBiochemistryFromDir {
         my $RDB_compound_alias =
             $self->getOrCreateObject("compound_alias", $hash);
         my $id = $RDB_compound_alias->compound->id;
-        my $RDB_compound = $self->cache->{compound}->{$id};
+        my $RDB_compound = $self->idCache("compound", $id);
         unless(defined($RDB_compound)) {
             warn "Could not find compound for alias $id.\n";
             next;
@@ -467,11 +564,13 @@ sub importBiochemistryFromDir {
         $RDB_compound_alias->compound;
         $RDB_compound->save();
     }
+    warn Dumper($self->{cache}->debug_stats);
     # Reactions
     my $missed_rxn_count = 0;
     my ($missed_rxn_cpd_count, $missed_rxn_cpd_by_rxn) = (0, {});
     my ($missed_rt_count, $missed_rt_by_rxn) = (0, {});
     for(my $i=0; $i<$files->{reaction}->size(); $i++) {
+        warn "imported $i reactions\n" if($i % 100 == 0 && $i != 0);
         my $row = $files->{reaction}->get_row($i);
         my $hash = $self->convert("reaction", $row);
         unless(defined($hash)) {
@@ -479,7 +578,6 @@ sub importBiochemistryFromDir {
             next;
         }
         my $RDB_reaction = $self->getOrCreateObject("reaction", $hash);
-        $self->cache->{reaction}->{$RDB_reaction->id} = $RDB_reaction;
         $RDB_biochemistry->add_reactions($RDB_reaction);
         # Reagents and DefaultTransportedReagents
         my $data = $self->generateReactionDataset($row);
@@ -516,6 +614,7 @@ sub importBiochemistryFromDir {
         warn "Failed to add $missed_rt_count default transported reagents to database across " .
             scalar(keys %$missed_rt_by_rxn) . " reactions.\n";
     }
+    warn "importing reaction aliases\n";
     # ReactionAlias
     $aliasRepeats = {};
     for(my $i=0; $i<$files->{reaction_alias}->size(); $i++) {
@@ -529,19 +628,21 @@ sub importBiochemistryFromDir {
         my $RDB_reaction_alias =
             $self->getOrCreateObject("reaction_alias", $hash);
     }
+    warn "importing media\n";
     # Media
-    my $defaultMediaObjs = $self->getDefaultMedia($self->cache); 
+    my $defaultMediaObjs = $self->getDefaultMedia(); 
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
     }
+    warn "finalizing\n";
     # Now create if it doesn't already exist
-    my $biochem_hash = $self->hash->{biochemistry}->($RDB_biochemistry);
-    unless(defined($self->cache->{biochemistry}->{$biochem_hash})) {
+    my $biochem_hash = $self->hash("biochemistry", $RDB_biochemistry);
+    unless(defined($self->cache("biochemistry", $biochem_hash))) {
         $RDB_biochemistry->save;
-        $self->cache->{biochemistry}->{$biochem_hash} = $RDB_biochemistry;
+        $self->cache("biochemistry", $biochem_hash, $RDB_biochemistry);
     }
     # Add alias that we wanted
-    my $bio = $self->cache->{biochemistry}->{$biochem_hash};
+    my $bio = $self->cache("biochemistry", $biochem_hash);
     $bio->add_biochemistry_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
     $bio->save();
@@ -611,7 +712,7 @@ sub importMappingFromDir {
     for(my $i=0; $i<$files->{reactionRule}->size(); $i++) {
         my $row = $files->{reactionRule}->get_row($i);
         my $hash = $self->convert("reactionRule", $row);
-        my $cpx  = $self->cache->{complex}->{$row->{COMPLEX}->[0]};
+        my $cpx  = $self->cache("complex", $row->{COMPLEX}->[0]);
         unless(defined($cpx)) {
             warn "Could not find complex: " . $row->{COMPLEX}->[0] . " for reactionRule\n";
             next;
@@ -640,13 +741,13 @@ sub importMappingFromDir {
         } 
     }
     # Now create if it doesn't already exist
-    my $mapping_hash = $self->hash->{mapping}->($RDB_mappingObject);
-    unless(defined($self->cache->{mapping}->{$mapping_hash})) {
+    my $mapping_hash = $self->hash("mapping", $RDB_mappingObject);
+    unless(defined($self->cache("mapping", $mapping_hash))) {
         $RDB_mappingObject->save;
-        $self->cache->{mapping}->{$mapping_hash} = $RDB_mappingObject;
+        $self->cache("mapping", $mapping_hash, $RDB_mappingObject);
     }
     # Add alias that we wanted
-    my $map = $self->cache->{mapping}->{$mapping_hash};
+    my $map = $self->cache("mapping", $mapping_hash);
     $map->add_mapping_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
     $map->save();
@@ -656,8 +757,8 @@ sub importMappingFromDir {
 
 sub getGenomeObject {
     my ($self, $genomeID) = @_;
-    unless(defined($self->cache->{genome}->{$genomeID})) {
-        my $columns = [ 'dna-size', 'gc-content', 'pegs', 'name', 'taxonomy', 'md5' ]; 
+    unless(defined($self->cache("genome", $genomeID))) {
+        my $columns = [ 'dna-size', 'gc-content', 'pegs', 'name', 'taxonomy', 'md5_hex' ]; 
         my $genomeData = $self->sap->genome_data({
             -ids => [ $genomeID ],
             -data => $columns,
@@ -676,7 +777,7 @@ sub getGenomeObject {
         warn "Unable to create genome object $genomeID:\n".
             Dumper($hash) . "\n" unless(defined($obj));
     }
-    return $self->cache->{genome}->{$genomeID};
+    return $self->cache("genome", $genomeID);
 }
 
 sub importAnnotationFromDir {
@@ -709,7 +810,7 @@ sub importAnnotationFromDir {
             warn "Could not create feature: " . Dumper($hash) . "\n"; 
             next;
         }
-        my $RDB_role = $self->cache->{role}->{$row->{ROLES}->[0]};
+        my $RDB_role = $self->cache("role", $row->{ROLES}->[0]);
         if(!defined($RDB_role)) {
             warn "Could not find role " . $row->{ROLES}->[0] . "\n";
             next;
@@ -729,9 +830,8 @@ sub importAnnotationFromDir {
 # if those objects do not already exist, create them
 sub getDefaultCompartments {
     my ($self) = @_;
-    if(defined($self->cache->{compartment}) && (keys %{$self->cache->{compartment}}) > 0) {
-        return [ values %{$self->cache->{compartment}} ];
-    } else {
+    my $compartments = $self->om->get_objects("compartment");
+    if(@$compartments == 0) { 
         my $values = [];
         my $oldCompartments = $self->fm->database->get_objects("compartment");
         foreach my $old (@$oldCompartments) {
@@ -743,7 +843,6 @@ sub getDefaultCompartments {
                 next;
             }
             push(@$values, $obj);
-            $self->cache->{compartment}->{$obj->id} = $obj;
         }
         my $defaultHierarchy = {
             'e' => 0,
@@ -759,12 +858,13 @@ sub getDefaultCompartments {
         }
         return $values;
     }
+    return $compartments;
 }
 
 sub getDefaultMedia {
-    my ($self, $ctx) = @_;
-    if(!defined($self->cache->{media}) || 
-        0 == (keys %{$self->cache->{media}})) {
+    my ($self) = @_;
+    my $media = $self->om->get_objects("media");
+    if(@$media == 0) {
         my $values = [];
         my $oldMedia = $self->fm->database->get_objects("media");
         foreach my $old (@$oldMedia) {
@@ -776,7 +876,7 @@ sub getDefaultMedia {
             my $mediaCpds = $self->fm->database->get_objects('mediacpd', { MEDIA => $old->id() });
             my $newMediaCpds = [];
             foreach my $mediaCpd (@$mediaCpds) {
-                my $compoundObj= $ctx->{compound}->{$mediaCpd->entity()};
+                my $compoundObj= $self->idCache("compound", $mediaCpd->entity());
                 unless($compoundObj) {
                     warn "Couldn't find compound " . $mediaCpd->entity() . "\n";
                     next;
@@ -791,10 +891,9 @@ sub getDefaultMedia {
             }
             $mediaObj->add_media_compounds(@$newMediaCpds);
             $mediaObj->save();
-            $ctx->{media}->{$mediaObj->id} = $mediaObj;
         }
     }
-    return [ values %{$self->cache->{media}} ];
+    return $media;
 }
         
 
@@ -821,19 +920,15 @@ sub getOrCreateObject {
             Dumper($hash) . "\n";
         return undef;
     }
-    my $val = $self->hash->{$type}->($obj);
-    if(defined($self->cache->{$type}->{$val})) {
-        return $self->cache->{$type}->{$val};
-    } else {
-        try {
-            $obj->save();
-        } catch {
-            warn "Died when trying to save object ($type):\n".
-            Dumper($hash) . "\n";
-        };
-        $self->addNewValueToLookupData($type, $obj);
-        return $obj;
-    }
+    my $val = $self->hash($type, $obj);
+    # cache will return cached object, or save ours
+    my $final =  $self->cache($type, $val, $obj);
+    # only now try to save in idCache
+    try {
+        my $secondKey = $final->id;
+        $self->idCache($type, $secondKey, $val);
+    };
+    return $final;
 }
         
 # Make directory absolute and remove trailing slash if it exists
@@ -1001,26 +1096,6 @@ sub determinePrimaryCompartment {
         }
     }
     return $innermost;
-}
-
-sub generateReactionCompoundFile {
-    my ($self, $filename, $reactionTable) = @_;
-    open(my $fh, ">", $filename) || die("Could not open $filename for writing!\n");
-    my $columns = [qw(reaction compound coefficient cofactor compartment)];
-    print $fh join("\t", sort @$columns) . "\n";
-    my $compartments = $self->getDefaultCompartments();
-    for(my $i=0; $i<$reactionTable->size(); $i++) {
-        my $row = $reactionTable->get_row($i);
-        # produce row [ reaction, compound, coefficient, cofactor, compartment ]
-        my $parts = parseReactionEquation($row);
-        foreach my $part (@$parts) {
-            $part->{reaction} = [$row->{id}->[0]];
-            $part->{cofactor} = [""];
-            $part->{compartment} = [$part->{compartment}->[0]];
-            print $fh join("\t", map { join(",", @{($part->{$_} || [])}) } sort @$columns) . "\n";
-        }
-    }
-    close($fh);
 }
 
 1;
