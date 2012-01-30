@@ -344,9 +344,9 @@ sub display_reaction_enzymes {
 		return "Undetermined";	
 	}
 	my $enzymes = $rxnObj->enzyme();
-	$enzymes =~ s/\|/, /g;
-	$enzymes =~ s/^,//g;
-	$enzymes =~ s/,$//g;
+	$enzymes =~ s/^\|//g;
+	$enzymes =~ s/\|$//g;
+	$enzymes =~ s/\|/,/g;
 	return $enzymes;
 }
 
@@ -365,19 +365,34 @@ sub display_reaction_flux {
 		my @tempArray = split(/_/,$args->{fluxid});
 		my $obj = $self->figmodel()->database()->get_object("fbaresult",{_id => $tempArray[1]});
 		if (defined($obj)) {
+			if ($obj->flux() eq "none") {
+				return "None";	
+			}
+			my @temp = split(/;/,$obj->flux());
+			for (my $i =0; $i < @temp; $i++) {
+				my @temptemp = split(/:/,$temp[$i]);
+				if (@temptemp >= 2 && $temptemp[0] =~ m/([bcr][ipx][ond]\d+)/) {
+					$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$1} = $temptemp[1];
+				}
+			}
 			$self->{_fluxes}->{$args->{fluxid}}->{object} = $obj;
-			$self->{_fluxes}->{$args->{fluxid}}->{model} = $self->figmodel()->get_model($obj->model());	
+			#$self->{_fluxes}->{$args->{fluxid}}->{model} = $self->figmodel()->get_model($obj->model());	
 		} else {
 			print STDERR "Flux ID not found: ".$tempArray[1]."\n";
 		}
-		if (!defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
-			$self->{_fluxes}->{$args->{fluxid}} = {};
-			print STDERR "Flux ID model not found: ".$tempArray[1]."\n";
-		}
+		#if (!defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
+		#	$self->{_fluxes}->{$args->{fluxid}} = {};
+		#	print STDERR "Flux ID model not found: ".$tempArray[1]."\n";
+		#}
 	}
-	if (defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
-		return $self->{_fluxes}->{$args->{fluxid}}->{model}->get_reaction_flux({fluxobj => $self->{_fluxes}->{$args->{fluxid}}->{object}, id => $args->{data}});
+	if (defined($self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}})) {
+		return 	$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}};
+	} else {
+		return 0.0;	
 	}
+	#if (defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
+		#return $self->{_fluxes}->{$args->{fluxid}}->{model}->get_reaction_flux({fluxobj => $self->{_fluxes}->{$args->{fluxid}}->{object}, id => $args->{data}});
+	#}
 	return "None"
 }
 

@@ -13,6 +13,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
+use YAML;
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
@@ -5452,7 +5453,57 @@ sub queueRunJob {
 	$self->figmodel()->queue()->clearJobFile({job => $args->{job}});
 	return $args->{job}." completed!";
 }
-
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
+This function lists all objects matching the input type and query
+=EXAMPLE
+./db-listobjects
+=cut
+sub dblistobjects {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["type",1,undef,"Type of object to be listed"],
+		["query",0,undef,"A '|' delimited list of queries described as 'field=A'"],
+		["sudo",0,0,"Set to '1' to list all objects in database regardless of rights"]
+	],[@Data],"blast sequences against genomes");
+    my $query = {};
+    if (defined($args->{query})) {
+    	my $queries = [split(/\|/,$args->{query})];
+    	for (my $i=0; $i < @{$queries}; $i++) {
+    		my $array = [split(/\=/,$queries->[$i])];
+    		if (defined($array->[1])) {
+    			$query->{$array->[0]} = $array->[1];
+    		}
+    	}
+    }
+    my $objs;
+    if ($args->{sudo} == 1) {
+    	$objs = $self->figmodel()->database()->sudo_get_objects($args->{type},$query);
+    } else {
+    	$objs = $self->figmodel()->database()->get_objects($args->{type},$query);
+    }
+    if (!defined($objs) || !defined($objs->[0])) {
+    	return "No objects found matching input type and query!";
+    }
+    my $attributes = [keys(%{$objs->[0]->attributes()})];
+    my $output = [join("\t",@{$attributes})];
+    for (my $i=0; $i < @{$objs}; $i++) {
+    	my $line;
+    	for (my $j=0; $j < @{$attributes}; $j++) {
+    		if ($j > 0) {
+    			$line .= "\t";	
+    		}
+    		my $function = $attributes->[$j];
+    		$line .= $objs->[$i]->$function();
+    	}
+    	push(@{$output},$line);
+    }
+    my $num = @{$objs};
+    $self->figmodel()->database()->print_array_to_file($self->ws()->directory()."Query-".$args->{type}.".tbl",$output);
+    return "Successfully printed ".$num." objects to file ".$self->ws()->directory()."Query-".$args->{type}.".tbl";
+}
 =head
 =CATEGORY
 Workspace Operations
@@ -5643,7 +5694,6 @@ sub mslogin {
 		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n".
 		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
-
 =head
 =CATEGORY
 Workpsace Operations
@@ -5666,10 +5716,6 @@ sub mswhoami {
     #}
     return $str;
 }
-    
-    
-    
-
 =head
 =CATEGORY
 Workspace Operations
@@ -6992,39 +7038,38 @@ sub mdlprintcytoseed {
 	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
 	print FH $dumper->dump($md->{$args->{model}});
 	close FH;
-
+	print "Model data printed...\n";
 	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Biomass data printed...\n";
 	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
 	print FH $dumper->dump($cpds);
 	close FH;
-
+	print "Compound data printed...\n";
 	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
 
 	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
 	close FH;
-
+	print "Abstract compound data printed...\n";
 	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
 	print FH $dumper->dump($rxns);
 	close FH;
-
+	print "Reaction data printed...\n";
 	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
-
 	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
 	close FH;
-
+	print "Abstract reaction data printed...\n";
 	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Reaction class data printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 
@@ -7450,6 +7495,24 @@ sub genlistsubsystemgenes {
 		-roleForm => "full",
 	});
 	print Data::Dumper->Dump([$subsys]);
+}
+
+sub gengetgenehits {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    
+    # code here
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+
+    my $result = $fig_genome->getGeneSimilarityHitTable();
+
+    return $result;
+}
+
+sub gengettreehits {
+
 }
 
 1;
