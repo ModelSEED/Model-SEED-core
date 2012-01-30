@@ -350,6 +350,68 @@ sub display_reaction_enzymes {
 	return $enzymes;
 }
 
+=head3 display_model_gene_columns()
+Definition:
+	string = FIGMODELweb->display_model_gene_columns(string:enzyme list);
+Description:
+=cut
+sub display_model_gene_columns {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["model","data"],{});
+	if (!defined($self->{"_".$args->{model}."generxnhash"})) {
+		my $mdl = $self->figmodel()->get_model($args->{model});
+		if (defined($mdl)) {
+			my $rxnmdl = $mdl->rxnmdl();
+			for (my $i=0; $i < @{$rxnmdl}; $i++) {
+				my $array = [split(/[\|\+\s]/,$rxnmdl->[$i]->pegs())];
+				for (my $j=0; $j < @{$array}; $j++) {
+					if (length($array->[$j]) > 0) {
+						push(@{$self->{"_".$args->{model}."_generxnhash"}->{$array->[$j]}},$rxnmdl->[$i]->REACTION());
+					}
+				}
+				$self->{"_".$args->{model}."_rxndatahash"}->{$rxnmdl->[$i]->REACTION()} = $mdl->get_reaction_data($rxnmdl->[$i]->REACTION());
+			}
+		}
+	}
+	my $output;
+	for (my $i=0; $i < @{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}}; $i++) {
+		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
+		my $rxnData = $self->{"_".$args->{model}."_rxndatahash"}->{$rxn};
+		my $reactionString = $self->create_reaction_link($args->{model},join(" or ",@{$rxnData->{"ASSOCIATED PEG"}}),$args->{model});
+		if (defined($rxnData->{PREDICTIONS})) {
+			my $predictionHash;
+			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
+				my @temp = split(/:/,$rxnData->{PREDICTIONS}->[$i]); 
+				push(@{$predictionHash->{$temp[1]}},$temp[0]);
+			}
+			$reactionString .= "(";
+			foreach my $key (keys(%{$predictionHash})) {
+				if ($key eq "Essential =>") {
+					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E=></span>,';
+				} elsif ($key eq "Essential <=") {
+					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E<=</span>,';
+				} elsif ($key eq "Active =>") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A=></span>,';
+				} elsif ($key eq "Active <=") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A<=</span>,';
+				} elsif ($key eq "Active <=>") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A</span>,';
+				} elsif ($key eq "Inactive") {
+					$reactionString .= '<span title="Inactive in '.join(",",@{$predictionHash->{$key}}).'">I</span>,';
+				} elsif ($key eq "Dead") {
+					$reactionString .= '<span title="Dead">D</span>,';
+				}
+			}
+			$reactionString =~ s/,$/)/;
+		}
+		if ($i > 0) {
+			$output .= "<br>";
+		}
+		$output .= $reactionString;
+	}
+	return $output;
+}
+
 =head3 display_reaction_flux()
 Definition:
 	string = FIGMODELweb->display_reaction_flux({string:flux ID,string:rxn ID});
