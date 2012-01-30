@@ -3182,12 +3182,11 @@ sub import_model {
 		    }
 		}
 		if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
-			if (defined($cpdals)) {
-			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-			    $how_found=$cpdals->type();
-			}
+		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
+		    if (defined($cpdals)) {
+			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			$how_found=$cpdals->type();
 		    }
 		}
 
