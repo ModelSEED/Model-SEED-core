@@ -373,6 +373,9 @@ sub display_model_gene_columns {
 			}
 		}
 	}
+	if (!defined($self->{"_".$args->{model}."_generxnhash"}->{$args->{data}})) {
+		return "Not in model";
+	}
 	my $output;
 	for (my $i=0; $i < @{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}}; $i++) {
 		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
