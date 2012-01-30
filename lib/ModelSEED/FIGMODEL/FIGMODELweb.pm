@@ -373,6 +373,9 @@ sub display_model_gene_columns {
 			}
 		}
 	}
+	if ($args->{data} =~ m/(peg\.\d+)/) {
+		$args->{data} = $1;	
+	}
 	if (!defined($self->{"_".$args->{model}."_generxnhash"}->{$args->{data}})) {
 		return "Not in model";
 	}
