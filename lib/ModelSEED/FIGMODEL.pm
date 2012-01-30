@@ -3099,6 +3099,12 @@ sub import_model {
 			args => $args } )
 	}
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-compounds.tbl","\t","|",0,["ID"]);
+
+	open(NEWCPD, "> ".$self->ws()->directory()."mdl-importmodel_New_Compounds_".$id);
+	open(FOUNDCPD, "> ".$self->ws()->directory()."mdl-importmodel_Found_Compounds_".$id);
+
+	my $how_found="";
+
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
 		if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
@@ -3112,6 +3118,7 @@ sub import_model {
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
 			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			$how_found=$cpdals->type();
 			print "Found using InChI string ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 		    }
 		    if(!defined($cpdals)){
@@ -3139,6 +3146,7 @@ sub import_model {
 				if (!defined($cpd)) {
 				    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 				    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				    $how_found=$cpdals->type();
 				}
 			    } else {
 				#prevent use of names that being with cpd, for obvious confusion
@@ -3162,18 +3170,30 @@ sub import_model {
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 				print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				$how_found=$cpdals->type();
 			}
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+		    if (defined($cpdals)) {
+			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			$how_found=$cpdals->type();
+		    }
+		}
+		if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
 			if (defined($cpdals)) {
 			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			    print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			    $how_found=$cpdals->type();
 			}
+		    }
 		}
 
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
+		    print FOUNDCPD $cpd->id(),"\t",$row->{"ID"}->[0],"\t",$how_found,"\n";
 		    my $Changes="";
 			if (defined($row->{"CHARGE"}->[0])){
 			    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
@@ -3214,6 +3234,7 @@ sub import_model {
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 		    print "New ".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
+		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\n";
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 			$row->{"MASS"}->[0] = 10000000;	
 		    }
@@ -3261,8 +3282,15 @@ sub import_model {
 		$translation->{$row->{"ID"}->[0]} = $cpd->id();
 	}
 
+	close(FOUNDCPD);
+	close(NEWCPD);
+
 	#Loading the reaction table
 	return $self->new_error_message({message=> "could not find import file:".$args->{path}.$args->{baseid}."-reactions.tbl",function => "import_model",args => $args}) if (!-e $args->{path}.$args->{baseid}."-reactions.tbl");
+
+	open(NEWRXN, "> ".$self->ws()->directory()."mdl-importmodel_New_Reactions_".$id);
+	open(FOUNDRXN, "> ".$self->ws()->directory()."mdl-importmodel_Found_Reactions_".$id);
+
 	$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-reactions.tbl","\t","|",0,["ID"]);
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
@@ -3357,6 +3385,7 @@ sub import_model {
 		}
 		if (defined($rxn)) {
 			print "Found ".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
+			print FOUNDRXN $rxn->id(),"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\n";
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
@@ -3383,6 +3412,7 @@ sub import_model {
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
 			print "New ".$newid." for ".$row->{"ID"}->[0]." with code ".$codeResults->{code}."\n";
+			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -3403,6 +3433,7 @@ sub import_model {
 				scope => $id
 			});
 		}
+
 		$mdl->figmodel()->database()->create_object("rxnals",{
 			REACTION => $rxn->id(),
 			type => $id,
@@ -3454,6 +3485,9 @@ sub import_model {
 			});
 		}
 	}
+
+	close(NEWRXN);
+	close(FOUNDRXN);
 
 	for (my $i=0; $i < @{$importTables}; $i++) {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);

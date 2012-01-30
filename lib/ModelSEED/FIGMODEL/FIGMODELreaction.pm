@@ -922,12 +922,21 @@ sub translateReactionCode {
 		$Equation =~ s/\[$EquationCompartment\]//g;
 	}
 
+
+
 	my $output = {
 		direction => $Direction,
 		equation => $Equation,
 		compartment => $EquationCompartment,
+		transporter => "N",
 		success => 1
 	};
+
+	#indicating transporters
+	if(scalar(@Compartments)>1){
+	    $output->{transporter}="Y";
+	}
+
 	if (length($error) > 0) {
 		$output->{success} = 0;
 		$output->{error} = $error;
@@ -1036,6 +1045,7 @@ sub createReactionCode {
 		reverseCode => $ReverseEquation,
 		fullEquation => $FullEquation,
 		compartment => $translateResults->{compartment},
+		transporter => $translateResults->{transporter},
 		success => 1,
 		balanced => $balanceResults->{balanced},
 		status => $balanceResults->{status}
@@ -1880,7 +1890,7 @@ sub balanceReaction {
 	my $output = {
 	    equation => $OriginalEquation,
 	    balanced => 0,
-	    status => "UNKNOWN"
+	    status => "TR"
 	};
 	return $output;
     }
@@ -2037,6 +2047,8 @@ sub balanceReaction {
 	}else{
 	    if(length($status)!=0){
 		$status.="|";
+	    }else{
+		$status="OK|";
 	    }
 	    $status.="CI:".$charge;
 	}
