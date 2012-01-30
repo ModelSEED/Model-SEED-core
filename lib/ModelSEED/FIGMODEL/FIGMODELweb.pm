@@ -383,7 +383,11 @@ sub display_model_gene_columns {
 	for (my $i=0; $i < @{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}}; $i++) {
 		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
 		my $rxnData = $self->{"_".$args->{model}."_rxndatahash"}->{$rxn};
-		my $reactionString = $self->create_reaction_link($args->{model},join(" or ",@{$rxnData->{"ASSOCIATED PEG"}}),$args->{model});
+		my $genes = "None";
+		if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
+			$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
+		}
+		my $reactionString = $self->create_reaction_link($args->{model},$genes,$args->{model});
 		if (defined($rxnData->{PREDICTIONS})) {
 			my $predictionHash;
 			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
