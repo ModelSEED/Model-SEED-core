@@ -370,10 +370,9 @@ sub display_model_gene_columns {
 						push(@{$self->{"_".$args->{model}."_generxnhash"}->{$array->[$j]}},$rxnmdl->[$i]->REACTION());
 					}
 				}
-				$self->{"_".$args->{model}."_rxndatahash"}->{$rxnmdl->[$i]->REACTION()} = $mdl->get_reaction_data($rxnmdl->[$i]->REACTION());
+				$self->{"_".$args->{model}."_rxndatahash"}->{$rxnmdl->[$i]->REACTION()} = $rxnmdl->[$i];
 			}
 		}
-		print STDERR "Loaded generxnhash!\n";
 	}
 	if ($args->{data} =~ m/(peg\.\d+)/) {
 		$args->{data} = $1;	
@@ -386,8 +385,9 @@ sub display_model_gene_columns {
 		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
 		my $rxnData = $self->{"_".$args->{model}."_rxndatahash"}->{$rxn};
 		my $genes = "None";
-		if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
-			$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
+		if (defined($rxnData->pegs()) && $rxnData->pegs() =~ m/peg/) {
+			$genes	= $rxnData->pegs();
+			$genes =~ s/\|/ or /g;
 		}
 		my $reactionString = $self->create_reaction_link($rxn,$genes,$args->{model});
 #		if (defined($rxnData->{PREDICTIONS})) {
