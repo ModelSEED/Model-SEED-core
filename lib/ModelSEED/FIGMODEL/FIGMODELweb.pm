@@ -362,7 +362,7 @@ sub display_model_gene_columns {
 		my $mdl = $self->figmodel()->get_model($args->{model});
 		$self->{"_".$args->{model}."_generxnhash"} = {};
 		if (defined($mdl)) {
-			my $essdata = $self->db()->get_objects("mdless", { MODEL => $args->{model} });
+			my $essdata = $self->figmodel()->database()->get_objects("mdless", { MODEL => $args->{model} });
 			for (my $i=0; $i < @{$essdata}; $i++) {
 				my $essGeneArray = split(/,/,$essdata->[$i]->essentials());
 				for (my $j=0; $j < @{$essGeneArray}; $j++) {
