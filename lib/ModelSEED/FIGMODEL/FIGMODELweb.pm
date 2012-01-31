@@ -386,6 +386,7 @@ sub display_model_gene_columns {
 	if ($id =~ m/(peg\.\d+)/) {
 		$id = $1;	
 	}
+	print STDERR $genome.":".$args->{modelgenome}."\n";
 	if ($genome ne $args->{modelgenome} || !defined($self->{"_".$args->{model}."_generxnhash"}->{$id})) {
 		return "Not in model";
 	}
@@ -414,7 +415,7 @@ sub display_model_gene_columns {
 		}
 		$output .= '<span title="Nonessential in '.$nonessMedia.'">Nonessential</span>';	
 	}
-	foreach my $rxn (keys(%{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}})) {
+	foreach my $rxn (keys(%{$self->{"_".$args->{model}."_generxnhash"}->{$id}})) {
 		my $rxnData = $self->{"_".$args->{model}."_generxnhash"}->{$id}->{$rxn};
 		my $genes = "None";
 		if (defined($rxnData->pegs()) && $rxnData->pegs() =~ m/peg/) {
