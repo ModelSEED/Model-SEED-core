@@ -960,7 +960,7 @@ Description:
 sub create_genome_link {
 	my ($self,$genome) = @_;
 	my $genomeObj = $self->figmodel()->get_genome($genome);
-	if (defined($genomeObj) && defined($genomeObj->job())) {
+	if (defined($genomeObj) && defined($genomeObj->source() =~ m/^RAST/)) {
 		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Organism&organism='.$genome.'" target="_blank">'.$genome."</a>";
 	}
 	return '<a style="text-decoration:none" href="?page=Organism&organism='.$genome.'" target="_blank">'.$genome."</a>";
