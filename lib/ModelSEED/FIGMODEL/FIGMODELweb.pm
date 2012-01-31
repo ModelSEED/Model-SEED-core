@@ -357,7 +357,7 @@ Description:
 =cut
 sub display_model_gene_columns {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["model","data"],{});
+	$args = $self->figmodel()->process_arguments($args,["modelgenome","model","data"],{});
 	if (!defined($self->{"_".$args->{model}."_generxnhash"})) {
 		my $mdl = $self->figmodel()->get_model($args->{model});
 		$self->{"_".$args->{model}."_generxnhash"} = {};
@@ -381,17 +381,19 @@ sub display_model_gene_columns {
 			}
 		}
 	}
-	if ($args->{data} =~ m/(peg\.\d+)/) {
-		$args->{data} = $1;	
+	my $genome = $args->{data}->{GENOME};
+	my $id = $args->{data}->{ID};
+	if ($id =~ m/(peg\.\d+)/) {
+		$id = $1;	
 	}
-	if (!defined($self->{"_".$args->{model}."_generxnhash"}->{$args->{data}})) {
+	if ($genome ne $args->{modelgenome} || !defined($self->{"_".$args->{model}."_generxnhash"}->{$id})) {
 		return "Not in model";
 	}
 	my $output = "";
 	my $essMedia = "";
 	my $nonessMedia = "";
 	foreach my $media (keys(%{$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}})) {
-		if (defined($self->{"_".$args->{model}."_esshash"}->{$args->{data}}->{$media})) {
+		if (defined($self->{"_".$args->{model}."_esshash"}->{$id}->{$media})) {
 			if (length($essMedia) > 0) {
 				$essMedia .= ", ";	
 			}
@@ -413,7 +415,7 @@ sub display_model_gene_columns {
 		$output .= '<span title="Nonessential in '.$nonessMedia.'">Nonessential</span>';	
 	}
 	foreach my $rxn (keys(%{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}})) {
-		my $rxnData = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->{$rxn};
+		my $rxnData = $self->{"_".$args->{model}."_generxnhash"}->{$id}->{$rxn};
 		my $genes = "None";
 		if (defined($rxnData->pegs()) && $rxnData->pegs() =~ m/peg/) {
 			$genes	= $rxnData->pegs();
