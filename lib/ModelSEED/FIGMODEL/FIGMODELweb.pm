@@ -379,41 +379,41 @@ sub display_model_gene_columns {
 	if (!defined($self->{"_".$args->{model}."_generxnhash"}->{$args->{data}})) {
 		return "Not in model";
 	}
-	my $output;
+	my $output = "";
 	for (my $i=0; $i < @{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}}; $i++) {
 		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
 		my $rxnData = $self->{"_".$args->{model}."_rxndatahash"}->{$rxn};
 		my $genes = "None";
-		if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
-			$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
-		}
+		#if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
+		#	$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
+		#}
 		my $reactionString = $self->create_reaction_link($args->{model},$genes,$args->{model});
-		if (defined($rxnData->{PREDICTIONS})) {
-			my $predictionHash;
-			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
-				my @temp = split(/:/,$rxnData->{PREDICTIONS}->[$i]); 
-				push(@{$predictionHash->{$temp[1]}},$temp[0]);
-			}
-			$reactionString .= "(";
-			foreach my $key (keys(%{$predictionHash})) {
-				if ($key eq "Essential =>") {
-					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E=></span>,';
-				} elsif ($key eq "Essential <=") {
-					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E<=</span>,';
-				} elsif ($key eq "Active =>") {
-					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A=></span>,';
-				} elsif ($key eq "Active <=") {
-					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A<=</span>,';
-				} elsif ($key eq "Active <=>") {
-					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A</span>,';
-				} elsif ($key eq "Inactive") {
-					$reactionString .= '<span title="Inactive in '.join(",",@{$predictionHash->{$key}}).'">I</span>,';
-				} elsif ($key eq "Dead") {
-					$reactionString .= '<span title="Dead">D</span>,';
-				}
-			}
-			$reactionString =~ s/,$/)/;
-		}
+#		if (defined($rxnData->{PREDICTIONS})) {
+#			my $predictionHash;
+#			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
+#				my @temp = split(/:/,$rxnData->{PREDICTIONS}->[$i]); 
+#				push(@{$predictionHash->{$temp[1]}},$temp[0]);
+#			}
+#			$reactionString .= "(";
+#			foreach my $key (keys(%{$predictionHash})) {
+#				if ($key eq "Essential =>") {
+#					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E=></span>,';
+#				} elsif ($key eq "Essential <=") {
+#					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E<=</span>,';
+#				} elsif ($key eq "Active =>") {
+#					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A=></span>,';
+#				} elsif ($key eq "Active <=") {
+#					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A<=</span>,';
+#				} elsif ($key eq "Active <=>") {
+#					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A</span>,';
+#				} elsif ($key eq "Inactive") {
+#					$reactionString .= '<span title="Inactive in '.join(",",@{$predictionHash->{$key}}).'">I</span>,';
+#				} elsif ($key eq "Dead") {
+#					$reactionString .= '<span title="Dead">D</span>,';
+#				}
+#			}
+#			$reactionString =~ s/,$/)/;
+#		}
 		if ($i > 0) {
 			$output .= "<br>";
 		}
