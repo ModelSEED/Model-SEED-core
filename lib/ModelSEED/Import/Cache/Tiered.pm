@@ -102,7 +102,7 @@ sub set {
         $self->local->{$superkey} = $rdbobj;
         $self->debug_stats->{set_after_lock}->{miss} += 1 if($self->debug);
     } catch {
-        warn "Died when trying to save object ($type):\n";
+        warn "Died when trying to save object ($type):$_\n";
         $error = 1;
     };
     $lck->cds_unlock; # unlock cds now
@@ -134,6 +134,12 @@ sub standardSize {
     }
 }
 
+sub DEMOLISH {
+    my ($self) = @_;
+    warn Data::Dumper($self->debug_stats) if($self->debug);
+}
+
+## Builder Functions ##
 sub _buildSharedEnv {
     my ($self) = @_;
     my $dir = $self->directory;
