@@ -389,7 +389,7 @@ sub display_model_gene_columns {
 		#if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
 		#	$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
 		#}
-		my $reactionString = $self->create_reaction_link($args->{model},$genes,$args->{model});
+		my $reactionString = $self->create_reaction_link($args->{data},$genes,$args->{model});
 #		if (defined($rxnData->{PREDICTIONS})) {
 #			my $predictionHash;
 #			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
