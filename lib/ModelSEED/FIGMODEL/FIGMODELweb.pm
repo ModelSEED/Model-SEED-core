@@ -386,10 +386,10 @@ sub display_model_gene_columns {
 		my $rxn = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->[$i];
 		my $rxnData = $self->{"_".$args->{model}."_rxndatahash"}->{$rxn};
 		my $genes = "None";
-		#if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
-		#	$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
-		#}
-		my $reactionString = $self->create_reaction_link($args->{data},$genes,$args->{model});
+		if (defined($rxnData->{"ASSOCIATED PEG"}->[0])) {
+			$genes	= join(" or ",@{$rxnData->{"ASSOCIATED PEG"}});
+		}
+		my $reactionString = $self->create_reaction_link($rxn,$genes,$args->{model});
 #		if (defined($rxnData->{PREDICTIONS})) {
 #			my $predictionHash;
 #			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
