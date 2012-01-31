@@ -372,6 +372,7 @@ sub display_model_gene_columns {
 				$self->{"_".$args->{model}."_rxndatahash"}->{$rxnmdl->[$i]->REACTION()} = $mdl->get_reaction_data($rxnmdl->[$i]->REACTION());
 			}
 		}
+		print STDERR "Loaded generxnhash!\n";
 	}
 	if ($args->{data} =~ m/(peg\.\d+)/) {
 		$args->{data} = $1;	
