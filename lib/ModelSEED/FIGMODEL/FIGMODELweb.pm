@@ -362,6 +362,14 @@ sub display_model_gene_columns {
 		my $mdl = $self->figmodel()->get_model($args->{model});
 		$self->{"_".$args->{model}."_generxnhash"} = {};
 		if (defined($mdl)) {
+			my $essdata = $self->db()->get_objects("mdless", { MODEL => $args->{model} });
+			for (my $i=0; $i < @{$essdata}; $i++) {
+				my $essGeneArray = split(/,/,$essdata->[$i]->essentials());
+				for (my $j=0; $j < @{$essGeneArray}; $j++) {
+					$self->{"_".$args->{model}."_esshash"}->{$essGeneArray->[$j]}->{$essdata->[$i]->MEDIA()} = 1;
+				}
+				$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}->{$essdata->[$i]->MEDIA()} = 1;
+			}
 			my $rxnmdl = $mdl->rxnmdl();
 			for (my $i=0; $i < @{$rxnmdl}; $i++) {
 				my $array = [split(/[\|\+\s]/,$rxnmdl->[$i]->pegs())];
@@ -380,6 +388,30 @@ sub display_model_gene_columns {
 		return "Not in model";
 	}
 	my $output = "";
+	my $essMedia = "";
+	my $nonessMedia = "";
+	foreach my $media (keys(%{$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}})) {
+		if (defined($self->{"_".$args->{model}."_esshash"}->{$args->{data}}->{$media})) {
+			if (length($essMedia) == 0) {
+				$essMedia .= "; ";	
+			}
+			$essMedia .= $media;
+		} else {
+			if (length($nonessMedia) == 0) {
+				$nonessMedia .= "; ";	
+			}
+			$nonessMedia .= $media;
+		}
+	}
+	if (length($essMedia) > 0) {
+		$output .= '<span title="Essential in '.$essMedia.'">Essential</span>';	
+	}
+	if (length($nonessMedia) > 0) {
+		if (length($output) > 0) {
+			$output .= "<br>";	
+		}
+		$output .= '<span title="Nonessential in '.$nonessMedia.'">Nonessential</span>';	
+	}
 	foreach my $rxn (keys(%{$self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}})) {
 		my $rxnData = $self->{"_".$args->{model}."_generxnhash"}->{$args->{data}}->{$rxn};
 		my $genes = "None";
