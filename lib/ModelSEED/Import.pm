@@ -35,6 +35,7 @@ sub new {
     });
     $self->{fm} = ModelSEED::FIGMODEL->new(); 
     $self->{fm}->authenticate({username => "sdevoid", password => "marcopolo"});
+    $self->{sap} = SAPserver->new();
     $self->{typesToHashFns} = _makeTypesToHashFns();
     $self->{conversionFns}  = _makeConversionFns();
     $self->{objectToQueryFns} = _makeObjectToQueryFns();
@@ -564,7 +565,6 @@ sub importBiochemistryFromDir {
         $RDB_compound_alias->compound;
         $RDB_compound->save();
     }
-    warn Dumper($self->{cache}->debug_stats);
     # Reactions
     my $missed_rxn_count = 0;
     my ($missed_rxn_cpd_count, $missed_rxn_cpd_by_rxn) = (0, {});
@@ -634,15 +634,12 @@ sub importBiochemistryFromDir {
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
     }
+    warn Dumper($self->{cache}->debug_stats);
     warn "finalizing\n";
     # Now create if it doesn't already exist
     my $biochem_hash = $self->hash("biochemistry", $RDB_biochemistry);
-    unless(defined($self->cache("biochemistry", $biochem_hash))) {
-        $RDB_biochemistry->save;
-        $self->cache("biochemistry", $biochem_hash, $RDB_biochemistry);
-    }
+    my $bio = $self->cache("biochemistry", $biochem_hash, $RDB_biochemistry);
     # Add alias that we wanted
-    my $bio = $self->cache("biochemistry", $biochem_hash);
     $bio->add_biochemistry_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
     $bio->save();
@@ -668,6 +665,12 @@ sub importMappingFromDir {
     my $config = {filename => undef, delimiter => "\t"};
     foreach my $file (values %$files) {
         $file = "$dir/$file";
+        if($file =~ "role.txt" && !-f $file) {
+            $config->{filename} = $file;
+            my $objs = $self->fm->database->get_objects("role");
+            my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
+            $tbl->save();
+        }
         unless(-f "$file") {
             warn "Unable to find $file";
             return undef;
@@ -692,6 +695,9 @@ sub importMappingFromDir {
         my $hash = $self->convert("role", $row);
         my $RDB_roleObject = $self->getOrCreateObject('role', $hash);
         $RDB_mappingObject->add_roles($RDB_roleObject);
+        # have to cache roles by names for annotation
+        my $cksum = $self->hash("role", $RDB_roleObject);
+        $self->idCache("role", $cksum, $RDB_roleObject); 
     } 
     # Create complexRole
     my $cpxRoleFailures = 0;
@@ -712,7 +718,7 @@ sub importMappingFromDir {
     for(my $i=0; $i<$files->{reactionRule}->size(); $i++) {
         my $row = $files->{reactionRule}->get_row($i);
         my $hash = $self->convert("reactionRule", $row);
-        my $cpx  = $self->cache("complex", $row->{COMPLEX}->[0]);
+        my $cpx  = $self->idCache("complex", $row->{COMPLEX}->[0]);
         unless(defined($cpx)) {
             warn "Could not find complex: " . $row->{COMPLEX}->[0] . " for reactionRule\n";
             next;
@@ -742,12 +748,8 @@ sub importMappingFromDir {
     }
     # Now create if it doesn't already exist
     my $mapping_hash = $self->hash("mapping", $RDB_mappingObject);
-    unless(defined($self->cache("mapping", $mapping_hash))) {
-        $RDB_mappingObject->save;
-        $self->cache("mapping", $mapping_hash, $RDB_mappingObject);
-    }
+    my $map = $self->cache("mapping", $mapping_hash, $RDB_mappingObject);
     # Add alias that we wanted
-    my $map = $self->cache("mapping", $mapping_hash);
     $map->add_mapping_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
     $map->save();
@@ -757,7 +759,7 @@ sub importMappingFromDir {
 
 sub getGenomeObject {
     my ($self, $genomeID) = @_;
-    unless(defined($self->cache("genome", $genomeID))) {
+    unless(defined($self->idCache("genome", $genomeID))) {
         my $columns = [ 'dna-size', 'gc-content', 'pegs', 'name', 'taxonomy', 'md5_hex' ]; 
         my $genomeData = $self->sap->genome_data({
             -ids => [ $genomeID ],
@@ -777,7 +779,7 @@ sub getGenomeObject {
         warn "Unable to create genome object $genomeID:\n".
             Dumper($hash) . "\n" unless(defined($obj));
     }
-    return $self->cache("genome", $genomeID);
+    return $self->idCache("genome", $genomeID);
 }
 
 sub importAnnotationFromDir {
@@ -810,7 +812,7 @@ sub importAnnotationFromDir {
             warn "Could not create feature: " . Dumper($hash) . "\n"; 
             next;
         }
-        my $RDB_role = $self->cache("role", $row->{ROLES}->[0]);
+        my $RDB_role = $self->idCache("role", $row->{ROLES}->[0]);
         if(!defined($RDB_role)) {
             warn "Could not find role " . $row->{ROLES}->[0] . "\n";
             next;
@@ -822,10 +824,77 @@ sub importAnnotationFromDir {
                 feature => $RDB_feature,
         });
     }
-    return $RDB_annotation;
+    return $self->getOrCreateObject("annotation", $RDB_annotation);
+}
+
+sub importModelFromDir {
+    my ($self, $dir, $username, $id) = @_;
+    my $RDB_model = $self->om->create_object("model");
+    my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
+    if(-d "$dir/biochemistry") {
+        my $biochemId = $id . "-biochemistry";
+        $RDB_biochemistry = $self->importBiochemistryFromDir(
+            "$dir/biochemistry", $username, $biochemId);
+        $RDB_model->biochemistry($RDB_biochemistry);
+    } else {
+        die "No biochemistry for model $dir!\n";
+    }
+    if(-d "$dir/mapping") {
+        my $mappingId = $id . "-mapping";
+        $RDB_mapping = $self->importMappingFromDir(
+            "$dir/mapping", $RDB_biochemistry, $username, $mappingId);
+        $RDB_model->mapping($RDB_mapping);
+    }
+    if(-d "$dir/annotations") {
+        my $genomeId = $id . "-annotation";
+        $RDB_annotation = $self->importAnnotationFromDir(
+            "$dir/annotations", $username, $genomeId);
+        $RDB_model->annotation($RDB_annotation);
+    }
+    # do rxnmdl
+    my $file = "$dir/rxnmdl.txt";
+    my $tbl;
+    my $config = {
+            delimiter => "\t",
+            itemDelimiter => ";",
+            filename => $file,
+    };
+    if(!-f $file) { # generate rxn-mdl data from database
+        my $objs = $self->fm->database->get_objects('rxnmdl');        
+        $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
+    } else { # or load it from the file
+        $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
+    }
+    my $size = $tbl->size();
+    for(my $i=0; $i<$size; $i++) {
+        my $row = $tbl->get_row($i);
+        # do model-compartments
+        my $compartmentId = $row->{compartment}->[0];
+        my $mdl_cmp = $self->idCache("model_compartment", $compartmentId); 
+        if(!defined($mdl_cmp)) {
+            $mdl_cmp = $self->makeModelCompartment($compartmentId, $RDB_biochemistry, $RDB_model);
+        }
+        my $hash = $self->convert("model_reaction", $row);
+        my $RDB_model_reaction = $self->getOrCreateObject("model_reaction", $hash);
+        # do model transported reagent
+        my $dtrs = $RDB_model_reaction->reaction->default_transported_reagents;
+        foreach my $dtr (@$dtrs) {
+            # TODO
+        }
+    }
+    return $RDB_model;
+}
+
+sub makeModelCompartment {
+    my ($self, $compartmentId, $RDB_biochemistry) = @_;;
+    my $compartment = $self->idCache("compartment", $compartmentId);
+    my $hash = {
+        compartment => $compartment,
+        compartmentIndex => 0,
+    };
+    return $self->getOrCreateObject("model_compartment", $hash);
 }
     
-
 # returns a set of rdbo objects for compartments
 # if those objects do not already exist, create them
 sub getDefaultCompartments {

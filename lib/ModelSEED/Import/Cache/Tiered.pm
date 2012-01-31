@@ -65,7 +65,8 @@ sub get {
         $self->debug_stats->{local}->{get}->{miss} += 1 if($self->debug);
     }
     # try getting from shared cache 
-    $self->shared->db_get($superkey, my $query);
+    my $query;
+    $self->shared->db_get($superkey, $query);
     if(defined($query)) {
         $self->debug_stats->{shared}->{get}->{hit} += 1 if($self->debug);
         $value = $self->om->get_object($type, decode_json($query));
@@ -79,6 +80,8 @@ sub set {
     # try getting first
     my $val = $self->get($type, $key);
     return $val if(defined($val));
+    # need to decrement miss stat on local
+    $self->debug_stats->{local}->{get}->{miss} -= 1 if($self->debug);
     # now try getting with locks
     my $lck = $self->shared->cds_lock();
     $val = $self->get($type, $key);
@@ -87,6 +90,8 @@ sub set {
         $lck->cds_unlock;
         return $val 
     } 
+    # need to decrement miss stat on local
+    $self->debug_stats->{local}->{get}->{miss} -= 1 if($self->debug);
     # unable to get it and still locked
     my $error;
     try {
