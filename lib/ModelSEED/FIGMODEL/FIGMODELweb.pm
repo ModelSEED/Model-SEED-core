@@ -364,7 +364,8 @@ sub display_model_gene_columns {
 		if (defined($mdl)) {
 			my $essdata = $self->figmodel()->database()->get_objects("mdless", { MODEL => $args->{model} });
 			for (my $i=0; $i < @{$essdata}; $i++) {
-				my $essGeneArray = split(/,/,$essdata->[$i]->essentials());
+				print STDERR $essdata->[$i]->essentials()."\n";
+				my $essGeneArray = [split(/;/,$essdata->[$i]->essentials())];
 				for (my $j=0; $j < @{$essGeneArray}; $j++) {
 					$self->{"_".$args->{model}."_esshash"}->{$essGeneArray->[$j]}->{$essdata->[$i]->MEDIA()} = 1;
 				}
