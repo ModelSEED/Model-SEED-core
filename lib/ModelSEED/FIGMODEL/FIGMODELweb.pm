@@ -358,8 +358,9 @@ Description:
 sub display_model_gene_columns {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["model","data"],{});
-	if (!defined($self->{"_".$args->{model}."generxnhash"})) {
+	if (!defined($self->{"_".$args->{model}."_generxnhash"})) {
 		my $mdl = $self->figmodel()->get_model($args->{model});
+		$self->{"_".$args->{model}."_generxnhash"} = {};
 		if (defined($mdl)) {
 			my $rxnmdl = $mdl->rxnmdl();
 			for (my $i=0; $i < @{$rxnmdl}; $i++) {
