@@ -364,7 +364,6 @@ sub display_model_gene_columns {
 		if (defined($mdl)) {
 			my $essdata = $self->figmodel()->database()->get_objects("mdless", { MODEL => $args->{model} });
 			for (my $i=0; $i < @{$essdata}; $i++) {
-				print STDERR $essdata->[$i]->essentials()."\n";
 				my $essGeneArray = [split(/;/,$essdata->[$i]->essentials())];
 				for (my $j=0; $j < @{$essGeneArray}; $j++) {
 					$self->{"_".$args->{model}."_esshash"}->{$essGeneArray->[$j]}->{$essdata->[$i]->MEDIA()} = 1;
@@ -393,13 +392,13 @@ sub display_model_gene_columns {
 	my $nonessMedia = "";
 	foreach my $media (keys(%{$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}})) {
 		if (defined($self->{"_".$args->{model}."_esshash"}->{$args->{data}}->{$media})) {
-			if (length($essMedia) == 0) {
-				$essMedia .= "; ";	
+			if (length($essMedia) > 0) {
+				$essMedia .= ", ";	
 			}
 			$essMedia .= $media;
 		} else {
-			if (length($nonessMedia) == 0) {
-				$nonessMedia .= "; ";	
+			if (length($nonessMedia) > 0) {
+				$nonessMedia .= ", ";	
 			}
 			$nonessMedia .= $media;
 		}
