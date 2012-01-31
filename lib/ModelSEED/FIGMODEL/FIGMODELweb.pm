@@ -381,12 +381,11 @@ sub display_model_gene_columns {
 			}
 		}
 	}
-	my $genome = $args->{data}->{GENOME};
-	my $id = $args->{data}->{ID};
+	my $genome = $args->{data}->{GENOME}->[0];
+	my $id = $args->{data}->{ID}->[0];
 	if ($id =~ m/(peg\.\d+)/) {
 		$id = $1;	
 	}
-	print STDERR $genome.":".$args->{modelgenome}."\n";
 	if ($genome ne $args->{modelgenome} || !defined($self->{"_".$args->{model}."_generxnhash"}->{$id})) {
 		return "Not in model";
 	}
