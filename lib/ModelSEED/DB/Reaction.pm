@@ -5,6 +5,13 @@ use ModelSEED::ApiHelpers;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
+sub default {
+    return {
+	columns       => "*",
+	relationships => ["reagents", "reaction_aliases"]
+    }
+}
+
 sub serialize {
     my ($self, $args, $ctx) = @_;
     my $hash = {};
@@ -26,7 +33,6 @@ sub deserialize {
     # apply reference attributes if they are "different"
     #   dereference, then apply
 }
-        
 
 __PACKAGE__->meta->setup(
     table   => 'reactions',

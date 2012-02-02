@@ -4,6 +4,14 @@ use Data::UUID;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 use ModelSEED::ApiHelpers;
 
+sub default {
+    return {
+	columns => "*",
+	with_rels => ["compound_aliases"],
+	ref_rels => []
+    }
+}
+
 sub serialize {
     my ($self, $args, $ctx) = @_;
     my $hash = {};

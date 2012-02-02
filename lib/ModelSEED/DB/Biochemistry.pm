@@ -5,6 +5,15 @@ use ModelSEED::ApiHelpers qw(serializeAttributes serializeRelationships);
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
+sub default {
+    return {
+	columns       => "*",
+	relationships => [],
+	references    => [ qw( reactions compounds reactionsets compoundsets
+            media compartments parents children )]
+    }
+}
+
 sub serialize {
     my ($self, $args, $ctx) = @_;
     my $hash = {};

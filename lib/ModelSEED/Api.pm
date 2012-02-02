@@ -11,9 +11,32 @@ has 'uuid_regex' => ( is => 'ro', isa => 'Regexp', init_arg => undef, default =>
 sub { return
 qr/[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/});
 
+# if success:
+#   return { data => $data }
+# if error:
+#   return { error => 1, code => $status_code, phrase => $phrase }
 sub serialize {
     my ($self, $ref, $args, $req) = @_;
-    my ($t1, $one) = $self->parseReference($ref);
+    my $objs = $self->parseReference($ref);
+
+    if (!$objs) {
+	return {
+	    error => 1,
+	    code => 400,
+	    phrase => 'Bad Request'
+	};
+    }
+
+    # try to think of better way to handle context
+    $self->base($objs->[0]->{url});
+
+    return {
+	data => $objs
+    };
+
+    my $one;
+    my $t1;
+
     my $base = (defined($one->[0])) ? $t1."/".$one->[0] :
         $t1."/".$one->[1]."/".$one->[2];
     $self->base($base);
@@ -60,29 +83,67 @@ sub paginate {
 sub parseReference {
     my ($self, $reference) = @_;
     my $root = $self->url_root;
-    $reference =~ s/$root//;
-    $reference =~ s/^\///;
+    $reference =~ s/$root//; # remove base url (ex localhost:3000)
+    $reference =~ s/^\///;   # remove beginning /
     my @parts = split(/\//, $reference);
-    # tx - type, ox - object, ( ux - user, nx - name ) pairs
-    my ($t1, $o1, $u1, $n1, $t2, $o2, $u2, $n2);
-    $t1 = $parts[0]; 
-    my $i = 1;
-    if(defined($parts[$i]) && $parts[$i] !~ $self->uuid_regex) {
-        $u1 = $parts[$i];
-        $n1 = $parts[$i+1];
-        $i += 1;
-    } elsif(defined($parts[$i])) {
-        $o1 = $parts[$i];
+
+    my $i = 0;
+    my $obj1 = {};
+    if (defined($parts[$i])) {
+	$obj1->{type} = $parts[$i++];
+	$obj1->{url} = $obj1->{type};
+    } else {
+	return 0;
     }
-    $i += 1;
-    if(defined($parts[$i])) {
-        $t2 = $parts[$i];
+
+    if (defined($parts[$i])) {
+	if ($parts[$i] =~ $self->uuid_regex) {
+	    # uuid
+	    $obj1->{uuid} = $parts[$i++];
+	    $obj1->{url} = $obj1->{url} . "/" . $obj1->{uuid};
+	} elsif (defined($parts[$i+1])) {
+	    # user and name (/paul/main)
+	    $obj1->{user} = $parts[$i++];
+	    $obj1->{name} = $parts[$i++];
+	    $obj1->{url} = $obj1->{url} . "/" . $obj1->{user} . "/" . $obj1->{name};
+	} else {
+	    return 0;
+	}
+    } else {
+	return [$obj1];
     }
-    $i += 1;
-    if(defined($parts[$i]) && $parts[$i] =~ $self->uuid_regex) {
-        $o2 = $parts[$i];
+
+    my $obj2 = {};
+    if (defined($parts[$i])) {
+	$obj2->{type} = $parts[$i++];
+	$obj2->{url} = $obj2->{type};
+    } else {
+	return [$obj1];
     }
-    return ($t1, [$o1, $u1, $n1], $t2, $o2);
+
+    if (defined($parts[$i])) {
+	if ($parts[$i] =~ $self->uuid_regex) {
+	    # uuid
+	    $obj2->{uuid} = $parts[$i++];
+	    $obj2->{url} = $obj2->{url} . "/" . $obj2->{uuid};
+	} elsif (defined($parts[$i+1])) {
+	    # user and name
+	    $obj2->{user} = $parts[$i++];
+	    $obj2->{name} = $parts[$i++];
+	    $obj2->{url} = $obj2->{url} . "/" . $obj2->{user} . "/" . $obj2->{name};
+	} else {
+	    return 0;
+	}
+    } else {
+	return [$obj1, $obj2];
+    }
+
+    # final check to ensure no trailing parts
+    if (defined($parts[$i])) {
+	return 0;
+    } else {
+	return [$obj1, $obj2];
+    }
 }
         
 # dereference - take a reference like "http://model-api.theseed.org/biochem/:uuid"
