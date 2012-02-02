@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Wed Jan 25 14:42:08 2012
+-- Created on Wed Feb  1 17:43:07 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -251,6 +251,8 @@ CREATE INDEX biochemistry_reactions_biochemistry_fk ON biochemistry_reactions (b
 --
 CREATE TABLE reaction_rules (
   uuid CHAR(36) NOT NULL,
+  modDate DATETIME,
+  locked TINYINT(1),
   reaction_uuid CHAR(36) NOT NULL,
   compartment_uuid CHAR(36) NOT NULL,
   direction CHAR(1),

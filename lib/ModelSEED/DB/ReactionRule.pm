@@ -2,6 +2,7 @@ package ModelSEED::DB::ReactionRule;
 
 use strict;
 use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -10,6 +11,8 @@ __PACKAGE__->meta->setup(
 
     columns => [
         uuid              => { type => 'character', length => 36, not_null => 1 },
+        modDate          => { type => 'datetime' },
+        locked           => { type => 'integer' },
         reaction_uuid     => { type => 'character', length => 36, not_null => 1 },
         compartment_uuid  => { type => 'character', length => 36, not_null => 1 },
         direction         => { type => 'character', length => 1 },
@@ -69,6 +72,10 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return Data::UUID->new()->create_str();
         }   
 });
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
+
 
 1;
 

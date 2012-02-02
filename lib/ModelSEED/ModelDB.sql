@@ -276,6 +276,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `reaction_rules` (
   `uuid` CHAR(36) NOT NULL,
+  `modDate` DATETIME NULL,
+  `locked` TINYINT(1)  NULL,
   `reaction_uuid` CHAR(36) NOT NULL,
   `compartment_uuid` CHAR(36) NOT NULL,
   `direction` CHAR(1) NULL,
