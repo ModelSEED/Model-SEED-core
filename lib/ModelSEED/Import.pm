@@ -13,52 +13,70 @@ use List::Util qw(reduce);
 use Try::Tiny;
 use BerkeleyDB;
 use JSON::XS;
+use Moose;
+
+with 'MooseX::Role::Loggable';
+
+# Configurable
+has database     => ( is => 'rw', isa => 'Str', required => 1 );
+has driver       => ( is => 'rw', isa => 'Str', required => 1 );
+has berkeleydb   => ( is => 'rw', isa => 'Str', required => 1 );
+has clearOnStart => ( is => 'rw', isa => 'Int', default => 0 );
+has cacheSize    => ( is => 'rw', isa => 'Str');
+
+
+# Non-configurable parameters
+has om => ( is => 'rw', isa => 'ModelSEED::ObjectManager',
+    builder => '_makeObjectManager', lazy => 1);
+has fm => ( is => 'rw', isa => 'ModelSEED::FIGMODEL',
+    default => sub { return ModelSEED::FIGMODEL->new() });
+has sap => ( is => 'rw', isa => 'SAPserver',
+    default => sub { return SAPserver->new() });
+has typesToHashFns => ( is => 'rw', isa => 'HashRef',
+    builder => '_makeTypesToHashFns', lazy => 1);
+has conversionFns => ( is => 'rw', isa => 'HashRef',
+    builder => '_makeConversionFns', lazy => 1);
+has objectToQueryFns => ( is => 'rw', isa => 'HashRef',
+    builder => '_makeObjectToQueryFns', lazy => 1);
+has _file_cache => ( is => 'rw', isa => 'HashRef', default => sub { return {} });
+has _cache => ( is => 'rw', isa => 'ModelSEED::Import::Cache::Tiered', 
+    builder => '_makeCache', lazy => 1);
+
 
 $Data::Dumper::Maxdepth = 3;
 use Exporter qw( import );
 our @EXPORT_OK = qw(parseReactionEquationBase);
 
-# TODO - need to fix hashes of biochemsitry, compounds, etc.
+# FIXME - do features have multiple roles ? (annotation_feature needs all of them)
+# TODO - model_biomass, biomass
 
-sub new {
-    my ($class, $config) = @_;
-    my $self = {};
-    if(defined($config->{clearOnStart}) && $config->{clearOnStart}) {
-        rmtree($config->{berkeleydb}) if (-d $config->{berkeleydb});
-        unlink($config->{database}) if(
-            -f $config->{database} && $config->{driver} eq 'SQLite');
-        system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$config->{database});
+sub BUILD {
+    my ($self) = @_;
+    if($self->clearOnStart) {
+        rmtree($self->berkeleydb) if(-d $self->berkeleydb);
+        unlink($self->database) if(-f $self->database && $self->driver eq 'SQLite');
+        system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
     }
-    $self->{om} = ModelSEED::ObjectManager->new({
-        database => $config->{database},
-        driver   => $config->{driver},
+    $self->fm->authenticate({username => "sdevoid", password => "marcopolo"});
+    
+}
+
+sub _makeCache {    
+    my ($self) = @_;
+    return ModelSEED::Import::Cache::Tiered->new({
+        importer => $self, cacheSize => $self->cacheSize,
+        directory => $self->berkeleydb, om => $self->om, $self->log_fields
     });
-    $self->{fm} = ModelSEED::FIGMODEL->new(); 
-    $self->{fm}->authenticate({username => "sdevoid", password => "marcopolo"});
-    $self->{sap} = SAPserver->new();
-    $self->{typesToHashFns} = _makeTypesToHashFns();
-    $self->{conversionFns}  = _makeConversionFns();
-    $self->{objectToQueryFns} = _makeObjectToQueryFns();
-    bless $self, $class;
-    $self->{cache} = ModelSEED::Import::Cache::Tiered->new({ importer => $self,
-        cacheSize => $config->{cacheSize}, directory => $config->{berkeleydb},
-        om => $self->{om}, types => [keys %{$self->{typesToHashFns}}], debug => 1
+}
+
+sub _makeObjectManager {
+    my ($self) = @_;
+    return ModelSEED::ObjectManager->new({
+        database => $self->database,
+        driver   => $self->driver,
     });
-    return $self;
 }
 
-
-sub fm {
-    return $_[0]->{fm};
-}
-
-sub om {
-    return $_[0]->{om};
-}
-
-sub sap {
-    return $_[0]->{sap};
-}
 
 # cache is the standard key-value store where keys are computed by the
 # hash() function associated with that type. value is the rose db object
@@ -66,9 +84,9 @@ sub sap {
 sub cache {
     my ($self, $type, $key, $value) = @_;
     if(defined($value)) {
-        return $self->{cache}->set($type, $key, $value);
+        return $self->_cache->set($type, $key, $value);
     } else {
-        return $self->{cache}->get($type, $key);
+        return $self->_cache->get($type, $key);
     }
 }
 
@@ -78,6 +96,7 @@ sub cache {
 sub idCache {
     my ($self, $type, $key, $hash) = @_;
     if(defined($hash)) {
+        confess "undefined key $type, $hash" unless(defined($key));
         return $self->{id_cache}->{$type}->{$key} = $hash;
     } elsif(defined($key)) {
         my $hash = $self->{id_cache}->{$type}->{$key};
@@ -86,6 +105,34 @@ sub idCache {
         return $self->{id_cache};
     }
 }
+
+sub fileCache {
+    my ($self, $type, $files, $cacheHash) = @_;
+    my $fileHash = hashFiles($files);
+    if(defined($cacheHash)) {
+        return $self->_file_cache->{$type}->$fileHash = $cacheHash;
+    } else {
+        $cacheHash = $self->_file_cache->{$type}->{$fileHash};
+        if(defined($cacheHash)) {
+            return $self->cache($type, $cacheHash);
+        }
+    }
+    return undef;
+}
+        
+sub hashFiles {
+    my ($files) = @_;
+    my $total = '';
+    foreach my $file (sort @$files) {
+        my $md5sum = `md5sum $file`;
+        $md5sum =~ s/\s.*//;        
+        chomp $md5sum;
+        $total .= $md5sum;
+    }
+    $total = md5_hex($total);
+    return $total;
+}
+
 
 # clearIdCache - clears a set of id => object caches
 # this is used whenever you are switching from one provenance object
@@ -106,7 +153,7 @@ sub clearIdCache {
 # to produce the same hash-sum for an "identical" object.
 sub hash {
     my ($self, $type, $object) = @_;
-    return $self->{typesToHashFns}->{$type}->($object);
+    return $self->typesToHashFns->{$type}->($object);
 }
 
 # makeQuery - returns a HashRef "query object", which is essentially
@@ -114,7 +161,7 @@ sub hash {
 # rose db database (specifically the object passed in).
 sub makeQuery {
     my ($self, $type, $rdbObject) = @_;
-    return $self->{objectToQueryFns}->{$type}->($rdbObject);
+    return $self->objectToQueryFns->{$type}->($rdbObject);
 }
 
 # convert - converts a (type, object) pair where the object
@@ -125,7 +172,9 @@ sub convert {
     my $type = shift;
     my $obj  = shift;
     my $ctx  = shift @_ || $self->idCache();
-    return $self->{conversionFns}->{$type}->($self, $obj, $ctx);
+    confess "type or object not defined" unless(defined($type) && defined($obj));
+    confess "no subroutine for $type" unless(defined($self->conversionFns->{$type}));
+    return $self->conversionFns->{$type}->($self, $obj, $ctx);
 }
 
 # returns the compartment hierarchy (hash of 'id' => level)
@@ -161,7 +210,7 @@ sub _makeTypesToHashFns {
     my $f = {};
     $f->{complex} = sub { return md5_hex($_[0]->id . ($_[0]->name || '')); };
     $f->{role} = sub {
-        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->exemplar || ''));
+        return md5_hex(($_[0]->id || '') . ( $_[0]->name || '' ) . ( $_[0]->exemplar || ''));
     };
     $f->{compound} = sub {
         return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' ));
@@ -229,7 +278,7 @@ sub _makeTypesToHashFns {
         join(',', sort map { $f->{role}->($_) } $_[0]->roles));
     };
     $f->{role} = sub {
-        return md5_hex($_[0]->name . $_[0]->id);
+        return md5_hex(($_[0]->name || '') . ($_[0]->id || ''));
     };
     $f->{roleset} = sub {
         return md5_hex(join(',', sort map { $f->{role}->($_) } $_[0]->roles)); 
@@ -246,6 +295,21 @@ sub _makeTypesToHashFns {
     $f->{annotation} = sub {
         return md5_hex($f->{genome}->($_[0]->genome) . ( $_[0]->name || '' ) . 
         join(',', sort map { $f->{annotation_feature}->($_) } $_[0]->annotation_features));
+    };
+    $f->{model} = sub {
+        return md5_hex($_[0]->id . join(',', sort map { $_->id } $_[0]->parents));
+    };
+    $f->{model_compartment} = sub {
+            return md5_hex($f->{compartment}->($_[0]->compartment) . $_[0]->compartmentIndex .
+            $f->{model}->($_[0]->model));
+    };
+    $f->{model_reaction} = sub {
+            return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->directionality .
+            $f->{model_compartment}->($_[0]->model_compartment) . $f->{model}->($_[0]->model));
+    };
+    $f->{model_transported_reagent} = sub {
+            return md5_hex($f->{reaction}->($_[0]->reaction) . $f->{model}->($_[0]->model) .
+                $_[0]->transportIndex);
     };
     return $f;
 };
@@ -303,8 +367,24 @@ sub _makeObjectToQueryFns {
     $f->{roleset} = sub { return { uuid => $_[0]->uuid }};
     $f->{genome} = sub { return { uuid => $_[0]->uuid }};
     $f->{feature} = sub { return { uuid => $_[0]->uuid }};
-    $f->{annotation_feature} = sub { return { uuid => $_[0]->uuid }};
+    $f->{annotation_feature} = sub { return {
+        annotation_uuid => $_[0]->annotation_uuid,
+        feature_uuid => $_[0]->feature_uuid,
+        role_uuid => $_[0]->role_uuid,
+    }};
     $f->{annotation} = sub { return { uuid => $_[0]->uuid }};
+    $f->{model} = sub { return { uuid => $_[0]->uuid }};
+    $f->{model_reaction} = sub { return {
+        reaction_uuid => $_[0]->reaction_uuid,
+        model_uuid => $_[0]->model_uuid,
+    }};
+    $f->{model_transported_reagent} = sub { return {
+        reaction_uuid => $_[0]->reaction_uuid,
+        model_uuid => $_[0]->model_uuid,
+        compartmentIndex => $_[0]->compartmentIndex,
+    }};
+        
+        
     return $f;
 }
 
@@ -432,9 +512,10 @@ sub _makeConversionFns {
     $f->{role} = sub {
         my ($self, $row, $ctx) = @_;
         return {
-            id => $row->{id}->[0],
+            id => $row->{id}->[0] || undef,
             name => $row->{name}->[0] || undef,
             exemplar => $row->{exemplar}->[0] || undef,
+            modDate => $date->($row),
         };
     };
     $f->{complex} = sub {
@@ -497,6 +578,36 @@ sub _makeConversionFns {
             modDate => $date->($row),
         };
     };
+    $f->{model_reaction} = sub {
+        my ($self, $row, $ctx) = @_;
+        my $reaction = $self->idCache("reaction", $row->{REACTION}->[0]);
+        # compartment is actually a model_compartment object
+        return {
+            reaction => $reaction,
+            directionality => $row->{directionality}->[0] || '=',
+            model_compartment => $row->{compartment}->[0],
+        };
+    };
+    $f->{model_transported_reagent} = sub {
+        my ($self, $row, $ctx) = @_;
+        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
+        my $cmp = $self->idCache("model_compartment", $row->{model_compartment}->[0]);
+        unless(defined($rxn) && defined($cmp) && defined($cpd)) {
+            my $str = (!defined($rxn)) ? "no reaction\n" : 
+                      (!defined($cpd)) ? "no cpd\n" : "no compartment\n";
+            warn $str;
+            return undef;
+        }
+        return {
+            reaction => $rxn,
+            compound => $cpd,
+            model_compartment => $cmp,
+            compartmentIndex => $row->{compartmentIndex}->[0],
+            transportCoefficient => $row->{transportCoefficient}->[0],
+            isImport => $row->{isImport}->[0],
+        };
+    };
     return $f;
 } 
         
@@ -517,13 +628,24 @@ sub importBiochemistryFromDir {
         compound_alias => 'cpdals.txt',
         reaction_alias => 'rxnals.txt',
     };        
-    my $config = { filename => undef, delimiter => "\t"};
     foreach my $file (values %$files) {
         $file = "$dir/$file";
         unless(-f "$file") {
             warn "Unable to find $file!";
             return undef;
         }
+    }
+    # Skip all processing if we've seen the data
+    my $existingBiochem = $self->fileCache("biochemistry", [values %$files]);
+    if($existingBiochem) {
+        $existingBiochem->add_biochemistry_aliases(
+            { username => $username, id => $name});
+        $existingBiochem->save();
+        $self->om->db->commit;
+        return $existingBiochem;
+    }
+    my $config = { filename => undef, delimiter => "\t"};
+    foreach my $file (values %$files) {
         # now open files as FIGMODELTables
         $config->{filename} = $file;
         $file = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
@@ -634,7 +756,7 @@ sub importBiochemistryFromDir {
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
     }
-    warn Dumper($self->{cache}->debug_stats);
+    warn Dumper($self->_cache->debug_stats);
     warn "finalizing\n";
     # Now create if it doesn't already exist
     my $biochem_hash = $self->hash("biochemistry", $RDB_biochemistry);
@@ -652,9 +774,11 @@ sub importBiochemistryFromDir {
 sub importMappingFromDir {
     my ($self, $dir, $RDB_biochemObject, $username, $name) = @_;
     # first validate that the dir exists and has the right files
+    $self->om->db->begin_work;
     my $ctx = $self->cache;
     unless(-d $dir) {
         warn "Unable to find $dir\n";
+        $self->om->db->commit;
         return undef;
     }
     $dir = $self->standardizeDirectory($dir);
@@ -671,8 +795,20 @@ sub importMappingFromDir {
             my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
             $tbl->save();
         }
+    }
+    # Skip all processing if we've seen the data
+    my $existingMap = $self->fileCache("mapping", [values %$files]);
+    if($existingMap) {
+        $existingMap->add_mapping_aliases(
+            { username => $username, id => $name});
+        $existingMap->save();
+        $self->om->db->commit;
+        return $existingMap;
+    }
+    foreach my $file (values %$files) {
         unless(-f "$file") {
             warn "Unable to find $file";
+            $self->om->db->commit;
             return undef;
         }
         # now open files as FIGMODELTables
@@ -697,7 +833,7 @@ sub importMappingFromDir {
         $RDB_mappingObject->add_roles($RDB_roleObject);
         # have to cache roles by names for annotation
         my $cksum = $self->hash("role", $RDB_roleObject);
-        $self->idCache("role", $cksum, $RDB_roleObject); 
+        $self->idCache("role", $RDB_roleObject->name, $cksum); 
     } 
     # Create complexRole
     my $cpxRoleFailures = 0;
@@ -784,6 +920,7 @@ sub getGenomeObject {
 
 sub importAnnotationFromDir {
     my ($self, $dir, $username, $id) = @_;
+    $self->om->db->begin_work;
     # Directory will contain a features.txt file
     my $file = "$dir/features.txt";
     my $config = { filename => $file, delimiter => "\t" };
@@ -797,6 +934,7 @@ sub importAnnotationFromDir {
         $RDB_genome = $self->getGenomeObject($row->{GENOME}->[0]) unless(defined($RDB_genome));
         unless(defined($RDB_genome)) {
             print "Could not retrive genome for " . $row->{GENOME}->[0] . "\n";
+            $self->om->db->commit;
             return undef;
         }
         unless(defined($RDB_annotation)) {
@@ -812,24 +950,35 @@ sub importAnnotationFromDir {
             warn "Could not create feature: " . Dumper($hash) . "\n"; 
             next;
         }
-        my $RDB_role = $self->idCache("role", $row->{ROLES}->[0]);
-        if(!defined($RDB_role)) {
-            warn "Could not find role " . $row->{ROLES}->[0] . "\n";
-            next;
+        foreach my $roleName (@{$row->{ROLES}}) {
+            my $RDB_role = $self->idCache("role", $roleName);
+            if(!defined($RDB_role)) {
+                my $role_hash = $self->convert("role", { name => [ $roleName ] });
+                $RDB_role = $self->getOrCreateObject("role", $role_hash);
+                my $role_cksum = $self->hash("role", $RDB_role);
+                $self->idCache("role", $RDB_role->name, $role_cksum);
+            }
+            if(!defined($RDB_role)) {
+                warn "Could not find role " . $row->{ROLES}->[0] . "\n";
+                next;
+            }
+            my $annotation_feature = $self->getOrCreateObject(
+                "annotation_feature", { 
+                    annotation => $RDB_annotation,
+                    role => $RDB_role,
+                    feature => $RDB_feature,
+            });
         }
-        my $annotation_feature = $self->getOrCreateObject(
-            "annotation_feature", { 
-                genome => $RDB_genome,
-                role => $RDB_role,
-                feature => $RDB_feature,
-        });
     }
-    return $self->getOrCreateObject("annotation", $RDB_annotation);
+    my $annotation_hash = $self->hash("annotation", $RDB_annotation);
+    my $final = $self->cache("annotation", $annotation_hash, $RDB_annotation);
+    $self->om->db->commit;
+    return $final;
 }
 
 sub importModelFromDir {
     my ($self, $dir, $username, $id) = @_;
-    my $RDB_model = $self->om->create_object("model");
+    my $RDB_model = $self->om->create_object("model", {id => $id, name => $id});
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
     if(-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
@@ -852,15 +1001,17 @@ sub importModelFromDir {
         $RDB_model->annotation($RDB_annotation);
     }
     # do rxnmdl
+    $self->om->db->begin_work;
     my $file = "$dir/rxnmdl.txt";
     my $tbl;
     my $config = {
-            delimiter => "\t",
-            itemDelimiter => ";",
+            delimiter => ";",
+            itemDelimiter => "|",
             filename => $file,
     };
     if(!-f $file) { # generate rxn-mdl data from database
-        my $objs = $self->fm->database->get_objects('rxnmdl');        
+        die "could not find file $file!\n"; #FIXME
+        my $objs = $self->fm->database->get_objects('rxnmdl', { MODEL => $id });        
         $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
     } else { # or load it from the file
         $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
@@ -870,29 +1021,52 @@ sub importModelFromDir {
         my $row = $tbl->get_row($i);
         # do model-compartments
         my $compartmentId = $row->{compartment}->[0];
+        warn "got compartment: $compartmentId\n";
         my $mdl_cmp = $self->idCache("model_compartment", $compartmentId); 
         if(!defined($mdl_cmp)) {
             $mdl_cmp = $self->makeModelCompartment($compartmentId, $RDB_biochemistry, $RDB_model);
         }
+        $row->{compartment}->[0] = $mdl_cmp;
         my $hash = $self->convert("model_reaction", $row);
         my $RDB_model_reaction = $self->getOrCreateObject("model_reaction", $hash);
         # do model transported reagent
         my $dtrs = $RDB_model_reaction->reaction->default_transported_reagents;
         foreach my $dtr (@$dtrs) {
-            # TODO
+            my $cmp_id = $dtr->defaultCompartment->id;
+            my $cmp = $self->idCache("model_compartment", $cmp_id);
+            unless(defined($cmp)) {
+                warn "Could not find model compartment for dtr $cmp_id!\n";
+                next;
+            }
+            my $hash = {
+                model => $RDB_model,
+                reaction => $dtr->reaction,
+                compound => $dtr->compound,
+                model_compartment => $cmp,
+                compartmentIndex => $dtr->compartmentIndex,
+                transportCoefficient => $dtr->transportCoefficient,
+                isImport => $dtr->isImport,
+            };
+            my $mtr = $self->getOrCreateObject("model_transported_reagents", $hash);
         }
     }
+    # TODO - biomass
+    $self->om->db->commit;
     return $RDB_model;
 }
 
 sub makeModelCompartment {
-    my ($self, $compartmentId, $RDB_biochemistry) = @_;;
+    my ($self, $compartmentId, $RDB_biochemistry, $RDB_model) = @_;;
     my $compartment = $self->idCache("compartment", $compartmentId);
     my $hash = {
         compartment => $compartment,
         compartmentIndex => 0,
+        model => $RDB_model,
     };
-    return $self->getOrCreateObject("model_compartment", $hash);
+    my $obj = $self->getOrCreateObject("model_compartment", $hash);
+    $hash = $self->hash("model_compartment", $obj);
+    $self->idCache("model_compartment", $compartmentId, $hash);
+    return $obj;
 }
     
 # returns a set of rdbo objects for compartments
