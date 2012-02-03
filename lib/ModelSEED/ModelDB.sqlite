@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Fri Feb  3 12:03:51 2012
+-- Created on Fri Feb  3 15:08:26 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -330,7 +330,6 @@ CREATE TABLE compound_aliases (
   alias VARCHAR(255) NOT NULL,
   modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
-  PRIMARY KEY (compound_uuid, type),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
 
@@ -347,7 +346,7 @@ CREATE TABLE compound_structures (
   cksum VARCHAR(255) NOT NULL,
   modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
-  PRIMARY KEY (type, cksum),
+  PRIMARY KEY (type, cksum, compound_uuid),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
 
@@ -363,7 +362,6 @@ CREATE TABLE reaction_aliases (
   alias VARCHAR(255) NOT NULL,
   modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
-  PRIMARY KEY (reaction_uuid, type),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid)
 );
 
@@ -550,7 +548,7 @@ CREATE TABLE model_reactions (
   transproton DOUBLE,
   protons DOUBLE,
   model_compartment_uuid CHAR(36) NOT NULL,
-  PRIMARY KEY (model_uuid, reaction_uuid),
+  PRIMARY KEY (model_uuid, reaction_uuid, model_compartment_uuid),
   FOREIGN KEY(model_uuid) REFERENCES models(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
   FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid),
@@ -564,6 +562,29 @@ CREATE INDEX model_reactions_model_fk ON model_reactions (model_uuid);
 CREATE INDEX model_reactions_modelCompartment_fk ON model_reactions (model_compartment_uuid);
 
 CREATE INDEX model_reactions_reaction_rule_fk ON model_reactions (reaction_rule_uuid);
+
+--
+-- Table: model_reaction_raw_gprs
+--
+CREATE TABLE model_reaction_raw_gprs (
+  model_uuid CHAR(36) NOT NULL,
+  reaction_uuid CHAR(36) NOT NULL,
+  model_compartment_uuid CHAR(36) NOT NULL,
+  rawGPR TEXT DEFAULT '',
+  isCustomGPR TINYINT(1),
+  PRIMARY KEY (model_uuid, reaction_uuid, model_compartment_uuid),
+  FOREIGN KEY(model_uuid) REFERENCES models(uuid),
+  FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
+  FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid)
+);
+
+CREATE INDEX model_reaction_raw_gprs_reaction_fk ON model_reaction_raw_gprs (reaction_uuid);
+
+CREATE INDEX model_reaction_raw_gprs_model_fk ON model_reaction_raw_gprs (model_uuid);
+
+CREATE INDEX model_reaction_raw_gprs_modelCompartment_fk ON model_reaction_raw_gprs (model_compartment_uuid);
+
+CREATE INDEX model_reaction_raw_gprs_custom_gpr ON model_reaction_raw_gprs (custom_gpr);
 
 --
 -- Table: model_transported_reagents
@@ -655,6 +676,7 @@ CREATE TABLE annotation_features (
   annotation_uuid CHAR(36) NOT NULL,
   feature_uuid CHAR(36) NOT NULL,
   role_uuid CHAR(36) NOT NULL,
+  complete_string TEXT DEFAULT '',
   PRIMARY KEY (annotation_uuid, feature_uuid, role_uuid),
   FOREIGN KEY(annotation_uuid) REFERENCES annotations(uuid),
   FOREIGN KEY(feature_uuid) REFERENCES features(uuid),

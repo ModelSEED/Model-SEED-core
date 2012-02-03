@@ -389,7 +389,6 @@ CREATE TABLE IF NOT EXISTS `compound_aliases` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`compound_uuid`, `type`),
   INDEX `compound_aliases_type` (`type`),
   INDEX `compound_aliases_compound_fk` (`compound_uuid`),
   CONSTRAINT `compound_aliases_compound_fk`
@@ -408,7 +407,7 @@ CREATE TABLE IF NOT EXISTS `compound_structures` (
   `cksum` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`type`, `cksum`),
+  PRIMARY KEY (`type`, `cksum`, `compound_uuid`),
   INDEX `compound_structures_type` (`type`),
   INDEX `compound_structures_compound_fk` (`compound_uuid`),
   CONSTRAINT `compound_structures_compound_fk`
@@ -428,7 +427,6 @@ CREATE TABLE IF NOT EXISTS `reaction_aliases` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`reaction_uuid`, `type`),
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction_uuid`),
   CONSTRAINT `reaction_aliases_reaction_fk`
@@ -666,7 +664,7 @@ CREATE TABLE IF NOT EXISTS `model_reactions` (
   `transproton` DOUBLE NULL,
   `protons` DOUBLE NULL,
   `model_compartment_uuid` CHAR(36) NOT NULL,
-  PRIMARY KEY (`model_uuid`, `reaction_uuid`),
+  PRIMARY KEY (`model_uuid`, `reaction_uuid`, `model_compartment_uuid`),
   INDEX `model_reactions_reaction_fk` (`reaction_uuid`),
   INDEX `model_reactions_model_fk` (`model_uuid`),
   INDEX `model_reactions_modelCompartment_fk` (`model_compartment_uuid`),
@@ -692,6 +690,38 @@ CREATE TABLE IF NOT EXISTS `model_reactions` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `model_reaction_raw_gprs`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `model_reaction_raw_gprs` (
+  `model_uuid` CHAR(36) NOT NULL,
+  `reaction_uuid` CHAR(36) NOT NULL,
+  `model_compartment_uuid` CHAR(36) NOT NULL,
+  `rawGPR` TEXT DEFAULT '',
+  `isCustomGPR` TINYINT(1) NULL,
+  PRIMARY KEY (`model_uuid`, `reaction_uuid`, `model_compartment_uuid`),
+  INDEX `model_reaction_raw_gprs_reaction_fk` (`reaction_uuid`),
+  INDEX `model_reaction_raw_gprs_model_fk` (`model_uuid`),
+  INDEX `model_reaction_raw_gprs_modelCompartment_fk` (`model_compartment_uuid`),
+  INDEX `model_reaction_raw_gprs_custom_gpr` (`custom_gpr`),
+  CONSTRAINT `model_reaction_raw_gprs_model_fk`
+    FOREIGN KEY (`model_uuid`)
+    REFERENCES `models` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `model_reaction_raw_gprs_reaction_fk`
+    FOREIGN KEY (`reaction_uuid`)
+    REFERENCES `reactions` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `model_reaction_raw_gprs_modelCompartment_fk`
+    FOREIGN KEY (`model_compartment_uuid`)
+    REFERENCES `model_compartments` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `model_transported_reagents`
@@ -817,6 +847,7 @@ CREATE TABLE IF NOT EXISTS `annotation_features` (
   `annotation_uuid` CHAR(36) NOT NULL,
   `feature_uuid` CHAR(36) NOT NULL,
   `role_uuid` CHAR(36) NOT NULL,
+  `complete_string` TEXT DEFAULT '',
   PRIMARY KEY (`annotation_uuid`, `feature_uuid`, `role_uuid`),
   INDEX `annotation_features_feature_fk` (`feature_uuid`),
   INDEX `annotation_features_annotation_fk` (`annotation_uuid`),
