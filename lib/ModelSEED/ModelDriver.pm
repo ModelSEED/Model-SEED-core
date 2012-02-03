@@ -5506,6 +5506,74 @@ sub dblistobjects {
 }
 =head
 =CATEGORY
+Temporary Operations
+=DESCRIPTION
+This function handles the transition of models in the old database into the new database system
+=EXAMPLE
+./temptransfermodels 
+=cut
+sub temptransfermodels {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"model to be transfered"],
+	],[@Data],"transitions models in the old database into the new database system");
+	my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{model}
+	});
+	for (my $i=0; $i < @{$models}; $i++) {
+		my $obj = $self->figmodel()->database()->get_object("model",{id => $models->[$i]});
+		if (!-d "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/") {
+			my $mdl = $self->figmodel()->get_model($models->[$i]);
+			if (defined($mdl)) {
+				print "Generating provenance for ".$models->[$i]."!\n";
+				$mdl->GenerateModelProvenance({
+					biochemSource => "/vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/"
+				});
+			} else {
+				print "Model ".$models->[$i]." not retrieved!\n";	
+			}
+		}
+		my $objs = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $models->[$i]});
+		my $numRxn = @{$objs};
+		if ($numRxn == 0) {
+			print "Model ".$models->[$i]." is empty. Populating rxnmdl table!\n";
+			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
+			for (my $j=0; $j < $mdltbl->size(); $j++) {
+				my $row = $mdltbl->get_row($j);
+				if (!defined($row->{NOTES})) {
+					$row->{NOTES}->[0] = "none";
+				}
+				if (!defined($row->{CONFIDENCE})) {
+					$row->{CONFIDENCE}->[0] = 5;
+				}
+				if (!defined($row->{"ASSOCIATED PEG"})) {
+					$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+				}
+				$self->figmodel()->database()->create_object("rxnmdl",{
+					MODEL => $models->[$i],
+					REACTION => $row->{LOAD}->[0],
+					directionality => $row->{DIRECTIONALITY}->[0],
+					compartment => $row->{COMPARTMENT}->[0],
+					pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+					confidence => $row->{CONFIDENCE}->[0],
+					notes => join("|",@{$row->{NOTES}}),
+					reference => join("|",@{$row->{REFERENCE}})
+				});
+			}
+		} elsif ($numRxn > 100) {
+			print "Model ".$models->[$i]." fully populated!\n";
+		} else {
+			print "Model ".$models->[$i]." appears to be too small!\n";	
+		}
+	}
+    return "SUCCESS";
+}
+=head
+=CATEGORY
 Workspace Operations
 =DESCRIPTION
 Sometimes rather than importing an account from the SEED (which you would do using the ''mslogin'' command), you want to create a stand-alone account in the local Model SEED database only. To do this, use the ''createlocaluser'' binary. Once the local account exists, you can use the ''login'' binary to log into your local Model SEED account. This allows you to access, create, and manipulate private data in your local database. HOWEVER, because this is a local account only, you will not be able to use the account to access any private data in the SEED system. For this reason, we recommend importing a SEED account using the ''login'' binary rather than making local accounts with no SEED equivalent. If you require a SEED account, please go to the registration page: [http://pubseed.theseed.org/seedviewer.cgi?page=Register SEED account registration].
