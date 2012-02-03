@@ -389,7 +389,7 @@ CREATE TABLE IF NOT EXISTS `compound_aliases` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`type`, `alias`),
+  PRIMARY KEY (`compound_uuid`, `type`),
   INDEX `compound_aliases_type` (`type`),
   INDEX `compound_aliases_compound_fk` (`compound_uuid`),
   CONSTRAINT `compound_aliases_compound_fk`
@@ -428,7 +428,7 @@ CREATE TABLE IF NOT EXISTS `reaction_aliases` (
   `alias` VARCHAR(255) NOT NULL,
   `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
-  PRIMARY KEY (`type`, `alias`),
+  PRIMARY KEY (`reaction_uuid`, `type`),
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction_uuid`),
   CONSTRAINT `reaction_aliases_reaction_fk`
