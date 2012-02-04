@@ -5549,6 +5549,9 @@ sub temptransfermodels {
 			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
 			for (my $j=0; $j < $mdltbl->size(); $j++) {
 				my $row = $mdltbl->get_row($j);
+				if (!defined($row->{REFERENCE})) {
+					$row->{REFERENCE}->[0] = "none";
+				}
 				if (!defined($row->{NOTES})) {
 					$row->{NOTES}->[0] = "none";
 				}
