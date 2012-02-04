@@ -5526,44 +5526,49 @@ sub temptransfermodels {
 	});
 	for (my $i=0; $i < @{$models}; $i++) {
 		my $obj = $self->figmodel()->database()->get_object("model",{id => $models->[$i]});
-		if (!-d "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/") {
-#			my $mdl = $self->figmodel()->get_model($models->[$i]);
-#			if (defined($mdl)) {
-				print "Generating provenance for ".$models->[$i]."!\n";
-#				$mdl->GenerateModelProvenance({
-#					biochemSource => "/vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/"
-#				});
-#			} else {
-#				print "Model ".$models->[$i]." not retrieved!\n";	
-#			}
+		my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
+		if (!-d $mdldir) {
+			print "Generating provenance for ".$models->[$i]."!\n";
+			File::Path::mkpath $mdldir."biochemistry/";
+			File::Path::mkpath $mdldir."mapping/";
+			File::Path::mkpath $mdldir."annotations/";
+			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
+			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
+			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
+				my $genome = $figmodel()->get_genome($obj->genome());
+				if (defined($genome)) {
+					my $feature_table = $genome->feature_table();
+					$feature_table->save($mdldir.'annotations/features.txt');
+				}
+			}				
 		}
 		my $objs = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $models->[$i]});
 		my $numRxn = @{$objs};
 		if ($numRxn == 0) {
 			print "Model ".$models->[$i]." is empty. Populating rxnmdl table!\n";
-#			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
-#			for (my $j=0; $j < $mdltbl->size(); $j++) {
-#				my $row = $mdltbl->get_row($j);
-#				if (!defined($row->{NOTES})) {
-#					$row->{NOTES}->[0] = "none";
-#				}
-#				if (!defined($row->{CONFIDENCE})) {
-#					$row->{CONFIDENCE}->[0] = 5;
-#				}
-#				if (!defined($row->{"ASSOCIATED PEG"})) {
-#					$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
-#				}
-#				$self->figmodel()->database()->create_object("rxnmdl",{
-#					MODEL => $models->[$i],
-#					REACTION => $row->{LOAD}->[0],
-#					directionality => $row->{DIRECTIONALITY}->[0],
-#					compartment => $row->{COMPARTMENT}->[0],
-#					pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-#					confidence => $row->{CONFIDENCE}->[0],
-#					notes => join("|",@{$row->{NOTES}}),
-#					reference => join("|",@{$row->{REFERENCE}})
-#				});
-#			}
+			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
+			for (my $j=0; $j < $mdltbl->size(); $j++) {
+				my $row = $mdltbl->get_row($j);
+				if (!defined($row->{NOTES})) {
+					$row->{NOTES}->[0] = "none";
+				}
+				if (!defined($row->{CONFIDENCE})) {
+					$row->{CONFIDENCE}->[0] = 5;
+				}
+				if (!defined($row->{"ASSOCIATED PEG"})) {
+					$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+				}
+				$self->figmodel()->database()->create_object("rxnmdl",{
+					MODEL => $models->[$i],
+					REACTION => $row->{LOAD}->[0],
+					directionality => $row->{DIRECTIONALITY}->[0],
+					compartment => $row->{COMPARTMENT}->[0],
+					pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+					confidence => $row->{CONFIDENCE}->[0],
+					notes => join("|",@{$row->{NOTES}}),
+					reference => join("|",@{$row->{REFERENCE}})
+				});
+			}
 		} elsif ($numRxn > 100) {
 			print "Model ".$models->[$i]." fully populated!\n";
 		} else {
