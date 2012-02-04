@@ -5549,28 +5549,36 @@ sub temptransfermodels {
 			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
 			for (my $j=0; $j < $mdltbl->size(); $j++) {
 				my $row = $mdltbl->get_row($j);
-				if (!defined($row->{REFERENCE})) {
-					$row->{REFERENCE}->[0] = "none";
+				if (defined($row->{LOAD}->[0])) {
+					if (!defined($row->{DIRECTIONALITY})) {
+						$row->{DIRECTIONALITY}->[0] = "<=>";
+					}
+					if (!defined($row->{COMPARTMENT})) {
+						$row->{COMPARTMENT}->[0] = "c";
+					}
+					if (!defined($row->{REFERENCE})) {
+						$row->{REFERENCE}->[0] = "none";
+					}
+					if (!defined($row->{NOTES})) {
+						$row->{NOTES}->[0] = "none";
+					}
+					if (!defined($row->{CONFIDENCE})) {
+						$row->{CONFIDENCE}->[0] = 5;
+					}
+					if (!defined($row->{"ASSOCIATED PEG"})) {
+						$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+					}
+					$self->figmodel()->database()->create_object("rxnmdl",{
+						MODEL => $models->[$i],
+						REACTION => $row->{LOAD}->[0],
+						directionality => $row->{DIRECTIONALITY}->[0],
+						compartment => $row->{COMPARTMENT}->[0],
+						pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+						confidence => $row->{CONFIDENCE}->[0],
+						notes => join("|",@{$row->{NOTES}}),
+						reference => join("|",@{$row->{REFERENCE}})
+					});
 				}
-				if (!defined($row->{NOTES})) {
-					$row->{NOTES}->[0] = "none";
-				}
-				if (!defined($row->{CONFIDENCE})) {
-					$row->{CONFIDENCE}->[0] = 5;
-				}
-				if (!defined($row->{"ASSOCIATED PEG"})) {
-					$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
-				}
-				$self->figmodel()->database()->create_object("rxnmdl",{
-					MODEL => $models->[$i],
-					REACTION => $row->{LOAD}->[0],
-					directionality => $row->{DIRECTIONALITY}->[0],
-					compartment => $row->{COMPARTMENT}->[0],
-					pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-					confidence => $row->{CONFIDENCE}->[0],
-					notes => join("|",@{$row->{NOTES}}),
-					reference => join("|",@{$row->{REFERENCE}})
-				});
 			}
 		} elsif ($numRxn > 100) {
 			print "Model ".$models->[$i]." fully populated!\n";
