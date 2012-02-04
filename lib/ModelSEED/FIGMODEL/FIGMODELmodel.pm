@@ -536,7 +536,7 @@ Description:
 =cut
 sub genomeObj {
 	my ($self) = @_;
-	if (lc($self->genome()) eq "none" && lc($self->genome()) eq "unknown") {
+	if (lc($self->genome()) eq "none" || lc($self->genome()) eq "unknown") {
 		return undef;
 	}
 	if (!defined($self->{_genomeObj})) {
