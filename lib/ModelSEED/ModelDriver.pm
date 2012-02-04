@@ -5534,13 +5534,13 @@ sub temptransfermodels {
 			File::Path::mkpath $mdldir."annotations/";
 			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
 			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
-			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
-				my $genome = $self->figmodel()->get_genome($obj->genome());
-				if (defined($genome)) {
-					my $feature_table = $genome->feature_table();
-					$feature_table->save($mdldir.'annotations/features.txt');
-				}
-			}				
+#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
+#				my $genome = $self->figmodel()->get_genome($obj->genome());
+#				if (defined($genome)) {
+#					my $feature_table = $genome->feature_table();
+#					$feature_table->save($mdldir.'annotations/features.txt');
+#				}
+#			}				
 		}
 		my $objs = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $models->[$i]});
 		my $numRxn = @{$objs};
