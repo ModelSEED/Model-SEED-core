@@ -7085,8 +7085,13 @@ sub mdlprintcytoseed {
 	print FH $dumper->dump($cpds);
 	close FH;
 	print "Compound data printed...\n";
-	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
-
+	my @abcids;
+	foreach (keys %$cpds) { 
+	    if (defined $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] && 
+		$cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] ne "none") {
+		push @abcids, $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0];
+	    }
+	}
 	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
 	close FH;
