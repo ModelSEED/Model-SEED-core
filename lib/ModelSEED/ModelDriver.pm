@@ -6744,7 +6744,43 @@ sub mdlautocomplete {
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
-
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to compare the reactions associated with a list of input models
+=EXAMPLE
+./mdlcomparemodels
+=cut
+sub mdlcomparemodels {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["modellist",1,undef,"List of models you want to compare."],
+		["saveformat",0,"EXCEL"]
+	],[@Data],"compare the reactions associated with input models");
+    my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{modellist}
+	});
+	my $output = $self->figmodel()->compareModels({modellist => $models});
+	my $extension = ".xls";
+	if (defined($output->{"reaction comparison"})) {
+		if ($args->{saveformat} eq "EXCEL") {
+			$self->figmodel()->make_xls({
+				filename => $self->ws()->directory()."Comparison.xls",
+				sheetnames => ["Reaction comparison"],
+				sheetdata => [$output->{"reaction comparison"}]
+			});
+		} elsif ($args->{saveformat} eq "TEXT") {
+			$extension = ".tbl";
+			$output->{"reaction comparison"}->save($self->ws()->directory()."Comparison.tbl");
+		}
+	}
+	return "Successfully completed model comparison. Results printed in ".$self->ws()->directory()."Comparison".$extension;
+}
 =head
 =CATEGORY
 Metabolic Model Operations
@@ -7038,39 +7074,38 @@ sub mdlprintcytoseed {
 	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
 	print FH $dumper->dump($md->{$args->{model}});
 	close FH;
-
+	print "Model data printed...\n";
 	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Biomass data printed...\n";
 	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
 	print FH $dumper->dump($cpds);
 	close FH;
-
+	print "Compound data printed...\n";
 	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
 
 	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
 	close FH;
-
+	print "Abstract compound data printed...\n";
 	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
 	print FH $dumper->dump($rxns);
 	close FH;
-
+	print "Reaction data printed...\n";
 	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
-
 	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
 	close FH;
-
+	print "Abstract reaction data printed...\n";
 	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Reaction class data printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 
@@ -7496,6 +7531,24 @@ sub genlistsubsystemgenes {
 		-roleForm => "full",
 	});
 	print Data::Dumper->Dump([$subsys]);
+}
+
+sub gengetgenehits {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    
+    # code here
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+
+    my $result = $fig_genome->getGeneSimilarityHitTable();
+
+    return $result;
+}
+
+sub gengettreehits {
+
 }
 
 1;

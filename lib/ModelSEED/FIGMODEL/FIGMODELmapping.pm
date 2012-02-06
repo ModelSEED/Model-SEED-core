@@ -363,11 +363,15 @@ sub get_subsy_rxn_hash {
 		my $subsystems = $self->figmodel()->database()->get_objects("subsystem");
 		my $subsysHash;
 		for (my $i=0; $i < @{$subsystems}; $i++) {
-			$subsysHash->{$subsystems->[$i]->id()} = $subsystems->[$i];
+			if ($subsystems->[$i]->status() eq "core" && $subsystems->[$i]->classOne() ne "Clustering-based subsystems") {
+				$subsysHash->{$subsystems->[$i]->id()} = $subsystems->[$i];
+			}
 		}
 		my $subsysRoleHash;
 		for (my $i=0; $i < @{$subsysroles}; $i++) {
-			$subsysRoleHash->{$subsysroles->[$i]->ROLE()}->{$subsysroles->[$i]->SUBSYSTEM()} = $subsysHash->{$subsysroles->[$i]->SUBSYSTEM()};
+			if (defined($subsysHash->{$subsysroles->[$i]->SUBSYSTEM()})) {
+				$subsysRoleHash->{$subsysroles->[$i]->ROLE()}->{$subsysroles->[$i]->SUBSYSTEM()} = $subsysHash->{$subsysroles->[$i]->SUBSYSTEM()};
+			}
 		}
 		my $roleObjs = $self->figmodel()->database()->get_objects("cpxrole");
 		foreach my $rxn (keys(%{$roleHash})) {

@@ -344,10 +344,116 @@ sub display_reaction_enzymes {
 		return "Undetermined";	
 	}
 	my $enzymes = $rxnObj->enzyme();
-	$enzymes =~ s/\|/, /g;
-	$enzymes =~ s/^,//g;
-	$enzymes =~ s/,$//g;
+	$enzymes =~ s/^\|//g;
+	$enzymes =~ s/\|$//g;
+	$enzymes =~ s/\|/,/g;
 	return $enzymes;
+}
+
+=head3 display_model_gene_columns()
+Definition:
+	string = FIGMODELweb->display_model_gene_columns(string:enzyme list);
+Description:
+=cut
+sub display_model_gene_columns {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["modelgenome","model","data"],{});
+	if (!defined($self->{"_".$args->{model}."_generxnhash"})) {
+		my $mdl = $self->figmodel()->get_model($args->{model});
+		$self->{"_".$args->{model}."_generxnhash"} = {};
+		if (defined($mdl)) {
+			my $essdata = $self->figmodel()->database()->get_objects("mdless", { MODEL => $args->{model} });
+			for (my $i=0; $i < @{$essdata}; $i++) {
+				my $essGeneArray = [split(/;/,$essdata->[$i]->essentials())];
+				for (my $j=0; $j < @{$essGeneArray}; $j++) {
+					$self->{"_".$args->{model}."_esshash"}->{$essGeneArray->[$j]}->{$essdata->[$i]->MEDIA()} = 1;
+				}
+				$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}->{$essdata->[$i]->MEDIA()} = 1;
+			}
+			my $rxnmdl = $mdl->rxnmdl();
+			for (my $i=0; $i < @{$rxnmdl}; $i++) {
+				my $array = [split(/[\|\+\s]/,$rxnmdl->[$i]->pegs())];
+				for (my $j=0; $j < @{$array}; $j++) {
+					if (length($array->[$j]) > 0) {
+						$self->{"_".$args->{model}."_generxnhash"}->{$array->[$j]}->{$rxnmdl->[$i]->REACTION()} = $rxnmdl->[$i];
+					}
+				}
+			}
+		}
+	}
+	my $genome = $args->{data}->{GENOME}->[0];
+	my $id = $args->{data}->{ID}->[0];
+	if ($id =~ m/(peg\.\d+)/) {
+		$id = $1;	
+	}
+	if ($genome ne $args->{modelgenome} || !defined($self->{"_".$args->{model}."_generxnhash"}->{$id})) {
+		return "Not in model";
+	}
+	my $output = "";
+	my $essMedia = "";
+	my $nonessMedia = "";
+	foreach my $media (keys(%{$self->{"_".$args->{model}."_esshash"}->{essMediaConditions}})) {
+		if (defined($self->{"_".$args->{model}."_esshash"}->{$id}->{$media})) {
+			if (length($essMedia) > 0) {
+				$essMedia .= ", ";	
+			}
+			$essMedia .= $media;
+		} else {
+			if (length($nonessMedia) > 0) {
+				$nonessMedia .= ", ";	
+			}
+			$nonessMedia .= $media;
+		}
+	}
+	if (length($essMedia) > 0) {
+		$output .= '<span title="Essential in '.$essMedia.'">Essential</span>';	
+	}
+	if (length($nonessMedia) > 0) {
+		if (length($output) > 0) {
+			$output .= "<br>";	
+		}
+		$output .= '<span title="Nonessential in '.$nonessMedia.'">Nonessential</span>';	
+	}
+	foreach my $rxn (keys(%{$self->{"_".$args->{model}."_generxnhash"}->{$id}})) {
+		my $rxnData = $self->{"_".$args->{model}."_generxnhash"}->{$id}->{$rxn};
+		my $genes = "None";
+		if (defined($rxnData->pegs()) && $rxnData->pegs() =~ m/peg/) {
+			$genes	= $rxnData->pegs();
+			$genes =~ s/\|/ or /g;
+		}
+		my $reactionString = $self->create_reaction_link($rxn,$genes,$args->{model});
+		if (defined($rxnData->{PREDICTIONS})) {
+			my $predictionHash;
+			for (my $i=0; $i < @{$rxnData->{PREDICTIONS}};$i++) {
+				my @temp = split(/:/,$rxnData->{PREDICTIONS}->[$i]); 
+				push(@{$predictionHash->{$temp[1]}},$temp[0]);
+			}
+			$reactionString .= "(";
+			foreach my $key (keys(%{$predictionHash})) {
+				if ($key eq "Essential =>") {
+					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E=></span>,';
+				} elsif ($key eq "Essential <=") {
+					$reactionString .= '<span title="Essential in '.join(",",@{$predictionHash->{$key}}).'">E<=</span>,';
+				} elsif ($key eq "Active =>") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A=></span>,';
+				} elsif ($key eq "Active <=") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A<=</span>,';
+				} elsif ($key eq "Active <=>") {
+					$reactionString .= '<span title="Active in '.join(",",@{$predictionHash->{$key}}).'">A</span>,';
+				} elsif ($key eq "Inactive") {
+					$reactionString .= '<span title="Inactive in '.join(",",@{$predictionHash->{$key}}).'">I</span>,';
+				} elsif ($key eq "Dead") {
+					$reactionString .= '<span title="Dead">D</span>,';
+				}
+			}
+			$reactionString =~ s/,$/)/;
+		}
+		if (length($output) > 0) {
+			$output .= "<br>";
+		}
+		$output .= $reactionString;
+	}
+	return $output;
 }
 
 =head3 display_reaction_flux()
@@ -365,19 +471,34 @@ sub display_reaction_flux {
 		my @tempArray = split(/_/,$args->{fluxid});
 		my $obj = $self->figmodel()->database()->get_object("fbaresult",{_id => $tempArray[1]});
 		if (defined($obj)) {
+			if ($obj->flux() eq "none") {
+				return "None";	
+			}
+			my @temp = split(/;/,$obj->flux());
+			for (my $i =0; $i < @temp; $i++) {
+				my @temptemp = split(/:/,$temp[$i]);
+				if (@temptemp >= 2 && $temptemp[0] =~ m/([bcr][ipx][ond]\d+)/) {
+					$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$1} = $temptemp[1];
+				}
+			}
 			$self->{_fluxes}->{$args->{fluxid}}->{object} = $obj;
-			$self->{_fluxes}->{$args->{fluxid}}->{model} = $self->figmodel()->get_model($obj->model());	
+			#$self->{_fluxes}->{$args->{fluxid}}->{model} = $self->figmodel()->get_model($obj->model());	
 		} else {
 			print STDERR "Flux ID not found: ".$tempArray[1]."\n";
 		}
-		if (!defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
-			$self->{_fluxes}->{$args->{fluxid}} = {};
-			print STDERR "Flux ID model not found: ".$tempArray[1]."\n";
-		}
+		#if (!defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
+		#	$self->{_fluxes}->{$args->{fluxid}} = {};
+		#	print STDERR "Flux ID model not found: ".$tempArray[1]."\n";
+		#}
 	}
-	if (defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
-		return $self->{_fluxes}->{$args->{fluxid}}->{model}->get_reaction_flux({fluxobj => $self->{_fluxes}->{$args->{fluxid}}->{object}, id => $args->{data}});
+	if (defined($self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}})) {
+		return 	$self->{_fluxes}->{$args->{fluxid}}->{fluxes}->{$args->{data}};
+	} else {
+		return 0.0;	
 	}
+	#if (defined($self->{_fluxes}->{$args->{fluxid}}->{model})) {
+		#return $self->{_fluxes}->{$args->{fluxid}}->{model}->get_reaction_flux({fluxobj => $self->{_fluxes}->{$args->{fluxid}}->{object}, id => $args->{data}});
+	#}
 	return "None"
 }
 
@@ -841,7 +962,7 @@ Description:
 sub create_genome_link {
 	my ($self,$genome) = @_;
 	my $genomeObj = $self->figmodel()->get_genome($genome);
-	if (defined($genomeObj) && defined($genomeObj->job())) {
+	if (defined($genomeObj) && defined($genomeObj->source() =~ m/^RAST/)) {
 		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Organism&organism='.$genome.'" target="_blank">'.$genome."</a>";
 	}
 	return '<a style="text-decoration:none" href="?page=Organism&organism='.$genome.'" target="_blank">'.$genome."</a>";
