@@ -5522,9 +5522,6 @@ sub dbcreateobject {
     }
     my $array = [split(/\./,$args->{filename})];
     my $type = pop(@{$array});
-    if (@{$array} < 2) {
-    	return "Failed! Input type ".$type." not listed as an acceptable type that can be loaded with this function!";
-    }
     my $data = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{filename});
     my $datahash = {};
     for (my $i=0; $i < @{$data}; $i++) {
