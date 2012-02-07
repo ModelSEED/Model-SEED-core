@@ -5506,6 +5506,38 @@ sub dblistobjects {
 }
 =head
 =CATEGORY
+Database Operations
+=DESCRIPTION
+This function creates a new object defined in the specified file in the database 
+=EXAMPLE
+./db-createobject
+=cut
+sub dbcreateobject {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["filename",1,undef,"Name of file containing object data"],
+	],[@Data],"create new object in the database");
+    if (!-e $self->ws()->directory().$args->{filename}) {
+    	return "Failed! Could not find specified file: ".$self->ws()->directory().$args->{filename}."!";
+    }
+    my $array = [split(/\./,$args->{filename})];
+    my $type = pop(@{$array});
+    if (@{$array} < 2) {
+    	return "Failed! Input type ".$type." not listed as an acceptable type that can be loaded with this function!";
+    }
+    my $data = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{filename});
+    my $datahash = {};
+    for (my $i=0; $i < @{$data}; $i++) {
+    	my $linearray = [split(/\t/,$data->[$i])];
+    	if (defined($linearray->[1])) {
+    		$datahash->{$linearray->[0]} = $linearray->[1];
+    	}
+    }
+    $self->figmodel()->database()->create_object($type,$datahash);
+    return "Successfully loaded new object of type ".$type." from file ".$self->ws()->directory().$args->{filename}."!";
+}
+=head
+=CATEGORY
 Temporary Operations
 =DESCRIPTION
 This function handles the transition of models in the old database into the new database system
