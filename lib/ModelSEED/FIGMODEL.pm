@@ -658,8 +658,10 @@ sub sapSvr {
 	if (!defined($target)) {
 		$target = 'PUBSEED';
 	}
+	if ($target eq "PSEED") {
+		$target = 'PUBSEED';		
+	}
 	$ENV{'SAS_SERVER'} = $target;
-	
 	return SAPserver->new();
 }
 
