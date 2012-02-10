@@ -2738,6 +2738,9 @@ sub import_model_file {
 			if ($row->{CONFIDENCE}->[0] !~ m/^\d+$/) {
 				$row->{CONFIDENCE}->[0] = 3;	
 			}
+			if (!defined($row->{"ASSOCIATED PEG"})) {
+				$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+			}
 			$self->database()->create_object("rxnmdl",{
 				REACTION => $row->{LOAD}->[0],
 				MODEL => $args->{id},
