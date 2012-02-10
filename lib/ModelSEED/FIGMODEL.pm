@@ -2812,13 +2812,11 @@ sub import_biochem {
 	}
 	#Loading the compound table
 	my $translation = {};
-	print "Test1\n";
 	if (defined($args->{compounds})) {
 		my $tbl = $args->{compounds};
-		print "Test2\n";
 		for (my $i=0; $i < $tbl->size();$i++) {
 			my $row = $tbl->get_row($i);
-			print "Processing compound ".$row->{"ID"}."\n";
+			print "Processing compound ".$row->{"ID"}->[0]."\n";
 			if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
 				next;
 			}
@@ -2926,6 +2924,14 @@ sub import_biochem {
 					$cpd->stringcode($row->{"STRINGCODE"}->[0]);
 				    }
 				}
+				if (defined($row->{"ABSTRACT COMPOUND"}->[0])){
+				    if(defined($cpd->abstractCompound()) && $cpd->abstractCompound() ne $row->{"ABSTRACT COMPOUND"}->[0]){
+					$Changes.="abstractCompound different for ".$cpd->id()." from ".$cpd->abstractCompound()." to ".$row->{"ABSTRACT COMPOUND"}->[0]."\n";
+				    } 
+				    if (!defined($cpd->abstractCompound()) || length($cpd->abstractCompound()) == 0 || $cpd->abstractCompound() eq "none") {
+					$cpd->abstractCompound($row->{"ABSTRACT COMPOUND"}->[0]);
+				    }
+				}
 			    if(length($Changes)>0){
 				print $Changes;
 			    }
@@ -2947,6 +2953,9 @@ sub import_biochem {
 			    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
 				$row->{"STRINGCODE"}->[0] = "nostringcode";
 			    }
+			    if (!defined($row->{"ABSTRACT COMPOUND"}->[0]) || $row->{"ABSTRACT COMPOUND"}->[0] eq "") {
+				$row->{"ABSTRACT COMPOUND"}->[0] = "none";
+			    }
 			    $cpd = $args->{figmodel}->database()->create_object("compound",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -2954,6 +2963,7 @@ sub import_biochem {
 				mass => $row->{"MASS"}->[0],
 				charge => $row->{"CHARGE"}->[0],
 				stringcode => $row->{"STRINGCODE"}->[0],
+				abstractCompound => $row->{"ABSTRACT COMPOUND"}->[0],
 				formula => $row->{"FORMULA"}->[0],
 				deltaG => 10000000,
 				deltaGErr => 10000000,
@@ -2979,13 +2989,11 @@ sub import_biochem {
 			$translation->{$row->{"ID"}->[0]} = $cpd->id();
 		}
 	}
-	print "Test3\n";
 	if (defined($args->{reactions})) {
-		print "Test4\n";
 		my $tbl = $args->{reactions};
 		for (my $i=0; $i < $args->{reactions}->size();$i++) {
 			my $row = $tbl->get_row($i);
-			print "Processing compound ".$row->{"EQUATION"}."\n";
+			print "Processing reaction ".$row->{"ID"}->[0]."\n";
 			if (!defined($row->{"EQUATION"}->[0])) {
 				next;	
 			}
@@ -3003,6 +3011,9 @@ sub import_biochem {
 			}
 			if (!defined($row->{"NOTES"}->[0])) {
 				$row->{"NOTES"}->[0] = "NONE";
+			}
+			if (!defined($row->{"ABSTRACT REACTION"}->[0])) {
+				$row->{"ABSTRACT REACTION"}->[0] = "none";
 			}
 			if (!defined($row->{"PEGS"}->[0])) {
 				$row->{"PEGS"}->[0] = "UNKNOWN";
@@ -3112,6 +3123,7 @@ sub import_biochem {
 					code => $codeResults->{code},
 					equation => $codeResults->{fullEquation},
 					definition => $row->{"EQUATION"}->[0],
+					abstractReaction => $row->{"ABSTRACT REACTION"}->[0],
 					deltaG => 10000000,
 					deltaGErr => 10000000,
 					reversibility => $row->{"DIRECTIONALITY"}->[0],
