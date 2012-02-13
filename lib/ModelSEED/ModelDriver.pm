@@ -6661,6 +6661,56 @@ sub bcloadmedia {
 }
 =head
 =CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used process the input molfile to calculate thermodynamic properties.
+=EXAMPLE
+./bcprocessmolfile -compound cpd00001 -mofile cpd00001.mol -directory "workspace/"
+=cut
+sub bcprocessmolfile {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["compound",1,undef,"ID of the compound associated with molfile"],
+		["mofile",0,0,"Name of the molfile to be processed"],
+		["directory",0,$self->ws()->directory(),"Directory where molfiles are located"],
+	],[@Data],"process input molfiles to calculate thermodynamic parameters, formula, and charge");
+    my $input = {
+    	ids => $self->figmodel()->processIDList({
+			objectType => "compound",
+			delimiter => ";",
+			column => "id",
+			parameters => {},
+			input => $args->{compound}
+		}),
+		molfiles => $self->figmodel()->processIDList({
+			objectType => "molfile",
+			delimiter => ";",
+			column => "filename",
+			parameters => {},
+			input => $args->{mofile}
+		})
+    };
+    for (my $i=0; $i < @{$input->{molfiles}}; $i++) {
+    	$input->{molfiles}->[$i] .= $args->{directory}.$input->{molfiles}->[$i];
+    }
+    my $cpd = $self->figmodel()->get_compound();
+	my $results = $cpd->molAnalysis($input);
+	my $output = ["id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr"];
+	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
+	foreach my $id (keys(%{$results})) {
+		if (defined($results->{$id})) {
+			my $line = $id;
+			for (my $i=0; $i < @{$heading}; $i++) {
+				$line .= "\t".$results->{$id}->{$heading->[$i]};
+			}
+			push(@{$output},$line);
+		}
+	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory()."MolAnalysis.tbl",$output);
+	return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
+}
+=head
+=CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
 Imports a models from other databases into the Model SEED environment.

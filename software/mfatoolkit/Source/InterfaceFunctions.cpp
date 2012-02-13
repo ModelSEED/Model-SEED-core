@@ -99,11 +99,11 @@ void CommandlineInterface(vector<string> Arguments) {
 				cout << "Insufficient arguments" << endl;
 				FErrorFile() << "Insufficient arguments" << endl;
 				FlushErrorFile();
-			} else if (Arguments[i+1].compare("filelist") == 0) {
-				ProcessMolfiles(Arguments[i+2].data());
 			} else {
 				ProcessMolfileDirectory(Arguments[i+1].data(),Arguments[i+2].data());		
 			}
+		} else if (Arguments[i].compare("ProcessMolfileList") == 0) {
+			ProcessMolfiles();
 		}
 	}
 }
@@ -600,8 +600,8 @@ void ProcessMolfileDirectory(string Directory,string OutputDirectory) {
 	}
 }
 
-void ProcessMolfiles(string file) {
-	string fullfile = FOutputFilepath()+file;
+void ProcessMolfiles() {
+	string fullfile = FOutputFilepath()+"MolfileInput.txt";
 	ifstream Input;
 	if (!OpenInput(Input,fullfile)) {
 		return;	
@@ -610,7 +610,7 @@ void ProcessMolfiles(string file) {
 	string outfile = FOutputFilepath()+"MolfileOutput.txt";
 	if (OpenOutput(Output,outfile)) {
 		Data* NewData = new Data(0);
-		Output << "Label\tFilename\tGroups\tCharge\tFormula\tStringcode\tMass\tDeltaG\tDeltaGerr" << endl;
+		Output << "id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr" << endl;
 		GetStringsFileline(Input,"\t",false);
 		while(!Input.eof()) {
 			vector<string>* strings = GetStringsFileline(Input,"\t",false);

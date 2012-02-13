@@ -40,6 +40,6 @@ void ProcessWebInterfaceModels();
 
 void ProcessMolfileDirectory(string Directory,string OutputDirectory);
 
-void ProcessMolfiles(string Filename);
+void ProcessMolfiles();
 
 #endif
