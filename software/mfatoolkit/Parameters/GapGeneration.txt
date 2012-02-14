@@ -1,0 +1,91 @@
+save query data on input|1|0|Database information
+perform MFA|1|0|MFA parameters
+output folder|GapGeneration/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+MFASolver|CPLEX|This indicates which solver should be used to solve the MFA problems.|MFA parameters
+maximize single objective|1|0|MFA parameters
+Constrain objective to this fraction of the optimal value|0.1|0|MFA parameters
+objective|FLUX;Biomass;none;1|"This is the objective of the MFA optmization where each term in the objective is specified by ""VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT;VARIABLE TYPE;VARIABLE NAME;VARIABLE COMPARTMENT;COEFFICIENT..."""|MFA parameters
+maximize individual metabolite production|0|0|MFA parameters
+metabolites to optimize|REACTANTS;Biomass|0|MFA parameters
+optimize metabolite production if objective is zero|0|0|MFA parameters
+optimize media when objective is zero|0|0|MFA parameters
+find essential media|0|0|MFA parameters
+maximum media knockouts|2|0|MFA parameters
+Unremovable media components|cpd00067;cpd00001;cpd00007|0|MFA parameters
+check for reaction essentiality|0|0|MFA parameters
+find tight bounds|0|This binary parameter indicates whether the tight bounds on the problem variables should be determined.|MFA parameters
+Save and print TightBound solutions|0|0|MFA parameters
+do flux coupling analysis|0|0|MFA parameters
+Minimize reactions|0|0|MFA parameters
+identify type 3 pathways|0|0|MFA parameters
+do MILP coessentiality analysis|0|0|MFA parameters
+target reactions for coessentiality analysis|0|0|MFA parameters
+do recursive MILP study|0|0|MFA parameters
+recursive MILP variables|REVERSE_USE;FORWARD_USE;REACTION_USE|0|MFA parameters
+tight bounds search variables|FLUX;FORWARD_FLUX;REVERSE_FLUX;DELTAG;CONC;LOG_CONC;DELTAGF_ERROR;DRAIN_FLUX;DELTAGG_ERROR;FORWARD_DRAIN_FLUX;REVERSE_DRAIN_FLUX|0|MFA parameters
+run media experiments|0|0|MFA parameters
+media list file|Media/BiologMediaList.txt|0|MFA parameters
+Clear all drain flux bounds before performing media study|1|0|MFA parameters
+optimize organism intervals|0|0|MFA parameters
+optimize organism genes|0|0|MFA parameters
+optimize deletions|0|Binary|MFA parameters
+Maximum number of deletions|1|0|MFA parameters
+Minimum number of deletions|0|0|MFA parameters
+interval experiment list file|DeletionData/indexing.txt|0|MFA parameters
+deletion experiment list file|DeletionData/intervals|0|MFA files
+run exploration experiments|0|0|MFA parameters
+exploration analysis parameters|0<(1)PGI[FLUX]<10:1|0|MFA parameters
+Minimize the number of foreign reactions|0|0|MFA parameters
+Reoptimize suboptimal objective during recursive MILP|0|0|MFA parameters
+optimize individual foreign reactions|0|0|MFA parameters
+determine minimal required media|1|0|MFA parameters
+exclude input media components from media optimization|1|0|MFA parameters
+uptake dead end compounds during media optimization|1|0|MFA parameters
+coefficient for dead end compound uptake|2|0|MFA parameters
+run reaction addition experiments|0|0|MFA parameters
+Load foreign reaction database|0|"If you would like to attempt to add foreign reactions to an organism's metabolic network, set this parameter to one"|MFA parameters
+Filename for foreign reaction database|PalssonBsub.txt|This is the name of the extended database file for the foreign reaction database|MFA parameters
+Load tight bounds|0|"This binary parameter indicates whether the bounds on the reaction flux (and concentrations, deltaGs, and errors) are read from a file containing the tight bounds."|MFA parameters
+exchange species|Biomass[c]:-100:0;PalssonBiomass[c]:-100:0;cpd15302[c]:-100:0;cpd08636[c]:-100:0||MFA parameters
+user bounds filename|Nitrogen-L-Glutamine.txt|This indicates where the file containing the data on the user-set variable bounds is located. This can be relative to the program directory or a complete path.|MFA files
+Default max drain flux|0|This is the default maximum rate at which any extracellular compound may be produced.|MFA parameters
+Default min drain flux|-100|This is the negative of the default maximum rate at which any extracellular compound may be consumed.|MFA parameters
+Max flux|100|This indicates the maximum possible flux any reaction can have.|MFA parameters
+Min flux|-100|This indicates the minimum possible flux any reaction can have.|MFA parameters
+Reactions use variables|1|This binary parameter indicates whether or not a use variable should be added for each reaction. Using use variables automatically turns on reaction decomposition.|MFA parameters
+Force use variables for all reactions|0|This binary parameter indicates whether or not use variables should be added for every reaction and not just the reactions that can be inactive (flux bounds include 0).|MFA parameters
+Reactions that should always be active|test;+rxn01257;+rxn05029;+rxn05401;+rxn10215;+rxn10318;+rxn10195;+rxn05371;+rxn02507;+rxn05347;+rxn05398;-rxn05338;+rxn01513;-rxn00903;+rxn05333;-rxn01575;+rxn05400;+rxn10310;+rxn00297;+rxn05330;+rxn02011;+rxn00122;+rxn01466;+rxn05358;+rxn07434;+rxn03164;-rxn08976;-rxn08669;+rxn05383;+rxn01258;+rxn05397;+rxn03538;+rxn04308;+rxn10194;+rxn03852;+rxn01791;+rxn10214;+rxn05332;+rxn00029;+rxn05364;+rxn05372;+rxn10319;+rxn10338;+rxn03150;+rxn10259;+rxn05329;+rxn03436;+rxn02264;+rxn03537;-rxn05341;+rxn12510;+rxn00440;+rxn05392;-rxn02988;+rxn05460;+rxn07432;-rxn06335;+rxn10199;+rxn05402;+rxn05360;+rxn03891;-rxn03435;+rxn05348;-rxn05340;+rxn11702;+rxn05295;+rxn00295;+rxn05346;+rxn05296;+rxn00621;+rxn05335;+rxn03841;+rxn05369;+rxn10192;+rxn02504;+rxn05381;+rxn00912;+rxn05386;+rxn03892;+rxn05390;+rxn05461;+rxn05144;+rxn11703;-rxn08299;+rxn05361;+rxn05405;+rxn05368;+rxn02288;+rxn06673;+rxn00100;-rxn10474;+rxn05404;+rxn00060;+rxn05462;+rxn05334;+rxn05394;+rxn02341;+rxn10336;+rxn10320;-rxn02402;+rxn10205;+rxn05375;+rxn10309;+rxn00351;+rxn10206;-rxn05342;+rxn05376;+rxn10191;+rxn10094;-rxn06586;+rxn05344;+rxn05350;+rxn05393;-rxn00791;+rxn00338;+rxn08040;+rxn02831;+rxn05294;+rxn03843;+rxn05349;+rxn10260;+rxn06672;+rxn08333;+rxn05287;+rxn05345;+rxn05379;+rxn01213;+rxn05384;+rxn10196;+rxn05389;+rxn05396;+rxn01603;+rxn02286;+rxn05363;-rxn02832;+rxn03194;+rxn05388;+rxn10311;+rxn01486;-rxn10254;+rxn02175;+rxn07433;+rxn05359;+rxn05406;+rxn07435;+rxn05373;-rxn01790;+rxn05465;+rxn06591;+rxn06937;+rxn05452;-rxn02285;-rxn05337;+rxn00392;+rxn05367;+rxn05365;+rxn05380;+rxn05331;-rxn05336;+rxn02508;+rxn02008;+rxn00646;-rxn05339;+rxn05385;+rxn02898;+rxn03408;+rxn00224;+rxn00461;+rxn10220;+rxn02304;-rxn10253;+rxn03904;+rxn00851;+rxn10337;-rxn01629;+rxn00346;+rxn05454;+rxn05343;+rxn05377;+rxn05459;+rxn10221;+rxn03437;+rxn10473;+bio00023;+rxn02897;+rxn03901;+rxn10193;+rxn10197;+rxn10265;+rxn10266;+rxn10273;+rxn10274;+rxn10275;+rxn10282;+rxn10283;+rxn10284;+rxn10291;+rxn10292;+rxn10293;+rxn10300;+rxn10301;+rxn10302;-rxn12008;-rxn00704;+rxn02303;+rxn03167;-rxn06022;-rxn10380;-rxn10821;-rxn01740;+rxn03638;+rxn03084;+rxn05466;+rxn02476;+rxn01387;+rxn00838;+rxn05651;+rxn02212;+rxn00917;+rxn02160;-rxn02185;+rxn02213;+rxn02789;+rxn00293;+rxn00616;+rxn00800;+rxn01520;-rxn01537;+rxn03062;-rxn00902;+rxn00179;+rxn03004;-rxn01465;+rxn00863;+rxn00405;+rxn02159;+rxn02937;-rxn00056;-rxn00832;+rxn01021;-rxn00493;-rxn00789;+rxn01332;+rxn02895;-rxn00790;+rxn01018;-rxn00806;+rxn01000;+rxn02834;+rxn09310;+rxn03175;+rxn02473;+rxn00834;+rxn01029;-rxn01362;-rxn01637;-rxn02929;+rxn00313;-rxn02811;+rxn01972;+rxn00199;+rxn01019;-rxn03135;-rxn00686;+rxn00710;+rxn03136;-rxn03086;+rxn02835;-rxn02373;+rxn03147;+rxn01917;+rxn01255;+rxn01360;+rxn00898;+rxn01739;-rxn00288;-rxn03075;+rxn00126;+rxn03137;-rxn00527;+rxn01974;+rxn01644;+rxn01256;-rxn01485;-rxn02465;+rxn03030;-rxn01208;+rxn02374;+rxn00048;+rxn00127;+rxn00300;-rxn00336;+rxn00379;-rxn00623;+rxn00693;+rxn00853;+rxn00979;+rxn01406;-rxn02474;+rxn02475;+rxn03080;+rxn05039;+rxn05040;+rxn05256;-rxn05481;+rxn09997;-rxn12376|A list of reactions for which no use variable should be introduced because are expected to always be active.|MFA parameters
+Reactions that are always blocked|none|A list of reactions which should be removed from the problem because they are always blocked.|MFA parameters
+Add use variables for any drain fluxes|0|This binary parameter indicates whether or not a use variable should be added for each drain flux. Using drain use variables automatically turns on drain flux decomposition.|MFA parameters
+Force use variables for all drain fluxes|0|This binary parameter indicates whether or not use variables should be added for every drain flux and not just the drain fluxes that can be inactive (flux bounds include 0).|MFA parameters
+relax integer variables when possible|0|Tells the solver to relax integer variables whenever this relaxation is not expected to impact the final solution. Ie: finding tight bounds before minimizing the number of reactions.|MFA parameters
+Always relax integer variables|0|Tell the toolkiit to always relax integer variables no matter what.|MFA parameters
+Decompose reversible reactions|1|This binary parameter indicates whether or not reversible reactions in the model should be decomposed into separate forward and backward reactions.|MFA parameters
+Decompose reversible drain fluxes|1|This binary parameter indicates whether or not reversible drain fluxes in the model should be decomposed into separate forward and backward drain fluxes.|MFA parameters
+Run alternative solution algorithm|0|0|MFA parameters
+Recursive MILP solution size interval|10|0|MFA parameters
+Recursive MILP solution limit|1|0|MFA parameters
+Recursive MILP timeout|14300|0|MFA parameters
+CPLEX solver time limit|14400|1|MFA parameters
+Mass balance constraints|1|This binary parameter indicates whether or not mass-balance constraints should be used.|MFA parameters
+Thermodynamic constraints|0|This binary parameter indicates whether or not thermodynamic constraints should be used. Using thermodynamic constraints automatically turns on use variables. |MFA parameters
+Make all reactions reversible in MFA|0|This sets every reaction in the model to reversible for the MFA. This should only be done with thermodynamic constraints turned ON.|MFA parameters
+Account for error in delta G|0|This binary parameter indicates whether or not error variables should be added to account for uncertainty in the estimated delta G.|MFA parameters
+Max deltaG error|DEFAULT|"Indicates the maximum value the error in each reaction delta G can take. If you want to use the uncertainty in the reaction delta G, set this parameter to DEFAULT."|MFA parameters
+include error use variables|0|Set to one to introduce binary use variables for the reaction error. These variables allow you to minimize the number of reactions with error.|MFA parameters
+minimize deltaG error|0|0|MFA parameters
+simple thermo constraints|0|0|MFA parameters
+Add lumped reactions|0|This binary parameter indicates whether or not lumped reactions should be loaded and utilized from a separate file. Lumped reactions are utilized when a portion of the deltaGs in the metabolic network are unknown.|MFA parameters
+write LP file|1|0|MFA parameters
+write variable key|1|0|MFA parameters
+Reactions to knockout|none|0|MFA parameters
+Genes to knockout|none|0|MFA parameters
+Perform solution reconciliation|0|0|MFA parameters
+Build dual problem|0|0|MFA parameters
+Perform gap generation|1|0|MFA parameters
+Gap generation media|Media/Carbon-D-Glucose.txt|0|MFA parameters
+exempt species list|none|0|MFA parameters
+just print LP file|0|0|MFA parameters
+Perform gap filling|0|0|MFA parameters
+Gap filling runs|none|0|MFA parameters
+Balanced reactions in gap filling only|1|0|MFA parameters

@@ -14,10 +14,10 @@ ok $ws->id eq "default", "Default workspace id is 'default'";
 ok $ws->directory eq $tempWorkspaceDriectory."alice/default/", 
     "Workspace should be at ".$tempWorkspaceDriectory."alice/default/, got ".$ws->directory;
 ok -e $tempBinaryDirectory."ms-goworkspace","Workspace should print a binary file that changes to the workspace directory.";
-my $binary = ModelSEED::globals::LOADFILE($tempBinaryDirectory."ms-goworkspace");
+my $binary = ModelSEED::utilities::LOADFILE($tempBinaryDirectory."ms-goworkspace");
 ok $binary->[0] eq "cd ".$ws->directory(),"'ms-goworkspace' binary should contain the command 'cd ".$ws->directory()."'. Got ".$binary->[0];
 ok -e $tempWorkspaceDriectory."alice/current.txt","Workspace should print the file '".$tempWorkspaceDriectory."alice/current.txt"."' containing the current workspace ID.";
-my $wsenv = ModelSEED::globals::LOADFILE($tempWorkspaceDriectory."alice/current.txt");
+my $wsenv = ModelSEED::utilities::LOADFILE($tempWorkspaceDriectory."alice/current.txt");
 ok $wsenv->[0] eq "default","'current.txt' file should contain the id 'default'. Got ".$wsenv->[0];
 system('touch '.$ws->directory().'foo.txt');
 my $ws2 = ModelSEED::FIGMODEL::workspace->new({
@@ -27,7 +27,7 @@ my $ws2 = ModelSEED::FIGMODEL::workspace->new({
 	copy => $ws,
 	id => 'two'
 });
-$wsenv = ModelSEED::globals::LOADFILE($tempWorkspaceDriectory."alice/current.txt");
+$wsenv = ModelSEED::utilities::LOADFILE($tempWorkspaceDriectory."alice/current.txt");
 ok $wsenv->[0] eq "two","'current.txt' file should contain the id 'two'. Got ".$wsenv->[0];
 ok -f $ws2->directory."foo.txt", "copy initialization should work";
 ok $ws2->id eq 'two', "should be able to set different workspace id";

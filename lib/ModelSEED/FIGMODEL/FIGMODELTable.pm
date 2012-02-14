@@ -866,6 +866,79 @@ sub html_print {
 	return $html;
 }
 
+=head3 load_table_from_array
+Definition:
+	my $Table = load_table_from_array($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
+Description:
+
+Example:
+	my $Table = load_table_from_array($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);
+=cut
+
+sub load_table_from_array {
+    my $args = shift @_;
+    my ($Filename,$array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = undef;
+    if(ref($args) eq 'HASH') {
+        $array = $args->{array};    
+        $Delimiter = $args->{delimiter};    
+        $ItemDelimiter = $args->{itemDelimiter};    
+        $HeadingLine = $args->{headingLine};
+        $HashColumns = $args->{hashColumns};
+        $Filename = $args->{filename};
+    } else {
+        $Filename = $args;
+        ($array,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns) = @_;
+    }
+	#Sanity checking input values
+	if (!defined($HeadingLine) || $HeadingLine eq "") {
+		$HeadingLine = 0;
+	}
+	if (!defined($Delimiter) || $Delimiter eq "") {
+		$Delimiter = ";";
+	}
+	if ($Delimiter eq "|") {
+		$Delimiter = "\\|";
+	}
+	if (!defined($ItemDelimiter) || $ItemDelimiter eq "") {
+		$ItemDelimiter = "";
+	} elsif ($ItemDelimiter eq "|") {
+		$ItemDelimiter = "\\|";
+	}
+	#Loading the data table
+	my $Prefix;
+	my @Headings;
+	my $count = 0;
+	for (my $i=0; $i < $HeadingLine; $i++) {
+		$Prefix .= $array->[$i]."\n";
+		$count++;
+	}
+	@Headings = split(/$Delimiter/,$array->[$count]);
+	$count++;
+	my $headingCount = @Headings;
+	my $HeadingRef;
+	push(@{$HeadingRef},@Headings);
+	my $Table = new ModelSEED::FIGMODEL::FIGMODELTable($HeadingRef,$Filename,$HashColumns,$Delimiter,$ItemDelimiter,$Prefix);
+	for (my $j=$count; $j < @{$array}; $j++) {
+		my $Line = $array->[$j];
+		my @Data = split(/$Delimiter/,$Line);
+		my $ArrayRefHashRef;
+		for (my $i=0; $i < @Headings; $i++) {
+			if (defined($Data[$i]) && length($Data[$i]) > 0) {
+				if (defined($ItemDelimiter) && length($ItemDelimiter) > 0) {
+					my @TempArray = split(/$ItemDelimiter/,$Data[$i]);
+					foreach my $Item (@TempArray) {
+						push(@{$ArrayRefHashRef->{$Headings[$i]}},$Item);
+					}
+				} else {
+					$ArrayRefHashRef->{$Headings[$i]}->[0] = $Data[$i];
+				}
+			}
+		}
+		$Table->add_row($ArrayRefHashRef);
+	}
+	return $Table;
+}
+
 =head3 load
 Definition:
 	my $Table = load_table($Filename,$Delimiter,$ItemDelimiter,$HeadingLine,$HashColumns);

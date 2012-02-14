@@ -172,7 +172,7 @@ sub getTestConfig {
     my $TestDbURL = "http://bioseed.mcs.anl.gov/~devoid/TestDB.tgz";
     my $dataDir = $prod->config('database root directory')->[0]; 
     if ( !-d $dataDir ) {
-        ModelSEED::globals::ERROR("database root directory not found at $dataDir\n");
+        ModelSEED::utilities::ERROR("database root directory not found at $dataDir\n");
     }
     $dataDir =~ s/\/$//;
     # Ideally we have a copy of all of the test data already
@@ -184,13 +184,13 @@ sub getTestConfig {
         if ( !-f "$dataDir/TestDB.tgz") {
             system("curl $TestDbURL 2> /dev/null > $dataDir/TestDB.tgz");#Note, this does not work in windows...
             if (!-f "$dataDir/TestDB.tgz") {
-                ModelSEED::globals::ERROR("Unable to copy TestDB.tgz from $TestDbURL");
+                ModelSEED::utilities::ERROR("Unable to copy TestDB.tgz from $TestDbURL");
             }
         }
         mkdir $TestDataDir;
         system("tar -xzf $dataDir/TestDB.tgz -C $TestDataDir");#Note, this does not work in windows...
         if( !-d "$TestDataDir/data/ModelDB" || !-f "$TestDataDir/data/ModelDB/ModelDB.sqlite") {
-            ModelSEED::globals::ERROR("TestDB.tgz does not look like I expected!");
+            ModelSEED::utilities::ERROR("TestDB.tgz does not look like I expected!");
         }
         system("sqlite3 $TestDataDir/data/ModelDB/ModelDB.db < $TestDataDir/data/ModelDB/ModelDB.sqlite");
     } 

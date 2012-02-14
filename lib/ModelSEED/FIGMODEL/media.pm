@@ -1,57 +1,37 @@
+#!/usr/bin/perl -w
+########################################################################
+# MEDIA OBJECT: An object that manages all access to the media object
+# Author: Christopher Henry
+# Author email: chenry@mcs.anl.gov
+# Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
+# Date of module creation: 11/6/2011
+########################################################################
 use strict;
-package ModelSEED::FIGMODEL::FIGMODELmedia;
-use Scalar::Util qw(weaken);
-use Carp qw(cluck);
-use Data::Dumper;
+use warnings;
+use File::Temp qw(tempfile);
+use File::Path;
+use File::Copy::Recursive;
+use ModelSEED::globals;
 
-=head1 FIGMODELmedia object
-=head2 Introduction
-Module for holding media related functions
-=head2 Core Object Methods
+package ModelSEED::FIGMODEL::media;
 
-=head3 new
-Definition:
-	FIGMODELmedia = FIGMODELmedia->new({figmodel => FIGMODEL:parent figmodel object,id => string:media id});
-Description:
-	This is the constructor for the FIGMODELmedia object.
-=cut
-sub new {
-	my ($class,$args) = @_;
-	#Must manualy check for figmodel argument since figmodel is needed for automated checking
-	if (!defined($args->{figmodel})) {
-		ModelSEED::utilities::WARNING("Figmodel must be defined to create a media object");
-		return undef;
-	}
-	my $self = {_figmodel => $args->{figmodel}};
-    weaken($self->{_figmodel});
-	bless $self;
-	if (defined($args->{id})) {
-		$self->{_id} = $args->{id};
-		my $medias = $self->figmodel()->database()->get_object_hash({
-			type => "media",
-			attribute => "id",
-			useCache => 1
-		});
-		if (!defined($medias->{$self->{_id}})) {
-			if ($self->{_id} eq "Empty") {
-				$medias->{$self->{_id}}->[0] = $self->figmodel()->database()->create_object("media",{
-					id => "Empty",
-					owner => "master",
-					modificationDate => time(),
-					creationDate => time(),
-					aliases => "",
-					aerobic => 0,
-					public => 1
-				});
-			} else {
-				ModelSEED::utilities::WARNING("Could not find media in database:".$args->{id});
-				return undef;
-			}
-		}
-		$self->{_ppo} = $medias->{$self->{_id}}->[0];
-	}
-	return $self;
+use Moose;
+use Moose::Util::TypeConstraints;
+use namespace::autoclean;
+
+extends 'ModelSEED::MooseDB::media' #So access to all database content comes through this subclass
+
+has 'id' => (is => 'ro', isa => 'Str', required => 1);
+has 'owner' => (is => 'ro', isa => 'Str', required => 1);
+
+sub BUILD {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
+
+
+
+
 =head3 create
 Definition:
 	FIGMODELmedia = FIGMODELmedia->create({
@@ -112,66 +92,7 @@ sub create {
 	return $self;
 }
 
-=head3 figmodel
-Definition:
-	FIGMODEL = FIGMODELmedia->figmodel();
-Description:
-	Returns the figmodel object
-=cut
-sub figmodel {
-	my ($self) = @_;
-	return $self->{_figmodel};
-}
 
-=head3 id
-Definition:
-	string:compound ID = FIGMODELmedia->id();
-Description:
-	Returns the reaction ID
-=cut
-sub id {
-	my ($self) = @_;
-	return $self->{_id};
-}
-
-=head3 ppo
-Definition:
-	PPOmedia:media object = FIGMODELmedia->ppo();
-Description:
-	Returns the media ppo object
-=cut
-sub ppo {
-	my ($self,$inppo) = @_;
-	if (defined($inppo)) {
-		$self->{_ppo} = $inppo;
-	}
-	if (!defined($self->{_ppo})) {
-		$self->{_ppo} = $self->figmodel()->database()->get_object("media",{id => $self->id()});
-	}
-	return $self->{_ppo};
-}
-=head3 directory
-Definition:
-	string = FIGMODELmedia->directory();
-Description:
-	Returns directory for media files
-=cut
-sub directory {
-	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->figmodel()->config("Media directory")->[0];
-}
-=head3 filename
-Definition:
-	string = FIGMODELmedia->filename();
-Description:
-	Returns filename for media file
-=cut
-sub filename {
-	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
-	return $self->directory().$self->id().".txt";
-}
 =head3 loadCompoundsFromFile
 Definition:
 	Output = FIGMODELmedia->loadCompoundsFromFile({clear => 0/1});
@@ -580,124 +501,6 @@ sub printDatabaseTable {
 		}
 	}
 	$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
-}
-
-=head3 compareMedia
-Definition:
-	Output = FIGMODELmedia->compareMedia({
-		media => FIGMODELmedia
-	});
-	Output: {
-		changedCompounds => [{
-			refMaxUptake => double,
-			refMinUptake => double,
-			compMaxUptake => double,
-			compMinUptake => double,
-			compound => string:compound ID
-		}]
-	};
-Description:
-=cut
-sub compareMedia {
-	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["media"],{});
-	my $compounds = $self->loadCompoundsFromPPO();
-	my $compCompounds = $args->{media}->loadCompoundsFromPPO();
-	my $results;
-	foreach my $cpd (keys(%{$compounds})) {
-		if ($compounds->{$cpd}->{maxFlux} > 0) {
-			if (defined($compCompounds->{$cpd})) {
-				if ($compCompounds->{$cpd}->{maxFlux} <= 0) {
-					push(@{$results->{compoundDifferences}},{
-						refMaxUptake => $compounds->{$cpd}->{maxFlux},
-						refMinUptake => $compounds->{$cpd}->{minFlux},
-						compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
-						compMinUptake => $compCompounds->{$cpd}->{minFlux},
-						compound => $cpd
-					});
-				}	
-			} else {
-				push(@{$results->{compoundDifferences}},{
-					refMaxUptake => $compounds->{$cpd}->{maxFlux},
-					refMinUptake => $compounds->{$cpd}->{minFlux},
-					compound => $cpd
-				});
-			}
-		}
-	}
-	foreach my $cpd (keys(%{$compCompounds})) {
-		if ($compCompounds->{$cpd}->{maxFlux} > 0) {
-			if (defined($compounds->{$cpd})) {
-				if ($compounds->{$cpd}->{maxFlux} <= 0) {
-					push(@{$results->{compoundDifferences}},{
-						refMaxUptake => $compounds->{$cpd}->{maxFlux},
-						refMinUptake => $compounds->{$cpd}->{minFlux},
-						compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
-						compMinUptake => $compCompounds->{$cpd}->{minFlux},
-						compound => $cpd
-					});
-				}	
-			} else {
-				push(@{$results->{compoundDifferences}},{
-					compMaxUptake => $compCompounds->{$cpd}->{maxFlux},
-					compMinUptake => $compCompounds->{$cpd}->{minFlux},
-					compound => $cpd
-				});
-			}
-		}
-	}
-	return $results;
-}
-
-=head3 change_compound
-Definition:
-	void = FIGMODELmedia->change_compound({
-		maxUptake => double,
-		minUptake => double,
-		compound
-	});
-Description:
-=cut
-sub change_compound {
-	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["compound"],{
-		maxUptake => undef,
-		minUptake => undef,
-		concentration => 0.001
-	});
-	my $restoreData = {
-		compound => $args->{compound}
-	};
-	my $mediacpds = $self->figmodel()->database()->get_objects("mediacpd",{MEDIA=>$self->id()});
-	for (my $i=0; $i < @{$mediacpds}; $i++) {
-		if ($mediacpds->[$i]->entity() eq $args->{compound}) {
-			$restoreData = {
-				compound => $args->{compound},
-				maxUptake => $mediacpds->[$i]->maxFlux(),
-				minUptake => $mediacpds->[$i]->minFlux(),
-				concentration => $mediacpds->[$i]->concentration()
-			};
-			if (!defined($args->{maxUptake})) {
-				$mediacpds->[$i]->delete();	
-			} else {
-				$mediacpds->[$i]->maxFlux($args->{maxUptake});
-				$mediacpds->[$i]->minFlux($args->{minUptake});
-				$mediacpds->[$i]->concentration($args->{concentration});
-			}
-		}
-	}
-	if (defined($args->{maxUptake})) {
-		$self->figmodel()->database()->create_object("mediacpd",{
-			MEDIA=>$self->id(),
-			entity => $args->{compound},
-			type => "COMPOUND",
-			concentration => $args->{concentration},
-			maxFlux => $args->{maxUptake},
-			minFlux => $args->{minUptake}
-		});	
-	}
-	$self->loadCompoundsFromPPO();
-	return $restoreData;	
 }
 
 1;

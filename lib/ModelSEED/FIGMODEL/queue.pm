@@ -37,7 +37,7 @@ has 'maxJobs' => (is => 'rw', isa => 'Int', default => 1);
 
 sub BUILD {
     my ($self,$params) = @_;
-	$params = ModelSEED::globals::ARGS($params,["type","user","jobdirectory"],{});
+	$params = ModelSEED::utilities::ARGS($params,["type","user","jobdirectory"],{});
 }
 
 =head3 addJobToQueue
@@ -54,7 +54,7 @@ Example:
 =cut
 sub queueJob {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["function"],{
+	$args = ModelSEED::utilities::ARGS($args,["function"],{
 		arguments => {},
 		target => "ModelDriver",
 		priority => 3,
@@ -64,7 +64,7 @@ sub queueJob {
 	#Setting queue if the selected queue is "default"
 	my $queue = $self->computeQueueID({queue => $self->id(),job => $args->{function}});
 	#Building the command line for the job based on the input function and parameters
-	my $command = ModelSEED::globals::BUILDCOMMANDLINE({
+	my $command = ModelSEED::utilities::BUILDCOMMANDLINE({
 		function => $args->{function},
 		arguments => $args->{arguments},
 		target => $args->{target}
@@ -74,7 +74,7 @@ sub queueJob {
 		print "New job:".$command."\n"."Job must be run manually by user since queue type is 'none'\n";
 	} elsif ($self->type() eq "run") {
 		print "Now running ".$args->{function}."\n";
-		ModelSEED::globals::RUNMODELDRIVER({
+		ModelSEED::utilities::RUNMODELDRIVER({
 			function => $args->{function},
 			arguments => $args->{arguments},
 			target => $args->{target},
@@ -91,7 +91,7 @@ sub queueJob {
 			priority => $args->{priority},
 			exclusivekey => $args->{exclusivekey}
 		});
-		ModelSEED::globals::RUNMODELDRIVER({
+		ModelSEED::utilities::RUNMODELDRIVER({
 			function => "queueRunJob",
 			arguments => {
 				job => $id
@@ -144,7 +144,7 @@ Example:
 =cut
 sub printJobFile {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["function"],{
+	$args = ModelSEED::utilities::ARGS($args,["function"],{
 		target => "ModelDriver",
 		arguments => {},
 		queue => $self->id(),
@@ -172,13 +172,13 @@ sub printJobFile {
 		"ARGUMENTS".$argumentString,
 		"QUEUE\t".$args->{queue},
 		"USER\t".$args->{user},
-		"TIME\t".ModelSEED::globals::TIMESTAMP(),
+		"TIME\t".ModelSEED::utilities::TIMESTAMP(),
 		"PRIORITY\t".$args->{priority},
 	];
 	if (defined($args->{exclusivekey})) {
 		push(@{$jobdata},"KEY\t".$args->{exclusivekey});
 	}
-	ModelSEED::globals::PRINTFILE($filename,$jobdata);
+	ModelSEED::utilities::PRINTFILE($filename,$jobdata);
 	return $jobid;
 }
 =head3 computeQueueID
@@ -193,7 +193,7 @@ Example:
 =cut
 sub computeQueueID {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		queue => $self->id(),
 		job => undef
 	});
@@ -217,7 +217,7 @@ Example:
 =cut
 sub jobready {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["job"],{});
+	$args = ModelSEED::utilities::ARGS($args,["job"],{});
 	my $joblist = [glob($self->jobdirectory()."*.job")];
 	if (@{$joblist} <= $self->maxJobs()) {
 		return 1;
@@ -254,11 +254,11 @@ Example:
 =cut
 sub loadJobFile {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["job"],{});
+	$args = ModelSEED::utilities::ARGS($args,["job"],{});
 	if (!-e $self->jobdirectory().$args->{job}.".job") {
-		ModelSEED::globals::ERROR("Could not find job file:".$self->jobdirectory().$args->{job}.".job");
+		ModelSEED::utilities::ERROR("Could not find job file:".$self->jobdirectory().$args->{job}.".job");
 	}
-	my $data = ModelSEED::globals::LOADFILE($self->jobdirectory().$args->{job}.".job");
+	my $data = ModelSEED::utilities::LOADFILE($self->jobdirectory().$args->{job}.".job");
 	my $jobdata;
 	for (my $i=0; $i < @{$data}; $i++) {
 		my $row = [split(/\t/,$data->[$i])];
@@ -289,7 +289,7 @@ Example:
 =cut
 sub clearJobFile {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["job"],{});
+	$args = ModelSEED::utilities::ARGS($args,["job"],{});
 	if (-e $self->jobdirectory().$args->{job}.".job") {
 		unlink($self->jobdirectory().$args->{job}.".job");
 	}

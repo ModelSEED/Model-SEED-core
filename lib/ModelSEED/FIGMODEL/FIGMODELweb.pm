@@ -292,7 +292,7 @@ Description:
 =cut
 sub display_reaction_equation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["cpdHash","data"],{dataHash => undef});
+	$args = ModelSEED::utilities::ARGS($args,["cpdHash","data"],{dataHash => undef});
 	my $direction = "=>";
 	#Determining reaction direction
 	if ($args->{data}->id() !~ m/bio/) {
@@ -616,7 +616,7 @@ Description:
 =cut
 sub reactionClassHtml {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["classtbl","data"],{showflux => 0});
+	$args = ModelSEED::utilities::ARGS($args,["classtbl","data"],{showflux => 0});
 	my $output = "";
 	my $rows = [$args->{classtbl}->get_rows_by_key($args->{data},"REACTION")];
 	my $classHash = {
@@ -1078,7 +1078,7 @@ sub print_reaction_equation {
 
 sub print_biomass_models {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["bofModelHash","data"],{});
+	$args = ModelSEED::utilities::ARGS($args,["bofModelHash","data"],{});
 	if (defined($args->{bofModelHash}->{$args->{data}})) {
 		return join(", ",@{$args->{bofModelHash}->{$args->{data}}});
 	}
