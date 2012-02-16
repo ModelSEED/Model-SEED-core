@@ -3403,6 +3403,24 @@ sub import_model {
 	#Loading the reaction table
 	return $self->new_error_message({message=> "could not find import file:".$args->{path}.$args->{baseid}."-reactions.tbl",function => "import_model",args => $args}) if (!-e $args->{path}.$args->{baseid}."-reactions.tbl");
 
+	#loading the cues for deltaG
+	open(FH, "< ",$self->config("cues data filename")->[0]);
+	my $header=1;
+	my @temp=();
+	my %Cues_Energy=();
+	my %Cues_EnergyUncertainty=();
+	while(<FH>){
+	    chomp;
+	    if($header){$header--;next;}
+	    @temp=split(/\t/,$_);
+	    my @cues=split(/\|/,$temp[0]);
+	    foreach my $c(@cues){
+		$Cues_Energy{$c}=$temp[2];
+		$Cues_EnergyUncertainty{$c}=$temp[4];
+	    }
+	}
+	close(FH);
+
 	open(NEWRXN, "> ".$self->ws()->directory()."mdl-importmodel_New_Reactions_".$id);
 	open(FOUNDRXN, "> ".$self->ws()->directory()."mdl-importmodel_Found_Reactions_".$id);
 
@@ -3501,6 +3519,7 @@ sub import_model {
 		if (defined($rxn)) {
 			print "Found ".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
 			print FOUNDRXN $rxn->id(),"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\n";
+
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
@@ -3528,6 +3547,20 @@ sub import_model {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
 			print "New ".$newid." for ".$row->{"ID"}->[0]." with code ".$codeResults->{code}."\n";
 			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
+
+			my ($deltaG,$deltaGErr) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
+											   energy=>\%Cues_Energy,
+											   uncertainty=>\%Cues_EnergyUncertainty});
+
+			my $thermoreversibility='';
+			if($deltaG){
+			    $thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
+													    deltaG=>$deltaG});
+			}else{
+			    $deltaG='10000000';
+			    $deltaGErr='10000000';
+			}
+
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -3536,10 +3569,10 @@ sub import_model {
 				code => $codeResults->{code},
 				equation => $codeResults->{fullEquation},
 				definition => $row->{"EQUATION"}->[0],
-				deltaG => 10000000,
-				deltaGErr => 10000000,
+				deltaG => $deltaG,
+				deltaGErr => $deltaGErr,
 				reversibility => $row->{"DIRECTIONALITY"}->[0],
-				thermoReversibility => "<=>",
+				thermoReversibility => $thermoreversibility,
 				owner => $args->{owner},
 				modificationDate => time(),
 				creationDate => time(),

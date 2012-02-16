@@ -2143,4 +2143,239 @@ sub balanceReaction {
     }
     return $output;
 }
+
+=head3 calculate_deltaG
+Definition:
+    Output = FIGMODELreaction->calculate_deltaG
+Description:
+    This function calculates the deltaG and deltaGErr for the reaction
+=cut
+
+sub calculate_deltaG {
+    my ($self,$args)=@_;
+    return ('','') if !$args->{energy} || !$args->{uncertainty};
+
+    $args = $self->figmodel()->process_arguments($args,[],{equation => undef,debug=>0});
+    if (!defined($args->{equation})) {
+	ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
+	$args->{equation} = $self->ppo()->equation();
+    }
+
+    my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
+
+    #First cancel out compounds
+    my %compounds=();
+    foreach my $r (@{$substrates[0]}){
+	$compounds{$r->{"DATABASE"}->[0]}-=$r->{"COEFFICIENT"}->[0];
+    }
+    foreach my $p (@{$substrates[1]}){
+	$compounds{$p->{"DATABASE"}->[0]}+=$p->{"COEFFICIENT"}->[0];
+    }
+
+    #Second see if destroyed/created compounds have structural cues
+    my $missing_cues=0;
+    my %cues=();
+    foreach my $c (sort grep { $compounds{$_} != 0 } keys %compounds){
+	my $cDB=$self->figmodel()->database()->get_object('compound',{id=>$c});
+	if(!$cDB || !$cDB->structuralCues() || $cDB->structuralCues() eq "NULL"){
+	    $missing_cues=1;
+	    last;
+	}else{
+	    my @cues=split(/;/,$cDB->structuralCues());
+	    foreach my $cue_stoich(@cues){
+		my ($cue,$stoich)=split(/:/,$cue_stoich);
+		if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
+		    #print "No $cue\n";
+		    $missing_cues=1;
+		    last;
+		}else{
+		    $cues{$cue}+=$compounds{$c}*$stoich;
+		}
+	    }
+	    last if $missing_cues;
+	}
+    }
+
+    #third, up all energy and energy uncertainty
+    if(!$missing_cues){
+	my $energy=0;
+	my $energyuncertainty=0;
+
+	foreach my $cue(sort keys %cues){
+	    #print $cue,"\t",$cues{$cue},"\t",$args->{energy}->{$cue},"\t",$energy,"\n";
+	    $energy+=$args->{energy}->{$cue}*$cues{$cue};
+	    $energyuncertainty+=($args->{uncertainty}->{$cue}*$cues{$cue})**2;
+	}
+	$energyuncertainty=$energyuncertainty**0.5;
+	$energyuncertainty=2.0 if $energyuncertainty == 0;
+
+	$energy=sprintf("%.4f",$energy);
+	$energyuncertainty=sprintf("%.4f",$energyuncertainty);
+	return ($energy,$energyuncertainty);
+    }else{
+	return ('','');
+    }
+}
+
+=head3 find_thermodynamic_reversibility
+Definition:
+    Output = FIGMODELreaction->find_thermodynamic_reversibility
+Description:
+    This function returns the direction which the thermodynamics indicate
+    the reaction can proceed.  It returns an empty string if it cannot determine
+    for whatever reason
+=cut
+
+sub find_thermodynamic_reversibility {
+    my ($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{equation => undef,debug=>0});
+
+    if(!defined($args->{equation})) {
+	ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
+	$args->{equation} = $self->ppo()->equation();
+    }
+
+    my $TEMPERATURE=298.15;
+    my $GAS_CONSTANT=0.0019858775;
+
+    #Calculate MdeltaG
+    my ($max,$min)=(0.02,0.00001);
+    my $CONST=$TEMPERATURE*$GAS_CONSTANT;
+    my $storedmin = $args->{deltaG};
+    my $storedmax = $args->{deltaG};
+    my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
+
+    foreach my $r (@{$substrates[0]}){
+	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
+	my ($tmx,$tmn)=($max,$min);
+	if($r->{"COMPARTMENT"}->[0] eq "e"){
+	    ($tmx,$tmn)=(1.0,0.0000001);
+	}
+	$storedmin+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tmx));
+	$storedmax+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tmn));
+    }
+    foreach my $p (@{$substrates[1]}){
+	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
+	my ($tmx,$tmn)=($max,$min);
+	if($p->{"COMPARTMENT"}->[0] eq "e"){
+	    ($tmx,$tmn)=(1.0,0.0000001);
+	}
+	$storedmin+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tmn));
+	$storedmax+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tmx));
+    }
+
+    if($storedmax<0){
+	return "=>"; #\tMdeltaG\t".$storedmin."_".$storedmax;
+    }
+    if($storedmin>0){
+	return "<="; #\tMdeltaG\t".$storedmin."_".$storedmax;
+    }
+
+    #Do heuristics
+    #1: Calculate mMdeltaG
+    my $mMdeltaG=$args->{deltaG};
+    my $conc=0.001;
+    foreach my $r (@{$substrates[0]}){
+	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
+	my $tconc=$conc;
+	if($r->{"DATABASE"}->[0] eq "cpd00011"){
+	    $tconc=0.0001;
+	}
+	if($r->{"DATABASE"}->[0] eq "cpd00007"){
+	    $tconc=0.000001;
+	}
+	$mMdeltaG+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tconc));
+    }
+    foreach my $p (@{$substrates[1]}){
+	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
+	my $tconc=$conc;
+	if($p->{"DATABASE"}->[0] eq "cpd00011"){
+	    $tconc=0.0001;
+	}
+	if($p->{"DATABASE"}->[0] eq "cpd00007"){
+	    $tconc=0.000001;
+	}
+	$mMdeltaG+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tconc));
+    }
+
+    if($mMdeltaG >= -2 && $mMdeltaG <= 2) {
+	return "<=>"; #\tmMdeltaG\t$mMdeltaG";
+    }
+    
+    #2: Calculate low energy points
+    #2a: Find Phosphate stuff
+    my %PhoHash=();
+    foreach my $r (@{$substrates[0]}){
+#	$PhoHash{"ATP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00002");
+#	$PhoHash{"ADP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00008");
+#	$PhoHash{"AMP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00018");
+#	$PhoHash{"Pi"}  = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00009");
+#	$PhoHash{"Ppi"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00012");
+	$PhoHash{"ATP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00012");
+    }
+    foreach my $p (@{$substrates[1]}){
+#	$PhoHash{"ATP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00002");
+#	$PhoHash{"ADP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00008");
+#	$PhoHash{"AMP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00018");
+#	$PhoHash{"Pi"}  += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00009");
+#	$PhoHash{"Ppi"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00012");
+	$PhoHash{"ATP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00012");
+    }
+    #2b: Find minimum Phosphate stuff
+
+    my $Points=0;
+    my $minimum=10000;
+    if(exists($PhoHash{"ADP"})){
+	foreach my $key ("ATP", "ADP", "Pi"){
+	    if(exists($PhoHash{$key})){
+		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
+	    }
+	}
+	$Points=$minimum if $minimum<10000;
+    }elsif(exists($PhoHash{"AMP"})){
+	foreach my $key ("ATP", "AMP", "Ppi"){
+	    if(exists($PhoHash{$key})){
+		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
+	    }
+	}
+	$Points=$minimum if $minimum<10000;
+    }
+
+    #2c:Find other low energy compounds
+    #taken from software/mfatoolkit/Parameters/Defaults.txt
+    my %lowE = ("cpd00013"=>0,  #NH3
+		"cpd00011"=>0,  #CO2
+		"cpd11493"=>0,  #ACP
+		"cpd00009"=>0,  #Pi
+		"cpd00012"=>0,  #Ppi
+		"cpd00010"=>0,  #CoA
+		"cpd00449"=>0,  #Dihydrolipoamide
+		"cpd00242"=>0); #HCO3-
+
+    foreach my $r (@{$substrates[0]}){
+	$Points += $r->{"COEFFICIENT"}->[0] if exists($lowE{$r->{"DATABASE"}->[0]});
+#	$Points += (0-$r->{"COEFFICIENT"}->[0]) if exists($lowE{$r->{"DATABASE"}->[0]});
+    }
+    foreach my $p (@{$substrates[1]}){
+#	$Points += $p->{"COEFFICIENT"}->[0] if exists($lowE{$p->{"DATABASE"}->[0]});
+	$Points += (0-$p->{"COEFFICIENT"}->[0]) if exists($lowE{$p->{"DATABASE"}->[0]});
+    }
+
+    #test points
+    if(($Points*$mMdeltaG) > 2 && $mMdeltaG < 0){
+	return "=>\tPoints\t".$Points."_".$mMdeltaG;
+    }elsif(($Points*$mMdeltaG) > 2 && $mMdeltaG > 0){
+	return "<=\tPoints\t".$Points."_".$mMdeltaG;
+    }
+
+    return "<=>\tDefault\t".$Points."_".$mMdeltaG;;
+}
 1;
