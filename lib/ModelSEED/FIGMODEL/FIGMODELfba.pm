@@ -1037,6 +1037,8 @@ sub runFBA {
 		$commandLine->{model} .= " ProcessDatabase";
 	} elsif ($args->{studyType} eq "CalculateTransAtoms") {
 		$commandLine->{model} .= " CalculateTransAtoms";
+	} elsif ($args->{studyType} eq "MolfileAnalysis") {
+		$commandLine->{model} .= " ProcessMolfileList";
 	}
 	if (defined($args->{logfile})) {
 		if ($args->{logfile} =~ m/^\// || $args->{logfile} =~ m/^\w:/) {
@@ -2325,6 +2327,81 @@ sub parseGapGenStudy {
 						reactions => [split(/,/,$2)]
 					});
 				}
+			}
+		}
+	}
+	return $results;
+}
+=head3 setMolAnalysisStudy
+=item Definition:
+	Output = FIGMODELfba->setMolAnalysisStudy({
+    	molfiles => [string]:molfile names or molfile text itself
+    	ids => [string]:cpd IDs corresponding to each molfile
+    });
+    Output: {error => string:error message}
+=item Description:
+=cut
+sub setMolAnalysisStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,["molfiles","ids"],{});
+	File::Path::mkpath $self->filename()."/molfiles/";
+	my $output = ["ID\tFilename"];
+	for (my $i=0; $i < @{$args->{ids}}; $i++) {
+		if (defined($args->{molfiles}->[$i])) {
+			my $filename;
+			if ($args->{molfiles}->[$i] =~ m/([^\/]+\.mol)/ && -e $args->{molfiles}->[$i]) {
+				my $file = $1;
+				File::Copy::copy($args->{molfiles}->[$i],$self->filename()."/molfiles/".$file);
+				$filename = $file;
+			} elsif ($args->{molfiles}->[$i] =~ m/\n/) {
+				$self->figmodel()->database()->print_array_to_file($self->filename()."/molfiles/".$args->{ids}->[$i].".mol",[split(/\n/,$args->{molfiles}->[$i])]);
+				$filename = $args->{ids}->[$i].".mol";
+			}
+			if (defined($filename) && -e $filename) {
+				push(@{$output},$args->{ids}->[$i]."\t".$args->{molfiles}->[$i]);
+			}
+		}	
+	}
+	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileInput.txt",$output);
+	$self->parameter_files(["ArgonneProcessing.txt"]);
+	$self->makeOutputDirectory();
+	$self->set_parameters({
+		"Recursive MILP solution limit" => 1
+	});
+	$self->studyArguments($args);
+	$self->parsingFunction("parseMolAnalysisStudy");
+	return {};
+}
+=head3 parseMolAnalysisStudy
+=item Definition:
+	Output = FIGMODELfba->parseMolAnalysisStudy({});
+    Output = {
+    	string:id => {
+    		molfile => string:filename or content,
+    		groups => string:group list,
+    		charge => double,
+    		formula => string:molecular formula from structure,
+    		stringcode => string:molecular structure in string format,
+    		mass => double,
+    		deltaG => double,
+    		deltaGerr => double
+    	}	
+    };
+=item Description:
+=cut
+sub parseMolAnalysisStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::globals::ARGS($args,[],{});
+	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->filename()."/MolfileOutput.txt","\t","|",0,["Label"]);
+	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
+	my $results;
+	for (my $i=0; $i < $tbl->size(); $i++) {
+		my $row = $tbl->get_row($i);
+		my $id;
+		if (defined($row->{id}->[0])) {
+			$id = $row->{id}->[0];
+			for (my $j=0; $j < @{$heading}; $j++) {
+				$results->{$id}->{$heading->[$j]} = $row->{$heading->[$j]}->[0];
 			}
 		}
 	}

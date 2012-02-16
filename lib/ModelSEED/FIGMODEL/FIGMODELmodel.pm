@@ -3568,7 +3568,6 @@ sub GenerateModelProvenance {
 		targetDirectory => $self->directory(),
 		clearCurrentProvenance => 1
 	});
-	print "Directory:".$args->{targetDirectory}."\n";
 	# Current directory structure:
 	# biochemistry/
 	#	 reaction.txt
