@@ -1,7 +1,4 @@
 #!/usr/bin/perl -w
-use strict;
-
-#!/usr/bin/perl -w
 #
 #	This is a SAS Component.
 #
@@ -24,14 +21,14 @@ use strict;
 package ClientThing;
 
     use strict;
-    use YAML;
+    use YAML::XS;
     use ErrorMessage;
     use Carp;
     no warnings qw(once);
     use POSIX;
     use HTTP::Message;
 
-    use constant AGENT_NAME => "myRAST version 39";
+    use constant AGENT_NAME => "SAS client";
 
 =head1 Base Class for Server Helper Objects
 
@@ -76,13 +73,13 @@ is the entire Sapling server.
     package SAPserver;
     use strict;
     use base qw(ClientThing);
-    
+
     sub new {
         my ($class, %options) = @_;
         $options{url} = 'http://servers.nmpdr.org/sapling/server.cgi' if ! defined $options{url};
         return $class->SUPER::new('SAP', %options);
     }
-    
+
     1;
 
 Most methods that the server will support are then handled automatically by the
@@ -159,7 +156,9 @@ sub new {
         $ua->timeout($timeout);
     } else {
         # Get access to the server package.
-        require "$type.pm";
+	my $package = $type;
+        $package =~ s/::/\//g;
+        require "$package.pm";
         # Create a service object.
         $ua = eval("$type->new(\$options{sapDB})");
         if ($@) {
@@ -173,7 +172,7 @@ sub new {
     };
 
     # Create the server object.
-    my $retVal = { 
+    my $retVal = {
                     server_url => $server_url,
                     ua => $ua,
                     singleton => $singleton,
@@ -314,9 +313,13 @@ the following values.
 Use direct calls to the server without going through HTTP (only works for the
 Sapling and FBAMODEL servers).
 
-=item SEED (default)
+=item PUBSEED (default)
 
-Use the main servers for the Annotator SEED data.
+Use the main servers for the public SEED data.
+
+=item SEED
+
+Use the annotator SEED data. This is much more restricted.
 
 =item PSEED
 
@@ -368,6 +371,8 @@ sub ComputeURL {
             $retVal = "http://servers.nmpdr.org/pseed/$name/server.cgi";
         } elsif ($envParm eq 'PUBSEED') {
             $retVal = "http://pubseed.theseed.org/$name/server.cgi";
+        } elsif ($envParm eq 'PUBSEED_TEST') {
+            $retVal = "http://pubseed.theseed.org/saptest/$name/server.cgi";
         } elsif ($envParm eq 'localhost') {
             $retVal = 'localhost';
         } else {
@@ -471,12 +476,12 @@ sub _call_method {
     # Determine the type.
     if (ref $ua eq 'LWP::UserAgent') {
         # Here we're going to a server. Compute the argument document.
-        my $argString = YAML::Dump($args);
+        my $argString = YAML::XS::Dump($args);
         # Request the function from the server.
         my $content = $self->_send_request(function => $method, args => $argString,
-                                           source => __PACKAGE__,
+                                           source => __PACKAGE__, encoding => 'yaml2',
                                            dbName => $self->{dbName});
-        $retVal = YAML::Load($content);
+        $retVal = YAML::XS::Load($content);
     } else {
         # Here we're calling a local method.
         $retVal = eval("\$ua->$method(\$args)");
@@ -703,16 +708,16 @@ sub _send_request {
 	    # Handle errors that were not thrown by the web
 	    # server but rather picked up by the client library.
 	    #
-	    # If we got a client timeout, let us retry.
+	    # If we got a client timeout or connection refused, let us retry.
 	    #
 
-	    if ($msg =~ /timeout/i)
+	    if ($msg =~ /timeout|connection refused/i)
 	    {
 		$want_retry = 1;
 	    }
-	    
+
 	}
-	
+
         if (!$want_retry || @retries == 0) {
             if ($ENV{SAS_DEBUG}) {
                 my $content = $response->content;
@@ -724,7 +729,7 @@ sub _send_request {
                 confess $response->status_line;
             }
         }
-        
+
         #
         # otherwise, sleep & loop.
         #

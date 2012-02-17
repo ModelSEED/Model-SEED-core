@@ -536,7 +536,7 @@ Description:
 =cut
 sub genomeObj {
 	my ($self) = @_;
-	if (lc($self->genome()) eq "none" && lc($self->genome()) eq "unknown") {
+	if (lc($self->genome()) eq "none" || lc($self->genome()) eq "unknown") {
 		return undef;
 	}
 	if (!defined($self->{_genomeObj})) {
@@ -1929,6 +1929,9 @@ sub update_model_stats {
 	$self->ppo()->transporters($counts->{transporters});
 	$self->ppo()->autoCompleteReactions($counts->{autocompletion});
 	$self->ppo()->associatedSubsystemGenes($counts->{genes});
+	if (defined($self->genomeObj())) {
+		$self->ppo()->name($self->genomeObj()->name());
+	}
 	#Setting the model class
 	my $class = "";
 	for (my $i=0; $i < @{$self->figmodel()->config("class list")}; $i++) {
@@ -3565,7 +3568,6 @@ sub GenerateModelProvenance {
 		targetDirectory => $self->directory(),
 		clearCurrentProvenance => 1
 	});
-	print "Directory:".$args->{targetDirectory}."\n";
 	# Current directory structure:
 	# biochemistry/
 	#	 reaction.txt
@@ -5812,7 +5814,7 @@ sub PrintSBMLFile {
 	
 	#Handling media formulation for SBML file
 	my $mediaCpd;
-	if ($args->{media} ne "Complete" && ref($args->{media}) eq "SCALAR") {
+	if ($args->{media} ne "Complete") {
 		$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
 	}
 	if (!defined($args->{media})) {

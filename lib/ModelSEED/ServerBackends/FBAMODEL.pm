@@ -264,21 +264,20 @@ sub get_reaction_data {
 	#Loading all reactions from database into id hash
 	my $idHash;
 	#Setting ID list of "ALL" selected
-	if ($args->{id}->[0] eq "ALL") {
-	    my $objects = $self->figmodel()->database()->get_objects("reaction");
-	    for (my $i=0; $i < @{$objects}; $i++) {
+	my $objects = $self->figmodel()->database()->get_objects("reaction");
+    for (my $i=0; $i < @{$objects}; $i++) {
 		$idHash->{$objects->[$i]->id()} = $objects->[$i];
-	    }
+    }
+	if ($args->{id}->[0] eq "ALL") {
 	    $args->{id} = [keys(%{$idHash})];
-	}
-	else {
+	} else {
+	    my $tempidhash;
 	    for my $id (@{$args->{id}}) {
-		my $objects = $self->figmodel()->database()->get_objects("reaction",
-									 { "id" => $id});
-		for (my $i=0; $i < @{$objects}; $i++) {
-		    $idHash->{$objects->[$i]->id()} = $objects->[$i];
-		}
+			if (defined($idHash->{$id})) {
+				$tempidhash->{$id} = $idHash->{$id};
+			}
 	    }
+	  	$idHash = $tempidhash;
 	}
 
 	#Getting model data
@@ -289,7 +288,15 @@ sub get_reaction_data {
 			if (defined($model)) {
 				my $rxnmdl = $model->rxnmdl();
 				for (my $k=0; $k < @{$rxnmdl}; $k++) {
-					$modelhash->{$model->id()}->{$rxnmdl->[$k]->REACTION()} = $rxnmdl->[$k];
+					if (!defined($idHash->{$rxnmdl->[$k]->REACTION()})) {
+						my $obj = $model->figmodel()->database()->get_object("reaction",{id => $rxnmdl->[$k]->REACTION()});
+						if (defined($obj)) {
+							$idHash->{$rxnmdl->[$k]->REACTION()} = $obj;
+						}
+					}
+					if (defined($idHash->{$rxnmdl->[$k]->REACTION()})) {
+						$modelhash->{$model->id()}->{$rxnmdl->[$k]->REACTION()} = $rxnmdl->[$k];
+					}
 				}
 			}
 		}
@@ -562,21 +569,43 @@ sub get_compound_data {
 	} else {
 		push(@{$ids},@{$args->{id}});
 	}
-	if ($args->{id}->[0] eq "ALL") {
-	    my $objects = $self->figmodel()->database()->get_objects("compound");
-	    for (my $i=0; $i < @{$objects}; $i++) {
+	my $objects = $self->figmodel()->database()->get_objects("compound");
+	for (my $i=0; $i < @{$objects}; $i++) {
 		$idHash->{$objects->[$i]->id()} = $objects->[$i];
-	    }
-	    push(@{$ids},keys(%{$idHash}));
 	}
-	else {
-	    for my $id (@$ids) {
-		my $objects = $self->figmodel()->database()->get_objects("compound",
-		    { "id" => $id});
-		for (my $i=0; $i < @{$objects}; $i++) {
-		    $idHash->{$objects->[$i]->id()} = $objects->[$i];
-		}
+	if ($args->{id}->[0] eq "ALL") {
+	    push(@{$ids},keys(%{$idHash}));
+	} else {
+	    my $tempidhash;
+	    for my $id (@{$ids}) {
+			if (defined($idHash->{$id})) {
+				$tempidhash->{$id} = $idHash->{$id};
+			}
 	    }
+	  	$idHash = $tempidhash;
+	}
+	
+	my $modelhash;
+	if (defined($args->{model})) {
+		for (my $j=0; $j < @{$args->{model}}; $j++) {
+			my $model = $self->figmodel()->get_model($args->{model}->[$j]);
+			if (defined($model)) {
+				for my $id (@{$ids}) {
+					my $data = $model->get_compound_data($id);
+					if (defined($data)) {
+						if (!defined($idHash->{$id})) {
+							my $obj = $model->figmodel()->database()->get_object("compound",{id => $id});
+							if (defined($obj)) {
+								$idHash->{$id} = $obj;
+							}
+						}
+						if (defined($idHash->{$id})) {
+							$modelhash->{$args->{model}->[$j]}->{$id} = $data;
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	#Collecting compound data for ID list
@@ -594,17 +623,19 @@ sub get_compound_data {
 					}
 				}	
 			}
-			$row = {DATABASE => [$ids->[$i]],
-					PKB => [$obj->pKb()],
-					PKA => [$obj->pKa()],
-					DELTAG => [$obj->deltaG()],
-					NAME => $names,
-					ABBREV => [$obj->abbrev()],
-					FORMULA => [$obj->formula()],
-					CHARGE => [$obj->charge()],
-					MASS => [$obj->mass()],
-					"STRING CODE" => [$obj->stringcode()],
-				        DELTAGERR => [$obj->deltaGErr()]};
+			$row = {
+				DATABASE => [$ids->[$i]],
+				PKB => [$obj->pKb()],
+				PKA => [$obj->pKa()],
+				DELTAG => [$obj->deltaG()],
+				NAME => $names,
+				ABBREV => [$obj->abbrev()],
+				FORMULA => [$obj->formula()],
+				CHARGE => [$obj->charge()],
+				MASS => [$obj->mass()],
+				"STRING CODE" => [$obj->stringcode()],
+				DELTAGERR => [$obj->deltaGErr()]
+			};
 			if (defined($obj->abstractCompound())) {
 			    push(@{$row->{"ABSTRACT COMPOUND"}},$obj->abstractCompound());
 			}
@@ -617,20 +648,33 @@ sub get_compound_data {
 			if (defined $groupObj) {
 			    $row->{"GROUPING"} = $groupObj->{'compounds'};
 			}
-		    }
+		}
+		if (!defined($row) && ($ids->[$i] =~ m/cpd\d+/)) {
+			$row = {
+				DATABASE => [$ids->[$i]],
+				PKB => ["none"],
+				PKA => ["none"],
+				DELTAG => [10000000],
+				NAME => ["NA"],
+				ABBREV => ["NA"],
+				FORMULA => ["UNKNOWN"],
+				CHARGE => [0],
+				MASS => [0],
+				"STRING CODE" => ["UNKNOWN"],
+				DELTAGERR => [10000000]
+			};
+		}
 		if (defined($row)) {
 			$output->{$ids->[$i]} = $row;
 			if (defined($args->{model})) {
 				for (my $j=0; $j < @{$args->{model}}; $j++) {
-					my $model = $self->figmodel()->get_model($args->{model}->[$j]);
-					if (defined($model)) {
-						my $data = $model->get_compound_data($ids->[$i]);
-						if (defined($data)) {
-							$output->{$ids->[$i]}->{$args->{model}->[$j]} = $data;
-						}
+					if (defined($modelhash->{$args->{model}->[$j]}->{$ids->[$i]})) {
+						$output->{$ids->[$i]}->{$args->{model}->[$j]} = $modelhash->{$args->{model}->[$j]}->{$ids->[$i]};
 					}
 				}
 			}
+		} else {
+			print "No row for ".$ids->[$i]."!\n";
 		}
 	}
 	return $output;
@@ -2250,15 +2294,13 @@ sub changeModelRole {
     if (!defined($old)) {     
         # if we don't have the old one, just note that in the log
         $log_entry->{log_note} = "no old role, so just ignoreing";
-        $self->figmodel()->toLogfile($logfile,
-            join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+        $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry)],1);
     } elsif(!defined($new)) {
         # if we don't have the new one, just change the name
         $old->name($args->{newRole});
         $old->searchname($self->figmodel()->convert_to_search_role($args->{newRole}));
         $log_entry->{log_note} = "no new role, so just changing name, searchname";
-        $self->figmodel()->toLogfile($logfile,
-            join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+        $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry)],1);
     } else {                  
         if($args->{syntaxOnly} == 1) {
             # if we have both, only merge if syntaxOnly == 1 
@@ -2279,15 +2321,12 @@ sub changeModelRole {
             }
             $old->delete();
             $log_entry->{log_note} = "auto-merging, deleting duplicates, renaming non-duplicates";
-            $self->figmodel()->toLogfile($logfile,
-                join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
+            $self->figmodel()->database()->print_array_to_file($logfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry)],1);
         } else {
             # too difficult to merge if not clearly syntax issues 
             # so I leave this up to Chris.
             $log_entry->{log_note} = "not-merging";
-            $self->figmodel()->toLogfile($errfile,
-                join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry));
-        
+            $self->figmodel()->database()->print_array_to_file($errfile,[join("\t", map { $_ = $_ . ':' . $log_entry->{$_} } sort keys %$log_entry)],1);
         }
     } 
 }

@@ -102,6 +102,8 @@ void CommandlineInterface(vector<string> Arguments) {
 			} else {
 				ProcessMolfileDirectory(Arguments[i+1].data(),Arguments[i+2].data());		
 			}
+		} else if (Arguments[i].compare("ProcessMolfileList") == 0) {
+			ProcessMolfiles();
 		}
 	}
 }
@@ -596,4 +598,35 @@ void ProcessMolfileDirectory(string Directory,string OutputDirectory) {
 		}
 		delete NewSpecies;
 	}
+}
+
+void ProcessMolfiles() {
+	string fullfile = FOutputFilepath()+"MolfileInput.txt";
+	ifstream Input;
+	if (!OpenInput(Input,fullfile)) {
+		return;	
+	}
+	ofstream Output;
+	string outfile = FOutputFilepath()+"MolfileOutput.txt";
+	if (OpenOutput(Output,outfile)) {
+		Data* NewData = new Data(0);
+		Output << "id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr" << endl;
+		GetStringsFileline(Input,"\t",false);
+		while(!Input.eof()) {
+			vector<string>* strings = GetStringsFileline(Input,"\t",false);
+			if (strings->size() >= 2) {
+				Species* NewSpecies = new Species("", NewData, false);
+				NewSpecies->ReadFromMol(FOutputFilepath()+"molfiles/"+(*strings)[1]);
+				NewSpecies->PerformAllCalculations(true,true,true,true,true);
+				string cues = NewSpecies->CreateStructuralCueList();
+				findandreplace(cues,"\t","|");
+				Output << (*strings)[0] << "\t" << (*strings)[1] << "\t" << cues << "\t" << NewSpecies->FCharge() << "\t" << NewSpecies->FFormula() << "\t";
+				Output << NewSpecies->FCode() << "\t" << NewSpecies->FMW() << "\t" << NewSpecies->FEstDeltaG() << "\t" << NewSpecies->FEstDeltaGUncertainty() << endl;
+				delete NewSpecies;
+			}
+			delete strings;
+		}
+		Output.close();
+	}
+	Input.close();
 }

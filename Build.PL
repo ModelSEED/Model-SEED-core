@@ -72,6 +72,7 @@ my $builder = Module::Build->new(
         "XML::Simple" => 2.18,
         "YAML" => 0.73,
         "YAML::Any" => 0.72,
+		"YAML::XS" => 0,
         "base" => 2.15,
         "constant" => 1.20,
         "integer" => 1.00,

@@ -13,6 +13,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
+use YAML;
 use YAML::Dumper;
 
 package ModelSEED::ModelDriver;
@@ -2243,106 +2244,8 @@ sub runmodelcheck {
 
 
 sub test {
-    my($self,@Data) = @_;
-    my $gnm = $self->figmodel()->get_genome("3702.7");
-    return "SUCCESS";
-    my $filenames = [glob("/vol/model-dev/MODEL_DEV_DB/Models2/master/Seed*")];
-    for (my $i=0; $i < @{$filenames}; $i++) {
-    	if ($filenames->[$i] =~ m/Seed\d+\.\d+\.\d+/) {
-			system("rm -rf ".$filenames->[$i]);
-    	}
-    }
-    return "SUCCESS";
-    my $list = $self->figmodel()->database()->get_objects("rxnmdl",{pegs => "LONG"});
-    my $dataToLoad;
-    for (my $i=0; $i < @{$list}; $i++) {
-    	print $i."\n";
-    	my $model = $list->[$i]->MODEL();
-    	my $filename;
-    	if ($model =~ m/Seed(\d+\.\d+)\.(\d+)/) {
-    		my $user = $self->figmodel()->database()->get_object("user",{_id => $2});
-    		if (defined($user)) {
-    			$filename = "/vol/model-dev/MODEL_DEV_DB/Models/".$user->login()."/".$1."/".$model.".txt";	
-    		}
-    	} elsif ($model =~ m/Seed(\d+\.\d+)/) {
-    		$filename = "/vol/model-dev/MODEL_DEV_DB/Models/master/".$1."/".$model.".txt";
-    	}
-    	if (defined($filename) && -e $filename) {
-    		my $modeldata = $self->figmodel()->database()->load_single_column_file($filename,"");
-    		my $rxn = $list->[$i]->REACTION();
-    		for (my $j=0; $j < @{$modeldata}; $j++) {
-    			if ($modeldata->[$j] =~ m/$rxn/) {
-    				my $array = [split(/;/,$modeldata->[$j])];
-    				if (defined($array->[3])) {
-    					push(@{$dataToLoad},{pegs => $array->[3],obj => $list->[$i]});
-    				}
-    				last;
-    			}
-    		}
-    	}
-    }
-    $dataToLoad = [sort { length($a->{pegs}) <=> length($b->{pegs}) } @{$dataToLoad}];
-    print "Loading data!\n";
-    for (my $i=0; $i < @{$dataToLoad}; $i++) {
-    	print "Item:".$i."\tLength:".length($dataToLoad->[$i]->{pegs})."\n";
-    	$dataToLoad->[$i]->{obj}->pegs($dataToLoad->[$i]->{pegs});
-    }
-    return "SUCCESS";
-    $list = $self->figmodel()->database()->load_single_column_file("/home/chenry/".$Data[1],"");
-    for (my $i=0; $i < @{$list}; $i++) {
-	    my $model = $self->figmodel()->get_model($list->[$i]);
-	    $model->completeGapfilling({
-			startFresh => 0,
-			problemDirectory => $list->[$i],
-			setupProblemOnly=> 0,
-			doNotClear => 1,
-			gapfillCoefficientsFile => "NONE",
-			inactiveReactionBonus => 100,
-			drnRxn => [],
-			media => "Complete",
-			conservative => 0,
-			runSimulation => 0
-		});
-    }
-    return "SUCCESS";
-    $list = $self->figmodel()->database()->load_single_column_file("/home/chenry/NewModelList.txt","");
-    for (my $i=0; $i < @{$list}; $i++) {
-    	my $rxnmdls = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL=>$list->[$i]});
-    	my $mdl = $self->figmodel()->get_model($list->[$i].".v0");
-    	my $output = ["MODEL;REACTION;directionality;compartment;pegs;subsystem;confidence;reference;notes"];
-    	for (my $j=0; $j < @{$rxnmdls}; $j++) {
-    		my $line = $list->[$i].";".$rxnmdls->[$j]->REACTION().";".$rxnmdls->[$j]->directionality()
-    			.";".$rxnmdls->[$j]->compartment().";".$rxnmdls->[$j]->pegs().";NONE;".$rxnmdls->[$j]->confidence()
-    			.";NONE;NONE";
-    		push(@{$output},$line);
-    	}
-    	$self->figmodel()->database()->print_array_to_file($mdl->directory()."rxnmdl.txt",$output);
-    	$rxnmdls = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL=>$list->[$i]});
-	    my $numRxn = @{$rxnmdls};
-	    if ($numRxn == 0) {
-	    	print "Number of reactions:".$mdl->id().":".$numRxn."\n";
-	    }
-    }
-    return "SUCCESS";
-    my $fbaObj = ModelSEED::ServerBackends::FBAMODEL->new();
-	my $result = $fbaObj->fba_run_study({
-		model => "Seed83333.1",
-		media => "Complete",
-		rxnKO => undef,
-		geneKO  => undef,
-		parameters => undef
-	});
-    return;
-    print "testONE";
-    my $obj = ModelSEED::ModelSEEDServers::ModelImportServer->new();
-    print "test";
-    my $ret = $obj->stat({
-    	id => "iJR904",
-    	name => "iJR904New",
-    	cpdt => "model-rxnf-arQdHkYu",
-    	rxnt => "model-rxnf-TzGo31c9"
-    });
-    return;
+	my($self,@Data) = @_;
+	my $sap = $self->figmodel()->sapSvr("PUBSEED");
 }
 
 sub addmapping {
@@ -5452,7 +5355,174 @@ sub queueRunJob {
 	$self->figmodel()->queue()->clearJobFile({job => $args->{job}});
 	return $args->{job}." completed!";
 }
-
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
+This function lists all objects matching the input type and query
+=EXAMPLE
+./db-listobjects
+=cut
+sub dblistobjects {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["type",1,undef,"Type of object to be listed"],
+		["query",0,undef,"A '|' delimited list of queries described as 'field=A'"],
+		["sudo",0,0,"Set to '1' to list all objects in database regardless of rights"]
+	],[@Data],"blast sequences against genomes");
+    my $query = {};
+    if (defined($args->{query})) {
+    	my $queries = [split(/\|/,$args->{query})];
+    	for (my $i=0; $i < @{$queries}; $i++) {
+    		my $array = [split(/\=/,$queries->[$i])];
+    		if (defined($array->[1])) {
+    			$query->{$array->[0]} = $array->[1];
+    		}
+    	}
+    }
+    my $objs;
+    if ($args->{sudo} == 1) {
+    	$objs = $self->figmodel()->database()->sudo_get_objects($args->{type},$query);
+    } else {
+    	$objs = $self->figmodel()->database()->get_objects($args->{type},$query);
+    }
+    if (!defined($objs) || !defined($objs->[0])) {
+    	return "No objects found matching input type and query!";
+    }
+    my $attributes = [keys(%{$objs->[0]->attributes()})];
+    my $output = [join("\t",@{$attributes})];
+    for (my $i=0; $i < @{$objs}; $i++) {
+    	my $line;
+    	for (my $j=0; $j < @{$attributes}; $j++) {
+    		if ($j > 0) {
+    			$line .= "\t";	
+    		}
+    		my $function = $attributes->[$j];
+    		$line .= $objs->[$i]->$function();
+    	}
+    	push(@{$output},$line);
+    }
+    my $num = @{$objs};
+    $self->figmodel()->database()->print_array_to_file($self->ws()->directory()."Query-".$args->{type}.".tbl",$output);
+    return "Successfully printed ".$num." objects to file ".$self->ws()->directory()."Query-".$args->{type}.".tbl";
+}
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
+This function creates a new object defined in the specified file in the database 
+=EXAMPLE
+./db-createobject
+=cut
+sub dbcreateobject {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["filename",1,undef,"Name of file containing object data"],
+	],[@Data],"create new object in the database");
+    if (!-e $self->ws()->directory().$args->{filename}) {
+    	return "Failed! Could not find specified file: ".$self->ws()->directory().$args->{filename}."!";
+    }
+    my $array = [split(/\./,$args->{filename})];
+    my $type = pop(@{$array});
+    my $data = $self->figmodel()->database()->load_single_column_file($self->ws()->directory().$args->{filename});
+    my $datahash = {};
+    for (my $i=0; $i < @{$data}; $i++) {
+    	my $linearray = [split(/\t/,$data->[$i])];
+    	if (defined($linearray->[1])) {
+    		$datahash->{$linearray->[0]} = $linearray->[1];
+    	}
+    }
+    $self->figmodel()->database()->create_object($type,$datahash);
+    return "Successfully loaded new object of type ".$type." from file ".$self->ws()->directory().$args->{filename}."!";
+}
+=head
+=CATEGORY
+Temporary Operations
+=DESCRIPTION
+This function handles the transition of models in the old database into the new database system
+=EXAMPLE
+./temptransfermodels 
+=cut
+sub temptransfermodels {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"model to be transfered"],
+	],[@Data],"transitions models in the old database into the new database system");
+	my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ",",
+		column => "id",
+		parameters => undef,
+		input => $args->{model}
+	});
+	for (my $i=0; $i < @{$models}; $i++) {
+		my $obj = $self->figmodel()->database()->get_object("model",{id => $models->[$i]});
+		my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
+		if (!-d $mdldir) {
+			print "Generating provenance for ".$models->[$i]."!\n";
+			File::Path::mkpath $mdldir."biochemistry/";
+			File::Path::mkpath $mdldir."mapping/";
+			File::Path::mkpath $mdldir."annotations/";
+			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
+			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
+#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
+#				my $genome = $self->figmodel()->get_genome($obj->genome());
+#				if (defined($genome)) {
+#					my $feature_table = $genome->feature_table();
+#					$feature_table->save($mdldir.'annotations/features.txt');
+#				}
+#			}				
+		}
+		my $objs = $self->figmodel()->database()->get_objects("rxnmdl",{MODEL => $models->[$i]});
+		my $numRxn = @{$objs};
+		if ($numRxn == 0) {
+			print "Model ".$models->[$i]." is empty. Populating rxnmdl table!\n";
+			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
+			if (defined($mdltbl)) {
+				for (my $j=0; $j < $mdltbl->size(); $j++) {
+					my $row = $mdltbl->get_row($j);
+					if (defined($row->{LOAD}->[0])) {
+						if (!defined($row->{DIRECTIONALITY})) {
+							$row->{DIRECTIONALITY}->[0] = "<=>";
+						}
+						if (!defined($row->{COMPARTMENT})) {
+							$row->{COMPARTMENT}->[0] = "c";
+						}
+						if (!defined($row->{REFERENCE})) {
+							$row->{REFERENCE}->[0] = "none";
+						}
+						if (!defined($row->{NOTES})) {
+							$row->{NOTES}->[0] = "none";
+						}
+						if (!defined($row->{CONFIDENCE})) {
+							$row->{CONFIDENCE}->[0] = 5;
+						}
+						if (!defined($row->{"ASSOCIATED PEG"})) {
+							$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+						}
+						$self->figmodel()->database()->create_object("rxnmdl",{
+							MODEL => $models->[$i],
+							REACTION => $row->{LOAD}->[0],
+							directionality => $row->{DIRECTIONALITY}->[0],
+							compartment => $row->{COMPARTMENT}->[0],
+							pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+							confidence => $row->{CONFIDENCE}->[0],
+							notes => join("|",@{$row->{NOTES}}),
+							reference => join("|",@{$row->{REFERENCE}})
+						});
+					}
+				}
+			} else {
+				print "Model ".$models->[$i]." reaction table not found!\n";
+			}
+		} elsif ($numRxn > 100) {
+			print "Model ".$models->[$i]." fully populated!\n";
+		} else {
+			print "Model ".$models->[$i]." appears to be too small!\n";	
+		}
+	}
+    return "SUCCESS";
+}
 =head
 =CATEGORY
 Workspace Operations
@@ -5643,7 +5713,6 @@ sub mslogin {
 		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.\n".
 		"You have switched from workspace \"".$oldws."\" to workspace \"".$args->{username}.":".$self->figmodel()->ws()->id()."\"!\n";
 }
-
 =head
 =CATEGORY
 Workpsace Operations
@@ -5666,10 +5735,6 @@ sub mswhoami {
     #}
     return $str;
 }
-    
-    
-    
-
 =head
 =CATEGORY
 Workspace Operations
@@ -6596,6 +6661,56 @@ sub bcloadmedia {
 }
 =head
 =CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used process the input molfile to calculate thermodynamic properties.
+=EXAMPLE
+./bcprocessmolfile -compound cpd00001 -mofile cpd00001.mol -directory "workspace/"
+=cut
+sub bcprocessmolfile {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["compound",1,undef,"ID of the compound associated with molfile"],
+		["mofile",0,0,"Name of the molfile to be processed"],
+		["directory",0,$self->ws()->directory(),"Directory where molfiles are located"],
+	],[@Data],"process input molfiles to calculate thermodynamic parameters, formula, and charge");
+    my $input = {
+    	ids => $self->figmodel()->processIDList({
+			objectType => "compound",
+			delimiter => ";",
+			column => "id",
+			parameters => {},
+			input => $args->{compound}
+		}),
+		molfiles => $self->figmodel()->processIDList({
+			objectType => "molfile",
+			delimiter => ";",
+			column => "filename",
+			parameters => {},
+			input => $args->{mofile}
+		})
+    };
+    for (my $i=0; $i < @{$input->{molfiles}}; $i++) {
+    	$input->{molfiles}->[$i] .= $args->{directory}.$input->{molfiles}->[$i];
+    }
+    my $cpd = $self->figmodel()->get_compound();
+	my $results = $cpd->molAnalysis($input);
+	my $output = ["id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr"];
+	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
+	foreach my $id (keys(%{$results})) {
+		if (defined($results->{$id})) {
+			my $line = $id;
+			for (my $i=0; $i < @{$heading}; $i++) {
+				$line .= "\t".$results->{$id}->{$heading->[$i]};
+			}
+			push(@{$output},$line);
+		}
+	}
+	$self->figmodel()->database()->print_array_to_file($self->ws()->directory()."MolAnalysis.tbl",$output);
+	return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
+}
+=head
+=CATEGORY
 Metabolic Model Operations
 =DESCRIPTION
 Imports a models from other databases into the Model SEED environment.
@@ -6698,7 +6813,43 @@ sub mdlautocomplete {
 	});
     return "Successfully gapfilled model ".$models->[0]." in ".$args->{media}." media!";
 }
-
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to compare the reactions associated with a list of input models
+=EXAMPLE
+./mdlcomparemodels
+=cut
+sub mdlcomparemodels {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+		["modellist",1,undef,"List of models you want to compare."],
+		["saveformat",0,"EXCEL"]
+	],[@Data],"compare the reactions associated with input models");
+    my $models = $self->figmodel()->processIDList({
+		objectType => "model",
+		delimiter => ";",
+		column => "id",
+		parameters => {},
+		input => $args->{modellist}
+	});
+	my $output = $self->figmodel()->compareModels({modellist => $models});
+	my $extension = ".xls";
+	if (defined($output->{"reaction comparison"})) {
+		if ($args->{saveformat} eq "EXCEL") {
+			$self->figmodel()->make_xls({
+				filename => $self->ws()->directory()."Comparison.xls",
+				sheetnames => ["Reaction comparison"],
+				sheetdata => [$output->{"reaction comparison"}]
+			});
+		} elsif ($args->{saveformat} eq "TEXT") {
+			$extension = ".tbl";
+			$output->{"reaction comparison"}->save($self->ws()->directory()."Comparison.tbl");
+		}
+	}
+	return "Successfully completed model comparison. Results printed in ".$self->ws()->directory()."Comparison".$extension;
+}
 =head
 =CATEGORY
 Metabolic Model Operations
@@ -6992,39 +7143,43 @@ sub mdlprintcytoseed {
 	my $md = $fbaObj->get_model_data({ "id" => [$args->{model}] });
 	print FH $dumper->dump($md->{$args->{model}});
 	close FH;
-
+	print "Model data printed...\n";
 	open(FH, ">".$cmdir."/biomass_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_biomass_reaction_data({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Biomass data printed...\n";
 	my $cids = $fbaObj->get_compound_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $cpds = $fbaObj->get_compound_data({ "id" => $cids->{$args->{model}} });
 	print FH $dumper->dump($cpds);
 	close FH;
-
-	my @abcids = map { exists $cpds->{$_}->{"ABSTRACT COMPOUND"} ? $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] : undef } keys %$cpds;
-
+	print "Compound data printed...\n";
+	my @abcids;
+	foreach (keys %$cpds) { 
+	    if (defined $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] && 
+		$cpds->{$_}->{"ABSTRACT COMPOUND"}->[0] ne "none") {
+		push @abcids, $cpds->{$_}->{"ABSTRACT COMPOUND"}->[0];
+	    }
+	}
 	open(FH, ">".$cmdir."/abstract_compound_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_compound_data({ "id" => \@abcids }));
 	close FH;
-
+	print "Abstract compound data printed...\n";
 	my $rids = $fbaObj->get_reaction_id_list({ "id" => [$args->{model}] });
 	open(FH, ">".$cmdir."/reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	my $rxns = $fbaObj->get_reaction_data({ "id" => $rids->{$args->{model}}, "model" => [$args->{model}] });
 	print FH $dumper->dump($rxns);
 	close FH;
-
+	print "Reaction data printed...\n";
 	my @abrids = map { exists $rxns->{$_}->{"ABSTRACT REACTION"} ? $rxns->{$_}->{"ABSTRACT REACTION"}->[0] : undef } keys %$rxns;
-
 	open(FH, ">".$cmdir."/abstract_reaction_details") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_reaction_data({ "id" => \@abrids, "model" => [$args->{model}] }));
 	close FH;
-
+	print "Abstract reaction data printed...\n";
 	open(FH, ">".$cmdir."/reaction_classifications") or ModelSEED::globals::ERROR("Could not open file: $!\n");
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
-
+	print "Reaction class data printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 
@@ -7450,6 +7605,24 @@ sub genlistsubsystemgenes {
 		-roleForm => "full",
 	});
 	print Data::Dumper->Dump([$subsys]);
+}
+
+sub gengetgenehits {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    
+    # code here
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+
+    my $result = $fig_genome->getGeneSimilarityHitTable();
+
+    return $result;
+}
+
+sub gengettreehits {
+
 }
 
 1;
