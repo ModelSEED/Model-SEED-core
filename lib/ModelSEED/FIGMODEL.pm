@@ -1814,12 +1814,14 @@ sub parseSBMLToTable {
 
     my @rxns = $doc->getElementsByTagName("reaction");
     my %rxnAttrs=();
-    foreach my $attr($rxns[0]->getAttributes()->getValues()){
-	$name=$attr->getName();
-	$HeadingTranslation{$name}=uc($name);
-	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
-	$HeadingTranslation{$name} = ($name eq "reversible") ? "DIRECTIONALITY" : $HeadingTranslation{$name};
-	$rxnAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    foreach my $rxn(@rxns){
+	foreach my $attr($rxn->getAttributes()->getValues()){
+	    $name=$attr->getName();
+	    $HeadingTranslation{$name}=uc($name);
+	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	    $HeadingTranslation{$name} = ($name eq "reversible") ? "DIRECTIONALITY" : $HeadingTranslation{$name};
+	    $rxnAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+	}
     }
 
     my $nodehash={};
