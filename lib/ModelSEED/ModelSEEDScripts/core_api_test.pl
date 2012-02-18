@@ -5,6 +5,8 @@ use Data::Dumper;
 use Time::HiRes qw(time);
 use Devel::Size qw(total_size);
 
+use JSON::XS;
+
 use ModelSEED::CoreApi;
 
 my $bio_uuid = "DBB3B96A-3D63-11E1-94F6-C43F3D9902C7";
@@ -20,7 +22,7 @@ my $rxns = $api->getReactions($bio_uuid);
 print "Got " . scalar @$rxns . " reactions in " . sprintf("%.3f", time - $time) . " seconds\n";
 
 $time = time;
-$rxns = $api->getReactions($bio_uuid, [['uuid', 'A21570E0-3D63-11E1-94F6-C43F3D9902C7']]);
+$rxns = $api->getReactions($bio_uuid, [['reactions.uuid', 'A21570E0-3D63-11E1-94F6-C43F3D9902C7']]);
 print "Got " . scalar @$rxns . " reactions in " . sprintf("%.3f", time - $time) . " seconds\n";
 
 $time = time;
@@ -44,5 +46,12 @@ print "Got compound in " . sprintf("%.3f", time - $time) . " seconds\n";
 $time = time;
 my $biochem = $api->getBiochemistry($bio_uuid, "master");
 print "Got biochemistry in " . sprintf("%.3f", time - $time) . " seconds\n";
+print total_size($biochem) . " bytes\n";
+
+# test biochemistry
+$time = time;
+$biochem = $api->getBiochemistrySimple($bio_uuid, "master");
+print "Got simple biochemistry in " . sprintf("%.3f", time - $time) . " seconds\n";
+print total_size($biochem) . " bytes\n";
 
 exit;

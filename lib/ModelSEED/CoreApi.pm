@@ -66,7 +66,7 @@ sub getBiochemistry {
 	die "Unable to find biochemistry with uuid: $uuid";
     }
 
-    my $biochem = parseBiochem($rows->[0]);
+    my $biochem = _parseBiochemRow($rows->[0]);
 
     # get the reactions
     my $rxns = $self->getReactions($uuid);
@@ -76,34 +76,70 @@ sub getBiochemistry {
     $biochem->{relationships}->{compounds} = $cpds;
 
     return $biochem;
+}
 
-    # row parsing logic here
-    sub parseBiochem {
-	my ($row) = @_;
+sub getBiochemistrySimple {
+    my ($self, $uuid, $user) = @_;
 
-	my $ind = 0;
-	my $biochem = {
-	    type => "Biochemistry",
-	    attributes => {},
-	    relationships => {}
-	};
+    # get the biochemistry object
+    my $bio_sql = "SELECT * FROM biochemistries"
+	. " WHERE uuid = ?";
 
-	foreach my $col (@$biochem_cols) {
-	    $biochem->{attributes}->{$col} = $row->[$ind++];
-	}
+    my $rows = $self->{dbi}->selectall_arrayref($bio_sql, undef, $uuid);
 
-	return $biochem;
+    unless (scalar @$rows == 1) {
+	die "Unable to find biochemistry with uuid: $uuid";
     }
+
+    my $biochem = _parseBiochemRow($rows->[0]);
+
+    my $rxn_ids = $self->{dbi}->selectall_arrayref("SELECT reaction_uuid FROM biochemistry_reactions WHERE biochemistry_uuid = ?", undef, $uuid);
+
+    $biochem->{relationships}->{reactions} = [];
+    foreach my $rxn_row (@$rxn_ids) {
+	push(@{$biochem->{relationships}->{reactions}}, $rxn_row->[0]);
+    }
+
+    return $biochem;
+}
+
+sub _parseBiochemRow {
+    my ($row) = @_;
+
+    my $ind = 0;
+    my $biochem = {
+	type => "Biochemistry",
+	attributes => {},
+	relationships => {}
+    };
+
+    foreach my $col (@$biochem_cols) {
+	$biochem->{attributes}->{$col} = $row->[$ind++];
+    }
+
+    return $biochem;
 }
 
 sub getReactions {
-    my ($self, $bio_uuid, $query) = @_;
+    my ($self, $bio_uuid, $query, $limit, $offset) = @_;
+
+    my $sub_sql = "SELECT reaction_uuid"
+	. " FROM biochemistry_reactions"
+	. " WHERE biochemistry_uuid = ?";
+
+    if (defined($offset) && defined($limit)) {
+	$sub_sql .= " LIMIT $limit OFFSET $offset";
+    }
 
     # get the reactions
-    my $sql = "SELECT reactions.*, reagents.* FROM reactions"
-	. " JOIN biochemistry_reactions ON reactions.uuid = biochemistry_reactions.reaction_uuid"
+    my $sql = "SELECT * FROM reactions"
+#	. " JOIN biochemistry_reactions ON reactions.uuid = biochemistry_reactions.reaction_uuid"
 	. " JOIN reagents ON reactions.uuid = reagents.reaction_uuid"
-	. " WHERE biochemistry_reactions.biochemistry_uuid = ?";
+#	. " LEFT JOIN reaction_aliases ON reactions.uuid = reaction_aliases.reaction_uuid"
+#	. " LEFT JOIN reactionset_reactions ON reactions.uuid = reactionset_reactions.reaction_uuid"
+#	. " LEFT JOIN reactionsets ON reactionset_reactions.reactionset_uuid = reactionsets.uuid"
+	. " WHERE reactions.uuid IN"
+	. " ($sub_sql)";
 
     # parse the query, if it exists
     if (defined($query) && scalar @$query > 0) {
@@ -151,7 +187,7 @@ sub getReaction {
     my ($self, $rxn_uuid, $bio_uuid) = @_;
 
     # call getReactions with uuid query
-    my $rxns = $self->getReactions($bio_uuid, [['uuid', $rxn_uuid]]);
+    my $rxns = $self->getReactions($bio_uuid, [['reactions.uuid', $rxn_uuid]]);
 
     if (scalar @$rxns == 1) {
 	return $rxns->[0];
