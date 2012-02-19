@@ -587,12 +587,6 @@ sub classifyrespiration {
 
 sub getGeneSimilarityHitTable {
     my ($self, $args) = @_;
-
-    use SeedUtils;
-    use SAPserver;
-    use ffxtree;
-    use Data::Dumper;
-
     my $sap = SAPserver->new();
 
     print "Getting genes for: " . $self->genome;

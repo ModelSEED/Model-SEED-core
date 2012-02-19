@@ -18,6 +18,9 @@ sub ENVIRONMENTFILE {
 	if (defined($input)) {
 		$interfaceHash->{ENVIRONMENTFILE} = $input;
 	}
+	if (!defined($interfaceHash->{ENVIRONMENTFILE})) {
+		$interfaceHash->{ENVIRONMENTFILE} = ModelSEED::Interface::interface::MODELSEEDDIRECTORY()."/config/environment.dat";
+	}
 	return $interfaceHash->{ENVIRONMENTFILE};	
 }
 =head3 LOADENVIRONMENT
@@ -40,11 +43,11 @@ sub LOADENVIRONMENT {
 			$environment = {
 				USERNAME => $ENV{FIGMODEL_USER},
 				PASSWORD => $ENV{FIGMODEL_PASSWORD},
-				WORKSPACEFOLDER => $workspace,
 				REGISTEREDSEED => {},
-				SEED => "local"
+				SEED => "local",
+				LASTERROR => "NONE"
 			};
-			ModelSEED::Interface::interface->SAVEENVIRONMENT();
+			ModelSEED::Interface::interface::SAVEENVIRONMENT();
 			my $data = ModelSEED::utilities::LOADFILE(ModelSEED::Interface::interface::BOOTSTRAPFILE());
 			my $newData;
 			for (my $i=0; $i < @{$data};$i++) {
@@ -83,7 +86,7 @@ Description:
 sub SAVEENVIRONMENT {
 	my ($args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{});
-	my $variables = ["USERNAME","PASSWORD","WORKSPACEFOLDER","SEED"];
+	my $variables = ["USERNAME","PASSWORD","SEED","LASTERROR"];
 	my $output = ["SETTING\tVALUE"];
 	for (my $i=0; $i < @{$variables}; $i++) {
 		push(@{$output},$variables->[$i]."\t".ModelSEED::Interface::interface::ENVIRONMENT()->{$variables->[$i]});
@@ -113,7 +116,7 @@ sub ENVIRONMENT {
 		$environment = $input;
 	}
 	if (!defined($environment)) {
-		ModelSEED::Interface::interface::LOADENVIRONMENT();
+		ModelSEED::Interface::interface::LOADENVIRONMENT({});
 	}
 	return $environment;
 }
@@ -141,6 +144,32 @@ sub PASSWORD {
 	}
 	return ModelSEED::Interface::interface::ENVIRONMENT()->{PASSWORD};
 }
+=head3 SWITCHUSER
+Definition:
+	string = ModelSEED::Interface::interface::SWITCHUSER();
+Description:	
+=cut
+sub SWITCHUSER {
+	my ($username,$password) = @_;
+	if (ModelSEED::Interface::interface::USERNAME() ne $username) {
+		ModelSEED::Interface::interface::USERNAME($username);
+		ModelSEED::Interface::interface::PASSWORD($password);
+		ModelSEED::Interface::interface::CREATEWORKSPACE();
+		ModelSEED::Interface::interface::SAVEENVIRONMENT();
+	}
+}
+=head3 LASTERROR
+Definition:
+	string = ModelSEED::Interface::interface::LASTERROR();
+Description:	
+=cut
+sub LASTERROR {
+	my ($input) = @_;
+	if (defined($input)) {
+		ModelSEED::Interface::interface::ENVIRONMENT()->{LASTERROR} = $input;
+	}
+	return ModelSEED::Interface::interface::ENVIRONMENT()->{LASTERROR};
+}
 =head3 SEED
 Definition:
 	string = ModelSEED::Interface::interface::SEED();
@@ -164,18 +193,6 @@ sub REGISTEREDSEED {
 		ModelSEED::Interface::interface::ENVIRONMENT()->{REGISTEREDSEED} = $input;
 	}
 	return ModelSEED::Interface::interface::ENVIRONMENT()->{REGISTEREDSEED};
-}
-=head3 WORKSPACEFOLDER
-Definition:
-	string = ModelSEED::Interface::interface::WORKSPACEFOLDER();
-Description:	
-=cut
-sub WORKSPACEFOLDER {
-	my ($input) = @_;
-	if (defined($input)) {
-		ModelSEED::Interface::interface::ENVIRONMENT()->{WORKSPACEFOLDER} = $input;
-	}
-	return ModelSEED::Interface::interface::ENVIRONMENT()->{WORKSPACEFOLDER};
 }
 =head3 WORKSPACE
 Definition:
@@ -206,9 +223,8 @@ Description:
 sub CREATEWORKSPACE {
 	my ($args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
-		id => ModelSEED::Interface::interface::WORKSPACEFOLDER(),
 		owner => ModelSEED::Interface::interface::USERNAME(),
-		root => ModelSEED::Interface::interface::WORKSPACEDIRECTORY(),
+		rootDirectory => ModelSEED::Interface::interface::WORKSPACEDIRECTORY(),
 		binDirectory => ModelSEED::Interface::interface::BINDIRECTORY(),
 		clear => 0,
 		copy => undef

@@ -14,28 +14,38 @@ Description:
 sub new { 
 	my ($class,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[
-		"id",
 		"owner",
-		"root",
+		"rootDirectory",
 		"binDirectory"
 	],{
+		id => undef,
 		clear => 0,
 		copy => undef
 	});
 	my $self = {
 		_id => $args->{id},
 		_owner => $args->{owner},
-		_root => $args->{root},
+		_rootDirectory => $args->{rootDirectory},
 		_binDirectory => $args->{binDirectory}
 	};
 	bless $self;
+	if (!defined($self->{_id})) {
+		if (!-d  $self->rootDirectory().$self->owner()."/") {
+			File::Path::mkpath($self->rootDirectory().$self->owner()."/");
+		}
+		$self->{_id} = "default";
+		if (-e $self->userWorkspaceIDFilename()) {
+			my $data = ModelSEED::utilities::LOADFILE($self->userWorkspaceIDFilename());
+			$self->{_id} = $data->[0];
+		}
+	}
 	if($args->{clear} eq 1) {
         $self->clear();
     }
     if(defined($args->{copy})) {
     	$self->copy($args->{copy});
     }
-	File::Path::mkpath($self->directory) unless(-f $self->directory);
+	File::Path::mkpath($self->directory()) unless(-f $self->directory());
 	$self->printWorkspaceEnvFiles();
     return $self;
 }
@@ -61,7 +71,7 @@ Description:
 sub directory { 
 	my ($self) = @_;
 	if (!defined($self->{_directory})) {
-		$self->{_directory} = $self->root().$self->owner()."/".$self->id()."/";
+		$self->{_directory} = $self->rootDirectory().$self->owner()."/".$self->id()."/";
 	}
 	return $self->{_directory};
 }
@@ -77,13 +87,23 @@ sub owner {
 }
 =head3 root
 Definition:
-	workspace = ModelSEED::Interface::workspace->root();
+	workspace = ModelSEED::Interface::workspace->rootDirectory();
 Description:
 	Returns a root string
 =cut
-sub root { 
+sub rootDirectory { 
 	my ($self) = @_;
-	return $self->{_root};
+	return $self->{_rootDirectory};
+}
+=head3 root
+Definition:
+	workspace = ModelSEED::Interface::workspace->rootDirectory();
+Description:
+	Returns a root string
+=cut
+sub userWorkspaceIDFilename { 
+	my ($self) = @_;
+	return $self->rootDirectory().$self->owner()."/current.txt";
 }
 =head3 binDirectory
 Definition:
@@ -118,10 +138,10 @@ Description:
 sub copy {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["owner","id"],{});
-	if (!-d $self->root().$self->owner()."/".$self->id()."/") {
-		ModelSEED::utilities::ERROR("Cannot find workspace directory to be copied: ".$self->root().$self->owner()."/".$self->id()."/");
+	if (!-d $self->rootDirectory().$self->owner()."/".$self->id()."/") {
+		ModelSEED::utilities::ERROR("Cannot find workspace directory to be copied: ".$self->rootDirectory().$self->owner()."/".$self->id()."/");
 	}
-	File::Copy::Recursive::dircopy($self->root().$self->owner()."/".$self->id()."/", $self->directory);
+	File::Copy::Recursive::dircopy($self->rootDirectory().$self->owner()."/".$self->id()."/", $self->directory);
 }
 
 =head3 printWorkspaceEnvFiles
@@ -132,9 +152,8 @@ Description:
 =cut
 sub printWorkspaceEnvFiles {
     my ($self) = @_;
-    ModelSEED::Interface::interface::WORKSPACE($self->id());
-	ModelSEED::Interface::interface::SAVEENVIRONMENT();
-    ModelSEED::utilities::PRINTFILE($self->binDirectory()."ms-goworkspace",["cd ".$self->directory()]);
+	ModelSEED::utilities::PRINTFILE($self->binDirectory()."ms-goworkspace",["cd ".$self->directory()]);
+    ModelSEED::utilities::PRINTFILE($self->userWorkspaceIDFilename(),[$self->id()]);
 	chmod 0775, $self->binDirectory()."ms-goworkspace";
 }
 
@@ -194,7 +213,7 @@ sub listWorkspaces {
 	});
     my $owners = [$args->{owner}];
     if ($args->{owner} eq "ALL") {
-        $owners = [glob($self->root()."*")];
+        $owners = [glob($self->rootDirectory()."*")];
         for (my $i=0; $i < @{$owners}; $i++) {
             if ($owners->[$i] =~ m/\/([^\/]+)$/) {
                 $owners->[$i] = $1;
@@ -203,7 +222,7 @@ sub listWorkspaces {
     }
     my $list;
     for (my $i=0; $i < @{$owners};$i++) {
-        my $tempList = [glob($self->root().$owners->[$i]."/*")];
+        my $tempList = [glob($self->rootDirectory().$owners->[$i]."/*")];
         for (my $j=0; $j < @{$tempList}; $j++) {
             if ($tempList->[$j] !~ m/current\.txt$/ && $tempList->[$j] =~ m/\/([^\/]+)$/) {
                 push(@{$list},$owners->[$i].".".$1);

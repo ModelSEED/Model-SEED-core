@@ -42,8 +42,9 @@ use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
 use ModelSEED::Interface::workspace;
-use ModelSEED::FIGMODEL::queue;
-use ModelSEED::MooseDB::user;
+use ModelSEED::Interface::interface;
+#use ModelSEED::FIGMODEL::queue;
+#use ModelSEED::MooseDB::user;
 
 =head1 Model database interaction module
 
@@ -3094,7 +3095,7 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	}else{
+	} else {
 	    $mdl = $self->get_model($id);
 		$mdl->GenerateModelProvenance({
 		    biochemSource => $args->{biochemSource}
@@ -3122,16 +3123,17 @@ sub import_model {
 		#Finding if existing compound shares search name
 		my $cpd;
 		my $newStrings=();
-		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
+		my $how_found;
+		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ) {
 		    next if $stringcode !~ /^InChI=/; #InChIs only
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
-			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			$how_found=$cpdals->type();
-			push(@{$result->{outputFile}},"Found using InChI string: ".$cpd->id()." for id ".$row->{ID}->[0]);
+				$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				$how_found=$cpdals->type();
+				push(@{$result->{outputFile}},"Found using InChI string: ".$cpd->id()." for id ".$row->{ID}->[0]);
 		    }
 		    if(!defined($cpdals)){
-			$newStrings->{$stringcode}=1;
+				$newStrings->{$stringcode}=1;
 		    }
 		}
 
@@ -3145,29 +3147,29 @@ sub import_model {
 				    
 				    #if not, look for it in previous imports
 				    if (!defined($cpdals)) {
-					my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
-					for (my $m = 0; $m < @{$cpdalss}; $m++) {
-					    $cpdals = $cpdalss->[$m];
-					    last;
-					}
+						my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
+						for (my $m = 0; $m < @{$cpdalss}; $m++) {
+						    $cpdals = $cpdalss->[$m];
+						    last;
+						}
 				    }
 				    if (defined($cpdals)) {
-					if (!defined($cpd)) {
-					    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-					    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-					    $how_found=$cpdals->type();
-					}
+						if (!defined($cpd)) {
+						    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						    $how_found=$cpdals->type();
+						}
 				    } else {
-					#prevent use of names that being with cpd, for obvious confusion
-					#with ModelSEED identifiers
-					next if substr($searchNames->[$k],0,3) eq "cpd";
-					
-					#stopgap to prevent names being inserted that are too close
-					#this occurs because the database doesn't recognize upper/lower case when
-					#using indexes
-					if(!exists($newNames->{search}->{$searchNames->[$k]})){
-					    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
-					}
+						#prevent use of names that being with cpd, for obvious confusion
+						#with ModelSEED identifiers
+						next if substr($searchNames->[$k],0,3) eq "cpd";
+						
+						#stopgap to prevent names being inserted that are too close
+						#this occurs because the database doesn't recognize upper/lower case when
+						#using indexes
+						if(!exists($newNames->{search}->{$searchNames->[$k]})){
+						    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+						}
 				    }
 				}
 				if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
@@ -3181,20 +3183,21 @@ sub import_model {
 				if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
 				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
 				    if (defined($cpdals)) {
-					$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-					print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-					$how_found=$cpdals->type();
+						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						$how_found=$cpdals->type();
 				    }
 				}
 				if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
 				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
 				    if (defined($cpdals)) {
-					$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-					print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-					$how_found=$cpdals->type();
+						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						$how_found=$cpdals->type();
 				    }
 				}
-
+		    }
+		}
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
 		    print FOUNDCPD $cpd->id(),"\t",$row->{"ID"}->[0],"\t",$how_found,"\n";

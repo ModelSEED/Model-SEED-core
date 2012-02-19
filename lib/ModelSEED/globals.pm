@@ -5,7 +5,6 @@ use Data::Dumper;
 use File::Temp qw(tempfile);
 use File::Path;
 use File::Copy::Recursive;
-use ModelSEED::FIGMODEL;
 package ModelSEED::globals;
 
 my $globalFIGMODEL;
