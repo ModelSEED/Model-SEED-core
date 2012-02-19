@@ -1612,14 +1612,16 @@ sub parseCompleteGapfillingStudy {
 	my $result;
 	$result->{gapfillReportFile} = $data;
 	for (my $i=1; $i < @{$data}; $i++) {
-		$result->{$data->[$i]->[0]}->{gapfilled} = undef;
-		$result->{$data->[$i]->[0]}->{repaired} = undef;
-		if (defined($data->[$i]->[1]) && length($data->[$i]->[1]) > 0) {
-			push(@{$result->{$data->[$i]->[0]}->{gapfilled}},split(";",$data->[$i]->[1]));
+		if ($data->[$i]->[1] ne "FAILED") {
+			$result->{$data->[$i]->[0]}->{gapfilled} = undef;
+			$result->{$data->[$i]->[0]}->{repaired} = undef;
+			if (defined($data->[$i]->[1]) && length($data->[$i]->[1]) > 0) {
+				push(@{$result->{$data->[$i]->[0]}->{gapfilled}},split(";",$data->[$i]->[1]));
+			}
+			if (defined($data->[$i]->[2]) && length($data->[$i]->[2]) > 0) {
+				push(@{$result->{$data->[$i]->[0]}->{repaired}},split(";",$data->[$i]->[2]));
+			}
 		}
-		if (defined($data->[$i]->[2]) && length($data->[$i]->[2]) > 0) {
-			push(@{$result->{$data->[$i]->[0]}->{repaired}},split(";",$data->[$i]->[2]));
-		}	
 	}
 	return $result;
 }

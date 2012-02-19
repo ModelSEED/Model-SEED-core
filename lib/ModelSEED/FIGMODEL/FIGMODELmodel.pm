@@ -2100,7 +2100,7 @@ sub completeGapfilling {
 					minimumFluxForPositiveUseConstraint=> "0.01",
 					gapfillCoefficientsFile => $args->{gapfillCoefficientsFile},
 					inactiveReactionBonus => $args->{inactiveReactionBonus}
-				}	
+				}
 			},
 			problemDirectory => $args->{problemDirectory},
 			parameterFile => "CompleteGapfillingParameters.txt",
@@ -2187,24 +2187,26 @@ sub integrateGapfillingSolution {
 	system("cp ".$args->{directory}."/CompleteGapfillingOutput.txt ".$self->directory()."/GapfillingOutput.txt");
 	my $solutionHash;
 	foreach my $rxn (keys(%{$args->{gapfillResults}})) {
-		if (defined($args->{gapfillResults}->{$rxn}->{gapfilled}->[0])) {
-			for (my $i=0; $i < @{$args->{gapfillResults}->{$rxn}->{gapfilled}}; $i++) {
-				if ($args->{gapfillResults}->{$rxn}->{gapfilled}->[$i] =~ m/(.)(rxn\d+)/) {
-					my $gapRxn = $2;
-					my $gapSign = $1;
-					my $sign = "=>";
-					if ($gapSign eq "-") {
-						$sign = "<=";
-					}
-					if (defined($solutionHash->{$gapRxn}->{sign}) && $solutionHash->{$gapRxn}->{sign} ne $sign) {
-						$sign = "<=>";
-					}
-					$solutionHash->{$gapRxn}->{sign} = $sign;
-					push(@{$solutionHash->{$gapRxn}->{target}},$rxn);
-					if (defined($args->{gapfillResults}->{$rxn}->{repaired}->[0])) {
-						for (my $j=0; $j < @{$args->{gapfillResults}->{$rxn}->{repaired}}; $j++) {
-							if ($args->{gapfillResults}->{$rxn}->{repaired}->[$j] =~ m/(.)(rxn\d+)/) {
-								$solutionHash->{$gapRxn}->{repaired}->{$2} = 1;
+		if ($rxn =~ m/rxn\d+/ || $rxn =~ m/cpd\d+/) {
+			if (ref($args->{gapfillResults}->{$rxn}) eq "HASH" && defined($args->{gapfillResults}->{$rxn}->{gapfilled}->[0])) {
+				for (my $i=0; $i < @{$args->{gapfillResults}->{$rxn}->{gapfilled}}; $i++) {
+					if ($args->{gapfillResults}->{$rxn}->{gapfilled}->[$i] =~ m/(.)(rxn\d+)/) {
+						my $gapRxn = $2;
+						my $gapSign = $1;
+						my $sign = "=>";
+						if ($gapSign eq "-") {
+							$sign = "<=";
+						}
+						if (defined($solutionHash->{$gapRxn}->{sign}) && $solutionHash->{$gapRxn}->{sign} ne $sign) {
+							$sign = "<=>";
+						}
+						$solutionHash->{$gapRxn}->{sign} = $sign;
+						push(@{$solutionHash->{$gapRxn}->{target}},$rxn);
+						if (defined($args->{gapfillResults}->{$rxn}->{repaired}->[0])) {
+							for (my $j=0; $j < @{$args->{gapfillResults}->{$rxn}->{repaired}}; $j++) {
+								if ($args->{gapfillResults}->{$rxn}->{repaired}->[$j] =~ m/(.)(rxn\d+)/) {
+									$solutionHash->{$gapRxn}->{repaired}->{$2} = 1;
+								}
 							}
 						}
 					}
