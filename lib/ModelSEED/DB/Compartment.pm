@@ -1,10 +1,17 @@
 package ModelSEED::DB::Compartment;
-
-
 use strict;
 use Data::UUID;
-
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+use ModelSEED::ApiHelpers;
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes($self,
+        [$self->meta->columns], $hash);
+    return $hash;
+}
+    
 
 __PACKAGE__->meta->setup(
     table   => 'compartments',

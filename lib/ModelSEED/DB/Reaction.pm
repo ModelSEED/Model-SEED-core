@@ -1,10 +1,38 @@
 package ModelSEED::DB::Reaction;
-
-
 use strict;
 use Data::UUID;
+use ModelSEED::ApiHelpers;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+
+sub default {
+    return {
+	columns       => "*",
+	relationships => ["reagents", "reaction_aliases"]
+    }
+}
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes($self,
+        [$self->meta->columns], $hash);
+    ModelSEED::ApiHelpers::inlineRelationships($self,
+        { reagents => 1,
+          reaction_aliases => sub {
+            my ($obj, $args, $ctx) = @_;    
+            return { type => $obj->type, alias => $obj->alias };
+          },
+        }, $hash, $args, $ctx);
+    return $hash;
+}
+
+sub deserialize {
+    my ($self, $payload, $args, $ctx, $method) = @_;
+    # apply basic attributes from payload to self
+    # apply reference attributes if they are "different"
+    #   dereference, then apply
+}
 
 __PACKAGE__->meta->setup(
     table   => 'reactions',
