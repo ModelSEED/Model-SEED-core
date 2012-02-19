@@ -2273,19 +2273,28 @@ sub mdlimportmodel {
     	["name",1,undef,"The ID in the Model SEED that the imported model should have, or the ID of the model to be overwritten by the imported model."],
     	["genome",0,"NONE","SEED ID of the genome the imported model should be associated with."],
     	["owner",0,ModelSEED::Interface::interface::USERNAME(),"Name of the user account that will own the imported model."],
-    	["path",0,undef,"The path where the compound and reaction files containing the model data to be imported are located."],
+    	["path",0,$self->ws()->directory(),"The path where the compound and reaction files containing the model data to be imported are located."],
     	["overwrite",0,0,"Set this FLAG to '1' to overwrite an existing model with the same name."],
     	["biochemsource",0,undef,"The path to the directory where the biochemistry database that the model should be imported into is located."]
     ],[@Data],"import a model into the Model SEED environment");
+	if (!-e $args->{path}.$args->{name}."-reactions.tbl") {
+		ModelSEED::utilities::USEERROR("Could not find import file:".$args->{path}.$args->{name}."-reactions.tbl");
+	}
+	if (!-e $args->{path}.$args->{name}."-compounds.tbl") {
+		ModelSEED::utilities::USEERROR("Could not find import file:".$args->{path}.$args->{name}."-compounds.tbl");
+	}
+	$args->{reactionTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-reactions.tbl","\t","|",0,["ID"]);
+	$args->{compoundTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-compounds.tbl","\t","|",0,["ID"]);
 	my $public = 0;
 	if ($args->{"owner"} eq "master") {
 		$public = 1;
 	}
 	$self->figmodel()->import_model({
 		baseid => $args->{"name"},
+		compoundTable => $args->{compoundTable},
+		reactionTable => $args->{reactionTable},
 		genome => $args->{"genome"},
 		owner => $args->{"owner"},
-		path => $args->{"path"},
 		public => $public,
 		overwrite => $args->{"overwrite"},
 		biochemSource => $args->{"biochemsource"}

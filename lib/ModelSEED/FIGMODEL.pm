@@ -687,7 +687,16 @@ sub database {
 	my($self) = @_;
 	return $self->{"_figmodeldatabase"}->[0];
 }
-
+=head3 ws
+Definition:
+	workspace = FIGMODEL->ws();
+Description:
+	Returns a workspace object
+=cut
+sub ws {
+	my ($self) = @_;
+	return ModelSEED::Interface::interface::WORKSPACE();
+}
 =head3 web
 Definition:
 	FIGMODELweb = FIGMODEL->web();
@@ -3115,6 +3124,8 @@ sub import_model {
 	#Loading the compound table
 	my $translation;
 	my $tbl = $args->{compoundTable};
+	open(NEWCPD, "> ".$self->ws()->directory()."mdl-importmodel_New_Compounds_".$id);
+	open(FOUNDCPD, "> ".$self->ws()->directory()."mdl-importmodel_Found_Compounds_".$id);
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
 		if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {

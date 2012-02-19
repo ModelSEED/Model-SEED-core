@@ -103,8 +103,8 @@ Description:
 =cut
 sub USEERROR {	
 	my ($message) = @_;
-    $message = "\"\"$message\"\"";
-	die;
+	print $message."\n";
+	exit();
 }
 
 =head3 WARNING
