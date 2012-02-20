@@ -325,6 +325,7 @@ SCRIPT
 		"mdl-parsesbml",
 		"mdl-importmodel",
 		"mdl-changedrains",
+		"mdl-comparemodels",
 		"util-matrixdist"
 	];
 	my $obsoleteList = [
