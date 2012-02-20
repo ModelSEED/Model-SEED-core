@@ -74,7 +74,10 @@ sub LOADENVIRONMENT {
 		} elsif (defined($array->[1]) && $array->[0] ne "REGISTEREDSEED") {
 			$environment->{$array->[0]} = $array->[1];
 		}
-	}	
+	}
+	if (!defined(ModelSEED::Interface::interface::USERNAME())) {
+		ModelSEED::Interface::interface::SWITCHUSER("public","public")	
+	}
 }
 =head3 SAVEENVIRONMENT
 Definition:
