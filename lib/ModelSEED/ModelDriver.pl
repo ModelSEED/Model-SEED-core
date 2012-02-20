@@ -16,6 +16,7 @@ use Cwd;
 $|=1;
 #First checking to see if at least one argument has been provided
 my $driv;
+ModelSEED::Interface::interface::LOADENVIRONMENT();
 try {
 	$driv = ModelSEED::ModelDriver->new();
 } catch {
