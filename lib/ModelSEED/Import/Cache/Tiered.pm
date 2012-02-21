@@ -111,7 +111,7 @@ sub set {
         my $superkey = $self->superkey($type, $key);
         my $query = $self->importer->makeQuery($type, $rdbobj);
         $self->shared->db_put($superkey, encode_json($query));
-        $self->local->{$superkey} = $rdbobj;
+        #$self->local->{$superkey} = $rdbobj;
         $self->debug_stats->{set_after_lock}->{miss} += 1 if($self->debug);
     } catch {
         warn "Died when trying to save object ($type):$_\n";

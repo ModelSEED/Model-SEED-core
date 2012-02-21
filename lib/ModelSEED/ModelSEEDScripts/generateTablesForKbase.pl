@@ -97,6 +97,7 @@ sub buildTable {
 {
     my $a = {
         id => 'uuid',
+        msid => 'id',
         'mod-date' => 'modDate',
         name => 'name',
         abbr => 'id',
@@ -115,6 +116,7 @@ sub buildTable {
 {
     my $a = {
         id => 'uuid',
+        msid => 'id',
         'mod-date' => 'modDate',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
@@ -128,6 +130,7 @@ sub buildTable {
 {
     my $a = {
         id => 'uuid',
+        msid => 'id',
         name => 'name',
     };
     tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
@@ -153,6 +156,7 @@ sub buildTable {
 {
     my $a = {
         id => 'uuid',
+        msid => 'id',
         mass => 'mass',
         'mod-date' => 'modDate',
         abbr => 'abbreviation',
@@ -207,6 +211,7 @@ sub buildTable {
 {
     my $a = {
         id => 'uuid',
+        msid => 'id',
         'mod-date' => 'modDate',
         reversibility => 'reversibility',
         abbr => 'abbreviation',
@@ -414,7 +419,8 @@ sub buildTable {
 {
     my $a = { 
         'from-link' => 'complex_uuid',
-        'to-link' => 'role_uuid',
+        'to-link' => sub { return $_[0]->role->name },
+        msid => sub { return $_[0]->role->id }, 
         optional => 'optional',
         type => 'type',
     };

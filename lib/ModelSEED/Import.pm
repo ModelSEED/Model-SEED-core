@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Cwd qw( abs_path );
 use ModelSEED::Import::Cache::Tiered;
+use ModelSEED::Import::Checker;
 use ModelSEED::ObjectManager;
 use ModelSEED::FIGMODEL;
 use Digest::MD5 qw(md5_hex);
@@ -14,8 +15,9 @@ use Try::Tiny;
 use BerkeleyDB;
 use JSON::XS;
 use Moose;
+use Time::HiRes qw(time);
 
-with 'MooseX::Role::Loggable';
+with 'MooseX::Log::Log4perl';
 
 # Configurable
 has database     => ( is => 'rw', isa => 'Str', required => 1 );
@@ -23,6 +25,7 @@ has driver       => ( is => 'rw', isa => 'Str', required => 1 );
 has berkeleydb   => ( is => 'rw', isa => 'Str', required => 1 );
 has clearOnStart => ( is => 'rw', isa => 'Int', default => 0 );
 has cacheSize    => ( is => 'rw', isa => 'Str');
+has expectedMisses => ( is => 'rw', isa => 'Str');
 
 
 # Non-configurable parameters
@@ -41,6 +44,8 @@ has objectToQueryFns => ( is => 'rw', isa => 'HashRef',
 has _file_cache => ( is => 'rw', isa => 'HashRef', default => sub { return {} });
 has _cache => ( is => 'rw', isa => 'ModelSEED::Import::Cache::Tiered', 
     builder => '_makeCache', lazy => 1);
+has checker => ( is => 'rw', isa => 'ModelSEED::Import::Checker');
+
 
 
 $Data::Dumper::Maxdepth = 3;
@@ -49,6 +54,15 @@ our @EXPORT_OK = qw(parseReactionEquationBase);
 
 # FIXME - do features have multiple roles ? (annotation_feature needs all of them)
 # TODO - model_biomass, biomass
+# FIXME - transaction rollback when cached result
+
+my $time = time;
+
+sub elapsed {
+    my $elapsed = time - $time;
+    $time = time;
+    return $elapsed;
+} 
 
 sub BUILD {
     my ($self) = @_;
@@ -57,15 +71,19 @@ sub BUILD {
         unlink($self->database) if(-f $self->database && $self->driver eq 'SQLite');
         system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
     }
+    if(defined($self->expectedMisses) && -f abs_path($self->expectedMisses)) {
+        $self->checker(ModelSEED::Import::Checker->new({efFile => $self->expectedMisses}));
+    } else {
+        $self->checker(ModelSEED::Import::Checker->new());
+    }
     $self->fm->authenticate({username => "sdevoid", password => "marcopolo"});
-    
 }
 
 sub _makeCache {    
     my ($self) = @_;
     return ModelSEED::Import::Cache::Tiered->new({
         importer => $self, cacheSize => $self->cacheSize,
-        directory => $self->berkeleydb, om => $self->om, $self->log_fields
+        directory => $self->berkeleydb, om => $self->om,
     });
 }
 
@@ -90,6 +108,18 @@ sub cache {
     }
 }
 
+sub uuidCache {
+    my ($self, $type, $key, $uuid) = @_;
+    if(defined($uuid)) {
+        return $self->{uuid_cache}->{$type}->{$key} = $uuid;
+    } elsif(defined($key)) {
+        return $self->{uuid_cache}->{$type}->{$key};
+    } else {
+        die "Must pass in at least key for $type";
+    }
+}
+
+    
 # idCache is the key-value store where keys are "old" ids like
 # cpd00001 and rxn12345. Values are rose db objects. Note that this
 # uses cache() on the backside so it is as efficient as that function.
@@ -110,7 +140,7 @@ sub fileCache {
     my ($self, $type, $files, $cacheHash) = @_;
     my $fileHash = hashFiles($files);
     if(defined($cacheHash)) {
-        return $self->_file_cache->{$type}->$fileHash = $cacheHash;
+        return $self->_file_cache->{$type}->{$fileHash} = $cacheHash;
     } else {
         $cacheHash = $self->_file_cache->{$type}->{$fileHash};
         if(defined($cacheHash)) {
@@ -213,12 +243,14 @@ sub _makeTypesToHashFns {
         return md5_hex(($_[0]->id || '') . ( $_[0]->name || '' ) . ( $_[0]->exemplar || ''));
     };
     $f->{compound} = sub {
-        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' ));
+        return md5_hex($_[0]->id . ( $_[0]->name || '' ) . ( $_[0]->formula || '' ) . 
+        join(',', sort map { $f->{compound_alias}->($_) } $_[0]->compound_aliases));
     };
     $f->{compound_alias} = sub {
         return $_[0]->alias . $_[0]->type;
     };
     $f->{reaction} = sub {
+        confess "got here!" unless defined $_[0];
         return md5_hex($_[0]->id . ( $_[0]->name || '' ) . $_[0]->equation);
     };
     $f->{reactionset} = sub {
@@ -304,12 +336,12 @@ sub _makeTypesToHashFns {
             $f->{model}->($_[0]->model));
     };
     $f->{model_reaction} = sub {
-            return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->directionality .
+            return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->direction .
             $f->{model_compartment}->($_[0]->model_compartment) . $f->{model}->($_[0]->model));
     };
     $f->{model_transported_reagent} = sub {
             return md5_hex($f->{reaction}->($_[0]->reaction) . $f->{model}->($_[0]->model) .
-                $_[0]->transportIndex);
+                $_[0]->compartmentIndex);
     };
     return $f;
 };
@@ -383,6 +415,9 @@ sub _makeObjectToQueryFns {
         model_uuid => $_[0]->model_uuid,
         compartmentIndex => $_[0]->compartmentIndex,
     }};
+    $f->{model_compartment} = sub { return {
+        uuid => $_[0]->uuid,
+    }};
         
         
     return $f;
@@ -416,12 +451,12 @@ sub _makeConversionFns {
     };
     $f->{compound_alias} = sub {
         my ($self, $row, $ctx) = @_;
-        my $obj = $self->idCache("compound", $row->{COMPOUND}->[0]);
-        return undef unless($obj);
+        my $uuid = $self->uuidCache("compound", $row->{COMPOUND}->[0]);
+        return undef unless($uuid);
         return {
             type => $row->{type}->[0],
             alias => $row->{alias}->[0],
-            compound => $obj,
+            compound_uuid => $uuid,
         };
     };
     $f->{reaction} = sub {
@@ -441,12 +476,11 @@ sub _makeConversionFns {
         }
         my $parts = parseReactionEquation($row);
         unless(@$parts) {
-            warn "No equation for reaction: " . $row->{id}->[0] . "\n";
             return undef;
         }
         my $cmp = $self->determinePrimaryCompartment($parts);
-        my $cmpObj = $self->idCache("compartment", $cmp);
-        unless($cmpObj) {
+        my $cmp_uuid = $self->uuidCache("compartment", $cmp);
+        unless($cmp_uuid) {
             warn "Could not identify compartment for reaction: " .
             $row->{id}->[0] . " with compartment " . $cmp . "\n";
             return undef;
@@ -461,29 +495,29 @@ sub _makeConversionFns {
             deltaGErr => $row->{deltaGErr}->[0],
             reversibility => $codes->{reversibility}, 
             thermoReversibility => $codes->{thermoReversibility},
-            defaultCompartment => $cmpObj,
+            compartment_uuid => $cmp_uuid,
         };
     };
     $f->{reaction_alias} = sub {
         my ($self, $row, $ctx) = @_;
-        my $obj = $self->idCache("reaction", $row->{REACTION}->[0]);
-        return undef unless($obj);
+        my $uuid = $self->uuidCache("reaction", $row->{REACTION}->[0]);
+        return undef unless($uuid);
         return {
             type => $row->{type}->[0],
             alias => $row->{alias}->[0],
-            reaction => $obj,
+            reaction_uuid => $uuid,
         };
     };
     $f->{reagent} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
-        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
+        my $rxn = $self->uuidCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->uuidCache("compound", $row->{compound}->[0]);
         unless(defined($rxn) && defined($cpd)) {
             return undef;
         }
         return {
-            reaction => $rxn,
-            compound => $cpd,
+            reaction_uuid => $rxn,
+            compound_uuid => $cpd,
             coefficient => $row->{coefficient}->[0],
             cofactor => $row->{cofactor}->[0] || undef,
             compartmentIndex => $row->{compartmentIndex}->[0],
@@ -491,9 +525,9 @@ sub _makeConversionFns {
     };    
     $f->{default_transported_reagent} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
-        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
-        my $cmp = $self->idCache("compartment", $row->{compartment}->[0]);
+        my $rxn = $self->uuidCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->uuidCache("compound", $row->{compound}->[0]);
+        my $cmp = $self->uuidCache("compartment", $row->{compartment}->[0]);
         unless(defined($rxn) && defined($cmp) && defined($cpd)) {
             my $str = (!defined($rxn)) ? "no reaction\n" : 
                       (!defined($cpd)) ? "no cpd\n" : "no compartment\n";
@@ -501,9 +535,9 @@ sub _makeConversionFns {
             return undef;
         }
         return {
-            reaction => $rxn,
-            compound => $cpd,
-            defaultCompartment => $cmp,
+            reaction_uuid => $rxn,
+            compound_uuid => $cpd,
+            compartment_uuid => $cmp,
             compartmentIndex => $row->{compartmentIndex}->[0],
             transportCoefficient => $row->{transportCoefficient}->[0],
             isImport => $row->{isImport}->[0],
@@ -528,12 +562,12 @@ sub _makeConversionFns {
     };
     $f->{complexRole} = sub {
         my ($self, $row, $ctx) = @_;
-        my $complex = $self->idCache("complex", $row->{COMPLEX}->[0]);
-        my $role    = $self->idCache("role", $row->{ROLE}->[0]);
+        my $complex = $self->uuidCache("complex", $row->{COMPLEX}->[0]);
+        my $role    = $self->uuidCache("role", $row->{ROLE}->[0]);
         if(defined($role) && defined($complex)) {
             return { 
-                complex => $complex,
-                role => $role,
+                complex_uuid => $complex,
+                role_uuid => $role,
                 type => $row->{type}->[0] || '',
             };
         } else {
@@ -543,12 +577,13 @@ sub _makeConversionFns {
 
     $f->{reactionRule} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $self->idCache("reaction", $row->{REACTION}->[0]);
+        my $rxn_uuid = $self->uuidCache("reaction", $row->{REACTION}->[0]);
+        my $rxn = $self->om->get_object("reaction", { uuid => $rxn_uuid});
         my $cmp = $rxn->defaultCompartment;
         if(defined($rxn) && defined($cmp)) {
             return {
-                reaction => $rxn,
-                compartment => $cmp,
+                reaction_uuid => $rxn_uuid,
+                compartment_uuid => $cmp->uuid,
                 direction => "=",
            };
         } else {
@@ -557,7 +592,7 @@ sub _makeConversionFns {
     };
     $f->{feature} = sub {
         my ($self, $row, $ctx) = @_;
-        my $genome = $self->idCache("genome", $row->{GENOME}->[0]);
+        my $genome = $self->uuidCache("genome", $row->{GENOME}->[0]);
         return undef unless(defined($genome));
         my $min = $row->{"MIN LOCATION"}->[0];
         my $max = $row->{"MAX LOCATION"}->[0];
@@ -567,7 +602,7 @@ sub _makeConversionFns {
             start => $start,
             stop  => $stop,
             id => $row->{ID}->[0],
-            genome => $genome,
+            genome_uuid => $genome,
         };
     }; 
     $f->{compartment} = sub {
@@ -580,19 +615,32 @@ sub _makeConversionFns {
     };
     $f->{model_reaction} = sub {
         my ($self, $row, $ctx) = @_;
-        my $reaction = $self->idCache("reaction", $row->{REACTION}->[0]);
+        my $reaction = $self->uuidCache("reaction", $row->{REACTION}->[0]);
+        my $codes = { directionality => ''};
+        foreach my $key (keys %$codes) {
+            my ($forward, $reverse) = (0, 0);
+            $forward = 1 if(defined($row->{$key}->[0]) && $row->{$key}->[0] =~ />/);
+            $reverse = 1 if(defined($row->{$key}->[0]) && $row->{$key}->[0] =~ /</);
+            if(!$forward && $reverse) {
+                $codes->{$key} = "<";
+            } elsif(!$reverse && $forward) {
+                $codes->{$key} = ">";
+            } else {
+                $codes->{$key} = "=";
+            }
+        }
         # compartment is actually a model_compartment object
         return {
-            reaction => $reaction,
-            directionality => $row->{directionality}->[0] || '=',
+            reaction_uuid => $reaction,
+            direction => $codes->{directionality} || '=',
             model_compartment => $row->{compartment}->[0],
         };
     };
     $f->{model_transported_reagent} = sub {
         my ($self, $row, $ctx) = @_;
-        my $rxn = $self->idCache("reaction", $row->{reaction}->[0]);
-        my $cpd = $self->idCache("compound", $row->{compound}->[0]);
-        my $cmp = $self->idCache("model_compartment", $row->{model_compartment}->[0]);
+        my $rxn = $self->uuidCache("reaction", $row->{reaction}->[0]);
+        my $cpd = $self->uuidCache("compound", $row->{compound}->[0]);
+        my $cmp = $self->uuidCache("model_compartment", $row->{model_compartment}->[0]);
         unless(defined($rxn) && defined($cmp) && defined($cpd)) {
             my $str = (!defined($rxn)) ? "no reaction\n" : 
                       (!defined($cpd)) ? "no cpd\n" : "no compartment\n";
@@ -600,9 +648,9 @@ sub _makeConversionFns {
             return undef;
         }
         return {
-            reaction => $rxn,
-            compound => $cpd,
-            model_compartment => $cmp,
+            reaction_uuid => $rxn,
+            compound_uuid => $cpd,
+            model_compartment_uuid => $cmp,
             compartmentIndex => $row->{compartmentIndex}->[0],
             transportCoefficient => $row->{transportCoefficient}->[0],
             isImport => $row->{isImport}->[0],
@@ -615,6 +663,7 @@ sub _makeConversionFns {
 
 sub importBiochemistryFromDir {
     my ($self, $dir, $username, $name) = @_;
+    my $missed = {};
     $self->om->db->begin_work;
     $dir = $self->standardizeDirectory($dir);
     unless(-d $dir) {
@@ -624,7 +673,6 @@ sub importBiochemistryFromDir {
     my $files = {
         reaction => 'reaction.txt',
         compound => 'compound.txt',
-        #reagent => 'reagent.txt',
         compound_alias => 'cpdals.txt',
         reaction_alias => 'rxnals.txt',
     };        
@@ -635,6 +683,8 @@ sub importBiochemistryFromDir {
             return undef;
         }
     }
+    my $tables = { %$files };
+    elapsed();
     # Skip all processing if we've seen the data
     my $existingBiochem = $self->fileCache("biochemistry", [values %$files]);
     if($existingBiochem) {
@@ -642,126 +692,93 @@ sub importBiochemistryFromDir {
             { username => $username, id => $name});
         $existingBiochem->save();
         $self->om->db->commit;
+        $self->checker->check("Imported biochemistry $username/$name [filehash] ", elapsed(), $missed);
         return $existingBiochem;
     }
     my $config = { filename => undef, delimiter => "\t"};
-    foreach my $file (values %$files) {
-        # now open files as FIGMODELTables
-        $config->{filename} = $file;
-        $file = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
+    foreach my $key (keys %$tables) {
+        # now open tables as FIGMODELTables
+        $config->{filename} = $tables->{$key};
+        $tables->{$key} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
     }
     # Now create biochemistry object
     my $RDB_biochemistry = $self->om->create_object('biochemistry');
     # Create compartments - for reactions, default_transported_reagents
     my $compartments = $self->getDefaultCompartments();
     $RDB_biochemistry->add_compartments(@$compartments);
-    warn "importing compounds\n";
     # Compounds
-    my $compound_id_map = {};
-    for(my $i=0; $i<$files->{compound}->size(); $i++) {
-        my $row = $files->{compound}->get_row($i);
+    for(my $i=0; $i<$tables->{compound}->size(); $i++) {
+        my $row = $tables->{compound}->get_row($i);
         my $hash = $self->convert("compound", $row);
         my $RDB_compound = $self->getOrCreateObject("compound", $hash); 
         $RDB_biochemistry->add_compounds($RDB_compound); 
+        if(!defined($hash) || !defined($RDB_compound)) {
+            push(@{$missed->{compound}}, $row->{id}->[0]);
+        }
     }
-    warn "imported " . scalar(keys %{$self->idCache()->{"compound"}}) . " compounds\n";
-    warn "importing compound aliases\n";
     # CompoundAliases
     my $aliasRepeats = {};
-    for(my $i=0; $i<$files->{compound_alias}->size(); $i++) {
-        my $row = $files->{compound_alias}->get_row($i);
+    for(my $i=0; $i<$tables->{compound_alias}->size(); $i++) {
+        my $row = $tables->{compound_alias}->get_row($i);
         my $hash = $self->convert("compound_alias", $row);
-        next unless defined($hash);
         my $error;
-        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "compound");
-        next if $error;
-        my $RDB_compound_alias =
-            $self->getOrCreateObject("compound_alias", $hash);
-        my $id = $RDB_compound_alias->compound->id;
-        my $RDB_compound = $self->idCache("compound", $id);
-        unless(defined($RDB_compound)) {
-            warn "Could not find compound for alias $id.\n";
+        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "compound") if(defined($hash));
+        if(!defined($hash) || $error) {
+            push(@{$missed->{compound_alias}}, $row->{COMPOUND}->[0].":".$row->{type}->[0]);
             next;
         }
-        $RDB_compound->add_compound_aliases($RDB_compound_alias);
-        $RDB_compound_alias->compound;
-        $RDB_compound->save();
+        my $RDB_compound_alias =
+            $self->getOrCreateObject("compound_alias", $hash);
     }
     # Reactions
-    my $missed_rxn_count = 0;
-    my ($missed_rxn_cpd_count, $missed_rxn_cpd_by_rxn) = (0, {});
-    my ($missed_rt_count, $missed_rt_by_rxn) = (0, {});
-    for(my $i=0; $i<$files->{reaction}->size(); $i++) {
-        warn "imported $i reactions\n" if($i % 100 == 0 && $i != 0);
-        my $row = $files->{reaction}->get_row($i);
+    for(my $i=0; $i<$tables->{reaction}->size(); $i++) {
+        my $row = $tables->{reaction}->get_row($i);
         my $hash = $self->convert("reaction", $row);
         unless(defined($hash)) {
-            $missed_rxn_count += 1;
+            push(@{$missed->{reaction}}, $row->{id}->[0]);
             next;
         }
         my $RDB_reaction = $self->getOrCreateObject("reaction", $hash);
         $RDB_biochemistry->add_reactions($RDB_reaction);
         # Reagents and DefaultTransportedReagents
-        my $data = $self->generateReactionDataset($row);
+        my $data = $self->generateReactionDataset($row, $missed);
         foreach my $reagent (@{$data->{reagents}}) {
-            if(!defined($reagent)) {
-                $missed_rxn_cpd_count += 1;
-                $missed_rxn_cpd_by_rxn->{$RDB_reaction->id} = 1 +
-                    ($missed_rxn_cpd_by_rxn->{$RDB_reaction->id} || 0);
-                next;
-            }
+            next if(!defined($reagent));
             my $RDB_reagent = $self->getOrCreateObject("reagent", $reagent);
         }
         foreach my $rt (@{$data->{default_transported_reagents}}) {
-            if(!defined($rt)) {
-                $missed_rt_count += 1;
-                $missed_rt_by_rxn->{$RDB_reaction->id} = 1 +
-                    ($missed_rt_by_rxn->{$RDB_reaction->id} || 0);
-                next;
-            }
+            next if(!defined($rt));
             my $RDB_rt = $self->getOrCreateObject("default_transported_reagent", $rt);
         }
             
     }
-    if($missed_rxn_count > 0) {
-        warn "Failed to add $missed_rxn_count reactions to database\n";
-    }
-    if($missed_rxn_cpd_count > 0) {
-        # Error cases for reaction compound
-        warn "Failed to add $missed_rxn_cpd_count reagents to database across " .
-            scalar(keys %$missed_rxn_cpd_by_rxn) . " reactions.\n";
-    }
-    if($missed_rt_count > 0) {
-        # Error cases for reagent transport 
-        warn "Failed to add $missed_rt_count default transported reagents to database across " .
-            scalar(keys %$missed_rt_by_rxn) . " reactions.\n";
-    }
-    warn "importing reaction aliases\n";
     # ReactionAlias
     $aliasRepeats = {};
-    for(my $i=0; $i<$files->{reaction_alias}->size(); $i++) {
-        my $row = $files->{reaction_alias}->get_row($i);
+    for(my $i=0; $i<$tables->{reaction_alias}->size(); $i++) {
+        my $row = $tables->{reaction_alias}->get_row($i);
         my $hash = $self->convert('reaction_alias', $row);
-        next unless(defined($hash));
-        next if($hash->{type} eq "name" || $hash->{type} eq "searchname");
+        next if(!defined($hash) || $hash->{type} eq "name" || $hash->{type} eq "searchname");
         my $error;
-        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "reaction");
-        next if $error;
+        ($error, $aliasRepeats) = checkAliases($aliasRepeats, $hash, "reaction") if(defined($hash));
+        if(!defined($hash) || $error) {
+            push(@{$missed->{reaction_aliases}}, $row->{REACTION}->[0].":".$row->{type}->[0]); 
+            next;
+        }
         my $RDB_reaction_alias =
             $self->getOrCreateObject("reaction_alias", $hash);
     }
-    warn "importing media\n";
     # Media
     my $defaultMediaObjs = $self->getDefaultMedia(); 
+    warn "Got ".scalar(@$defaultMediaObjs)." objects!\n";
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
     }
-    warn Dumper($self->_cache->debug_stats);
-    warn "finalizing\n";
     # Now create if it doesn't already exist
     my $biochem_hash = $self->hash("biochemistry", $RDB_biochemistry);
     my $bio = $self->cache("biochemistry", $biochem_hash, $RDB_biochemistry);
+    $self->checker->check("Imported biochemistry $username/$name [complete] ", elapsed(), $missed);
     # Add alias that we wanted
+    $self->fileCache("biochemistry", [values %$files], $biochem_hash);
     $bio->add_biochemistry_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
     $bio->save();
@@ -773,11 +790,12 @@ sub importBiochemistryFromDir {
 
 sub importMappingFromDir {
     my ($self, $dir, $RDB_biochemObject, $username, $name) = @_;
+    my $missed = {};
     # first validate that the dir exists and has the right files
     $self->om->db->begin_work;
     my $ctx = $self->cache;
     unless(-d $dir) {
-        warn "Unable to find $dir\n";
+        $self->logger->log("Unable to find $dir\n");
         $self->om->db->commit;
         return undef;
     }
@@ -786,16 +804,9 @@ sub importMappingFromDir {
                  role => 'role.txt',
                  complexRole => 'cpxrole.txt',
                  reactionRule => 'rxncpx.txt'};
-    my $config = {filename => undef, delimiter => "\t"};
-    foreach my $file (values %$files) {
-        $file = "$dir/$file";
-        if($file =~ "role.txt" && !-f $file) {
-            $config->{filename} = $file;
-            my $objs = $self->fm->database->get_objects("role");
-            my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
-            $tbl->save();
-        }
-    }
+    map { $files->{$_} = "$dir/".$files->{$_} } keys %$files;
+    my $tables = { %$files };
+    elapsed();
     # Skip all processing if we've seen the data
     my $existingMap = $self->fileCache("mapping", [values %$files]);
     if($existingMap) {
@@ -803,13 +814,16 @@ sub importMappingFromDir {
             { username => $username, id => $name});
         $existingMap->save();
         $self->om->db->commit;
+        $self->checker->check("Imported Mapping $username/$name [filehash] ", elapsed(), $missed);
         return $existingMap;
     }
-    foreach my $file (values %$files) {
-        unless(-f "$file") {
-            warn "Unable to find $file";
-            $self->om->db->commit;
-            return undef;
+    my $config = {filename => undef, delimiter => "\t"};
+    foreach my $file (values %$tables) {
+        if($file =~ "role.txt" && !-f $file) {
+            $config->{filename} = $file;
+            my $objs = $self->fm->database->get_objects("role");
+            my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
+            $tbl->save();
         }
         # now open files as FIGMODELTables
         $config->{filename} = $file;
@@ -819,15 +833,15 @@ sub importMappingFromDir {
     my $RDB_mappingObject = $self->om()->create_object('mapping');
     $RDB_mappingObject->biochemistry($RDB_biochemObject);
     # Create complexes
-    for(my $i=0; $i<$files->{complex}->size(); $i++) {
-        my $row = $files->{complex}->get_row($i);
+    for(my $i=0; $i<$tables->{complex}->size(); $i++) {
+        my $row = $tables->{complex}->get_row($i);
         my $hash = $self->convert("complex", $row);
         my $RDB_complexObject = $self->getOrCreateObject('complex', $hash);
         $RDB_mappingObject->add_complexes($RDB_complexObject);
     } 
     # Create roles 
-    for(my $i=0; $i<$files->{role}->size(); $i++) {
-        my $row = $files->{role}->get_row($i);
+    for(my $i=0; $i<$tables->{role}->size(); $i++) {
+        my $row = $tables->{role}->get_row($i);
         my $hash = $self->convert("role", $row);
         my $RDB_roleObject = $self->getOrCreateObject('role', $hash);
         $RDB_mappingObject->add_roles($RDB_roleObject);
@@ -837,30 +851,26 @@ sub importMappingFromDir {
     } 
     # Create complexRole
     my $cpxRoleFailures = 0;
-    for(my $i=0; $i<$files->{complexRole}->size(); $i++) {
-        my $row = $files->{complexRole}->get_row($i);
+    for(my $i=0; $i<$tables->{complexRole}->size(); $i++) {
+        my $row = $tables->{complexRole}->get_row($i);
         my $hash = $self->convert("complexRole", $row);
         if(!defined($hash)) {
-            $cpxRoleFailures += 1;
+            push(@{$missed->{complexRole}},
+                $row->{COMPLEX}->[0].":".$row->{ROLE}->[0]);
             next;
         }
         my $RDB_complexRoleObject = $self->getOrCreateObject('complex_role', $hash);
         $RDB_complexRoleObject->save();
     }
-    warn "Got $cpxRoleFailures complex_role failures, ".
-        "this is probably normal.\n" if $cpxRoleFailures > 0;
     $RDB_mappingObject->add_mapping_aliases({username => $username, id => $name});
     # Create reactionRule 
-    for(my $i=0; $i<$files->{reactionRule}->size(); $i++) {
-        my $row = $files->{reactionRule}->get_row($i);
+    for(my $i=0; $i<$tables->{reactionRule}->size(); $i++) {
+        my $row = $tables->{reactionRule}->get_row($i);
         my $hash = $self->convert("reactionRule", $row);
-        my $cpx  = $self->idCache("complex", $row->{COMPLEX}->[0]);
-        unless(defined($cpx)) {
-            warn "Could not find complex: " . $row->{COMPLEX}->[0] . " for reactionRule\n";
-            next;
-        }
-        unless(defined($hash)) {
-            warn "Could not convert reactionRule\n";
+        my $cpx_uuid  = $self->uuidCache("complex", $row->{COMPLEX}->[0]);
+        my $cpx = $self->om->get_object("complex", { uuid => $cpx_uuid});
+        unless(defined($cpx) && defined($hash) ) {
+            push(@{$missed->{reactionRule}}, $row->{COMPLEX}->[0].":".$row->{REACTION}->[0]);
             next;
         }
         my $RDB_reactionRule = $self->getOrCreateObject("reaction_rule", $hash);
@@ -884,7 +894,9 @@ sub importMappingFromDir {
     }
     # Now create if it doesn't already exist
     my $mapping_hash = $self->hash("mapping", $RDB_mappingObject);
+    $self->fileCache("mapping", [values %$files], $mapping_hash);
     my $map = $self->cache("mapping", $mapping_hash, $RDB_mappingObject);
+    $self->checker->check("Imported mapping $username/$name [complete] ", elapsed(), $missed);
     # Add alias that we wanted
     $map->add_mapping_aliases({ username => $username, id => $name});
     # TODO - check if we've added this already, lock if not already locked
@@ -901,6 +913,10 @@ sub getGenomeObject {
             -ids => [ $genomeID ],
             -data => $columns,
         });
+        unless(defined($genomeData)) {
+            warn "Unable to get genome data from SAPserver!\n";
+            return undef;
+        }
         my $hash = {
             id => $genomeID, 
             name => $genomeData->{$genomeID}->[3],
@@ -920,9 +936,21 @@ sub getGenomeObject {
 
 sub importAnnotationFromDir {
     my ($self, $dir, $username, $id) = @_;
+    my $missed = {};
     $self->om->db->begin_work;
+    elapsed();
     # Directory will contain a features.txt file
     my $file = "$dir/features.txt";
+    # Try to get from file-hash
+    my $existingAnno = $self->fileCache("annotation", [$file]);
+    if($existingAnno) {
+        $existingAnno->add_mapping_aliases(
+            { username => $username, id => $id});
+        $existingAnno->save();
+        $self->om->db->commit;
+        $self->checker->check("Imported Annotation $username/$id [filehash] ", elapsed(), $missed);
+        return $existingAnno;
+    }
     my $config = { filename => $file, delimiter => "\t" };
     my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
     my ($RDB_annotation, $RDB_genome);
@@ -933,21 +961,18 @@ sub importAnnotationFromDir {
         my $row = $tbl->get_row($i);
         $RDB_genome = $self->getGenomeObject($row->{GENOME}->[0]) unless(defined($RDB_genome));
         unless(defined($RDB_genome)) {
-            print "Could not retrive genome for " . $row->{GENOME}->[0] . "\n";
+            push(@{$missed->{genome}}, $row->{GENOME}->[0]);
             $self->om->db->commit;
+            $self->checker->check("Failed to import annotation for $username/$id ", elapsed(), $missed);
             return undef;
         }
         unless(defined($RDB_annotation)) {
             $RDB_annotation = $self->om->create_object("annotation", { genome => $RDB_genome });
         }
         my $hash = $self->convert("feature", $row); 
-        unless(defined($hash)) {
-            warn "Could not create feature for genome " . $RDB_genome->id . " ($i)\n";
-            next;
-        }
-        my $RDB_feature = $self->getOrCreateObject("feature", $hash);
-        unless(defined($RDB_feature)) {
-            warn "Could not create feature: " . Dumper($hash) . "\n"; 
+        my $RDB_feature = $self->getOrCreateObject("feature", $hash) if(defined($hash));
+        unless(defined($hash) && defined($RDB_feature)) {
+            push(@{$missed->{feature}}, $row->{ID}->[0]); 
             next;
         }
         foreach my $roleName (@{$row->{ROLES}}) {
@@ -959,7 +984,7 @@ sub importAnnotationFromDir {
                 $self->idCache("role", $RDB_role->name, $role_cksum);
             }
             if(!defined($RDB_role)) {
-                warn "Could not find role " . $row->{ROLES}->[0] . "\n";
+                push(@{$missed->{role}}, $roleName);
                 next;
             }
             my $annotation_feature = $self->getOrCreateObject(
@@ -970,15 +995,20 @@ sub importAnnotationFromDir {
             });
         }
     }
+    # Now create if it doesn't already exist
     my $annotation_hash = $self->hash("annotation", $RDB_annotation);
+    $self->fileCache("annotation", [$file], $annotation_hash);
     my $final = $self->cache("annotation", $annotation_hash, $RDB_annotation);
+    $self->checker->check("Imported annotation $username/$id [complete] ", elapsed(), $missed);
     $self->om->db->commit;
     return $final;
 }
 
 sub importModelFromDir {
     my ($self, $dir, $username, $id) = @_;
+    my $missed = {};
     my $RDB_model = $self->om->create_object("model", {id => $id, name => $id});
+    warn $self->hash("model", $RDB_model);
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
     if(-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
@@ -993,13 +1023,22 @@ sub importModelFromDir {
         $RDB_mapping = $self->importMappingFromDir(
             "$dir/mapping", $RDB_biochemistry, $username, $mappingId);
         $RDB_model->mapping($RDB_mapping);
+    } else {
+        push(@{$missed->{mapping}}, "$id-file-missing");
     }
     if(-d "$dir/annotations") {
         my $genomeId = $id . "-annotation";
         $RDB_annotation = $self->importAnnotationFromDir(
             "$dir/annotations", $username, $genomeId);
-        $RDB_model->annotation($RDB_annotation);
+        if(defined($RDB_annotation)) {
+            $RDB_model->annotation($RDB_annotation);
+        } else {
+            push(@{$missed->{annotations}}, "$id-with-file");
+        }
+    } else {
+            push(@{$missed->{annotations}}, "$id-file-missing");
     }
+    warn "done annotations\n";
     # do rxnmdl
     $self->om->db->begin_work;
     my $file = "$dir/rxnmdl.txt";
@@ -1017,54 +1056,66 @@ sub importModelFromDir {
         $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($config);
     }
     my $size = $tbl->size();
+    my $biomassIds = [];
     for(my $i=0; $i<$size; $i++) {
         my $row = $tbl->get_row($i);
         # do model-compartments
         my $compartmentId = $row->{compartment}->[0];
-        warn "got compartment: $compartmentId\n";
         my $mdl_cmp = $self->idCache("model_compartment", $compartmentId); 
         if(!defined($mdl_cmp)) {
             $mdl_cmp = $self->makeModelCompartment($compartmentId, $RDB_biochemistry, $RDB_model);
         }
+        # don't add biomass functions to reaction_model. Instead handle them separately.
+        if(defined($row->{REACTION}->[0]) && $row->{REACTION}->[0] =~ m/bio\d+/) {
+            warn "Got biomass: " . $row->{REACTION}->[0] . " for $id\n";
+            push(@$biomassIds, $row->{REACTION}->[0]);
+            next;
+        }
         $row->{compartment}->[0] = $mdl_cmp;
         my $hash = $self->convert("model_reaction", $row);
+        $hash->{model} = $RDB_model;
         my $RDB_model_reaction = $self->getOrCreateObject("model_reaction", $hash);
         # do model transported reagent
         my $dtrs = $RDB_model_reaction->reaction->default_transported_reagents;
         foreach my $dtr (@$dtrs) {
             my $cmp_id = $dtr->defaultCompartment->id;
-            my $cmp = $self->idCache("model_compartment", $cmp_id);
-            unless(defined($cmp)) {
-                warn "Could not find model compartment for dtr $cmp_id!\n";
-                next;
+            my $mdl_cmp = $self->idCache("model_compartment", $cmp_id);
+            if(!defined($mdl_cmp)) {
+                $mdl_cmp = $self->makeModelCompartment($cmp_id, $RDB_biochemistry, $RDB_model);
             }
             my $hash = {
                 model => $RDB_model,
                 reaction => $dtr->reaction,
                 compound => $dtr->compound,
-                model_compartment => $cmp,
+                model_compartment => $mdl_cmp,
                 compartmentIndex => $dtr->compartmentIndex,
                 transportCoefficient => $dtr->transportCoefficient,
                 isImport => $dtr->isImport,
             };
-            my $mtr = $self->getOrCreateObject("model_transported_reagents", $hash);
+            my $mtr = $self->getOrCreateObject("model_transported_reagent", $hash);
         }
     }
+    warn "done rxnmdl\n";
     # TODO - biomass
+    my $model_hash = $self->hash("model", $RDB_model);
+    # TODO - file hash for models
+    $self->checker->check("Imported model $username/$id [complete] ", elapsed(), $missed);
     $self->om->db->commit;
     return $RDB_model;
 }
 
 sub makeModelCompartment {
     my ($self, $compartmentId, $RDB_biochemistry, $RDB_model) = @_;;
-    my $compartment = $self->idCache("compartment", $compartmentId);
+    my $compartment_uuid = $self->uuidCache("compartment", $compartmentId);
     my $hash = {
-        compartment => $compartment,
+        compartment_uuid => $compartment_uuid,
         compartmentIndex => 0,
         model => $RDB_model,
     };
     my $obj = $self->getOrCreateObject("model_compartment", $hash);
     $hash = $self->hash("model_compartment", $obj);
+    # need to use idCache on model_compartment to go from
+    # compartment id => model_compartment
     $self->idCache("model_compartment", $compartmentId, $hash);
     return $obj;
 }
@@ -1119,13 +1170,13 @@ sub getDefaultMedia {
             my $mediaCpds = $self->fm->database->get_objects('mediacpd', { MEDIA => $old->id() });
             my $newMediaCpds = [];
             foreach my $mediaCpd (@$mediaCpds) {
-                my $compoundObj= $self->idCache("compound", $mediaCpd->entity());
-                unless($compoundObj) {
+                my $compound_uuid= $self->uuidCache("compound", $mediaCpd->entity());
+                unless($compound_uuid) {
                     warn "Couldn't find compound " . $mediaCpd->entity() . "\n";
                     next;
                 }
                 my $hash = {
-                    compound => $compoundObj,
+                    compound_uuid => $compound_uuid,
                     concentration => $mediaCpd->concentration(),
                     minflux => $mediaCpd->minFlux(),
                     maxflux => $mediaCpd->maxFlux(),
@@ -1134,13 +1185,12 @@ sub getDefaultMedia {
             }
             $mediaObj->add_media_compounds(@$newMediaCpds);
             $mediaObj->save();
+            push(@$media, $mediaObj);
         }
     }
     return $media;
 }
         
-
-
 
 # getOrCreateObject - hashes and looks up object
 # in lookupData. If it exists, returns that object.
@@ -1169,7 +1219,8 @@ sub getOrCreateObject {
     # only now try to save in idCache
     try {
         my $secondKey = $final->id;
-        $self->idCache($type, $secondKey, $val);
+        #$self->idCache($type, $secondKey, $val);
+        $self->uuidCache($type, $secondKey, $obj->uuid);
     };
     return $final;
 }
@@ -1236,7 +1287,7 @@ sub parseReactionEquationBase {
 
 
 sub generateReactionDataset {
-    my ($self, $reactionRow) = @_;
+    my ($self, $reactionRow, $missed) = @_;
     my $seenCompartments = {};
     my $rxn = $reactionRow->{id}->[0];
     my $parts = parseReactionEquation($reactionRow);
@@ -1295,7 +1346,7 @@ sub generateReactionDataset {
             });
             delete $transports->{$cpd}->{$cmp};
             unless(defined($obj)) {
-                warn "Could not create default_transported_reagent for $rxn:\n";
+                push(@{$missed->{default_transported_reagent}}, "$rxn:$cpd");
                 next;
             }
             push(@{$final->{default_transported_reagents}}, $obj); 
@@ -1309,8 +1360,7 @@ sub generateReactionDataset {
             });
             delete $massBalance->{$cpd};
             unless(defined($obj)) {
-                warn "Could not convert reagent for $rxn:\n".
-                Dumper($part) . "\n";
+                push(@{$missed->{reagent}}, "$rxn:$cpd");
                 next;
             }
             push(@{$final->{reagents}}, $obj);
