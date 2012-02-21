@@ -16,7 +16,7 @@ __PACKAGE__->meta->setup(
         model_compartment_uuid => { type => 'character', length => 36, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'model_uuid', 'reaction_uuid' ],
+    primary_key_columns => [ 'model_uuid', 'reaction_uuid', 'model_compartment_uuid' ],
 
     foreign_keys => [
         model => {
@@ -32,6 +32,15 @@ __PACKAGE__->meta->setup(
         reaction => {
             class       => 'ModelSEED::DB::Reaction',
             key_columns => { reaction_uuid => 'uuid' },
+        },
+        
+        rawGPR => {
+            class       => 'ModelSEED::DB::ModelReactionRawGPR',
+            key_columns => {
+                model_uuid => 'model_uuid',
+                reaction_uuid => 'reaction_uuid',
+                model_compartment_uuid => 'model_compartment_uuid',
+            },
         },
     ],
 );

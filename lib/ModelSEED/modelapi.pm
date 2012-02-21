@@ -63,7 +63,7 @@ media:ID of the media formulation to be printed:mandatory
 =cut
 sub bcprintmedia {
     my($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["media"],{});
+	$args = ModelSEED::utilities::ARGS($args,["media"],{});
 	return $self->figmodel()->buildObject("media",{id => $args->{media}})
 }
 

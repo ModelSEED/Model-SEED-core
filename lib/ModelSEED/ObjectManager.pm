@@ -5,8 +5,6 @@ use Try::Tiny;
 use Data::Dumper;
 use namespace::autoclean;
 use Lingua::EN::Inflect qw(PL def_noun);
-
-use Data::Dumper;
 use Time::HiRes qw(time);
 
 my $types = [ qw( Annotation AnnotationFeature Biochemistry
@@ -136,7 +134,7 @@ sub _addDBObjectUnlessDefined {
     # if we're getting a hash that does not contain the "db" key
     if(ref($_[0]) eq 'HASH' && !defined($_[0]->{db})) {
         $_[0]->{db} = $self->db;
-    } elsif (ref($_[0]) ne 'HASH' && 0 == grep(/^db/, @_)) {
+    } elsif (ref($_[0]) ne 'HASH' && 0 == grep(/^db/, (@_ || ()) )) {
         # if we get an array that doesn't contain "db"
         push(@_, ( 'db', $self->db ));
     }

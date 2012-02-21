@@ -1,6 +1,7 @@
 package ModelSEED::DB::Biochemistry;
 use strict;
 use Data::UUID;
+use DateTime;
 use ModelSEED::ApiHelpers qw(serializeAttributes serializeRelationships);
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
@@ -167,5 +168,7 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
         }
 });
 
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 1;

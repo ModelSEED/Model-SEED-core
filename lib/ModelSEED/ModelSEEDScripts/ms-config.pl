@@ -292,6 +292,7 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
+		"ms-lasterror",
 		"ms-createuser",
 		"ms-deleteuser",
 		"ms-switchworkspace",
@@ -324,6 +325,7 @@ SCRIPT
 		"mdl-parsesbml",
 		"mdl-importmodel",
 		"mdl-changedrains",
+		"mdl-comparemodels",
 		"util-matrixdist"
 	];
 	my $obsoleteList = [
@@ -354,6 +356,7 @@ SCRIPT
 		if (-e $directoryRoot."/bin/".$function.$extension) {
 			unlink $directoryRoot."/bin/".$function.$extension;
 		}
+		$function =~ s/-//;
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT

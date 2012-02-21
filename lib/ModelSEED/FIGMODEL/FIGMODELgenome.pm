@@ -16,7 +16,7 @@ Description:
 =cut
 sub new {
 	my ($class,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["genome"],{});
+	$args = ModelSEED::utilities::ARGS($args,["genome"],{});
 	my $self = {_genome => $args->{genome}};
 	bless $self;
     $self->{_ppo} = $self->figmodel()->database()->get_object("genomestats",{GENOME => $self->genome()});
@@ -25,7 +25,7 @@ sub new {
 			$self->{_ppo} = $self->update_genome_stats();
 		}
 		if (!defined($self->{_ppo})) {
-			ModelSEED::globals::ERROR("Could not find genome in database:".$self->genome());
+			ModelSEED::utilities::ERROR("Could not find genome in database:".$self->genome());
 		}
 	}
 	return $self;
@@ -168,7 +168,7 @@ Description:
 =cut
 sub feature_table {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		genome => $self->genome(),
 		getSequences => 0,
 		getEssentiality => 1,
@@ -587,12 +587,6 @@ sub classifyrespiration {
 
 sub getGeneSimilarityHitTable {
     my ($self, $args) = @_;
-
-    use SeedUtils;
-    use SAPserver;
-    use ffxtree;
-    use Data::Dumper;
-
     my $sap = SAPserver->new();
 
     print "Getting genes for: " . $self->genome;

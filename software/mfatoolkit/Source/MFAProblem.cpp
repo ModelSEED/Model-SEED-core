@@ -606,8 +606,6 @@ int MFAProblem::BuildMFAProblem(Data* InData,OptimizationParameter*& InParameter
 		if (Temp != NULL) {
 			if (Temp->GetData("FOREIGN",STRING).compare("Reaction") == 0 || GetParameter("Perform gap filling").compare("0") == 0) {
 				Temp->UpdateBounds(FLUX,0,0);
-			} else {
-				cout << InParameters->KOReactions[i] << endl;
 			}
 		}
 	}

@@ -639,7 +639,7 @@ sub build_primers {
     delete $result->{"p2"};
     $result->{"p3c"} = $result->{"p3"};
     
-    delete $result->{"p3"};
+    delete $result->{"p3"};e
     return $result;
 }
 
