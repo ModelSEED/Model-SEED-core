@@ -11,13 +11,13 @@ __PACKAGE__->meta->setup(
         model_uuid             => { type => 'character', length => 36, not_null => 1 },
         reaction_uuid          => { type => 'character', length => 36, not_null => 1 },
         compound_uuid          => { type => 'character', length => 36, not_null => 1 },
-        transportIndex         => { type => 'integer', not_null => 1 },
+        compartmentIndex       => { type => 'integer', not_null => 1 },
         model_compartment_uuid => { type => 'character', length => 36, not_null => 1 },
         transportCoefficient   => { type => 'integer', not_null => 1 },
         isImport               => { type => 'integer' },
     ],
 
-    primary_key_columns => [ 'model_uuid', 'reaction_uuid', 'transportIndex' ],
+    primary_key_columns => [ 'model_uuid', 'reaction_uuid', 'compartmentIndex' ],
 
     foreign_keys => [
         compound => {

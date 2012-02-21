@@ -14,8 +14,6 @@ __PACKAGE__->meta->setup(
         type          => { type => 'varchar', length => 32, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'type', 'alias' ],
-
     foreign_keys => [
         compound => {
             class       => 'ModelSEED::DB::Compound',

@@ -1,8 +1,9 @@
 package ModelSEED::DB::Compound;
 use strict;
 use Data::UUID;
-use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+use DateTime;
 use ModelSEED::ApiHelpers;
+use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
 sub default {
     return {
@@ -125,6 +126,8 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
         }   
 });
 
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 1;
 

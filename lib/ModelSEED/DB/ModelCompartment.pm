@@ -1,6 +1,8 @@
 package ModelSEED::DB::ModelCompartment;
 
 use strict;
+use DateTime;
+use Data::UUID;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -53,5 +55,22 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
+
+__PACKAGE__->meta->column('uuid')->add_trigger(
+    deflate => sub {
+        my $uuid = $_[0]->uuid;
+        if(ref($uuid) && ref($uuid) eq 'Data::UUID') {
+            return $uuid->to_string();
+        } elsif($uuid) {
+            return $uuid;
+        } else {
+            return Data::UUID->new()->create_str();
+        }
+});
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { $_[0]->modDate(DateTime->now()); });
+        
+
 
 1;
