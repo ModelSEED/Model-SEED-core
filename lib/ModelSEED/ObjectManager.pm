@@ -13,7 +13,7 @@ my $types = [ qw( Annotation AnnotationFeature Biochemistry
     ComplexRole Compound CompoundAlias CompoundPk CompoundStructure
     Compoundset CompoundsetCompound DefaultTransportedReagent  Feature
     Genome Mapping MappingAlias MappingComplex MappingReactionRule
-    MappingRole Media MediaCompound Model ModelAlias ModelBiomass
+    MappingRole MappingRoleset Media MediaCompound Model ModelAlias ModelBiomass
     ModelCompartment ModelReaction ModelTransportedReagent ModelessFeature
     Modelfba ModelfbaCompound ModelfbaReaction Permission Reaction
     ReactionAlias ReactionRule ReactionRuleTransport Reagent Reactionset
