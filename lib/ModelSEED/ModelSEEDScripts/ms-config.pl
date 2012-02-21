@@ -182,10 +182,12 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     	$envSettings->{MFATOOLKITCCFLAGS} .=  " -I".$Config->{Optimizers}->{includeDirectoryGLPK};
     	$envSettings->{MFATOOLKITCCLNFLAGS} .= "-L".$Config->{Optimizers}->{libraryDirectoryGLPK}." -lglpk";
     }
-    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
-    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
-    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    if (defined($Config->{Optimizers}->{licenceDirectoryCPLEX})) {
+    	 if (defined($Config->{Optimizers}->{libraryDirectoryCPLEX})) {
+	    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
+	    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
+	    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    	 }
     	 $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
     	 if ($os eq "osx") {
     	 	$envSettings->{MFATOOLKITCCLNFLAGS} .= " -framework CoreFoundation -framework IOKit";
