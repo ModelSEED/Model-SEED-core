@@ -598,9 +598,9 @@ CREATE TABLE IF NOT EXISTS `models` (
   `annotations` INTEGER NULL,
   `growth` DOUBLE NULL,
   `current` TINYINT(1)  NULL,
-  `mapping_uuid` CHAR(36) NOT NULL,
+  `mapping_uuid` CHAR(36),
   `biochemistry_uuid` CHAR(36) NOT NULL,
-  `annotation_uuid` CHAR(36) NOT NULL,
+  `annotation_uuid` CHAR(36),
   PRIMARY KEY (`uuid`),
   INDEX `models_mapping_fk` (`mapping_uuid`),
   INDEX `models_biochemistry_fk` (`biochemistry_uuid`),
@@ -659,7 +659,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `model_reactions` (
   `model_uuid` CHAR(36) NOT NULL,
   `reaction_uuid` CHAR(36) NOT NULL,
-  `reaction_rule_uuid` CHAR(36) NOT NULL,
+  `reaction_rule_uuid` CHAR(36) NULL,
   `direction` CHAR(1) NULL,
   `transproton` DOUBLE NULL,
   `protons` DOUBLE NULL,
@@ -704,7 +704,7 @@ CREATE TABLE IF NOT EXISTS `model_reaction_raw_gprs` (
   INDEX `model_reaction_raw_gprs_reaction_fk` (`reaction_uuid`),
   INDEX `model_reaction_raw_gprs_model_fk` (`model_uuid`),
   INDEX `model_reaction_raw_gprs_modelCompartment_fk` (`model_compartment_uuid`),
-  INDEX `model_reaction_raw_gprs_custom_gpr` (`custom_gpr`),
+  INDEX `model_reaction_raw_gprs_rawGPR` (`rawGPR`),
   CONSTRAINT `model_reaction_raw_gprs_model_fk`
     FOREIGN KEY (`model_uuid`)
     REFERENCES `models` (`uuid`)
@@ -730,11 +730,11 @@ CREATE TABLE IF NOT EXISTS `model_transported_reagents` (
   `model_uuid` CHAR(36) NOT NULL,
   `reaction_uuid` CHAR(36) NOT NULL,
   `compound_uuid` CHAR(36) NOT NULL,
-  `transportIndex` INTEGER NOT NULL,
+  `compartmentIndex` INTEGER NOT NULL,
   `model_compartment_uuid` CHAR(36) NOT NULL,
   `transportCoefficient` INTEGER NOT NULL,
   `isImport` TINYINT(1) NULL,
-  PRIMARY KEY (`model_uuid`, `reaction_uuid`, `transportIndex`),
+  PRIMARY KEY (`model_uuid`, `reaction_uuid`, `compartmentIndex`),
   INDEX `model_transported_reagents_reaction_fk` (`reaction_uuid`),
   INDEX `model_transported_reagents_model_fk` (`model_uuid`),
   INDEX `model_transported_reagents_compound_fk` (`compound_uuid`),
@@ -1324,9 +1324,9 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `biomass_compounds` (
   `biomass_uuid` CHAR(36) NOT NULL,
   `compound_uuid` CHAR(36) NOT NULL,
-  `compartment_uuid` CHAR(36) NOT NULL,
+  `model_compartment_uuid` CHAR(36) NOT NULL,
   `coefficient` DOUBLE NULL,
-  PRIMARY KEY ( `biomass_uuid`, `compound_uuid`),
+  PRIMARY KEY ( `biomass_uuid`, `compound_uuid`, `model_compartment_uuid`),
   INDEX `biomass_compounds_biomass_fk` (`biomass_uuid`),
   CONSTRAINT `biomass_compounds_biomass_fk`
     FOREIGN KEY (`biomass_uuid`)

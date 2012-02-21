@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Fri Feb  3 15:08:26 2012
+-- Created on Mon Feb 20 11:11:59 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -498,9 +498,9 @@ CREATE TABLE models (
   annotations int(11),
   growth DOUBLE,
   current TINYINT(1),
-  mapping_uuid CHAR(36) NOT NULL,
+  mapping_uuid CHAR(36),
   biochemistry_uuid CHAR(36) NOT NULL,
-  annotation_uuid CHAR(36) NOT NULL,
+  annotation_uuid CHAR(36),
   PRIMARY KEY (uuid),
   FOREIGN KEY(mapping_uuid) REFERENCES mappings(uuid),
   FOREIGN KEY(biochemistry_uuid) REFERENCES biochemistries(uuid),
@@ -543,7 +543,7 @@ CREATE UNIQUE INDEX model_compartments_idx ON model_compartments (model_uuid, co
 CREATE TABLE model_reactions (
   model_uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
-  reaction_rule_uuid CHAR(36) NOT NULL,
+  reaction_rule_uuid CHAR(36),
   direction CHAR(1),
   transproton DOUBLE,
   protons DOUBLE,
@@ -584,7 +584,7 @@ CREATE INDEX model_reaction_raw_gprs_model_fk ON model_reaction_raw_gprs (model_
 
 CREATE INDEX model_reaction_raw_gprs_modelCompartment_fk ON model_reaction_raw_gprs (model_compartment_uuid);
 
-CREATE INDEX model_reaction_raw_gprs_custom_gpr ON model_reaction_raw_gprs (custom_gpr);
+CREATE INDEX model_reaction_raw_gprs_rawGPR ON model_reaction_raw_gprs (rawGPR);
 
 --
 -- Table: model_transported_reagents
@@ -593,11 +593,11 @@ CREATE TABLE model_transported_reagents (
   model_uuid CHAR(36) NOT NULL,
   reaction_uuid CHAR(36) NOT NULL,
   compound_uuid CHAR(36) NOT NULL,
-  transportIndex int(11) NOT NULL,
+  compartmentIndex int(11) NOT NULL,
   model_compartment_uuid CHAR(36) NOT NULL,
   transportCoefficient int(11) NOT NULL,
   isImport TINYINT(1),
-  PRIMARY KEY (model_uuid, reaction_uuid, transportIndex),
+  PRIMARY KEY (model_uuid, reaction_uuid, compartmentIndex),
   FOREIGN KEY(model_uuid) REFERENCES models(uuid),
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid),
