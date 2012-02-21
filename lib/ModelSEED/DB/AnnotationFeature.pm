@@ -11,6 +11,7 @@ __PACKAGE__->meta->setup(
         annotation_uuid => { type => 'character', length => 36, not_null => 1 },
         feature_uuid    => { type => 'character', length => 36, not_null => 1 },
         role_uuid       => { type => 'character', length => 36, not_null => 1 },
+        complete_string => { type => 'text', default => '' }, 
     ],
 
     primary_key_columns => [ 'annotation_uuid', 'feature_uuid', 'role_uuid' ],
