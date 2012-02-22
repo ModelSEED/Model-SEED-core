@@ -2569,10 +2569,9 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id"],{
+	$args = $self->process_arguments($args,["id","modelfiledata","biomassEquation"],{
 		genome => "NONE",
 		biomassID => undef,
-		biomassEquation => undef,
 		owner => "master",
 		public => 0,
 		overwrite => 0,
@@ -2593,7 +2592,7 @@ sub import_model_file {
 	}
 	#Warning if genome id not used
 	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
-	    ModelSEED::globals::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	    ModelSEED::utilities::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
 	}
 
 	#Checking if the model exists, and if not, creating the model

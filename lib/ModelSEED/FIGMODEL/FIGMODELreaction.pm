@@ -985,7 +985,7 @@ sub createReactionCode {
 
 	#Checking for reactions that have no products, no reactants, or neither products nor reactants
 	if ($OriginalEquation =~ m/^\s[<=]/ || $OriginalEquation =~ m/^[<=]/ || $OriginalEquation =~ m/[=>]\s$/ || $OriginalEquation =~ m/[=>]$/) {
-		ModelSEED::globals::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
+		ModelSEED::utilities::WARNING("Reaction either has no reactants or no products:".$OriginalEquation);
 		return {success => 0,error => "Reaction either has no reactants or no products:".$OriginalEquation,balanced=>0};
 	}
 

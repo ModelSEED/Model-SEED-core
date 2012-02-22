@@ -355,14 +355,15 @@ SCRIPT
 		}
 	}
 	foreach my $function (@{$functionList}) {
-		if (-e $directoryRoot."/bin/".$function.$extension) {
-			unlink $directoryRoot."/bin/".$function.$extension;
+		my $filename = $function;
+		if (-e $directoryRoot."/bin/".$filename.$extension) {
+			unlink $directoryRoot."/bin/".$filename.$extension;
 		}
 		$function =~ s/-//;
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT
-        open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
+        open(my $fh, ">", $directoryRoot."/bin/".$filename.$extension) || die($!);
         print $fh $script;
         close($fh);
 		chmod 0775,$directoryRoot."/bin/".$function;
