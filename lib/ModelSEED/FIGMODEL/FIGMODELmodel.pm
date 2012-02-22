@@ -8065,7 +8065,7 @@ Description:
 
 sub fbaGapGen {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		targetParameters => {},
 		referenceParameters => {},
 		numSolutions => 1

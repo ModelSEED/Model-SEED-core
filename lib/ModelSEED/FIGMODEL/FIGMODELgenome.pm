@@ -566,7 +566,7 @@ Description:
 =cut
 sub classifyrespiration {
     my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		genome => $self->genome(),
 	});
 	my $sap = $self->figmodel()->sapSvr($args->{source});
