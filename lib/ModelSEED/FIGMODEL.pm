@@ -1710,6 +1710,9 @@ sub parseSBMLToTable {
     $cmpdAttrs{KEGG}=$TableHeadings{KEGG};
     $cmpdAttrs{METACYC}=$TableHeadings{METACYC};
 
+    #Add name if its not there
+    $cmpdAttrs{NAMES}=$TableHeadings{name} if !exists($cmpdAttrs{NAMES});
+
     my %CmpdCmptTranslation=();
     $TableList->{compound} = ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmpdAttrs{$a} <=> $cmpdAttrs{$b} } keys %cmpdAttrs],
 								     $args->{compoundFiles},undef,"\t","|",undef);
@@ -1726,6 +1729,7 @@ sub parseSBMLToTable {
 	$CmpdCmptTranslation{$row->{ID}->[0]}=$row->{COMPARTMENT}->[0];
 	$row->{METACYC}->[0]="";
 	$row->{KEGG}->[0]="" if !exists($row->{KEGG});
+	$row->{NAMES}->[0]=$row->{ID}->[0] if !exists($row->{NAMES});
 	$TableList->{compound}->add_row($row);
     }
 
@@ -2593,7 +2597,7 @@ sub import_model_file {
 	}
 	#Warning if genome id not used
 	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
-	    ModelSEED::globals::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	    ModelSEED::utilities::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
 	}
 
 	#Checking if the model exists, and if not, creating the model
