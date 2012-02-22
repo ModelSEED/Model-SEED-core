@@ -126,10 +126,10 @@ sub new {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
 		if (!defined($username) &&
-            defined($ENV{"FIGMODEL_USER"}) &&
-            defined($ENV{"FIGMODEL_PASSWORD"})) {
-			$username = $ENV{"FIGMODEL_USER"};
-			$password = $ENV{"FIGMODEL_PASSWORD"};
+            defined(ModelSEED::Interface::interface::USERNAME()) &&
+            defined(ModelSEED::Interface::interface::PASSWORD())) {
+			$username = ModelSEED::Interface::interface::USERNAME();
+			$password = ModelSEED::Interface::interface::PASSWORD();
 		}
 		if (defined($username) && length($username) > 0 &&
             defined($password) && length($password) > 0) {

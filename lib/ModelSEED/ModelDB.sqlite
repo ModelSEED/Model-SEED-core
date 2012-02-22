@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Tue Feb 21 17:41:13 2012
+-- Created on Wed Feb 22 14:57:52 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -1032,14 +1032,14 @@ CREATE TABLE biomass_compounds (
   PRIMARY KEY (biomass_uuid, compound_uuid, model_compartment_uuid),
   FOREIGN KEY(biomass_uuid) REFERENCES biomasses(uuid),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid),
-  FOREIGN KEY(compartment_uuid) REFERENCES model_compartments(uuid)
+  FOREIGN KEY(model_compartment_uuid) REFERENCES model_compartments(uuid)
 );
 
 CREATE INDEX biomass_compounds_biomass_fk ON biomass_compounds (biomass_uuid);
 
 CREATE INDEX biomass_compounds_compound_fk ON biomass_compounds (compound_uuid);
 
-CREATE INDEX biomass_compounds_compartment_fk ON biomass_compounds (compartment_uuid);
+CREATE INDEX biomass_compounds_model_compartment_fk ON biomass_compounds (model_compartment_uuid);
 
 --
 -- Table: biochemistry_aliases
