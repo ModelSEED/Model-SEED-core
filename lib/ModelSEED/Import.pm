@@ -68,8 +68,10 @@ sub BUILD {
     my ($self) = @_;
     if($self->clearOnStart) {
         rmtree($self->berkeleydb) if(-d $self->berkeleydb);
-        unlink($self->database) if(-f $self->database && $self->driver eq 'SQLite');
-        system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
+        if($self->driver eq 'SQLite') {
+            unlink($self->database) if(-f $self->database);
+            system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
+        }
     }
     if(defined($self->expectedMisses) && -f abs_path($self->expectedMisses)) {
         $self->checker(ModelSEED::Import::Checker->new({efFile => $self->expectedMisses}));

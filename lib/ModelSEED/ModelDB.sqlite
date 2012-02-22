@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Mon Feb 20 18:35:52 2012
+-- Created on Tue Feb 21 17:41:13 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -744,6 +744,21 @@ CREATE INDEX mapping_roles_role_fk ON mapping_roles (role_uuid);
 CREATE INDEX mapping_roles_mapping_fk ON mapping_roles (mapping_uuid);
 
 --
+-- Table: mapping_rolesets
+--
+CREATE TABLE mapping_rolesets (
+  mapping_uuid CHAR(36) NOT NULL,
+  roleset_uuid CHAR(36) NOT NULL,
+  PRIMARY KEY (mapping_uuid, roleset_uuid),
+  FOREIGN KEY(mapping_uuid) REFERENCES mappings(uuid),
+  FOREIGN KEY(roleset_uuid) REFERENCES rolesets(uuid)
+);
+
+CREATE INDEX mapping_rolesets_roleset_fk ON mapping_rolesets (roleset_uuid);
+
+CREATE INDEX mapping_rolesets_mapping_fk ON mapping_rolesets (mapping_uuid);
+
+--
 -- Table: biochemistry_compartments
 --
 CREATE TABLE biochemistry_compartments (
@@ -964,21 +979,6 @@ CREATE TABLE annotation_parents (
 CREATE INDEX annotation_parents_parent_fk ON annotation_parents (parent_uuid);
 
 CREATE INDEX annotation_parents_child_fk ON annotation_parents (child_uuid);
-
---
--- Table: roleset_parents
---
-CREATE TABLE roleset_parents (
-  child_uuid CHAR(36) NOT NULL,
-  parent_uuid CHAR(36) NOT NULL,
-  PRIMARY KEY (child_uuid, parent_uuid),
-  FOREIGN KEY(parent_uuid) REFERENCES rolesets(uuid),
-  FOREIGN KEY(child_uuid) REFERENCES rolesets(uuid)
-);
-
-CREATE INDEX roleset_parents_parent_fk ON roleset_parents (parent_uuid);
-
-CREATE INDEX roleset_parents_child_fk ON roleset_parents (child_uuid);
 
 --
 -- Table: permissions
