@@ -2365,8 +2365,8 @@ sub setMolAnalysisStudy {
 			}
 		}	
 	}
-	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileInput.txt",$output);
-	$self->parameter_files(["ArgonneProcessing.txt"]);
+	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileOutput.txt",$output);
+	$self->parameter_files(["ArgonneProcessing"]);
 	$self->makeOutputDirectory();
 	$self->set_parameters({
 		"Recursive MILP solution limit" => 1

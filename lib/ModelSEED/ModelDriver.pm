@@ -1582,7 +1582,7 @@ sub bcprocessmolfile {
 		})
     };
     for (my $i=0; $i < @{$input->{molfiles}}; $i++) {
-    	$input->{molfiles}->[$i] .= $args->{directory}.$input->{molfiles}->[$i];
+    	$input->{molfiles}->[$i] = $args->{directory}.$input->{molfiles}->[$i];
     }
     my $cpd = $self->figmodel()->get_compound();
 	my $results = $cpd->molAnalysis($input);
