@@ -2128,7 +2128,7 @@ sub completeGapfilling {
 	#Loading the gapfilling solution into the model
 	$results = $self->integrateGapfillingSolution({
 		directory => $fbaObj->directory(),
-		gapfillResults => $results
+		gapfillResults => $results->{completeGapfillingResult}
 	});
 	print "Calculting the growth with which to test the model\n";
 	#Calculating the growth to test the model
@@ -2187,7 +2187,7 @@ sub integrateGapfillingSolution {
 	system("cp ".$args->{directory}."/CompleteGapfillingOutput.txt ".$self->directory()."/GapfillingOutput.txt");
 	my $solutionHash;
 	foreach my $rxn (keys(%{$args->{gapfillResults}})) {
-		if ($rxn =~ m/rxn\d+/ || $rxn =~ m/cpd\d+/) {
+		if ($rxn =~ m/bio\d+/ || $rxn =~ m/rxn\d+/ || $rxn =~ m/cpd\d+/) {
 			if (ref($args->{gapfillResults}->{$rxn}) eq "HASH" && defined($args->{gapfillResults}->{$rxn}->{gapfilled}->[0])) {
 				for (my $i=0; $i < @{$args->{gapfillResults}->{$rxn}->{gapfilled}}; $i++) {
 					if ($args->{gapfillResults}->{$rxn}->{gapfilled}->[$i] =~ m/(.)(rxn\d+)/) {
@@ -2213,6 +2213,9 @@ sub integrateGapfillingSolution {
 				}
 			}
 		}
+	}
+	foreach my $rxn (keys(%{$solutionHash})) {
+		print $rxn."\t".$solutionHash->{$rxn}->{sign}."\n";
 	}
 	#Loading the reaction table located in the problem directory and adjusting based on the gapfilling solution
 	my $rxns = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{directory}."/".$self->id().".tbl",
@@ -2249,12 +2252,12 @@ sub integrateGapfillingSolution {
 	for (my $i=0; $i < @{$rxnObjs}; $i++) {
 		my $row = $rxns->get_table_by_key($rxnObjs->[$i]->REACTION(),"LOAD")->get_row_by_key($rxnObjs->[$i]->compartment(),"COMPARTMENT");
 		if (defined($row)) {
-			print "Adjusting reaction ".$rxnObjs->[$i]->REACTION()."\n";
+			#print "Adjusting reaction ".$rxnObjs->[$i]->REACTION()."\n";
 			$rxnObjs->[$i]->directionality($row->{DIRECTIONALITY}->[0]);
 			my $newpegs = join("|",@{$row->{"ASSOCIATED PEG"}});
-			print $newpegs."\t";
+			#print $newpegs."\t";
 			$newpegs =~ s/\\//g;
-			print $newpegs."\n";
+			#print $newpegs."\n";
 			$rxnObjs->[$i]->pegs($newpegs);
 			$rxnObjs->[$i]->confidence($row->{CONFIDENCE}->[0]);
 			$repRow = $rxnObjs->[$i];
