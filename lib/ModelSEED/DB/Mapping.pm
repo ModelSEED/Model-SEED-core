@@ -74,6 +74,13 @@ __PACKAGE__->meta->setup(
             map_to    => 'role',
             type      => 'many to many',
         },
+
+        rolesets => {
+            map_class => 'ModelSEED::DB::MappingRoleset',
+            map_from  => 'mapping',
+            map_to    => 'roleset',
+            type      => 'many to many',
+        },
     ],
 );
 

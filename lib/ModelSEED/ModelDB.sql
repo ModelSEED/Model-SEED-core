@@ -936,6 +936,27 @@ CREATE TABLE IF NOT EXISTS `mapping_roles` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+-- -----------------------------------------------------
+-- Table `mapping_rolesets`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mapping_rolesets` (
+  `mapping_uuid` CHAR(36) NOT NULL,
+  `roleset_uuid` CHAR(36) NOT NULL,
+  PRIMARY KEY (`mapping_uuid`, `roleset_uuid`),
+  INDEX `mapping_rolesets_roleset_fk` (`roleset_uuid`),
+  INDEX `mapping_rolesets_mapping_fk` (`mapping_uuid`),
+  CONSTRAINT `mapping_rolesets_mapping_fk`
+    FOREIGN KEY (`mapping_uuid`)
+    REFERENCES `mappings` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `mapping_rolesets_roleset_fk`
+    FOREIGN KEY (`roleset_uuid`)
+    REFERENCES `rolesets` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `biochemistry_compartments`
@@ -1245,27 +1266,6 @@ CREATE TABLE IF NOT EXISTS `annotation_parents` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
-
--- -----------------------------------------------------
--- Table `roleset_parents`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `roleset_parents` (
-  `child_uuid` CHAR(36) NOT NULL,
-  `parent_uuid` CHAR(36) NOT NULL,
-  PRIMARY KEY (`child_uuid`, `parent_uuid`),
-  INDEX `roleset_parents_parent_fk` (`parent_uuid`),
-  CONSTRAINT `roleset_parents_parent_fk`
-    FOREIGN KEY (`parent_uuid`)
-    REFERENCES `rolesets` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  INDEX `roleset_parents_child_fk` (`child_uuid`),
-  CONSTRAINT `roleset_parents_child_fk`
-    FOREIGN KEY (`child_uuid`)
-    REFERENCES `rolesets` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------

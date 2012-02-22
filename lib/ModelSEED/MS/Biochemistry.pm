@@ -1,101 +1,113 @@
-package ModelSEED::MS::Biochemistry;
-
+########################################################################
+# ModelSEED::MooseDB::media - This is the moose object corresponding to the media object in the database
+# Author: Christopher Henry
+# Author email: chenry@mcs.anl.gov
+# Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
+# Date of module creation: 11/6/2011
+########################################################################
 use strict;
-use warnings;
+use ModelSEED::utilities;
+use ModelSEED::MS::Compound;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::Media;
+package ModelSEED::MS::Biochemistry;
+use Moose;
+use Moose::Util::TypeConstraints;
+use namespace::autoclean;
 
-use ModelSEED::CoreApi;
+has 'om' => (is => 'ro', isa => 'ModelSEED::CoreApi');
+has 'uuid' => (is => 'ro', isa => 'Str', required => 1);
+has 'modDate' => (is => 'ro', isa => 'Str');
+has 'locked' => (is => 'ro', isa => 'Int', required => 1,default => 1);
+has 'public' => (is => 'ro', isa => 'Int', required => 1,default => 1);
+has 'name' => (is => 'ro', isa => 'Str');
+has 'reactions' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Reaction]', lazy => 1, builder => '_load_reactions');
+has 'compounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Compound]', lazy => 1, builder => '_load_compounds');
+has 'media' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Media]', lazy => 1, builder => '_load_media');
 
-sub new {
-    my ($class, $uuid, $user, $api) = @_;
-
-    unless (defined($api)) {
-	# create new api with defaults
-    }
-
-    my $biochem = $api->getBiochemistrySimple($uuid, $user);
-
-    my $self = {};
-    $self->{api} = $api;
-    $self->{rxn_cache} = {};
-    $self->{rxn_cache_size} = 100;
-    $self->{rxn_cache_last} = [];
-    $self->{data} = $biochem;
-
-    bless($self, $class);
-    return $self;
-}
-
-sub getReactionIds {
-    my ($self) = @_;
-
-    return $self->{data}->{relationships}->{reactions};
-}
-
-sub getReaction {
-    my ($self, $uuid) = @_;
-
-    if (defined($self->{rxn_cache}->{$uuid})) {
-#	print "Found $uuid in cache\n";
-	return $self->{rxn_cache}->{$uuid};
-    } else {
-#	print "Did not find $uuid in cache, grabbing from database\n";
-	my $rxn = $self->{api}->getReaction($uuid, $self->{data}->{attributes}->{uuid});
-	$self->{rxn_cache}->{$uuid} = $rxn;
-
-	unshift(@{$self->{rxn_cache_last}}, $uuid);
-	if (scalar @{$self->{rxn_cache_last}} > $self->{rxn_cache_size}) {
-	    my $old_uuid = pop(@{$self->{rxn_cache_last}});
-#	    print "Cache is full, deleting $old_uuid from cache\n";
-	    delete $self->{rxn_cache}->{$old_uuid};
+sub BUILDARGS {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{
+		om => undef,# ModelSEED::CoreApi
+		user => undef,# Username used in calls to the CoreApi
+		rawdata => undef,#Raw data of form returned by raw data object manager API
+		uuid => undef #UUID of the biochemistry object, used to retrieve the biochemistry data from the database
+	});
+	if (!defined($params->{rawdata}) && defined($params->{user}) && defined($params->{uuid}) && defined($params->{om})) {
+		$params->{rawdata} = $params->{om}->getBiochemistry({
+			uuid              => $params->{uuid},
+			user              => $params->{user},
+			with_all          => 1
+		});
 	}
-    }
-}
-
-sub getReactionIterator {
-    my ($parent) = @_;
-
-    my $it = do {
-	package ModelSEED::MS::Biochemistry::ReactionIterator;
-
-	sub new {
-	    my ($class, $parent) = @_;
-	    my $self = {};
-	    $self->{parent} = $parent;
-	    $self->{index} = 0;
-
-	    bless($self, $class);
-	    return $self;
-	}
-
-	sub hasNext {
-	    my ($self) = @_;
-
-	    return @{$self->{parent}->{data}->{relationships}->{reactions}} > $self->{index};
-	}
-
-	sub next {
-	    my ($self) = @_;
-
-	    # check if we need to load next chunk
-	    if ($self->{index} % $self->{parent}->{rxn_cache_size} == 0) {
-		my $rxns = $self->{parent}->{api}->getReactions($self->{parent}->{data}->{attributes}->{uuid}, undef, $self->{parent}->{rxn_cache_size}, $self->{index});
-
-		$self->{parent}->{rxn_cache} = {};
-		$self->{parent}->{rxn_cache_last} = [];
-
-		foreach my $rxn (@$rxns) {
-		    $self->{parent}->{rxn_cache}->{$rxn->{attributes}->{uuid}} = $rxn;
-		    push(@{$self->{parent}->{rxn_cache_last}}, $rxn->{attributes}->{uuid});
-
-#		    print "Loading " . $rxn->{attributes}->{uuid} . " into cache\n";
+	if (defined($params->{rawdata})) {
+		if (defined($params->{rawdata}->{attributes})) {
+			foreach my $attribute (keys(%{$params->{rawdata}->{attributes}})) {
+				if (defined($params->{rawdata}->{attributes}->{$attribute}) && $params->{rawdata}->{attributes}->{$attribute} ne "undef") {
+					$params->{$attribute} = $params->{rawdata}->{attributes}->{$attribute};
+				}
+			}
 		}
-	    }
-
-	    return $self->{parent}->getReaction($self->{parent}->{data}->{relationships}->{reactions}->[$self->{index}++]);
+		if (defined($params->{rawdata}->{relations}->{compounds})) {
+			foreach my $cpd (@{$params->{rawdata}->{relations}->{compounds}}) {
+				my $cpdobj = ModelSEED::MooseDB::Compound->new({biochemistry => $self,rawdata => $cpd});
+				push(@{$params->{compounds}},$cpdobj);
+			}
+		}
+		if (defined($params->{rawdata}->{relations}->{reactions})) {
+			foreach my $rxn (@{$params->{rawdata}->{relations}->{reactions}}) {
+				my $rxnobj = ModelSEED::MooseDB::Reaction->new({biochemistry => $self,rawdata => $rxn});
+				push(@{$params->{reactions}},$rxnobj);
+			}
+		}
 	}
-
-	__PACKAGE__
-    }->new($parent);
+	return $params;
 }
 
+
+sub BUILD {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
+}
+
+sub _load_reactions {
+    my ($self) = @_;
+    my $rxns = $self->om()->getReactions({
+    	biochemistry_uuid => $self->uuid(),
+    });
+    my $objs;
+    for (my $i=0; $i < @{$rxns}; $i++) {
+    	my $obj = ModelSEED::MS::Reaction->new({biochemistry => $self,rawdata => $rxns->[$i]});
+    	push(@{$objs},$obj);
+    }
+    return $objs;
+}
+
+sub _load_compounds {
+    my ($self) = @_;
+    my $cpds = $self->om()->getCompounds({
+    	biochemistry_uuid => $self->uuid(),
+    });
+    my $objs;
+    for (my $i=0; $i < @{$cpds}; $i++) {
+    	my $obj = ModelSEED::MS::Compound->new({biochemistry => $self,rawdata => $cpds->[$i]});
+    	push(@{$objs},$obj);
+    }
+    return $objs;
+}
+
+sub _load_media {
+    my ($self) = @_;
+    my $medias = $self->om()->getMedia({
+    	biochemistry_uuid => $self->uuid(),
+    });
+    my $objs;
+    for (my $i=0; $i < @{$medias}; $i++) {
+    	my $obj = ModelSEED::MS::Media->new({biochemistry => $self,rawdata => $medias->[$i]});
+    	push(@{$objs},$obj);
+    }
+    return $objs;
+}
+
+__PACKAGE__->meta->make_immutable;
 1;

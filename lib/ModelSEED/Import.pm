@@ -68,8 +68,10 @@ sub BUILD {
     my ($self) = @_;
     if($self->clearOnStart) {
         rmtree($self->berkeleydb) if(-d $self->berkeleydb);
-        unlink($self->database) if(-f $self->database && $self->driver eq 'SQLite');
-        system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
+        if($self->driver eq 'SQLite') {
+            unlink($self->database) if(-f $self->database);
+            system("cat lib/ModelSEED/ModelDB.sqlite | sqlite3 ".$self->database);
+        }
     }
     if(defined($self->expectedMisses) && -f abs_path($self->expectedMisses)) {
         $self->checker(ModelSEED::Import::Checker->new({efFile => $self->expectedMisses}));
@@ -343,6 +345,14 @@ sub _makeTypesToHashFns {
             return md5_hex($f->{reaction}->($_[0]->reaction) . $f->{model}->($_[0]->model) .
                 $_[0]->compartmentIndex);
     };
+    $f->{biomass_compound} = sub {
+        return md5_hex($f->{compound}->($_[0]->compound) . $_[0]->coefficient .
+            $f->{model_compartment}->($_[0]->model_compartment));
+    };
+    $f->{biomass} = sub {
+        return md5_hex($_[0]->id . join(',', sort map {
+            $f->{biomass_compound}->($_) } $_[0]->biomass_compounds));
+    };
     return $f;
 };
 
@@ -418,8 +428,14 @@ sub _makeObjectToQueryFns {
     $f->{model_compartment} = sub { return {
         uuid => $_[0]->uuid,
     }};
-        
-        
+    $f->{biomass} = sub { return {
+        uuid => $_[0]->uuid,
+    }};
+    $f->{biomass_compound} = sub { return {
+        biomass_uuid => $_[0]->biomass_uuid, 
+        compound_uuid => $_[0]->compound_uuid, 
+        model_compartment_uuid => $_[0]->model_compartment_uuid, 
+    }};
     return $f;
 }
 
@@ -579,16 +595,14 @@ sub _makeConversionFns {
         my ($self, $row, $ctx) = @_;
         my $rxn_uuid = $self->uuidCache("reaction", $row->{REACTION}->[0]);
         my $rxn = $self->om->get_object("reaction", { uuid => $rxn_uuid});
+        return undef unless(defined($rxn));
         my $cmp = $rxn->defaultCompartment;
-        if(defined($rxn) && defined($cmp)) {
-            return {
-                reaction_uuid => $rxn_uuid,
-                compartment_uuid => $cmp->uuid,
-                direction => "=",
-           };
-        } else {
-            return undef;
-        }
+        return undef unless(defined($cmp));
+        return {
+            reaction_uuid => $rxn_uuid,
+            compartment_uuid => $cmp->uuid,
+            direction => "=",
+        };
     };
     $f->{feature} = sub {
         my ($self, $row, $ctx) = @_;
@@ -654,6 +668,16 @@ sub _makeConversionFns {
             compartmentIndex => $row->{compartmentIndex}->[0],
             transportCoefficient => $row->{transportCoefficient}->[0],
             isImport => $row->{isImport}->[0],
+        };
+    };
+    $f->{biomass_compound} = sub {
+        my ($self, $row) = @_;
+        my $compound    = $self->uuidCache("compound", $row->{compound}->[0]);
+        my $compartment = $self->uuidCache("model_compartment", $row->{compartment}->[0]);
+        return {
+            model_compartment_uuid => $compartment,
+            compound_uuid => $compound,
+            coefficient => $row->{coefficient}->[0],
         };
     };
     return $f;
@@ -769,7 +793,6 @@ sub importBiochemistryFromDir {
     }
     # Media
     my $defaultMediaObjs = $self->getDefaultMedia(); 
-    warn "Got ".scalar(@$defaultMediaObjs)." objects!\n";
     foreach my $obj (@$defaultMediaObjs) {
         $RDB_biochemistry->add_media($obj);
     }
@@ -1008,7 +1031,6 @@ sub importModelFromDir {
     my ($self, $dir, $username, $id) = @_;
     my $missed = {};
     my $RDB_model = $self->om->create_object("model", {id => $id, name => $id});
-    warn $self->hash("model", $RDB_model);
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
     if(-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
@@ -1095,8 +1117,16 @@ sub importModelFromDir {
             my $mtr = $self->getOrCreateObject("model_transported_reagent", $hash);
         }
     }
-    warn "done rxnmdl\n";
-    # TODO - biomass
+    my $rdb_biomasses = [];
+    foreach my $biomassId (@$biomassIds) {
+        my $biomass = $self->getBiomass($biomassId, $RDB_model);
+        if(defined($biomass)) {
+            push(@$rdb_biomasses, $biomass);
+        } else {
+            push(@{$missed->{biomass}}, $biomassId); 
+        }
+    }
+    $RDB_model->biomasses($rdb_biomasses);
     my $model_hash = $self->hash("model", $RDB_model);
     # TODO - file hash for models
     $self->checker->check("Imported model $username/$id [complete] ", elapsed(), $missed);
@@ -1190,7 +1220,40 @@ sub getDefaultMedia {
     }
     return $media;
 }
-        
+
+sub getBiomass {
+    my ($self, $biomassId, $RDB_model) = @_;
+    my $oldBiomass = $self->fm->database->get_object("bof", { id => $biomassId });
+    unless(defined($oldBiomass)) {
+        warn "Could not find old biomass: $biomassId\n";
+        return undef; 
+    }
+    my $oldBiomassCompounds = $self->fm->database->get_objects("cpdbof", { BIOMASS => $biomassId});
+    unless(@$oldBiomassCompounds) {
+        warn "Could not find old biomass compounds: $biomassId\n";
+        return undef; 
+    }
+    my $biomassHash = {
+        modDate => (defined $oldBiomass->modificationDate ) ?
+            DateTime->from_epoch(epoch => $oldBiomass->modificationDate) : DateTime->now(),
+        id => $oldBiomass->id,
+        name => $oldBiomass->name || '',
+    };
+    my $biomassCompounds = [];
+    foreach my $cpdbof (@$oldBiomassCompounds) {
+        my $row = {
+            compound => [ $cpdbof->COMPOUND ],
+            coefficient => [ $cpdbof->coefficient ],
+            compartment => [ $cpdbof->compartment ],
+        };
+        my $hash = $self->convert("biomass_compound", $row);
+        push(@$biomassCompounds, $hash);
+    }
+    $biomassHash->{biomass_compounds} = $biomassCompounds;
+    my $RDB_biomass = $self->getOrCreateObject("biomass", $biomassHash);
+    return $RDB_biomass || undef;
+}
+    
 
 # getOrCreateObject - hashes and looks up object
 # in lookupData. If it exists, returns that object.

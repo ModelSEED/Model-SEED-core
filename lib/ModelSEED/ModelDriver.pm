@@ -1834,7 +1834,7 @@ sub mdlcreatemodel {
 		["reconstruction",0,1,"Set this FLAG to '1' to autoatically run the reconstruction algorithm on the new model as soon as it is created."],
 		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
 		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
-	],[@Data],"create new Model SEED models");
+	],[@Data],"create new Model SEED models");    
     my $output = ModelSEED::Interface::interface::PROCESSIDLIST({
 		objectType => "genome",
 		delimiter => ",",
@@ -1896,7 +1896,7 @@ sub mdlinspectstate {
 		for (my $i=0;$i < @{$results}; $i++) {
 			my $mdl = $self->figmodel()->get_model($results->[$i]);
 	 		if (!defined($mdl)) {
-	 			ModelSEED::globals::WARNING("Model not valid ".$results->[$i]);	
+	 			ModelSEED::utilities::WARNING("Model not valid ".$results->[$i]);	
 	 		} else {
 	 			$mdl->InspectModelState({});
 	 		}
@@ -1947,7 +1947,7 @@ sub mdlprintsbml {
 		print "Now loading model ".$models->[$i]."\n";
 		my $mdl = $self->figmodel()->get_model($models->[$i]);
 		if (!defined($mdl)) {
-	 		ModelSEED::globals::WARNING("Model not valid ".$args->{model});
+	 		ModelSEED::utilities::WARNING("Model not valid ".$args->{model});
 	 		$message .= "SBML printing failed for model ".$models->[$i].". Model not valid!\n";
 	 		next;
 	 	}
@@ -2118,7 +2118,7 @@ This function is designed to be used in conjunction with ''printmodelfiles'' to 
 sub mdlloadmodel {
 	my($self,@Data) = @_;
 	my $args = $self->check([
-		["name",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
+		["model",1,undef,"The base name of the model to be loaded (do not append your user index, the Model SEED will automatically do this for you)."],
     	["genome",0,undef,"The SEED genome ID associated with the model to be loaded."],
     	["generateprovenance",0,1,"Regenerate provenance from the database"],
     	["filename",0,undef,"The full path and name of the file where the reaction table for the model to be imported is located. [[Example model file]]."],
@@ -2129,19 +2129,41 @@ sub mdlloadmodel {
     	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."],
     	["autoCompleteMedia",0,"Complete","Name of the media used for auto-completing this model."]
 	],[@Data],"reload a model from a flatfile");
+	if (!defined($args->{filename})) {
+		$args->{filename} = $self->ws()->directory().$args->{model}.".mdl";
+	}
+	if (!-e $args->{filename}) {
+		ModelSEED::utilities::USEERROR("Model file ".$args->{filename}." not found. Check file and input.");
+	}
+	$args->{modelfiledata} = ModelSEED::utilities::LOADFILE($args->{filename});
+	if (!defined($args->{biomassFile})) {
+		my $biomassID;
+		for (my $i=0; $i < @{$args->{modelfiledata}};$i++) {
+			if ($args->{modelfiledata}->[$i] =~ m/^(bio\d+);/) {
+				$biomassID = $1;
+			}
+		}
+		$args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
+	}
+	if (-e $args->{biomassFile}) {
+		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+		$args->{biomassEquation} = $obj->{EQUATION}->[0];
+		$args->{biomassid} = $obj->{DATABASE}->[0];
+	}
 	my $modelObj = $self->figmodel()->import_model_file({
-		id => $args->{"name"},
-		genome => $args->{"genome"},
-		filename => $args->{"filename"},
-		biomassFile => $args->{"biomassFile"},
-		owner => $args->{"owner"},
-		public => $args->{"public"},
-		overwrite => $args->{"overwrite"},
-		provenance => $args->{"provenance"},
-		autoCompleteMedia => $args->{"autoCompleteMedia"},
-		generateprovenance => $args->{"generateprovenance"}
+		modelfiledata => $args->{modelfiledata},
+		id => $args->{model},
+		genome => $args->{genome},
+		biomassID => $args->{biomassid},
+		biomassEquation => $args->{biomassEquation},
+		owner => $args->{owner},
+		public => $args->{public},
+		overwrite => $args->{overwrite},
+		biochemSource => $args->{provenance},
+		autoCompleteMedia => $args->{autoCompleteMedia},
+		generateprovenance => $args->{generateprovenance}
 	});
-	print "Successfully imported ".$args->{"name"}." into Model SEED as ".$modelObj->id()."!\n\n";
+	print "Successfully imported ".$args->{model}." into Model SEED as ".$modelObj->id()."!\n\n";
 }
 
 =head
