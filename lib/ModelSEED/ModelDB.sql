@@ -1339,9 +1339,9 @@ CREATE TABLE IF NOT EXISTS `biomass_compounds` (
     REFERENCES `compounds` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION, 
-  INDEX `biomass_compounds_compartment_fk` (`compartment_uuid`),
-  CONSTRAINT `biomass_compounds_compartment_fk`
-    FOREIGN KEY (`compartment_uuid`)
+  INDEX `biomass_compounds_model_compartment_fk` (`model_compartment_uuid`),
+  CONSTRAINT `biomass_compounds_model_compartment_fk`
+    FOREIGN KEY (`model_compartment_uuid`)
     REFERENCES `model_compartments` (`uuid`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
