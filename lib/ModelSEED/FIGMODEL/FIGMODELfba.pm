@@ -1623,7 +1623,7 @@ sub parseCompleteGapfillingStudy {
 			}
 		}
 	}
-	return $result;
+	return {completeGapfillingResult => $result};
 }
 
 =head3 setCombinatorialDeletionStudy

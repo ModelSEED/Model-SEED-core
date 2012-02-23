@@ -21,9 +21,15 @@ has 'modDate' => (is => 'ro', isa => 'Str');
 has 'locked' => (is => 'ro', isa => 'Int', required => 1,default => 1);
 has 'public' => (is => 'ro', isa => 'Int', required => 1,default => 1);
 has 'name' => (is => 'ro', isa => 'Str');
+#Subobjects
 has 'reactions' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Reaction]', lazy => 1, builder => '_load_reactions');
 has 'compounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Compound]', lazy => 1, builder => '_load_compounds');
 has 'media' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Media]', lazy => 1, builder => '_load_media');
+#Object data
+has 'loadedSubObjects' => (is => 'ro',isa => 'HashRef[Str]',required => 1);
+#Constants
+has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","unchargedFormula","formula","mass","defaultCharge","deltaG","deltaGErr"]);
+has 'dbType' => (is => 'ro', isa => 'Str',default => "Compound");
 
 sub BUILDARGS {
     my ($self,$params) = @_;
