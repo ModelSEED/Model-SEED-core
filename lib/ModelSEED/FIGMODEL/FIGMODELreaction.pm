@@ -2371,11 +2371,11 @@ sub find_thermodynamic_reversibility {
 
     #test points
     if(($Points*$mMdeltaG) > 2 && $mMdeltaG < 0){
-	return "=>\tPoints\t".$Points."_".$mMdeltaG;
+	return "=>"; #\tPoints\t".$Points."_".$mMdeltaG;
     }elsif(($Points*$mMdeltaG) > 2 && $mMdeltaG > 0){
-	return "<=\tPoints\t".$Points."_".$mMdeltaG;
+	return "<="; #\tPoints\t".$Points."_".$mMdeltaG;
     }
 
-    return "<=>\tDefault\t".$Points."_".$mMdeltaG;;
+    return "<=>"; #\tDefault\t".$Points."_".$mMdeltaG;;
 }
 1;
