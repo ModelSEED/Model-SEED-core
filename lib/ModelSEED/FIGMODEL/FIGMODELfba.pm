@@ -2274,7 +2274,7 @@ sub parseWebFBASimulation {
 =cut
 sub setGapGenStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		targetParameters => {},
 		referenceParameters => {},
 		filename => $self->filename(),
@@ -2309,7 +2309,7 @@ sub setGapGenStudy {
 =cut
 sub parseGapGenStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		filename => $self->filename()
 	});
 	$self->filename($args->{filename});
@@ -2346,7 +2346,7 @@ sub parseGapGenStudy {
 =cut
 sub setMolAnalysisStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["molfiles","ids"],{});
+	$args = ModelSEED::utilities::ARGS($args,["molfiles","ids"],{});
 	File::Path::mkpath $self->filename()."/molfiles/";
 	my $output = ["ID\tFilename"];
 	for (my $i=0; $i < @{$args->{ids}}; $i++) {
@@ -2365,8 +2365,8 @@ sub setMolAnalysisStudy {
 			}
 		}	
 	}
-	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileInput.txt",$output);
-	$self->parameter_files(["ArgonneProcessing.txt"]);
+	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileOutput.txt",$output);
+	$self->parameter_files(["ArgonneProcessing"]);
 	$self->makeOutputDirectory();
 	$self->set_parameters({
 		"Recursive MILP solution limit" => 1
@@ -2394,7 +2394,7 @@ sub setMolAnalysisStudy {
 =cut
 sub parseMolAnalysisStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{});
+	$args = ModelSEED::utilities::ARGS($args,[],{});
 	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->filename()."/MolfileOutput.txt","\t","|",0,["Label"]);
 	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
 	my $results;
