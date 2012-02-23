@@ -9,6 +9,8 @@ use strict;
 use ModelSEED::utilities;
 use ModelSEED::MS::Compound;
 use ModelSEED::MS::Reaction;
+use ModelSEED::MS::ReactionSet;
+use ModelSEED::MS::CompoundSet;
 use ModelSEED::MS::Media;
 package ModelSEED::MS::Biochemistry;
 use Moose;
@@ -25,8 +27,11 @@ has 'name' => (is => 'ro', isa => 'Str');
 has 'reactions' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Reaction]', lazy => 1, builder => '_load_reactions');
 has 'compounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Compound]', lazy => 1, builder => '_load_compounds');
 has 'media' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Media]', lazy => 1, builder => '_load_media');
+has 'reactionSet' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::ReactionSet]', lazy => 1, builder => '_load_reactionSet');
+has 'compoundSet' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::CompoundSet]', lazy => 1, builder => '_load_compoundSet');
 #Object data
 has 'loadedSubObjects' => (is => 'ro',isa => 'HashRef[Str]',required => 1);
+has 'indecies' => (is => 'ro',isa => 'HashRef',default => sub{{}});
 #Constants
 has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","unchargedFormula","formula","mass","defaultCharge","deltaG","deltaGErr"]);
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Compound");
@@ -54,16 +59,23 @@ sub BUILDARGS {
 				}
 			}
 		}
-		if (defined($params->{rawdata}->{relations}->{compounds})) {
-			foreach my $cpd (@{$params->{rawdata}->{relations}->{compounds}}) {
-				my $cpdobj = ModelSEED::MooseDB::Compound->new({biochemistry => $self,rawdata => $cpd});
-				push(@{$params->{compounds}},$cpdobj);
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{reactions})) {
-			foreach my $rxn (@{$params->{rawdata}->{relations}->{reactions}}) {
-				my $rxnobj = ModelSEED::MooseDB::Reaction->new({biochemistry => $self,rawdata => $rxn});
-				push(@{$params->{reactions}},$rxnobj);
+		my $subobjects = {
+			compounds => "ModelSEED::MS::Compound",
+			reactions => "ModelSEED::MS::Reaction",
+			media => "ModelSEED::MS::Media",
+			reactionSet => "ModelSEED::MS::ReactionSet",
+			compoundSet => "ModelSEED::MS::CompoundSet",
+		};
+		my $array = ["compounds","reactions","media","reactionSet","compoundSet"];
+		for (my $i=0; $i < @{$array}; $i++) {
+			my $type = $array->[$i];
+			if (defined($params->{rawdata}->{relations}->{$type})) {
+				$params->{$type} = [];
+				foreach my $data (@{$params->{rawdata}->{relations}->{$type}}) {
+					my $class = $subobjects->{$type};
+					my $obj = $class->new({biochemistry => $self,rawdata => $data});
+					push(@{$params->{$type}},$obj);
+				}
 			}
 		}
 	}
@@ -82,7 +94,6 @@ sub save {
     die "No ObjectManager" unless defined($om);
     return $om->save($self->type, $self->serializeToDB());
 }
-    
 
 sub _load_reactions {
     my ($self) = @_;
@@ -121,6 +132,168 @@ sub _load_media {
     	push(@{$objs},$obj);
     }
     return $objs;
+}
+
+sub serializeToDB {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
+	my $data = {};
+	my $attributes = $self->dbAttributes();
+	for (my $i=0; $i < @{$attributes}; $i++) {
+		my $function = $attributes->[$i];
+		$data->{attributes}->{$function} = $self->$function();
+	}
+	my $rodbClasses = {
+		media => "BiochemistryMedia",
+		compartments => "BiochemistryCompartment",
+		compounds => "BiochemistryCompound",
+		compoundsets => "BiochemistryCompoundset",
+		reactions => "BiochemistryReaction",
+		reactionsets => "BiochemistryReactionset"
+	};
+	my $subObjectRelations = {
+		"media" => ["media","media_uuid"],
+		"compartments" => ["compartments","compartment_uuid"],
+		"compounds" => ["compounds","compound_uuid"],
+		"reactions" => ["reactions","reaction_uuid"],
+		"compoundsets" => ["compoundSets","compoundset_uuid"],
+		"reactionsets" => ["reactionSets","reactionset_uuid"]
+	};
+	my $relations = ["media","compartments","compounds","reactions","compoundsets","reactionsets"];
+	for (my $i=0; $i < @{$relations}; $i++) {
+		my $relation = $relations->[$i];
+		my $rodbClass = $rodbClasses->{$relation};
+		if (defined($subObjectRelations->{$relation})) {
+			my $function = $subObjectRelations->{$relation}->[0];
+			$data->{relations}->{$relation} = [];
+			foreach my $obj ($self->$function()) {
+				push(@{$data->{relations}->{$relation}},{
+					type => $rodbClass,
+					attributes => {
+						biochemistry_uuid => $self->uuid(),
+        				$subObjectRelations->{$relation}->[1] => $obj->uuid(),
+					}
+				});
+			}
+		} else {
+			#Do nothing for now
+		}
+	}
+	return $data;
+}
+
+######################################################################
+#Query Functions
+######################################################################
+sub getCompound {
+    my ($self,$query) = @_;
+    return $self->getObject({type => "Compound",query => $query});
+}
+
+sub getReaction {
+    my ($self,$query) = @_;
+    return $self->getObject({type => "Reaction",query => $query});
+}
+
+sub getReactionSet {
+    my ($self,$query) = @_;
+    return $self->getObject({type => "ReactionSet",query => $query});
+}
+
+sub getCompoundSet {
+    my ($self,$query) = @_;
+    return $self->getObject({type => "CompoundSet",query => $query});
+}
+
+sub getObject {
+	my ($self,$args) = @_;
+	my $objects = $self->getObjects($args);
+	return $objects->[0];
+}
+
+sub getObjects {
+    my ($self,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,["type","query"],{});
+    $self->checkType($args->{type});
+    my $hits = [];
+    my $first = 1;
+    foreach my $attribute (keys(%{$args->{query}})) {
+    	if (!defined($self->indecies()->{$args->{type}}->{$attribute})) {
+    		$self->buildIndex({type => $args->{type},attribute => $attribute});
+    	}
+    	if (!defined($self->indecies()->{$args->{type}}->{$attribute}->{$args->{query}->{$attribute}})) {
+    		return [];	
+    	}
+    	my $newHits = $self->indecies()->{$args->{type}}->{$attribute}->{$args->{query}->{$attribute}};
+    	if (@{$hits} > 0) {
+    		my $hitsHash = {};
+    		for (my $i=0; $i < @{$newHits}; $i++) {
+	    		$hitsHash->{$newHits->[$i]} = 0;
+	    	}
+	    	for (my $i=0; $i < @{$hits}; $i++) {
+	    		if (defined($hitsHash->{$hits->[$i]})) {
+	    			$hitsHash->{$hits->[$i]} = 1;
+	    		}
+	    	}
+	    	$hits = [];
+	    	foreach my $hit (keys(%{$hitsHash})) {
+	    		if ($hitsHash->{$hit} == 1) {
+	    			push(@{$hits},$hit);
+	    		}
+	    	}
+    	} else {
+    		push(@{$hits},@{$newHits});
+    	}
+    	if (@{$hits} == 0) {
+    		return [];
+    	}
+    	$first = 0;
+    }
+    return $hits;
+}
+
+sub checkType {
+	my ($self,$type) = @_;
+	my $types = {
+    	Compound => "compounds",
+    	Reaction => "reactions",
+    	Media => "media",
+    	CompoundSet => "compoundSets",
+    	ReactionSet => "reactionSets"
+    };
+    if (!defined($types->{$type})) {
+    	ModelSEED::utilities::ERROR("Type ".$type." not recognized!");
+    }
+    return $types->{$type};
+}
+
+sub clearIndex {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		type => undef,
+		attribute => undef
+	});
+	if (!defined($args->{type})) {
+		$self->indecies({});
+	} else {
+		$self->checkType($args->{type});
+		if (!defined($args->{attribute})) {
+			$self->indecies()->{$args->{type}} = {};	
+		} else {
+			$self->indecies()->{$args->{type}}->{$args->{attribute}} = {};
+		}
+	}
+}
+
+sub buildIndex {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["type","attribute"],{});
+	my $function = $self->checkType($args->{type});
+	my $objects = $self->$function();
+	my $attribute = $args->{attribute};
+	for (my $i=0; $i < @{$objects}; $i++) {
+		push(@{$self->indecies()->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
+	}
 }
 
 __PACKAGE__->meta->make_immutable;
