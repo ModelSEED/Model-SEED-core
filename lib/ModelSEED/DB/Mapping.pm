@@ -1,8 +1,8 @@
 package ModelSEED::DB::Mapping;
 
-
 use strict;
 use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -74,6 +74,13 @@ __PACKAGE__->meta->setup(
             map_to    => 'role',
             type      => 'many to many',
         },
+
+        rolesets => {
+            map_class => 'ModelSEED::DB::MappingRoleset',
+            map_from  => 'mapping',
+            map_to    => 'roleset',
+            type      => 'many to many',
+        },
     ],
 );
 
@@ -91,5 +98,7 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
         }
 });
 
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 1;

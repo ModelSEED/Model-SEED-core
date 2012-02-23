@@ -4,6 +4,7 @@ use ModelSEED::DB;
 use Try::Tiny;
 use Data::Dumper;
 use namespace::autoclean;
+use Lingua::EN::Inflect qw(PL def_noun);
 
 my $types = [ qw( Annotation AnnotationFeature Biochemistry
     BiochemistryAlias BiochemistryCompartment BiochemistryCompound
@@ -12,7 +13,7 @@ my $types = [ qw( Annotation AnnotationFeature Biochemistry
     ComplexRole Compound CompoundAlias CompoundPk CompoundStructure
     Compoundset CompoundsetCompound DefaultTransportedReagent  Feature
     Genome Mapping MappingAlias MappingComplex MappingReactionRule
-    MappingRole Media MediaCompound Model ModelAlias ModelBiomass
+    MappingRole MappingRoleset Media MediaCompound Model ModelAlias ModelBiomass
     ModelCompartment ModelReaction ModelTransportedReagent ModelessFeature
     Modelfba ModelfbaCompound ModelfbaReaction Permission Reaction
     ReactionAlias ReactionRule ReactionRuleTransport Reagent Reactionset
@@ -29,6 +30,7 @@ has username => ( is => 'rw', isa => 'Str');
 has server_time_zone => ( is => 'rw', isa => 'Str', default => 'UTC' );
 has types => ( is => 'rw', isa => 'HashRef', default => sub { return {map { $_ => '' } @$types}; });
 has _managers => ( is => 'rw', isa => 'HashRef', default => sub { return {}; } );
+has plurals => ( is => 'rw', isa => 'HashRef', builder => '_buildAllPluralObjects', lazy => 1);
 
 sub BUILD {
     my ($self) = @_;
@@ -62,7 +64,7 @@ sub BUILD {
             create_object => _create_object($Rtype_base),
             get_objects => _get_objects_wrapper($Rtype_base, $Rtype),
             get_objects_iterator => _get_objects_iterator_wrapper($Rtype_base, $Rtype),
-            get_objects_count => _other_wrappers($Rtype_base, $Rtype, "get_objects_count"),
+            get_count => _other_wrappers($Rtype_base, $Rtype, "get_objects_count"),
             update_objects => _other_wrappers($Rtype_base, $Rtype, "update_objects"),
             delete_objects => _other_wrappers($Rtype_base, $Rtype, "delete_objects"),
         };
@@ -85,6 +87,25 @@ sub _buildRDB {
 sub get_object {
     my $r = shift->get_objects(@_);
     return ($r > 0) ? $r->[0] : undef;
+}
+
+sub get_count {
+    my $self = shift;
+    my $type = shift;
+    unshift(@_, $self);
+    die "Unknown object $type\n" unless(defined($self->_managers->{$type}));
+    die "Unknown method get_objects for $type\n" unless(
+        defined($self->_managers->{$type}->{get_count}));
+    return $self->_managers->{$type}->{get_count}->(@_);
+}
+
+sub get_object_by_alias {
+    my ($self, $type, $user, $id) = @_;
+    my $ptype = $self->plural($type);
+    return $self->get_object($type, query =>
+        [ $type."_aliases.username" => $user,
+          $type."_aliases.id" => $id ], require_objects => [ $type."_aliases" ],
+    );
 }
 
 sub get_objects {
@@ -194,5 +215,46 @@ sub _fixSyntax {
     }
 }
 
+
+sub singular {
+    my ($self, $type) = @_;
+    my $o = $self->plurals->{singles}->{$type};
+    return ($o) ? $o : $type;
+}
+
+sub plural {
+    my ($self, $type) = @_;
+    my $o = $self->plurals->{plurals}->{$type};
+    return ($o) ? $o : $type;
+}
+
+sub _buildAllPluralObjects {
+    my ($self) = @_;
+    my @types = keys %{$self->types};
+    my ($singles, $plurals) = ({}, {});
+    # Add important defaults for us
+    def_noun 'media' => 'media';
+    def_noun 'fba' => 'fba';
+    def_noun 'alias' => 'aliases';
+    foreach my $type (@types) {
+        # CamelCase to under_score
+        $type =~ s/([A-Z])/_$1/g;
+        $type =~ s/^_//;
+        # split on under_scores
+        my @parts = split(/_/, $type);
+        map { $_ = lc($_) } @parts;
+        # convert last part to plural form
+        my $last = scalar(@parts) - 1;
+        my @plParts = @parts;
+        $plParts[$last] = PL($plParts[$last]);
+        my ($pl, $s) = (join("_", @plParts), join("_", @parts));
+        # add bidirectional links in hash
+        $plurals->{$s} = $pl;
+        $singles->{$pl} = $s;
+    }
+    my $hash = { plurals => $plurals, singles => $singles };
+    return $hash;
+}
+    
 __PACKAGE__->meta->make_immutable;
 1;

@@ -22,7 +22,7 @@ has 'lastname' => (is => 'ro', isa => 'Str', required => 1, default => "");
 
 sub BUILD {
     my ($self,$params) = @_;
-	$params = ModelSEED::globals::ARGS($params,[],{});
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
 1;

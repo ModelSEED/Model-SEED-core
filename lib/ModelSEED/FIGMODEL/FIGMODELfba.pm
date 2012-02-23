@@ -372,7 +372,7 @@ sub dataFilename {
 		filename => undef
 	});
 	if (!defined($self->{_dataFilename}->{$args->{type}})) {
-		ModelSEED::globals::ERROR("Type not recognized: ".$args->{type});
+		ModelSEED::utilities::ERROR("Type not recognized: ".$args->{type});
 	}
 	if (defined($args->{filename})) {
 		$self->{_dataFilename}->{$args->{type}} = $args->{filename};
@@ -395,7 +395,7 @@ sub printMediaFiles {
     return unless(@{$args->{printList}});
     my $first = $args->{printList}->[0];
     my $mediaObj = $self->figmodel()->get_media($first);
-    ModelSEED::globals::ERROR("Could not find media object for $first") if (!defined($mediaObj));
+    ModelSEED::utilities::ERROR("Could not find media object for $first") if (!defined($mediaObj));
     $mediaObj->printDatabaseTable({
         filename => $self->directory()."/media.tbl",
         printList => $args->{printList}
@@ -1405,7 +1405,7 @@ sub setTightBounds {
 		$self->set_parameters({"maximize single objective"=>0});
 		if (defined($self->options()->{noGrowth}) && $self->model() ne "Complete") {
 			my $mdl = $self->figmodel()->database()->get_object("model",{id=>$self->model()});
-			ModelSEED::globals::ERROR("Could not find model".$self->model()) if (!defined($mdl));
+			ModelSEED::utilities::ERROR("Could not find model".$self->model()) if (!defined($mdl));
 			$self->add_reaction_ko([$mdl->biomassReaction()]);
 		}
 	}
@@ -1610,17 +1610,20 @@ sub parseCompleteGapfillingStudy {
 	}
 	my $data = $self->figmodel()->database()->load_multiple_column_file($args->{solutionFile},"\t");
 	my $result;
+	$result->{gapfillReportFile} = $data;
 	for (my $i=1; $i < @{$data}; $i++) {
-		$result->{$data->[$i]->[0]}->{gapfilled} = undef;
-		$result->{$data->[$i]->[0]}->{repaired} = undef;
-		if (defined($data->[$i]->[1]) && length($data->[$i]->[1]) > 0) {
-			push(@{$result->{$data->[$i]->[0]}->{gapfilled}},split(";",$data->[$i]->[1]));
+		if ($data->[$i]->[1] ne "FAILED") {
+			$result->{$data->[$i]->[0]}->{gapfilled} = undef;
+			$result->{$data->[$i]->[0]}->{repaired} = undef;
+			if (defined($data->[$i]->[1]) && length($data->[$i]->[1]) > 0) {
+				push(@{$result->{$data->[$i]->[0]}->{gapfilled}},split(";",$data->[$i]->[1]));
+			}
+			if (defined($data->[$i]->[2]) && length($data->[$i]->[2]) > 0) {
+				push(@{$result->{$data->[$i]->[0]}->{repaired}},split(";",$data->[$i]->[2]));
+			}
 		}
-		if (defined($data->[$i]->[2]) && length($data->[$i]->[2]) > 0) {
-			push(@{$result->{$data->[$i]->[0]}->{repaired}},split(";",$data->[$i]->[2]));
-		}	
 	}
-	return $result;
+	return {completeGapfillingResult => $result};
 }
 
 =head3 setCombinatorialDeletionStudy
@@ -1667,7 +1670,7 @@ sub parseCombinatorialDeletionStudy {
 =cut
 sub setMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{numsolutions => 1});
+	$args = ModelSEED::utilities::ARGS($args,[],{numsolutions => 1});
 	$self->set_parameters({
 		"determine minimal required media" => 1,
 		"MFASolver"=>"CPLEX",
@@ -1687,7 +1690,7 @@ sub setMinimalMediaStudy {
 =cut
 sub parseMinimalMediaStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{filename=>$self->filename()});
+	$args = ModelSEED::utilities::ARGS($args,[],{filename=>$self->filename()});
 	if (defined($args->{error})) {return {error => $args->{error}};}
 	$self->filename($args->{filename});
 	if (-e $self->directory()."/MFAOutput/MinimalMediaResults.txt") {
@@ -1701,7 +1704,7 @@ sub parseMinimalMediaStudy {
 			public => 1,
 			mediaCompounds => []		
 		});
-		my $data = ModelSEED::globals::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
+		my $data = ModelSEED::utilities::LOADFILE($self->directory()."/MFAOutput/MinimalMediaResults.txt");
 		my $result;
 		push(@{$result->{essentialNutrients}},split(/;/,$data->[1]));
 		my $mediaCpdList = [@{$result->{essentialNutrients}}];
@@ -2271,7 +2274,7 @@ sub parseWebFBASimulation {
 =cut
 sub setGapGenStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		targetParameters => {},
 		referenceParameters => {},
 		filename => $self->filename(),
@@ -2306,7 +2309,7 @@ sub setGapGenStudy {
 =cut
 sub parseGapGenStudy {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		filename => $self->filename()
 	});
 	$self->filename($args->{filename});
@@ -2342,70 +2345,69 @@ sub parseGapGenStudy {
 =item Description:
 =cut
 sub setMolAnalysisStudy {
-	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["molfiles","ids"],{});
-	File::Path::mkpath $self->filename()."/molfiles/";
-	my $output = ["ID\tFilename"];
-	for (my $i=0; $i < @{$args->{ids}}; $i++) {
-		if (defined($args->{molfiles}->[$i])) {
-			my $filename;
-			if ($args->{molfiles}->[$i] =~ m/([^\/]+\.mol)/ && -e $args->{molfiles}->[$i]) {
-				my $file = $1;
-				File::Copy::copy($args->{molfiles}->[$i],$self->filename()."/molfiles/".$file);
-				$filename = $file;
-			} elsif ($args->{molfiles}->[$i] =~ m/\n/) {
-				$self->figmodel()->database()->print_array_to_file($self->filename()."/molfiles/".$args->{ids}->[$i].".mol",[split(/\n/,$args->{molfiles}->[$i])]);
-				$filename = $args->{ids}->[$i].".mol";
-			}
-			if (defined($filename) && -e $filename) {
-				push(@{$output},$args->{ids}->[$i]."\t".$args->{molfiles}->[$i]);
-			}
-		}	
-	}
-	$self->figmodel()->database()->print_array_to_file($self->filename()."/MolfileInput.txt",$output);
-	$self->parameter_files(["ArgonneProcessing.txt"]);
-	$self->makeOutputDirectory();
-	$self->set_parameters({
-		"Recursive MILP solution limit" => 1
-	});
-	$self->studyArguments($args);
-	$self->parsingFunction("parseMolAnalysisStudy");
-	return {};
+    my ($self,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,["molfiles","ids"],{});
+    File::Path::mkpath $self->directory()."/molfiles/";
+    my $output = ["ID\tFilename"];
+    for (my $i=0; $i < @{$args->{ids}}; $i++) {
+	if (defined($args->{molfiles}->[$i])) {
+	    my $filename;
+	    if ($args->{molfiles}->[$i] =~ m/([^\/]+\.mol)/ && -e $args->{molfiles}->[$i]) {
+		my $file = $1;
+		File::Copy::copy($args->{molfiles}->[$i],$self->directory()."/molfiles/".$file);
+		$filename = $file;
+	    } elsif ($args->{molfiles}->[$i] =~ m/\n/) {
+		$self->figmodel()->database()->print_array_to_file($self->directory()."/molfiles/".$args->{ids}->[$i].".mol",[split(/\n/,$args->{molfiles}->[$i])]);
+		$filename = $args->{ids}->[$i].".mol";
+	    }
+	    if (defined($filename) && -e $self->directory()."/molfiles/".$filename) {
+		push(@{$output},$args->{ids}->[$i]."\t".$self->directory()."/molfiles/".$filename);
+	    }
+	}	
+    }
+    $self->figmodel()->database()->print_array_to_file($self->directory()."/MolfileInput.txt",$output);
+    $self->parameter_files(["ArgonneProcessing"]);
+    $self->makeOutputDirectory();
+    $self->set_parameters({
+	"Recursive MILP solution limit" => 1
+			  });
+    $self->studyArguments($args);
+    $self->parsingFunction("parseMolAnalysisStudy");
+    return {};
 }
 =head3 parseMolAnalysisStudy
-=item Definition:
-	Output = FIGMODELfba->parseMolAnalysisStudy({});
-    Output = {
-    	string:id => {
-    		molfile => string:filename or content,
-    		groups => string:group list,
-    		charge => double,
-    		formula => string:molecular formula from structure,
-    		stringcode => string:molecular structure in string format,
-    		mass => double,
-    		deltaG => double,
-    		deltaGerr => double
-    	}	
-    };
+    =item Definition:
+    Output = FIGMODELfba->parseMolAnalysisStudy({});
+Output = {
+  string:id => {
+    molfile => string:filename or content,
+    groups => string:group list,
+    charge => double,
+    formula => string:molecular formula from structure,
+    stringcode => string:molecular structure in string format,
+    mass => double,
+    deltaG => double,
+    deltaGerr => double
+}	
+};
 =item Description:
 =cut
 sub parseMolAnalysisStudy {
-	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{});
-	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->filename()."/MolfileOutput.txt","\t","|",0,["Label"]);
-	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
-	my $results;
-	for (my $i=0; $i < $tbl->size(); $i++) {
-		my $row = $tbl->get_row($i);
-		my $id;
-		if (defined($row->{id}->[0])) {
-			$id = $row->{id}->[0];
-			for (my $j=0; $j < @{$heading}; $j++) {
-				$results->{$id}->{$heading->[$j]} = $row->{$heading->[$j]}->[0];
-			}
-		}
+    my ($self,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,[],{});
+    my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->directory()."/MolfileOutput.txt","\t","|",0,["Label"]);
+    my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
+    my $results;
+    for (my $i=0; $i < $tbl->size(); $i++) {
+	my $row = $tbl->get_row($i);
+	my $id;
+	if (defined($row->{id}->[0])) {
+	    $id = $row->{id}->[0];
+	    for (my $j=0; $j < @{$heading}; $j++) {
+		$results->{$id}->{$heading->[$j]} = $row->{$heading->[$j]}->[0];
+	    }
 	}
-	return $results;
+    }
+    return $results;
 }
-
 1;

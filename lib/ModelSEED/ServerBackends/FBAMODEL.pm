@@ -875,7 +875,7 @@ sub get_model_stats {
         next unless defined $id;
         my $mdl = $self->figmodel()->get_model($id);
         if(!defined($mdl)) {
-            ModelSEED::globals::WARNING("Could not find model $id!");
+            ModelSEED::utilities::WARNING("Could not find model $id!");
             next;
         }
         my $mdl_stats = {};
@@ -2188,14 +2188,14 @@ sub model_build {
     	overwrite => 1
     });
     if (!defined($self->figmodel()->userObj())) {
-    	ModelSEED::globals::ERROR("You must log in in order to build a model!");
+    	ModelSEED::utilities::ERROR("You must log in in order to build a model!");
     }
     $args->{owner} = $self->figmodel()->user();
     if ($args->{id} =~ m/^\d+\.\d+$/) {
     	$args->{genome} = $args->{id};
     	$args->{id} = undef;
     } elsif (!defined($args->{genome})) {
-    	ModelSEED::globals::ERROR("If the genome is not specified in the ID, then the genome argument must be provided.");
+    	ModelSEED::utilities::ERROR("If the genome is not specified in the ID, then the genome argument must be provided.");
     }
     my $mdl = $self->figmodel()->create_model({
 		genome => $args->{genome},

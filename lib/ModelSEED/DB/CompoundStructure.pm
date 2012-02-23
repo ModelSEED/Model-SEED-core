@@ -1,6 +1,6 @@
 package ModelSEED::DB::CompoundStructure;
-
 use strict;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -15,7 +15,7 @@ __PACKAGE__->meta->setup(
         type          => { type => 'varchar', length => 32, not_null => 1 },
     ],
 
-    primary_key_columns => [ 'type', 'cksum' ],
+    primary_key_columns => [ 'type', 'cksum', 'compound_uuid' ],
 
     foreign_keys => [
         compound => {
@@ -24,5 +24,8 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 1;

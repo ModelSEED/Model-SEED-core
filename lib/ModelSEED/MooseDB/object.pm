@@ -56,7 +56,7 @@ sub BUILDARGS {
 
 sub BUILD {
     my ($self,$params) = @_;
-	$params = ModelSEED::globals::ARGS($params,[],{});
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
 

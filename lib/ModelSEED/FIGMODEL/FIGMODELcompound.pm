@@ -480,15 +480,17 @@ sub molAnalysis {
     my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["molfiles","ids"],{});
     my $fba = $self->figmodel()->fba();
+    print "Running Mol File analysis in ",$fba->directory(),"\n";
     $fba->setMolAnalysisStudy($args);
     $fba->runFBA({
-		printToScratch => $self->figmodel()->config("print to scratch")->[0],
-		studyType => "MolfileAnalysis",
-		parameterFile => "MolfileAnalysisParameters.txt"
-	});
-	my $results = $fba->parseMolAnalysisStudy();
+	printToScratch => $self->figmodel()->config("print to scratch")->[0],
+	studyType => "MolfileAnalysis",
+	parameterFile => "MolfileAnalysisParameters.txt"
+		 });
+    my $results = $fba->parseMolAnalysisStudy();
     $fba->clearOutput();
     return $results;
+    return {};
 }
 
 1;
