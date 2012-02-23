@@ -1585,20 +1585,20 @@ sub bcprocessmolfile {
     	$input->{molfiles}->[$i] = $args->{directory}.$input->{molfiles}->[$i];
     }
     my $cpd = $self->figmodel()->get_compound();
-	my $results = $cpd->molAnalysis($input);
-	my $output = ["id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr"];
-	my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
-	foreach my $id (keys(%{$results})) {
-		if (defined($results->{$id})) {
-			my $line = $id;
-			for (my $i=0; $i < @{$heading}; $i++) {
-				$line .= "\t".$results->{$id}->{$heading->[$i]};
-			}
-			push(@{$output},$line);
-		}
+    my $results = $cpd->molAnalysis($input);
+    my $output = ["id\tmolfile\tgroups\tcharge\tformula\tstringcode\tmass\tdeltaG\tdeltaGerr"];
+    my $heading = ["molfile","groups","charge","formula","stringcode","mass","deltaG","deltaGerr"];
+    foreach my $id (keys(%{$results})) {
+	if (defined($results->{$id})) {
+	    my $line = $id;
+	    for (my $i=0; $i < @{$heading}; $i++) {
+		$line .= "\t".$results->{$id}->{$heading->[$i]};
+	    }
+	    push(@{$output},$line);
 	}
-	ModelSEED::utilities::PRINTFILE($self->ws()->directory()."MolAnalysis.tbl",$output);
-	return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
+    }
+    ModelSEED::utilities::PRINTFILE($self->ws()->directory()."MolAnalysis.tbl",$output);
+    return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
 }
 =head
 =CATEGORY
