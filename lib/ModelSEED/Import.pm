@@ -1032,7 +1032,10 @@ sub importModelFromDir {
     my $missed = {};
     my $RDB_model = $self->om->create_object("model", {id => $id, name => $id});
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
-    if(-d "$dir/biochemistry") {
+    my $isNotImported = ($id =~ /Seed/) ? 1 : ($id =~ /Opt/) ? 1 : 0;
+    if($isNotImported) {
+        $RDB_model->biochemistry($self->defaultBiochemistry);
+    } elsif(-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
         $RDB_biochemistry = $self->importBiochemistryFromDir(
             "$dir/biochemistry", $username, $biochemId);
@@ -1040,7 +1043,9 @@ sub importModelFromDir {
     } else {
         die "No biochemistry for model $dir!\n";
     }
-    if(-d "$dir/mapping") {
+    if($isNotImported) {
+        
+    } elsif(-d "$dir/mapping") {
         my $mappingId = $id . "-mapping";
         $RDB_mapping = $self->importMappingFromDir(
             "$dir/mapping", $RDB_biochemistry, $username, $mappingId);
