@@ -2618,6 +2618,8 @@ sub import_model_file {
 		ModelSEED::utilities::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
 	} else {
 		$mdl = $self->get_model($args->{id});
+		$mdl->genome($args->{genome}) if $args->{genome} ne "NONE";
+		$mdl->autocompleteMedia($args->{autoCompleteMedia}) if $args->{autoCompleteMedia} ne "Complete";
 		if ($args->{generateprovenance} == 1) {
 			$mdl->GenerateModelProvenance({
 			    biochemSource => $args->{biochemSource}
