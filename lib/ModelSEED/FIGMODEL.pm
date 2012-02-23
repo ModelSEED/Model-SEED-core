@@ -3301,11 +3301,18 @@ sub import_model {
 		    }
 		}
 		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 				print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 				$how_found=$cpdals->type();
+			}else{
+			    $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGGimport.%"});
+			    if (defined($cpdals)) {
+				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				$how_found=$cpdals->type();
+			    }
 			}
 		}
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
@@ -3314,14 +3321,13 @@ sub import_model {
 			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
 			print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
 			$how_found=$cpdals->type();
-		    }
-		}
-		if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
-		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
-		    if (defined($cpdals)) {
-			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-			$how_found=$cpdals->type();
+		    }else{
+			$cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
+			if (defined($cpdals)) {
+			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+			    $how_found=$cpdals->type();
+			}
 		    }
 		}
 
@@ -3368,7 +3374,7 @@ sub import_model {
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
 		    print "New ".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
-		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\n";
+		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t",$row->{"NAME"}->[0]."\n";
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 			$row->{"MASS"}->[0] = 10000000;	
 		    }
