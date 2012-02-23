@@ -76,6 +76,14 @@ sub BUILD {
 	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
+sub save {
+    my ($self, $om) = @_;
+    $om = $self->om unless(defined($om));
+    die "No ObjectManager" unless defined($om);
+    return $om->save($self->type, $self->serializeToDB());
+}
+    
+
 sub _load_reactions {
     my ($self) = @_;
     my $rxns = $self->om()->getReactions({

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use DBI;
 
+
 # TODO: list these columns in separate module and import
 my $biochem_cols = ['uuid', 'modDate', 'locked', 'public', 'name'];
 
@@ -40,7 +41,9 @@ my $role_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'featu
 sub new {
     my ($class, $args) = @_;
 
-    my $self = {};
+    my $self = {
+        om => undef,
+    };
 
     # create the dbi connection
     my $dsn;
@@ -725,5 +728,66 @@ sub _parseQuery {
 
     return join(' AND ', @$sql);
 }
+
+sub save {
+    my ($self, $object, $user) = @_;
+    $self->{om}->db->begin_work;
+    my $success = 1;
+    try {
+        $self->_innerSave($object, $user);
+    } catch { $success = 0; };
+    if($success) {
+        $self->{om}->db->commit;
+    } else {
+        $self->{om}->db->rollback;
+    }
+    return $success;
+}
+
+sub _innerSave {
+    my ($self, $object, $user) = @_;
+    if(!defined($self->{om})) {
+        # until we get moose lazy loaders in here
+        $self->_initOM();
+    }
+    my $attrs = $object->{attributes};
+    my $rels  = $object->{relationships};
+    my $type  = $object->{type};
+    my $primaryKeyLookup = $self->{om}->getPrimaryKeys($type, $attrs);      
+    my $rObj = $self->{om}->new_object($type, $primaryKeyLookup);
+    my $res = $rObj->load(speculative => 1);
+    # apply attributes, apply relationships, save
+    foreach my $attr (keys %$attrs) {
+        $rObj->$attr($attrs->{$attr});
+    }
+    foreach my $rel (keys %$rels) {
+        if(ref($rels->{$rel}) eq 'ARRAY') {
+            # is a 'to many' relationship
+            my $many = [];
+            foreach my $subObj (@{$rels->{$rel}}) {
+                push(@$many, $self->_innerSave($subObj, $user));
+            }
+            $rObj->$rel($many);
+        } else {
+            # is a 'to one' relationship
+            my $rSubObj = $self->_innerSave($rels->{$rel}, $user);
+            $rObj->$rel($rSubObj);
+        }
+    }
+    $rObj->save();
+    return $rObj; 
+}
+
+sub _initOM {
+    my ($self) = @_;
+    eval {
+        require 'ModelSEED::ObjectManager';
+        $self->{om} = ModelSEED::ObjectManager->({
+            driver => $self->{driver},
+            database => $self->{database},
+        });
+    };
+}
+     
 
 1;
