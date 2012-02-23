@@ -72,10 +72,10 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relations}->{MediaCompound} = [];
+	$data->{relations}->{media_compounds} = [];
 	my $compounds = $self->compounds();
 	for (my $i=0; $i < @{$compounds}; $i++) {
-		push(@{$data->{relations}->{MediaCompound}},{
+		push(@{$data->{relations}->{media_compounds}},{
 			type => "MediaCompound",
 			attributes => {
 				media_uuid => $self->uuid(),
