@@ -65,10 +65,14 @@ $time = time;
 my $reactionsets = $api->getReactionSets({biochemistry_uuid => $bio_uuid});
 print "Got " . scalar @$reactionsets . " reaction sets in " . sprintf("%.3f", time - $time) . " seconds\n";
 
+print Dumper($reactionsets);
+
 # test compoundsets
 $time = time;
 my $compoundsets = $api->getCompoundSets({biochemistry_uuid => $bio_uuid});
 print "Got " . scalar @$compoundsets . " compound sets in " . sprintf("%.3f", time - $time) . " seconds\n";
+
+print Dumper($compoundsets);
 
 # test compartments
 $time = time;
@@ -85,16 +89,25 @@ my $biochem = $api->getBiochemistry({
 print "Got biochemistry in " . sprintf("%.3f", time - $time) . " seconds\n";
 print total_size($biochem) . " bytes\n";
 
+$time = time;
+my $roles = $api->getRoles({mapping_uuid => $mapping_uuid});
+print "Got " . scalar @$roles . " roles in " . sprintf("%.3f", time - $time) . " seconds\n";
+
 # test mapping
 $time = time;
 my $mapping = $api->getMapping({
     uuid => $mapping_uuid,
     user => "master",
-    with_complexes => 1
+    with_all => 1
 });
 print "Got mapping in " . sprintf("%.3f", time - $time) . " seconds\n";
 
-sub file {
+$mapping->{relationships}->{complexes} = [$mapping->{relationships}->{complexes}->[0]];
+$mapping->{relationships}->{roles} = [$mapping->{relationships}->{roles}->[0]];
+
+print Dumper($mapping);
+
+#sub file {
     $biochem->{relationships}->{reactions} = [$biochem->{relationships}->{reactions}->[0]];
     $biochem->{relationships}->{compounds} = [$biochem->{relationships}->{compounds}->[0]];
     $biochem->{relationships}->{media} = [$biochem->{relationships}->{media}->[0]];
@@ -102,6 +115,6 @@ sub file {
     open OUT, ">out.txt";
     print OUT Dumper($biochem);
     close OUT;
-}
+#}
 
 exit;

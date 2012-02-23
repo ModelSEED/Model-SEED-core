@@ -35,7 +35,11 @@ my $complex_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname'];
 
 my $reaction_rule_cols = ['uuid', 'reaction_uuid', 'compartment_uuid', 'direction', 'transprotonNature'];
 
-my $role_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'feature_uuid', 'optional', 'type'];
+my $complex_role_cols = ['role_uuid', 'optional', 'type'];
+
+my $role_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'feature_uuid'];
+
+my $annotation_cols = ['uuid', 'modDate', 'locked', 'name', 'genome_uuid'];
 
 sub new {
     my ($class, $args) = @_;
@@ -181,13 +185,12 @@ sub getReactions {
     my $reagents = _processJoinedRows($rows, $reagent_cols, "Reagent");
 
     # get the reactionsets
-    $sql = "SELECT reactions.uuid, reactionsets.* FROM reactions"
+    $sql = "SELECT reactions.uuid, reactionset_reactions.reactionset_uuid FROM reactions"
 	. " JOIN reactionset_reactions ON reactions.uuid = reactionset_reactions.reaction_uuid"
-	. " JOIN reactionsets ON reactionset_reactions.reactionset_uuid = reactionsets.uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $reactionsets = _processJoinedRows($rows, $set_cols, "ReactionSet");
+    my $reactionsets = _processJoinedRows($rows, ['reactionset_uuid'], "ReactionSetReaction");
 
     foreach my $reaction (@$reactions) {
 	my $uuid = $reaction->{attributes}->{uuid};
@@ -278,13 +281,12 @@ sub getCompounds {
     my $aliases = _processJoinedRows($rows, $aliases_cols, "CompoundAlias");
 
     # get the compoundsets
-    $sql = "SELECT compounds.uuid, compoundsets.* FROM compounds"
+    $sql = "SELECT compounds.uuid, compoundset_compounds.compoundset_uuid FROM compounds"
 	. " JOIN compoundset_compounds ON compounds.uuid = compoundset_compounds.compound_uuid"
-	. " JOIN compoundsets ON compoundset_compounds.compoundset_uuid = compoundsets.uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $compoundsets = _processJoinedRows($rows, $set_cols, "CompoundSet");
+    my $compoundsets = _processJoinedRows($rows, ['compoundset_uuid'], "CompoundSetCompound");
 
     foreach my $compound (@$compounds) {
 	my $uuid = $compound->{attributes}->{uuid};
@@ -407,7 +409,7 @@ sub getReactionSets {
 	$where .= " AND " . _parseQuery($args->{query});
     }
 
-    # get the reaction data
+    # get the reactionset data
     my $sql = "SELECT * FROM reactionsets"
 	. " $where";
 
@@ -419,6 +421,22 @@ sub getReactionSets {
     }
 
     my $reactionsets = _processRows($rows, $set_cols, "ReactionSet");
+
+    # get the reactions
+    $sql = "SELECT reactionset_reactions.* FROM reactionsets"
+	. " JOIN reactionset_reactions ON reactionsets.uuid = reactionset_reactions.reactionset_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
+    my $reactions = _processJoinedRows($rows, ['reaction_uuid'], "ReactionSetReaction");
+
+    foreach my $set (@$reactionsets) {
+	my $uuid = $set->{attributes}->{uuid};
+
+	if (defined($reactions->{$uuid})) {
+	    $set->{relationships}->{reactions} = $reactions->{$uuid};
+	}
+    }
 
     return $reactionsets;
 }
@@ -461,6 +479,22 @@ sub getCompoundSets {
     }
 
     my $compoundsets = _processRows($rows, $set_cols, "CompoundSet");
+
+    # get the compounds
+    $sql = "SELECT compoundset_compounds.* FROM compoundsets"
+	. " JOIN compoundset_compounds ON compoundsets.uuid = compoundset_compounds.compoundset_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
+    my $compounds = _processJoinedRows($rows, ['compound_uuid'], "CompoundSetCompound");
+
+    foreach my $set (@$compoundsets) {
+	my $uuid = $set->{attributes}->{uuid};
+
+	if (defined($compounds->{$uuid})) {
+	    $set->{relationships}->{compounds} = $compounds->{$uuid};
+	}
+    }
 
     return $compoundsets;
 }
@@ -512,10 +546,11 @@ sub getMapping {
     my ($self, $args) = @_;
 
     _processArgs($args, 'getMapping', {
-	uuid              => {required => 1},
-	user              => {required => 1},
-	with_all          => {required => 0},
-	with_complexes => {required => 0}
+	uuid           => {required => 1},
+	user           => {required => 1},
+	with_all       => {required => 0},
+	with_complexes => {required => 0},
+	with_roles     => {required => 0}
     });
 
     # get the mapping object
@@ -531,7 +566,8 @@ sub getMapping {
     my $mapping = _processRows($rows, $mapping_cols, "Mapping")->[0];
 
     my $with = {
-	complexes => 'getComplexes'
+	complexes => 'getComplexes',
+	roles     => 'getRoles'
     };
 
     if ($args->{with_all}) {
@@ -599,14 +635,13 @@ sub getComplexes {
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
     my $reaction_rules = _processJoinedRows($rows, $reaction_rule_cols, "ReactionRule");
 
-    # get the roles
-    $sql = "SELECT complexes.uuid, roles.*, complex_roles.optional, complex_roles.type FROM complexes"
+    # get the complex roles
+    $sql = "SELECT complex_roles.* FROM complexes"
 	. " JOIN complex_roles ON complexes.uuid = complex_roles.complex_uuid"
-	. " JOIN roles ON complex_roles.role_uuid = roles.uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
-    my $roles = _processJoinedRows($rows, $role_cols, "Role");
+    my $roles = _processJoinedRows($rows, $complex_role_cols, "ComplexRole");
 
     foreach my $complex (@$complexes) {
 	my $uuid = $complex->{attributes}->{uuid};
@@ -616,11 +651,112 @@ sub getComplexes {
 	}
 
 	if (defined($roles->{$uuid})) {
-	    $complex->{relationships}->{roles} = $roles->{$uuid};
+	    $complex->{relationships}->{complex_roles} = $roles->{$uuid};
 	}
     }
 
     return $complexes;
+}
+
+sub getRoles {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getRoles', {
+	mapping_uuid => {required => 1},
+	query        => {required => 0},
+	limit        => {required => 0},
+	offset       => {required => 0}
+    });
+
+    my $sub_sql = "SELECT role_uuid"
+	. " FROM mapping_roles"
+	. " WHERE mapping_uuid = ?";
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $where = "WHERE roles.uuid IN ($sub_sql)";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$where .= " AND " . _parseQuery($args->{query});
+    }
+
+    # get the reaction data
+    my $sql = "SELECT * FROM roles"
+	. " $where";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
+
+    # return empty set if no complexes
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $roles = _processRows($rows, $role_cols, "Role");
+
+    # get the rolesets
+    $sql = "SELECT roles.uuid, rolesets.uuid, rolesets.type FROM roles"
+	. " JOIN roleset_roles ON roles.uuid = roleset_roles.role_uuid"
+	. " JOIN rolesets ON roleset_roles.roleset_uuid = rolesets.uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
+    my $rolesets = _processJoinedRows($rows, ['uuid', 'type'], "RoleSetRole");
+
+    foreach my $role (@$roles) {
+	my $uuid = $role->{attributes}->{uuid};
+
+	if (defined($rolesets->{$uuid})) {
+	    $role->{relationships}->{roleset} = $rolesets->{$uuid};
+	}
+    }
+
+    return $roles;
+}
+
+sub getAnnotation {
+#    my ($self, $uuid, $user) = @_;
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getAnnotation', {
+	uuid           => {required => 1},
+	user           => {required => 1},
+	with_all       => {required => 0}
+    });
+
+    # get the annotation object
+    my $sql = "SELECT * FROM annotations"
+	. " WHERE uuid = ?";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{uuid});
+
+    unless (scalar @$rows == 1) {
+	die "Unable to find annotation with uuid: " . $args->{uuid};
+    }
+
+    my $annotation = _processRows($rows, $annotation_cols, "Annotation")->[0];
+
+    my $with = {
+
+    };
+
+    if ($args->{with_all}) {
+	foreach my $rel (keys %$with) {
+	    my $sub = $with->{$rel};
+	    $annotation->{relationships}->{$rel} = $self->$sub({annotation_uuid => $args->{uuid}});
+	}
+    } else {
+	foreach my $rel (keys %$with) {
+	    if ($args->{"with_$rel"}) {
+		my $sub = $with->{$rel};
+		$annotation->{relationships}->{$rel} = $self->$sub({annotation_uuid => $args->{uuid}});
+	    }
+	}
+    }
+
+    return $annotation;
 }
 
 sub _processArgs {
