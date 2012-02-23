@@ -9,8 +9,8 @@ use JSON::XS;
 
 use ModelSEED::CoreApi;
 
-my $bio_uuid = "DBB3B96A-3D63-11E1-94F6-C43F3D9902C7";
-my $mapping_uuid = "6B7F20C0-3D64-11E1-94F6-C43F3D9902C7";
+my $bio_uuid = "358CFC9A-5E60-11E1-9EC2-C7374BC191FA";
+my $mapping_uuid = "699A201C-5E60-11E1-9EC2-C7374BC191FA";
 
 my $api = ModelSEED::CoreApi->new({
     database => "/home/paul/Documents/ModelSEEDCore/Model.db",
@@ -65,14 +65,10 @@ $time = time;
 my $reactionsets = $api->getReactionSets({biochemistry_uuid => $bio_uuid});
 print "Got " . scalar @$reactionsets . " reaction sets in " . sprintf("%.3f", time - $time) . " seconds\n";
 
-print Dumper($reactionsets);
-
 # test compoundsets
 $time = time;
 my $compoundsets = $api->getCompoundSets({biochemistry_uuid => $bio_uuid});
 print "Got " . scalar @$compoundsets . " compound sets in " . sprintf("%.3f", time - $time) . " seconds\n";
-
-print Dumper($compoundsets);
 
 # test compartments
 $time = time;
@@ -107,7 +103,7 @@ $mapping->{relationships}->{roles} = [$mapping->{relationships}->{roles}->[0]];
 
 print Dumper($mapping);
 
-#sub file {
+sub file {
     $biochem->{relationships}->{reactions} = [$biochem->{relationships}->{reactions}->[0]];
     $biochem->{relationships}->{compounds} = [$biochem->{relationships}->{compounds}->[0]];
     $biochem->{relationships}->{media} = [$biochem->{relationships}->{media}->[0]];
@@ -115,6 +111,6 @@ print Dumper($mapping);
     open OUT, ">out.txt";
     print OUT Dumper($biochem);
     close OUT;
-#}
+}
 
 exit;

@@ -34,7 +34,7 @@ my $mapping_cols = ['uuid', 'modDate', 'locked', 'public', 'name', 'biochemistry
 
 my $complex_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname'];
 
-my $reaction_rule_cols = ['uuid', 'reaction_uuid', 'compartment_uuid', 'direction', 'transprotonNature'];
+my $reaction_rule_cols = ['uuid', 'modDate', 'locked', 'reaction_uuid', 'compartment_uuid', 'direction', 'transprotonNature'];
 
 my $complex_role_cols = ['role_uuid', 'optional', 'type'];
 
