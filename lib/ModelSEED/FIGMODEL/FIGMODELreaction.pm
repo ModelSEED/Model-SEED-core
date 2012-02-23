@@ -1673,7 +1673,7 @@ Description:
 =cut
 sub compareEquations {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["reaction"],{});
+	$args = ModelSEED::utilities::ARGS($args,["reaction"],{});
 	my $substrates = $self->substrates_from_equation({singleArray=>1});
 	my $compSubstrates = $args->{reaction}->substrates_from_equation({singleArray=>1});
 	my $results;
@@ -1750,7 +1750,7 @@ Description:
 =cut
 sub change_reactant {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["compound"],{
+	$args = ModelSEED::utilities::ARGS($args,["compound"],{
 		compartment => "c",
 		coefficient => undef
 	});
@@ -1799,7 +1799,7 @@ Description:
 =cut
 sub translateReactantArrayToEquation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["reactants"],{});
+	$args = ModelSEED::utilities::ARGS($args,["reactants"],{});
 	@{$args->{reactants}} = sort { $a->{DATABASE}->[0] cmp $b->{DATABASE}->[0] } @{$args->{reactants}};
 	my $reactants = "";
 	for (my $i=0; $i < @{$args->{reactants}}; $i++) {

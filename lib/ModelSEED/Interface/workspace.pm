@@ -209,7 +209,7 @@ Description:
 sub listWorkspaces {
     my ($self,$args) = @_;
     $args = ModelSEED::utilities::ARGS($args,[],{
-		owner => $self->user()
+		owner => ModelSEED::Interface::interface::USERNAME()
 	});
     my $owners = [$args->{owner}];
     if ($args->{owner} eq "ALL") {

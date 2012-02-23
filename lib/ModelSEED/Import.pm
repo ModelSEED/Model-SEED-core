@@ -1032,7 +1032,10 @@ sub importModelFromDir {
     my $missed = {};
     my $RDB_model = $self->om->create_object("model", {id => $id, name => $id});
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
-    if(-d "$dir/biochemistry") {
+    my $isNotImported = ($id =~ /Seed/) ? 1 : ($id =~ /Opt/) ? 1 : 0;
+    if($isNotImported) {
+        $RDB_model->biochemistry($self->defaultBiochemistry);
+    } elsif(-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
         $RDB_biochemistry = $self->importBiochemistryFromDir(
             "$dir/biochemistry", $username, $biochemId);
@@ -1040,7 +1043,9 @@ sub importModelFromDir {
     } else {
         die "No biochemistry for model $dir!\n";
     }
-    if(-d "$dir/mapping") {
+    if($isNotImported) {
+        
+    } elsif(-d "$dir/mapping") {
         my $mappingId = $id . "-mapping";
         $RDB_mapping = $self->importMappingFromDir(
             "$dir/mapping", $RDB_biochemistry, $username, $mappingId);
@@ -1397,8 +1402,20 @@ sub generateReactionDataset {
         my $index = $seenCompartments->{$cmp} || 0;
         if($cmp ne $reactionCompartment) {
             next unless(defined($transports->{$cpd}->{$cmp}));
-            # it's not in the same compartment, create default_transported_reagent entry
+            my $importCoefficient = ($transports->{$cpd}->{$cmp} < 0) ? 1 : -1;
             my $isImport = ($transports->{$cpd}->{$cmp} < 0) ? 1 : 0;
+            my $reagent = $self->convert("reagent", {
+                compartmentIndex => [$index],
+                compound => [$cpd],
+                reaction => [$rxn],
+                coefficient => [$importCoefficient],
+            });
+            unless(defined($reagent)) {
+                push(@{$missed->{reagent}}, "$rxn:$cpd");
+                next;
+            }
+            push(@{$final->{reagents}}, $reagent);
+            # it's not in the same compartment, create default_transported_reagent entry
             my $obj = $self->convert("default_transported_reagent", {
                 compartment => [$cmp],
                 compartmentIndex => [$index],
@@ -1414,14 +1431,13 @@ sub generateReactionDataset {
             }
             push(@{$final->{default_transported_reagents}}, $obj); 
         }
-        if(defined($massBalance->{$cpd})) {
+        if(defined($massBalance->{$cpd}) && $massBalance->{$cpd} != 0) {
             my $obj = $self->convert("reagent", {
-                compartmentIndex => [$index],
+                compartmentIndex => [0],
                 compound => [$cpd],
                 reaction => [$rxn],
                 coefficient => [$massBalance->{$cpd}],
             });
-            delete $massBalance->{$cpd};
             unless(defined($obj)) {
                 push(@{$missed->{reagent}}, "$rxn:$cpd");
                 next;

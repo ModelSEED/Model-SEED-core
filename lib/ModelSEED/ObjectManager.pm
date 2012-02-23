@@ -31,6 +31,12 @@ has server_time_zone => ( is => 'rw', isa => 'Str', default => 'UTC' );
 has types => ( is => 'rw', isa => 'HashRef', default => sub { return {map { $_ => '' } @$types}; });
 has _managers => ( is => 'rw', isa => 'HashRef', default => sub { return {}; } );
 has plurals => ( is => 'rw', isa => 'HashRef', builder => '_buildAllPluralObjects', lazy => 1);
+has objectClasses => ( is => 'rw', isa => 'HashRef', lazy => 1,
+    builder => '_buildObjectClassMap');
+has objectManagerClasses => ( is => 'rw', isa => 'HashRef',
+    builder => '_buildObjectManagerClassMap', lazy => 1);
+has namingConventions => ( is => 'ro', isa => 'HashRef', lazy => 1,
+    builder => '_defaultNamingConventions');
 
 sub BUILD {
     my ($self) = @_;
@@ -128,6 +134,38 @@ sub create_object {
     return $self->_managers->{$type}->{create_object}->(@_);
 }
 
+sub new_object {
+    my ($self, $type) = shift;
+    my $args;
+    if(ref($_[0]) eq 'HASH' && @_ == 1) {
+        $args = shift @_;
+    }
+    my $class = $self->objectClasses($type);
+    return undef unless defined($class);
+    return $class->new(%$args, db => $self->{db});
+}
+    
+
+# MakePrimaryKeys - given an object type, and optionally a set
+# of attribute values, return a hash of key => value where all keys
+# are primary in that object type. If no attributes are provided,
+# the returned hash will have 1 for attribute values.
+sub getPrimaryKeys {
+    my ($self, $type, $attrs) = @_;
+    my $objectClass = $self->ObjectClasses->{$type};
+    return undef unless defined($objectClass);
+    my $keys = $objectClass->meta->primary_key_column_names;
+    my $rtv = { map { $_ => 1 } @$keys };
+    foreach my $key (@$keys) {
+        if(defined($attrs) && ref($attrs) eq 'HASH') {
+            $rtv->{$key} = $attrs->{$key} if defined($attrs->{$key});
+        } elsif(defined($attrs) && ref($attrs)) {
+            $rtv->{$key} = $attrs->$key;
+        }
+    }
+    return $rtv;
+} 
+    
 sub _addDBObjectUnlessDefined {
     my $self = shift;
     # if we're getting a hash that does not contain the "db" key
@@ -255,6 +293,47 @@ sub _buildAllPluralObjects {
     my $hash = { plurals => $plurals, singles => $singles };
     return $hash;
 }
+
+sub _buildObjectClassMap {
+    my ($self) = @_;
+    my $map = $self->_objectMapHelper("ModelSEED::DB::");
+    return $self->objectClasses($map);
+}
+
+sub _buildObjectManagerClassMap {
+    my ($self) = @_;
+    my $map = $self->_objectMapHelper("ModelSEED::DB::", "::Manager");
+    return $self->objectManagerClasses($map);
+}
+
+sub _objectMapHelper {
+    my ($self, $classPrefix, $classSuffix) = @_;
+    my $map = {};
+    while( my ($class, $names) = each %{$self->namingConventions}) {
+        my $real_class = $classPrefix.$class.$classSuffix;
+        foreach my $name (@$names) {
+            $map->{$name} = $class;
+        }
+    }
+    return $map;
+}
+    
+# The default naming conventions are
+# ObjectClass => [ object_name, ObjectClass ],
+sub _defaultNamingConventions {
+    my ($self) = @_;
+    my $nameMap = {};
+    foreach my $type (@$types) {
+        my $cc = $type; 
+        $cc =~ s/([A-Z])/_$1/g; # _Camel_Case
+        $cc = lc($cc);         # _camel_case
+        $cc =~ s/^_//;         # camel_case
+        $nameMap->{$type} = [ $type, $cc ];
+    }
+    $self->namingConventions($nameMap);
+    return $nameMap; 
+}
+
     
 __PACKAGE__->meta->make_immutable;
 1;

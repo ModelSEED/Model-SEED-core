@@ -7,14 +7,13 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Compound;
 package ModelSEED::MS::Media;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 
 #Attributes
-has 'biochemistry' => (is => 'ro', isa => 'ModelSEED::MS::Biochemistry', required => 1);
 has 'uuid' => (is => 'ro', isa => 'Str', required => 1);
 has 'modDate' => (is => 'ro', isa => 'Str', required => 1);
 has 'id' => (is => 'ro', isa => 'Str', required => 1);
@@ -22,7 +21,13 @@ has 'locked' => (is => 'ro', isa => 'Int', required => 1);
 has 'name' => (is => 'ro', isa => 'Str', required => 1);
 has 'type' => (is => 'ro', isa => 'Str', required => 1);
 #Subobjects
-has 'compounds' => (is => 'ro', isa => 'HashRef', required => 1,default => sub{{}});
+has 'compounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Compound]',required => 1,default => sub{[]});
+has 'concentrations' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+has 'maxFluxes' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+has 'minFluxes' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+#Constants
+has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","type"]);
+has 'dbType' => (is => 'ro', isa => 'Str',default => "Media");
 
 sub BUILDARGS {
     my ($self,$params) = @_;
@@ -39,11 +44,14 @@ sub BUILDARGS {
 		}
 		if (defined($params->{rawdata}->{relations}->{media_compounds})) {
 			foreach my $mediacpd (@{$params->{rawdata}->{relations}->{media_compounds}}) {
-				$params->{compounds}->{$mediacpd->{attributes}->{compound_uuid}} = {
-					minflux => $mediacpd->{attributes}->{minflux},
-					maxflux => $mediacpd->{attributes}->{maxflux},
-					concentraion => $mediacpd->{attributes}->{concentraion}
-				};
+				my $cpd = $params->{biochemistry}->getCompound({attribute => "uuid",value => $mediacpd->{attributes}->{compound_uuid}});
+				if (!defined($cpd)) {
+					ModelSEED::utilities::ERROR("Could not find media compound ".$mediacpd->{attributes}->{compound_uuid}." in parent biochemistry!");	
+				}
+				push(@{$params->{compounds}},$cpd);
+				push(@{$params->{concentrations}},$mediacpd->{attributes}->{concentraion});
+				push(@{$params->{maxFluxes}},$mediacpd->{attributes}->{maxflux});
+				push(@{$params->{minFluxes}},$mediacpd->{attributes}->{minflux});
 			}
 		}
 	}
@@ -53,6 +61,33 @@ sub BUILDARGS {
 sub BUILD {
     my ($self,$params) = @_;
 	$params = ModelSEED::utilities::ARGS($params,[],{});
+}
+
+sub serializeToDB {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
+	my $data = {};
+	my $attributes = $self->dbAttributes();
+	for (my $i=0; $i < @{$attributes}; $i++) {
+		my $function = $attributes->[$i];
+		$data->{attributes}->{$function} = $self->$function();
+	}
+	$data->{relations}->{MediaCompound} = [];
+	my $compounds = $self->compounds();
+	for (my $i=0; $i < @{$compounds}; $i++) {
+		push(@{$data->{relations}->{MediaCompound}},{
+			type => "MediaCompound",
+			attributes => {
+				media_uuid => $self->uuid(),
+				compound_uuid => $compounds->[$i]->uuid(),
+				concentration => $self->concentrations()->[$i],
+				minflux => $self->minFluxes()->[$i],
+				maxflux => $self->maxFluxes()->[$i]
+			},
+			relations => {}
+		});
+	}	
+	return $data;
 }
 
 __PACKAGE__->meta->make_immutable;

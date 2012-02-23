@@ -18,10 +18,13 @@
 use strict;
 use warnings;
 use File::Copy::Recursive qw(dircopy);
+use Cwd qw(abs_path);
+use File::Basename qw(dirname basename);
 use File::Path qw(make_path remove_tree);
 use File::Temp;
 use ModelSEED::FIGMODEL;
 use Data::Dumper;
+use ModelSEED::CoreApi;
 
 package ModelSEED::TestingHelpers;
 
@@ -220,4 +223,19 @@ sub getTestConfig {
     $rtv->{"Workspace directory"} = [File::Temp::tempdir()];
     return $rtv;
 } 
+
+sub getDebugCoreApi {
+    my ($self) = @_;
+    if(!defined($self->{_debugCoreApi})) {
+        my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
+        my ($fh, $tmpFile) = File::Temp::tempfile();
+        close($fh);
+        system("cat $sqliteFile | sqlite3 $tmpFile");
+        $self->{_debugCoreApi} = ModelSEED::CoreApi->new({
+            database => $tmpFile,
+            driver => "SQLite",
+        }); 
+    }
+    return $self->{_debugCoreApi};
+}
 1;

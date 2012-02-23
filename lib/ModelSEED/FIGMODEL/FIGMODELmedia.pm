@@ -600,7 +600,7 @@ Description:
 =cut
 sub compareMedia {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["media"],{});
+	$args = ModelSEED::utilities::ARGS($args,["media"],{});
 	my $compounds = $self->loadCompoundsFromPPO();
 	my $compCompounds = $args->{media}->loadCompoundsFromPPO();
 	my $results;
@@ -660,7 +660,7 @@ Description:
 =cut
 sub change_compound {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["compound"],{
+	$args = ModelSEED::utilities::ARGS($args,["compound"],{
 		maxUptake => undef,
 		minUptake => undef,
 		concentration => 0.001

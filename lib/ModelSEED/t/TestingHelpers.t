@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 8;
+use Test::More tests => 10;
 # unit tests for TestingHelpers.pm package, meta-testing ftw
 use ModelSEED::TestingHelpers;
 use Data::Dumper;
@@ -28,3 +28,6 @@ my $alice_model_two = $debug_two->get_model($modelId.".".$debug_one->userObj()->
 $alice_model_one->ppo()->message("foo");
 ok $alice_model_one->ppo()->message() eq "foo", "alice should be able to edit her own model";
 ok $alice_model_two->ppo()->message() ne "foo", "different debug FM's should not interact with eachother's data";
+
+my $om = $helper->getDebugCoreApi();
+ok defined $om, "Should get ModelSEED::CoreApi from getDebugCoreApi()";

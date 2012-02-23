@@ -8,3 +8,6 @@ Index;Abbrevation;Name;I;pH;Max concentration;Min concentration;DeltaPsiCoef;Del
 6;g;golgi apparatus;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
 7;r;endoplasmic reticulum;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
 8;v;vacuole;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
+9;l;lysosome;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
+10;d;plastid;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
+11;w;cell wall;0.25;7;0.02;0.00001;0;0;0;CO2:1e-8:0.0014|H2:1e-8:3.4e-5|O2:1e-8:5.5e-5
