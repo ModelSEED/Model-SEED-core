@@ -43,11 +43,13 @@ sub new {
 
     my $self = {
         om => undef,
+        database => $args->{database},
+        driver => $args->{driver},
     };
 
     # create the dbi connection
     my $dsn;
-    if ($args->{driver} eq "sqlite") {
+    if (lc($args->{driver}) eq "sqlite") {
 	$dsn = "dbi:SQLite:" . $args->{database};
     } else {
 	# TODO: create dsn for mysql
@@ -780,13 +782,11 @@ sub _innerSave {
 
 sub _initOM {
     my ($self) = @_;
-    eval {
-        require 'ModelSEED::ObjectManager';
-        $self->{om} = ModelSEED::ObjectManager->({
-            driver => $self->{driver},
-            database => $self->{database},
-        });
-    };
+    require ModelSEED::ObjectManager;
+    $self->{om} = ModelSEED::ObjectManager->new({
+        driver => $self->{driver},
+        database => $self->{database},
+    });
 }
      
 
