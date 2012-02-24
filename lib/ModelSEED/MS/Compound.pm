@@ -22,14 +22,15 @@ has 'abbreviation' => (is => 'rw', isa => 'Str', default => '');
 has 'cksum' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum');
 has 'unchargedFormula' => (is => 'rw', isa => 'Str');
 has 'formula' => (is => 'rw', isa => 'Str');
-has 'mass' => (is => 'rw', isa => 'Str');
-has 'defaultCharge' => (is => 'rw', isa => 'Str');
-has 'deltaG' => (is => 'rw', isa => 'Str');
-has 'deltaGErr' => (is => 'rw', isa => 'Str');
+has 'mass' => (is => 'rw', isa => 'Num');
+has 'defaultCharge' => (is => 'rw', isa => 'Num');
+has 'deltaG' => (is => 'rw', isa => 'Num');
+has 'deltaGErr' => (is => 'rw', isa => 'Num');
 #Subobjects
-has 'aliases' => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; });
-has 'structures' => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; });
-has 'pk' => (is => 'rw', isa => 'HashRef');
+has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'structures' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'pk' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'compoundSets' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
     builder => '_buildDbAttributes' );
@@ -47,31 +48,29 @@ sub BUILDARGS {
     }
     if(defined($rels)) {
         foreach my $alias (@{$rels->{aliases} || []}) {
-            push(@{$params->{aliases}}, {
-                type => $alias->{attributes}->{type},
-                alais => $alias->{attributes}->{alias},
-            });
+            push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
         }
         foreach my $structure (@{$rels->{compound_structures} || []}) {
-            push(@{$params->{compound_structures}}, {
-                type => $structure->{attributes}->{type},
-                structure => $structure->{attributes}->{structure},
+            push(@{$params->{structures}->{$structure->{attributes}->{type}}},{
+            	structure => $structure->{attributes}->{structure},
                 modDate => $structure->{attributes}->{modDate},
                 cksum => $structure->{attributes}->{cksum}
             });
         }
-        my $pk_attr = $rels->{compound_pk}->{attributes};
-        if(defined($pk_attr)) {
-            $params->{compound_pk} = {
-                type => $pk_attr->{type},
-                structure => $pk_attr->{structure},
-                modDate => $pk_attr->{modDate},
-                cksum => $pk_attr->{cksum}
-            };
+        foreach my $pk (@{$rels->{compound_pk} || []}) {
+            push(@{$params->{pk}->{$pk->{attributes}->{type}}},{
+            	atom => $pk->{attributes}->{atom},
+                pk => $pk->{attributes}->{pk},
+            });
         }
-        delete $params->{relationships}
+        delete $params->{relationships};
     }
     return $params;
+}
+
+sub addSet {
+    my ($self,$set) = @_;
+	push(@{$self->compoundSets()->{$set->type()}},$set);
 }
 
 sub serializeToDB {
@@ -130,6 +129,8 @@ sub _buildDbAttributes {
     unchargedFormula formula mass defaultCharge deltaG deltaGErr )];
 }
 
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
 
 __PACKAGE__->meta->make_immutable;
 1;

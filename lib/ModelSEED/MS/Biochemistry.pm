@@ -303,6 +303,5 @@ sub _buildDbAttributes {
 
 sub _buildIndecies { return {}; }
 
-
 __PACKAGE__->meta->make_immutable;
 1;

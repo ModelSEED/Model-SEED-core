@@ -1,4 +1,4 @@
-package ModelSEED::MS::Reactionset;
+package ModelSEED::MS::ReactionSet;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
@@ -15,7 +15,7 @@ has 'class' => ( is => 'rw', isa => 'Str' );
 has 'type' => ( is => 'rw', isa => 'Str' );
 # Relationships
 has 'reactions' => ( is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Reaction');
+	isa => 'ArrayRef[ModelSEED::MS::Reaction]');
 
 sub BUILDARGS {
     my ($self, $params) = @_;
@@ -41,5 +41,6 @@ sub BUILDARGS {
 
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }
+
 __PACKAGE__->meta->make_immutable;
 1;

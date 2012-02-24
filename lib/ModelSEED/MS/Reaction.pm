@@ -8,9 +8,6 @@
 use strict;
 use ModelSEED::utilities;
 use ModelSEED::MS::Compound;
-use ModelSEED::MS::Reagent;
-use ModelSEED::MS::Compartment;
-use ModelSEED::MS::DefaultTransportedReagent;
 package ModelSEED::MS::Reaction;
 use Moose;
 use Moose::Util::TypeConstraints;
@@ -33,12 +30,9 @@ has 'reversibility' => (is => 'rw', isa => 'Str', default => '=');
 has 'thermoReversibility' => (is => 'rw', isa => 'Str');
 
 #Subobjects
-has 'aliases' => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; });
-has 'reagents' => (is => 'rw', default => sub { return [];},
-    isa => 'ArrayRef[ModelSEED::MS::Reagent]');
-has 'default_transported_reagents' => ( is => 'rw', default => sub {return [];},
-    isa => 'ArrayRef[ModelSEED::MS::DefaultTransportedReagent]');
-
+has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'reactants' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
+has 'transported' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]', 
     builder => '_buildDbAttributes' );
@@ -58,21 +52,52 @@ sub BUILDARGS {
     }
     if(defined($rels)) {
         foreach my $alias (@{$rels->{aliases} || []}) {
-            push(@{$params->{aliases}}, {
-                type => $alias->{attributes}->{type},
-                alais => $alias->{attributes}->{alias},
-            });
+            push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
         }
-        my $classes = { reagents => 'ModelSEED::MS::Reagent',
-            default_transported_Reagents => 'ModelSEED::MS::DefaultTransportedReagent'
-        };
-        foreach my $type (keys %$classes) {
-            my $class = $classes->{$type};
-            foreach my $data (@{$rels->{$type}}) {
-                $data->{biochemistry} = $bio;
-                push(@{$params->{$type}}, $class->new($data));
-            }
-        }  
+        $params->{reactants} = [];
+		$params->{transported} = [];
+		my ($reactants,$products,$imported,$exported);
+		foreach my $reagent (@{$rels->{reagents}}) {
+			my $cpd = $bio->getCompound({uuid => $reagent->{attributes}->{compound_uuid}});
+			if (!defined($cpd)) {
+				ModelSEED::utilities::ERROR("Could not find reaction compound ".$reagent->{attributes}->{compound_uuid}." in parent biochemistry!");	
+			}
+			if ($reagent->{attributes}->{compartmentIndex} == 0) {
+				if ($reagent->{attributes}->{coefficient} < 0) {
+					push(@{$reactants},{
+						coefficient => $reagent->{attributes}->{coefficient},
+						compound => $cpd,
+						cofactor => $reagent->{attributes}->{cofactor}
+					});
+				} elsif ($reagent->{attributes}->{coefficient} > 0) {
+					push(@{$products},{
+						coefficient => $reagent->{attributes}->{coefficient},
+						compound => $cpd,
+						cofactor => $reagent->{attributes}->{cofactor}
+					});
+				}
+			} else {
+				if ($reagent->{attributes}->{coefficient} < 0) {
+					push(@{$exported},{
+						compartment => $reagent->{attributes}->{compartmentIndex},
+						coefficient => $reagent->{attributes}->{coefficient},
+						compound => $cpd,
+						cofactor => $reagent->{attributes}->{cofactor}
+					});
+				} elsif ($reagent->{attributes}->{coefficient} > 0) {
+					push(@{$imported},{
+						compartment => $reagent->{attributes}->{compartmentIndex},
+						coefficient => $reagent->{attributes}->{coefficient},
+						compound => $cpd,
+						cofactor => $reagent->{attributes}->{cofactor}
+					});
+				}
+			}
+		}
+		push(@{$params->{reactants}},@{$reactants});
+		push(@{$params->{reactants}},@{$products});
+		push(@{$params->{transported}},@{$imported});
+		push(@{$params->{transported}},@{$exported}); 
     }
     delete $params->{relationships};
 	return $params;
@@ -138,6 +163,9 @@ sub _buildDbAttributes {
     equation deltaG deltaGErr reversibility thermoReversibility
     defaultProtons compartment_uuid defaultTransproton )];
 }
+
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
 
 __PACKAGE__->meta->make_immutable;
 1;

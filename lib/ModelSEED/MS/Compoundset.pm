@@ -1,4 +1,4 @@
-package ModelSEED::MS::Compoundset;
+package ModelSEED::MS::CompoundSet;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
@@ -41,5 +41,6 @@ sub BUILDARGS {
 
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }
+
 __PACKAGE__->meta->make_immutable;
 1;

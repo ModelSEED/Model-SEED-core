@@ -97,5 +97,8 @@ sub _buildDbAttributes {
     return [qw( uuid modDate locked id name type )];
 }
 
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
+
 __PACKAGE__->meta->make_immutable;
 1;
