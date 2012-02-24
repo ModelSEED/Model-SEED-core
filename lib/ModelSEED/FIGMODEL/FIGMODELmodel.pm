@@ -2943,16 +2943,14 @@ Description:
 =cut
 sub generate_fulldb_model {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,["biomass"],{});
 	#Clearing the old models
 	my $rxnmdl = $self->rxnmdl();
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		$rxnmdl->[$i]->delete();
 	}
 	#Setting the biomass reaction if necessary
-	if ($self->ppo()->biomassReaction() !~ m/bio\d+/) {
-		$self->ppo()->biomassReaction("bio00001");
-	}
+	$self->ppo()->biomassReaction($args->{biomass});
 	#Regenerating all reactions
 	my $rxn = $self->db()->get_objects("reaction");
 	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
@@ -2982,8 +2980,6 @@ sub generate_fulldb_model {
 	$self->processModel();
 	return {success => 1};
 }
-
-
 
 =head3 reconstruction
 Definition:

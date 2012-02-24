@@ -1778,9 +1778,28 @@ This function creates a model that includes all reactions in the current databas
 sub mdlmakedbmodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1,undef,"The name of the model that will contain all the database reactions."],
+		["biomass",1,undef,"The name of the biomass reaction that will be used."],
+		["biochemistry",0,"master","The biochemistry that will be used."]
 	],[@Data],"construct a model with all database reactions");
-    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    my $mdl =  $self->figmodel()->get_model("dbmdl-".$args->{biomass});
+    if (!defined($mdl)) {
+    	my $mdl = $self->figmodel()->create_model({
+			genome => "NONE",
+			id => "dbmdl-".$args->{biomass},
+			owner => ModelSEED::Interface::interface::USERNAME(),
+			biochemSource => $args->{"biochemSource"},
+			biomassReaction => $args->{"biomass"},
+			reconstruction => $args->{"reconstruction"},
+			autocompletion => $args->{"autocompletion"},
+			overwrite => $args->{"overwrite"}
+		});	
+    }
+    
+    
+    
+    
+    
+    
     if (!defined($mdl)) {
     	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
     }
