@@ -637,7 +637,10 @@ Description:
 	Returns model genome
 =cut
 sub genome {
-	my ($self) = @_;
+	my ($self,$newGenome) = @_;
+	if (defined($newGenome)) {
+		return $self->ppo()->genome($newGenome);
+	}
 	return $self->ppo()->genome();
 }
 
