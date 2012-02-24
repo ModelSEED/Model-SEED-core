@@ -93,7 +93,15 @@ sub BUILD {
 sub save {
     my ($self, $om) = @_;
     $om = $self->om unless(defined($om));
-    die "No ObjectManager" unless defined($om);
+    if (!defined($om)) {
+    	ModelSEED::utilities::ERROR("No ObjectManager");
+    }
+    
+    
+    
+    
+    
+    
     return $om->save($self->type, $self->serializeToDB());
 }
 
