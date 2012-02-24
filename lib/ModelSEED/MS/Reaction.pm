@@ -8,109 +8,74 @@
 use strict;
 use ModelSEED::utilities;
 use ModelSEED::MS::Compound;
+use ModelSEED::MS::Reagent;
+use ModelSEED::MS::Compartment;
+use ModelSEED::MS::DefaultTransportedReagent;
 package ModelSEED::MS::Reaction;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 
 #Attributes
-has 'uuid' => (is => 'rw', isa => 'Str', required => 1);
-has 'modDate' => (is => 'rw', isa => 'Str', required => 1);
+has 'uuid' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
+has 'modDate' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
 has 'id' => (is => 'rw', isa => 'Str', required => 1);
-has 'locked' => (is => 'rw', isa => 'Int', required => 1);
-has 'name' => (is => 'rw', isa => 'Str', required => 1);
-has 'abbreviation' => (is => 'rw', isa => 'Str', required => 1);
-has 'cksum' => (is => 'rw', isa => 'Str', required => 1);
-has 'deltaG' => (is => 'rw', isa => 'Str', required => 1);
-has 'deltaGErr' => (is => 'rw', isa => 'Str', required => 1);
+has 'locked' => (is => 'rw', isa => 'Int', default => 0);
+has 'name' => (is => 'rw', isa => 'Str', default => "");
+has 'abbreviation' => (is => 'rw', isa => 'Str');
+has 'cksum' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum' );
+has 'deltaG' => (is => 'rw', isa => 'Str');
+has 'deltaGErr' => (is => 'rw', isa => 'Str');
 has 'compartment_uuid' => (is => 'rw', isa => 'Str', required => 1);
-has 'defaultTransproton' => (is => 'rw', isa => 'Num', required => 1,default => 0);
-has 'defaultProtons' => (is => 'rw', isa => 'Num', required => 1,default => 0);
-has 'reversibility' => (is => 'rw', isa => 'Str', required => 1);
-has 'thermoReversibility' => (is => 'rw', isa => 'Str', required => 1);
+has 'defaultTransproton' => (is => 'rw', isa => 'Num', default => 0);
+has 'defaultProtons' => (is => 'rw', isa => 'Num', default => 0);
+has 'reversibility' => (is => 'rw', isa => 'Str', default => '=');
+has 'thermoReversibility' => (is => 'rw', isa => 'Str');
+
 #Subobjects
-has 'aliases' => (is => 'rw', isa => 'HashRef', required => 1);
-has 'sets' => (is => 'rw', isa => 'HashRef',default => sub{{}});
-has 'reactants' => (is => 'rw', isa => 'ArrayRef[HashArray]', required => 1);
-has 'transported' => (is => 'rw', isa => 'ArrayRef[HashArray]', required => 1);
+has 'aliases' => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; });
+has 'reagents' => (is => 'rw', default => sub { return [];},
+    isa => 'ArrayRef[ModelSEED::MS::Reagent]');
+has 'default_transported_reagents' => ( is => 'rw', default => sub {return [];},
+    isa => 'ArrayRef[ModelSEED::MS::DefaultTransportedReagent]');
+
 #Constants
-has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","equation","deltaG","deltaGErr","reversibility","thermoReversibility","defaultProtons","compartment_uuid","defaultTransproton"]);
+has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]', 
+    builder => '_buildDbAttributes' );
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Reaction");
 #Internally maintained variables
 has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
 sub BUILDARGS {
     my ($self,$params) = @_;
-	$params = ModelSEED::utilities::ARGS($params,["biochemistry"],{
-		rawdata => undef#Raw data of form returned by raw data object manager API
-	});
-	if (defined($params->{rawdata})) {
-		if (defined($params->{rawdata}->{attributes})) {
-			foreach my $attribute (keys(%{$params->{rawdata}->{attributes}})) {
-				if (defined($params->{rawdata}->{attributes}->{$attribute}) && $params->{rawdata}->{attributes}->{$attribute} ne "undef") {
-					$params->{$attribute} = $params->{rawdata}->{attributes}->{$attribute};
-				}
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{aliases})) {
-			$params->{aliases} = {};
-			foreach my $alias (@{$params->{rawdata}->{relations}->{aliases}}) {
-				push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{reagents})) {
-			$params->{reactants} = [];
-			$params->{transported} = [];
-			my $cpd = $params->{biochemistry}->getCompound({uuid => $reagent->{attributes}->{compound_uuid}});
-			if (!defined($cpd)) {
-				ModelSEED::utilities::ERROR("Could not find reaction compound ".$reagent->{attributes}->{compound_uuid}." in parent biochemistry!");	
-			}
-			my ($reactants,$products,$imported,$exported);
-			foreach my $reagent (@{$params->{rawdata}->{relations}->{reagents}}) {
-				if ($reagent->{attributes}->{compartmentIndex} == 0) {
-					if ($reagent->{attributes}->{coefficient} < 0) {
-						push(@{$reactants},{
-							coefficient => $reagent->{attributes}->{coefficient},
-							compound => $cpd,
-							cofactor => $reagent->{attributes}->{cofactor}
-						});
-					} elsif ($reagent->{attributes}->{coefficient} > 0) {
-						push(@{$products},{
-							coefficient => $reagent->{attributes}->{coefficient},
-							compound => $cpd,
-							cofactor => $reagent->{attributes}->{cofactor}
-						});
-					}
-				} else {
-					if ($reagent->{attributes}->{coefficient} < 0) {
-						push(@{$exported},{
-							compartment => $reagent->{attributes}->{compartmentIndex},
-							coefficient => $reagent->{attributes}->{coefficient},
-							compound => $cpd,
-							cofactor => $reagent->{attributes}->{cofactor}
-						});
-					} elsif ($reagent->{attributes}->{coefficient} > 0) {
-						push(@{$imported},{
-							compartment => $reagent->{attributes}->{compartmentIndex},
-							coefficient => $reagent->{attributes}->{coefficient},
-							compound => $cpd,
-							cofactor => $reagent->{attributes}->{cofactor}
-						});
-					}
-				}
-			}
-			push(@{$params->{reactants}},@{$reactants});
-			push(@{$params->{reactants}},@{$products});
-			push(@{$params->{transported}},@{$imported});
-			push(@{$params->{transported}},@{$exported});
-		}
-	}
+    my $attr = $params->{attributes};
+    my $rels = $params->{relationships};
+    my $bio  = $params->{biochemistry};
+    delete $params->{biochemistry};
+    if(defined($attr)) {
+        map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
+        delete $params->{attributes};
+    }
+    if(defined($rels)) {
+        foreach my $alias (@{$rels->{aliases} || []}) {
+            push(@{$params->{aliases}}, {
+                type => $alias->{attributes}->{type},
+                alais => $alias->{attributes}->{alias},
+            });
+        }
+        my $classes = { reagents => 'ModelSEED::MS::Reagent',
+            default_transported_Reagents => 'ModelSEED::MS::DefaultTransportedReagent'
+        };
+        foreach my $type (keys %$classes) {
+            my $class = $classes->{$type};
+            foreach my $data (@{$rels->{$type}}) {
+                $data->{biochemistry} = $bio;
+                push(@{$params->{$type}}, $class->new($data));
+            }
+        }  
+    }
+    delete $params->{relationships};
 	return $params;
-}
-
-sub BUILD {
-    my ($self,$params) = @_;
-	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
 sub serializeToDB {
@@ -161,6 +126,17 @@ sub serializeToDB {
 		});
 	}
 	return $data;
+}
+
+sub transportedReactants {
+    my $self = shift @_;
+    return [ grep { $_->compartmentIndex > 0 } @{$self->reactants} ];
+}
+
+sub _buildDbAttributes {
+    return [qw( uuid modDate locked id name abbreviation cksum
+    equation deltaG deltaGErr reversibility thermoReversibility
+    defaultProtons compartment_uuid defaultTransproton )];
 }
 
 __PACKAGE__->meta->make_immutable;

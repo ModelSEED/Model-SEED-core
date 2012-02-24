@@ -21,7 +21,8 @@ has name   => ( is => 'rw', isa => 'Str', default => '');
 #has reaction_rules => ( is => 'rw',
 #    isa => 'ArrayRef | Array[ModelSEED::MS::ReactionRule]',
 #    builder => '_buildReactionRules', lazy => 1 );
-has complexes => ( is => 'rw', isa => 'ArrayRef | Array[ModelSEED::MS::Complex]');
+has complexes => ( is => 'rw',
+    isa => 'ArrayRef | ArrayRef[ModelSEED::MS::Complex]');
 #has roles => ( is => 'rw',
 #    isa => 'ArrayRef | Array[ModelSEED::MS::Role]',
 #    builder => '_buildRole', lazy => 1 );
@@ -36,7 +37,6 @@ sub BUILDARGS {
     return $params;
 }
 
-$mapping->complex()
 around 'complexes' => sub {
     my ($orig, $self) = @_;
     my $data = $self->orig();
@@ -46,7 +46,7 @@ around 'complexes' => sub {
         warn "initializing complexes";
     }
     return $data;
-}
+};
 
 
          
