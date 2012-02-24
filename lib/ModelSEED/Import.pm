@@ -1402,8 +1402,20 @@ sub generateReactionDataset {
         my $index = $seenCompartments->{$cmp} || 0;
         if($cmp ne $reactionCompartment) {
             next unless(defined($transports->{$cpd}->{$cmp}));
-            # it's not in the same compartment, create default_transported_reagent entry
+            my $importCoefficient = ($transports->{$cpd}->{$cmp} < 0) ? 1 : -1;
             my $isImport = ($transports->{$cpd}->{$cmp} < 0) ? 1 : 0;
+            my $reagent = $self->convert("reagent", {
+                compartmentIndex => [$index],
+                compound => [$cpd],
+                reaction => [$rxn],
+                coefficient => [$importCoefficient],
+            });
+            unless(defined($reagent)) {
+                push(@{$missed->{reagent}}, "$rxn:$cpd");
+                next;
+            }
+            push(@{$final->{reagents}}, $reagent);
+            # it's not in the same compartment, create default_transported_reagent entry
             my $obj = $self->convert("default_transported_reagent", {
                 compartment => [$cmp],
                 compartmentIndex => [$index],
@@ -1419,14 +1431,13 @@ sub generateReactionDataset {
             }
             push(@{$final->{default_transported_reagents}}, $obj); 
         }
-        if(defined($massBalance->{$cpd})) {
+        if(defined($massBalance->{$cpd}) && $massBalance->{$cpd} != 0) {
             my $obj = $self->convert("reagent", {
-                compartmentIndex => [$index],
+                compartmentIndex => [0],
                 compound => [$cpd],
                 reaction => [$rxn],
                 coefficient => [$massBalance->{$cpd}],
             });
-            delete $massBalance->{$cpd};
             unless(defined($obj)) {
                 push(@{$missed->{reagent}}, "$rxn:$cpd");
                 next;
