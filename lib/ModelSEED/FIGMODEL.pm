@@ -2573,7 +2573,7 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","modelfiledata","biomassEquation"],{
+	$args = $self->process_arguments($args,["id","modelfiledata"],{
 		genome => "NONE",
 		biomassID => undef,
 		owner => "master",
