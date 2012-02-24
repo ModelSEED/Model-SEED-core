@@ -35,6 +35,8 @@ has 'indecies' => (is => 'ro',isa => 'HashRef',default => sub{{}});
 #Constants
 has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","unchargedFormula","formula","mass","defaultCharge","deltaG","deltaGErr"]);
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Compound");
+#Internally maintained variables
+has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
 sub BUILDARGS {
     my ($self,$params) = @_;

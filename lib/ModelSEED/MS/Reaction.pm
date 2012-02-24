@@ -36,6 +36,8 @@ has 'transported' => (is => 'rw', isa => 'ArrayRef[HashArray]', required => 1);
 #Constants
 has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","equation","deltaG","deltaGErr","reversibility","thermoReversibility","defaultProtons","compartment_uuid","defaultTransproton"]);
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Reaction");
+#Internally maintained variables
+has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
 sub BUILDARGS {
     my ($self,$params) = @_;
