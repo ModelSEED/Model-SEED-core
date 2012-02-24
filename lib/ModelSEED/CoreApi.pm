@@ -382,7 +382,6 @@ sub getMedia {
 
 	if (defined($media_compounds->{$uuid})) {
 	    $med->{relationships}->{media_compounds} = $media_compounds->{$uuid};
-	}
     }
 
     return $media;
