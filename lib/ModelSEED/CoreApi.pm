@@ -378,10 +378,11 @@ sub getMedia {
     my $media_compounds = _processJoinedRows($rows, $media_compound_cols, "MediaCompound");
 
     foreach my $med (@$media) {
-	my $uuid = $med->{attributes}->{uuid};
+        my $uuid = $med->{attributes}->{uuid};
 
-	if (defined($media_compounds->{$uuid})) {
-	    $med->{relationships}->{media_compounds} = $media_compounds->{$uuid};
+        if (defined($media_compounds->{$uuid})) {
+            $med->{relationships}->{media_compounds} = $media_compounds->{$uuid};
+        }
     }
 
     return $media;
