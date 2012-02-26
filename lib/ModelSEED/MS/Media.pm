@@ -14,20 +14,23 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 
 #Attributes
-has 'uuid' => (is => 'ro', isa => 'Str', required => 1);
-has 'modDate' => (is => 'ro', isa => 'Str', required => 1);
-has 'id' => (is => 'ro', isa => 'Str', required => 1);
-has 'locked' => (is => 'ro', isa => 'Int', required => 1);
-has 'name' => (is => 'ro', isa => 'Str', required => 1);
-has 'type' => (is => 'ro', isa => 'Str', required => 1);
+has 'uuid' => (is => 'rw', isa => 'Str', required => 1);
+has 'modDate' => (is => 'rw', isa => 'Str', required => 1);
+has 'id' => (is => 'rw', isa => 'Str', required => 1);
+has 'locked' => (is => 'rw', isa => 'Int', required => 1);
+has 'name' => (is => 'rw', isa => 'Str', required => 1);
+has 'type' => (is => 'rw', isa => 'Str', required => 1);
 #Subobjects
-has 'compounds' => (is => 'ro', isa => 'ArrayRef[ModelSEED::MS::Compound]',required => 1,default => sub{[]});
-has 'concentrations' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
-has 'maxFluxes' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
-has 'minFluxes' => (is => 'ro', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+has 'compounds' => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Compound]',required => 1,default => sub{[]});
+has 'concentrations' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+has 'maxFluxes' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
+has 'minFluxes' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
 #Constants
-has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","type"]);
+has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
+    builder => '_buildDbAttributes' );
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Media");
+#Internally maintained variables
+has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
 sub BUILDARGS {
     my ($self,$params) = @_;
@@ -44,7 +47,7 @@ sub BUILDARGS {
 		}
 		if (defined($params->{rawdata}->{relations}->{media_compounds})) {
 			foreach my $mediacpd (@{$params->{rawdata}->{relations}->{media_compounds}}) {
-				my $cpd = $params->{biochemistry}->getCompound({attribute => "uuid",value => $mediacpd->{attributes}->{compound_uuid}});
+				my $cpd = $params->{biochemistry}->getCompound({uuid => $mediacpd->{attributes}->{compound_uuid}});
 				if (!defined($cpd)) {
 					ModelSEED::utilities::ERROR("Could not find media compound ".$mediacpd->{attributes}->{compound_uuid}." in parent biochemistry!");	
 				}
@@ -72,10 +75,10 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relations}->{MediaCompound} = [];
+	$data->{relations}->{media_compounds} = [];
 	my $compounds = $self->compounds();
 	for (my $i=0; $i < @{$compounds}; $i++) {
-		push(@{$data->{relations}->{MediaCompound}},{
+		push(@{$data->{relations}->{media_compounds}},{
 			type => "MediaCompound",
 			attributes => {
 				media_uuid => $self->uuid(),
@@ -89,6 +92,13 @@ sub serializeToDB {
 	}	
 	return $data;
 }
+
+sub _buildDbAttributes {
+    return [qw( uuid modDate locked id name type )];
+}
+
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
 
 __PACKAGE__->meta->make_immutable;
 1;
