@@ -101,7 +101,9 @@ print "Got mapping in " . sprintf("%.3f", time - $time) . " seconds\n";
 $mapping->{relationships}->{complexes} = [$mapping->{relationships}->{complexes}->[0]];
 $mapping->{relationships}->{roles} = [$mapping->{relationships}->{roles}->[0]];
 
-print Dumper($mapping);
+open OUT, ">out.txt";
+print OUT Dumper($mapping);
+close OUT;
 
 sub file {
     $biochem->{relationships}->{reactions} = [$biochem->{relationships}->{reactions}->[0]];
