@@ -2583,7 +2583,7 @@ sub import_model_file {
 	}
 	#Warning if genome id not used
 	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
-	    ModelSEED::utilities::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	    ModelSEED::utilities::USEWARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
 	}
 
 	#Checking if the model exists, and if not, creating the model
@@ -2603,22 +2603,23 @@ sub import_model_file {
 		$mdl = $self->get_model($args->{id});
 	} elsif ($args->{overwrite} == 0) {
 		ModelSEED::utilities::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
-	} else {
+	}
+	if (!defined($mdl)) {
 		$mdl = $self->get_model($args->{id});
-		$mdl->genome($args->{genome}) if $args->{genome} ne "NONE";
-		$mdl->autocompleteMedia($args->{autoCompleteMedia}) if $args->{autoCompleteMedia} ne "Complete";
-		if ($args->{generateprovenance} == 1) {
-			$mdl->GenerateModelProvenance({
-			    biochemSource => $args->{biochemSource}
-			});
-		}
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
-			ModelSEED::utilities::ERROR("No rights to alter model object");
+			ModelSEED::utilities::USEERROR("No rights to alter model object!");
 		}
+		$mdl->genome($args->{genome}) if $args->{genome} ne "NONE";
+		$mdl->autocompleteMedia($args->{autoCompleteMedia}) if $args->{autoCompleteMedia} ne "Complete";
 	}
 	if (!-defined($mdl)) {
 		ModelSEED::utilities::ERROR("Could not load/create model ".$mdl."!");
+	}
+	if ($args->{generateprovenance} == 1) {
+		$mdl->GenerateModelProvenance({
+		    biochemSource => $args->{biochemSource}
+		});
 	}
 	#Clearing current model data in the database
 	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
@@ -3098,12 +3099,13 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	} else {
-	    $mdl = $self->get_model($id);
-		$mdl->GenerateModelProvenance({
-		    biochemSource => $args->{biochemSource}
-		});	
+	};
+	if (!defined($mdl)) {
+		 $mdl = $self->get_model($id);
 	}
+	$mdl->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+	});
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
