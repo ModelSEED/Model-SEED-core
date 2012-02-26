@@ -34,13 +34,24 @@ my $mapping_cols = ['uuid', 'modDate', 'locked', 'public', 'name', 'biochemistry
 
 my $complex_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname'];
 
-my $reaction_rule_cols = ['uuid', 'modDate', 'locked', 'reaction_uuid', 'compartment_uuid', 'direction', 'transprotonNature'];
+my $reaction_rule_cols = ['uuid', 'modDate', 'locked', 'reaction_uuid',
+			  'compartment_uuid', 'direction', 'transprotonNature'];
 
 my $complex_role_cols = ['role_uuid', 'optional', 'type'];
 
 my $role_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'feature_uuid'];
 
+my $roleset_cols = ['uuid', 'modDate', 'locked', 'public', 'id', 'name',
+                     'searchname', 'class', 'subclass', 'type'];
+
 my $annotation_cols = ['uuid', 'modDate', 'locked', 'name', 'genome_uuid'];
+
+my $feature_cols = ['uuid', 'modDate', 'locked', 'id', 'cksum',
+		     'genome_uuid', 'start', 'stop'];
+
+my $model_cols = ['uuid', 'modDate', 'locked', 'public', 'id', 'name', 'version', 'type',
+		  'status', 'reactions', 'compounds', 'annotations', 'growth',
+		  'current', 'mapping_uuid', 'biochemistry_uuid', 'annotation_uuid'];
 
 sub new {
     my ($class, $args) = @_;
@@ -555,7 +566,8 @@ sub getMapping {
 	user           => {required => 1},
 	with_all       => {required => 0},
 	with_complexes => {required => 0},
-	with_roles     => {required => 0}
+	with_roles     => {required => 0},
+	with_rolesets  => {required => 0}
     });
 
     # get the mapping object
@@ -572,7 +584,8 @@ sub getMapping {
 
     my $with = {
 	complexes => 'getComplexes',
-	roles     => 'getRoles'
+	roles     => 'getRoles',
+	rolesets  => 'getRoleSets'
     };
 
     if ($args->{with_all}) {
@@ -618,7 +631,7 @@ sub getComplexes {
 	$where .= " AND " . _parseQuery($args->{query});
     }
 
-    # get the reaction data
+    # get the complex data
     my $sql = "SELECT * FROM complexes"
 	. " $where";
 
@@ -656,7 +669,7 @@ sub getComplexes {
 	}
 
 	if (defined($roles->{$uuid})) {
-	    $complex->{relationships}->{complex_roles} = $roles->{$uuid};
+	    $complex->{relationships}->{roles} = $roles->{$uuid};
 	}
     }
 
@@ -688,13 +701,13 @@ sub getRoles {
 	$where .= " AND " . _parseQuery($args->{query});
     }
 
-    # get the reaction data
+    # get the role data
     my $sql = "SELECT * FROM roles"
 	. " $where";
 
     my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
 
-    # return empty set if no complexes
+    # return empty set if no roles
     if (scalar @$rows == 0) {
 	return [];
     }
@@ -702,33 +715,89 @@ sub getRoles {
     my $roles = _processRows($rows, $role_cols, "Role");
 
     # get the rolesets
-    $sql = "SELECT roles.uuid, rolesets.uuid, rolesets.type FROM roles"
+    $sql = "SELECT roles.uuid, roleset_roles.roleset_uuid, roleset_roles.modDate FROM roles"
 	. " JOIN roleset_roles ON roles.uuid = roleset_roles.role_uuid"
-	. " JOIN rolesets ON roleset_roles.roleset_uuid = rolesets.uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
-    my $rolesets = _processJoinedRows($rows, ['uuid', 'type'], "RoleSetRole");
+    my $rolesets = _processJoinedRows($rows, ['uuid', 'modDate'], "RoleSetRole");
 
     foreach my $role (@$roles) {
 	my $uuid = $role->{attributes}->{uuid};
 
 	if (defined($rolesets->{$uuid})) {
-	    $role->{relationships}->{roleset} = $rolesets->{$uuid};
+	    $role->{relationships}->{rolesets} = $rolesets->{$uuid};
 	}
     }
 
     return $roles;
 }
 
+sub getRoleSets {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getRoleSets', {
+	mapping_uuid => {required => 1},
+	query        => {required => 0},
+	limit        => {required => 0},
+	offset       => {required => 0}
+    });
+
+    my $sub_sql = "SELECT roleset_uuid"
+	. " FROM mapping_rolesets"
+	. " WHERE mapping_uuid = ?";
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $where = "WHERE rolesets.uuid IN ($sub_sql)";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$where .= " AND " . _parseQuery($args->{query});
+    }
+
+    # get the roleset data
+    my $sql = "SELECT * FROM rolesets"
+	. " $where";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
+
+    # return empty set if no roles
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $rolesets = _processRows($rows, $roleset_cols, "RoleSet");
+
+    # get the roles
+    $sql = "SELECT roleset_roles.* FROM rolesets"
+	. " JOIN roleset_roles ON rolesets.uuid = roleset_roles.roleset_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
+    my $roles = _processJoinedRows($rows, ['uuid', 'modDate'], "RoleSetRole");
+
+    foreach my $roleset (@$rolesets) {
+	my $uuid = $roleset->{attributes}->{uuid};
+
+	if (defined($roles->{$uuid})) {
+	    $roleset->{relationships}->{roles} = $roles->{$uuid};
+	}
+    }
+
+    return $rolesets;
+}
+
 sub getAnnotation {
-#    my ($self, $uuid, $user) = @_;
     my ($self, $args) = @_;
 
     _processArgs($args, 'getAnnotation', {
 	uuid           => {required => 1},
 	user           => {required => 1},
-	with_all       => {required => 0}
+	with_all       => {required => 0},
+	with_features  => {required => 0}
     });
 
     # get the annotation object
@@ -744,7 +813,7 @@ sub getAnnotation {
     my $annotation = _processRows($rows, $annotation_cols, "Annotation")->[0];
 
     my $with = {
-
+	features => 'getFeatures'
     };
 
     if ($args->{with_all}) {
@@ -762,6 +831,71 @@ sub getAnnotation {
     }
 
     return $annotation;
+}
+
+sub getFeatures {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getFeatures', {
+	mapping_uuid => {required => 1},
+	query        => {required => 0},
+	limit        => {required => 0},
+	offset       => {required => 0}
+    });
+
+    my $sub_sql = "SELECT feature_uuid"
+	. " FROM annotation_features"
+	. " WHERE annotation_uuid = ?";
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $where = "WHERE features.uuid IN ($sub_sql)";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$where .= " AND " . _parseQuery($args->{query});
+    }
+
+    # get the feature data
+    my $sql = "SELECT * FROM features"
+	. " $where";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{annotation_uuid});
+
+    # return empty set if no features
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $features = _processRows($rows, $feature_cols, "Feature");
+
+    return $features;
+}
+
+sub getModel {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getModel', {
+	uuid           => {required => 1},
+	user           => {required => 1},
+	with_all       => {required => 0}
+    });
+
+    # get the annotation object
+    my $sql = "SELECT * FROM models"
+	. " WHERE uuid = ?";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{uuid});
+
+    unless (scalar @$rows == 1) {
+	die "Unable to find model with uuid: " . $args->{uuid};
+    }
+
+    my $model = _processRows($rows, $model_cols, "Model")->[0];
+
+    return $model;
 }
 
 sub _processArgs {
