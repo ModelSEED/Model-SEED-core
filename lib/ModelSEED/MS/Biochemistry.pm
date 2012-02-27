@@ -40,7 +40,7 @@ has compartments => ( is => 'rw', default => sub { return []; },
     isa => 'ArrayRef[ModelSEED::MS::Compartment]');
 # Constants
 has dbAttributes => ( is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
-has indecies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndecies');
+has indicies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndicies');
 
 has dbType => (is => 'ro', isa => 'Str',default => "Compound");
 #Internally maintained variables
@@ -203,66 +203,62 @@ sub getObject {
 
 sub getObjects {
     my ($self,$args) = @_;
-    $args = ModelSEED::utilities::ARGS($args,["type","query"],{});
-    my $type = $self->checkType($args->{type}); 
+    my $type = $args->{type};
     my $query = $args->{query};
-	my @objects = @{$self->$type};
-    # Right now just naively search through each object
-    while(my ($attr, $value) = each %$query) {
-        confess $attr unless(defined($value));
-        @objects = grep { defined($_) && ($_->$attr eq $value) } @objects;
-        last if @objects == 0;
+    if(!defined($type) || !defined($query) || ref($query) ne 'HASH') {
+        # Calling utilities::ARGS takes ~ 10 microseconds
+        # right now we are calling getObjects ~ 200,000 for biochem
+        # initialization, so removing this shaves 2 seconds off start time.
+    	ModelSEED::utilities::ERROR("Bad arguments to getObjects.");
     }
-    return [@objects];
-=head
-    foreach my $attribute (keys(%{$args->{query}})) {
-    	if (!defined($self->indecies->{$args->{type}}->{$attribute})) {
-    		$self->buildIndex({type => $args->{type},attribute => $attribute});
+    # resultSet is a map of $object => $object
+    my $resultSet;
+    my $indicies = $self->indicies;
+    while ( my ($attribute, $value) = each %$query ) {
+        # Build the index if it does not already exist
+        unless (defined($indicies->{$type}) &&
+                defined($indicies->{$type}->{$attribute})) {
+    		$self->buildIndex({type => $type, attribute => $attribute});
     	}
-    	if (!defined($self->indecies->{$args->{type}}->{$attribute}->{$args->{query}->{$attribute}})) {
-    		return [];	
-    	}
-    	my $newHits = $self->indecies->{$args->{type}}->{$attribute}->{$args->{query}->{$attribute}};
-    	if (@{$hits} > 0) {
-    		my $hitsHash = {};
-    		for (my $i=0; $i < @{$newHits}; $i++) {
-	    		$hitsHash->{$newHits->[$i]} = 0;
-	    	}
-	    	for (my $i=0; $i < @{$hits}; $i++) {
-	    		if (defined($hitsHash->{$hits->[$i]})) {
-	    			$hitsHash->{$hits->[$i]} = 1;
-	    		}
-	    	}
-	    	$hits = [];
-	    	foreach my $hit (keys(%{$hitsHash})) {
-	    		if ($hitsHash->{$hit} == 1) {
-	    			push(@{$hits},$hit);
-	    		}
-	    	}
-    	} else {
-    		push(@{$hits},@{$newHits});
-    	}
-    	if (@{$hits} == 0) {
-    		return [];
-    	}
-    	$first = 0;
+        my $index = $indicies->{$type};
+        my $newHits = $index->{$attribute}->{$value};
+        # If any index returns empty, return empty.
+        return [] if(!defined($newHits) || @$newHits == 0);
+        # Build the current resultSet map $object => $object
+        my $newResultSet = { map { $_ => $_ } @$newHits };
+        if(!defined($resultSet)) {
+            # Use the current result set if %resultSet is empty,
+            # which will only happen on the first time through the loop.
+            $resultSet = $newResultSet; 
+            next;
+        } else {
+            # Otherwise we delete entries in our current $resultSet that
+            # are not defined within the $newResultSet. By grepping and
+            # deleting we can do this in-place in $resultSet
+            delete $resultSet->{ grep { !defined($newResultSet->{$_}) } keys %$resultSet };
+        }
     }
-    return $hits;
-=cut
+    return [values %$resultSet];
 }
 
 sub checkType {
 	my ($self,$type) = @_;
 	my $types = {
+        compounds => "compounds",
     	Compound => "compounds",
+    	reactions => "reactions",
     	Reaction => "reactions",
+        media => "media",
     	Media => "media",
+        compoudnSets => "compoundSets",
     	CompoundSet => "compoundSets",
+        compoudnSets => "reactionSets",
     	ReactionSet => "reactionSets",
+        compartments => "compartments",
         Compartment => "compartments",
     };
     if (!defined($types->{$type})) {
-    	ModelSEED::utilities::ERROR("Type ".$type." not recognized!");
+        die "Invalid Type";
     }
     return $types->{$type};
 }
@@ -274,13 +270,13 @@ sub clearIndex {
 		attribute => undef
 	});
 	if (!defined($args->{type})) {
-		$self->indecies({});
+		$self->indicies({});
 	} else {
 		$self->checkType($args->{type});
 		if (!defined($args->{attribute})) {
-			$self->indecies->{$args->{type}} = {};	
+			$self->indicies->{$args->{type}} = {};	
 		} else {
-			$self->indecies->{$args->{type}}->{$args->{attribute}} = {};
+			$self->indicies->{$args->{type}}->{$args->{attribute}} = {};
 		}
 	}
 }
@@ -292,16 +288,13 @@ sub buildIndex {
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};
 	for (my $i=0; $i < @{$objects}; $i++) {
-		push(@{$self->indecies->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
+		push(@{$self->indicies->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
 	}
 }
 
-sub _buildDbAttributes {
-    return [ qw( uuid modDate locked id name abbreviation cksum
-    unchargedFormula formula mass defaultCharge deltaG deltaGErr ) ];
-}
-
-sub _buildIndecies { return {}; }
+sub _buildIndicies { return {}; }
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now()->datetime(); }
 
 __PACKAGE__->meta->make_immutable;
 1;
