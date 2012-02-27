@@ -16,6 +16,7 @@ use BerkeleyDB;
 use JSON::XS;
 use Moose;
 use Time::HiRes qw(time);
+use File::Path qw(rmtree);
 
 with 'MooseX::Log::Log4perl';
 
@@ -270,6 +271,23 @@ sub printDBMappingsToDir {
         $config->{filename} = "$dir/$type.txt";
         next if(-e $config->{filename});
         my $objs = $self->fm->database->get_objects($type);        
+        my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
+        $tbl->save();
+    }
+}
+
+sub printDBBiochemistryToDir {
+    my ($self, $dir) = @_;
+    $dir = $self->standardizeDirectorY($dir);
+    my $types = [ 'compound', 'cpdals', 'reaction', 'rxnals', ];
+    my $config = {
+        delimiter => "\t",
+        itemDelimiter => ";",
+    };
+    foreach my $type (@$types) {
+        $config->{filename} = "$dir/$type.txt";
+        next if ( -e $config->{filename} );
+        my $objs = $self->fm->dtabase->get_objects($type);
         my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
         $tbl->save();
     }
@@ -1223,28 +1241,43 @@ sub importModelFromDir {
         = $self->om->create_object("model", {id => $id, name => $id});
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
     my $isNotImported = ($id =~ /Seed/) ? 1 : ($id =~ /Opt/) ? 1 : 0;
-    if ($isNotImported) {
-        $RDB_model->biochemistry($self->defaultBiochemistry);
+    
+    # Import or add biochemistry
+    if($isNotImported) {
+        $RDB_biochemistry = $self->getDefaultBiochemistry();
     } elsif (-d "$dir/biochemistry") {
         my $biochemId = $id . "-biochemistry";
         $RDB_biochemistry
             = $self->importBiochemistryFromDir("$dir/biochemistry", $username,
             $biochemId);
-        $RDB_model->biochemistry($RDB_biochemistry);
-    } else {
-        die "No biochemistry for model $dir!\n";
     }
+    if (!defined($RDB_biochemistry)) {
+        push(@{$missed->{biochemistry}}, "No biochemistry - $id");
+        $self->checker->check("Failed to model $username/$id [] ",
+        elapsed(), $missed);
+        return undef;
+    } else {
+        $RDB_model->biochemistry($RDB_biochemistry);
+    }
+    
+    # Import or add mapping object
     if ($isNotImported) {
-
+        $RDB_mapping = $self->getDefaultMapping();
     } elsif (-d "$dir/mapping") {
         my $mappingId = $id . "-mapping";
         $RDB_mapping
             = $self->importMappingFromDir("$dir/mapping", $RDB_biochemistry,
             $username, $mappingId);
         $RDB_model->mapping($RDB_mapping);
-    } else {
-        push(@{$missed->{mapping}}, "$id-file-missing");
     }
+    if (!defined($RDB_mapping) && $isNotImported) {
+        die "No mapping for model $dir!\n";
+        push(@{$missed->{mapping}}, "$id-file-missing");
+    } elsif(defined($RDB_mapping)) {
+        $RDB_model->mapping($RDB_mapping);
+    }
+
+    # Import or add annotation object
     if (-d "$dir/annotations") {
         my $genomeId = $id . "-annotation";
         $RDB_annotation
@@ -1258,7 +1291,6 @@ sub importModelFromDir {
     } else {
         push(@{$missed->{annotations}}, "$id-file-missing");
     }
-    warn "done annotations\n";
 
     # do rxnmdl
     $self->om->db->begin_work;
@@ -1289,7 +1321,7 @@ sub importModelFromDir {
                 $RDB_biochemistry, $RDB_model);
         }
 
-# don't add biomass functions to reaction_model. Instead handle them separately.
+        # don't add biomass functions to reaction_model. Instead handle them separately.
         if (defined($row->{REACTION}->[0])
             && $row->{REACTION}->[0] =~ m/bio\d+/)
         {
@@ -1482,6 +1514,40 @@ sub getBiomass {
     $biomassHash->{biomass_compounds} = $biomassCompounds;
     my $RDB_biomass = $self->getOrCreateObject("biomass", $biomassHash);
     return $RDB_biomass || undef;
+}
+
+sub getDefaultBiochemistry {
+    my ($self) = @_;
+    my $alreadyExists = $self->om->get_object_by_alias(
+        "biochemistry", "master", "default"
+    );
+    if (defined $alreadyExists) {
+        return $alreadyExists;
+    } else { 
+        # Generate data files and import
+        my $dir = tempdir();
+        $self->printDBBiochemistryToDir($dir);
+        my $bio = $self->importBiochemistryFromDir($dir, "master", "default");
+        File::Path::rmtree $dir;
+        return $bio;
+    }
+}
+
+sub getDefaultMapping {
+    my ($self) = @_;
+    my $alreadyExists = $self->om->get_object_by_alias(
+        "biochemistry", "master", "default"
+    );
+    if (defined $alreadyExists) {
+        return $alreadyExists;
+    } else {
+        # Generate data files and import
+        my $dir = tempdir();
+        $self->printDBMappingsToDir($dir);
+        my $map = $self->importMappingFromDir($dir, "master", "default");
+        File::Path::rmtree $dir;
+        return $map;
+    }
 }
 
 # getOrCreateObject - hashes and looks up object
