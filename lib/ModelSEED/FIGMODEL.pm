@@ -8835,6 +8835,26 @@ sub put_two_column_array_in_hash {
 	return ($HashRefOne,$HashRefTwo);
 }
 
+
+=head3 make_xls
+Definition:
+  {} = FIGMODEL->make_xls();
+Description:
+=cut
+sub make_xls {
+    my ( $self, $args ) = @_;
+    $args = $self->process_arguments( $args,
+        [ "filename", "sheetnames", "sheetdata" ], {} );
+    my $workbook = $args->{filename};
+    for ( my $i = 0 ; $i < @{ $args->{sheetdata} } ; $i++ ) {
+        $workbook = $args->{sheetdata}->[$i]->add_as_sheet(
+            $args->{sheetnames}->[$i], $workbook
+        );
+    }
+    $workbook->close();
+    return;
+}
+
 =head3 put_hash_in_two_column_array
 Definition:
 	[[string:1,string:2]]/[[string:2,string:1]] = FIGMODEL->put_hash_in_two_column_array({string:1 => string:2},0/1);
