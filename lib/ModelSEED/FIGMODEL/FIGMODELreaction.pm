@@ -1985,6 +1985,7 @@ sub balanceReaction {
     }
 
     if($Added_Protons){
+	$args->{debug}=1;
 	undef(%atoms);
 	$charge=0;
 	foreach my $cpd(keys %ReactantHash){
@@ -2240,29 +2241,36 @@ sub find_thermodynamic_reversibility {
 
     #Calculate MdeltaG
     my ($max,$min)=(0.02,0.00001);
-    my $CONST=$TEMPERATURE*$GAS_CONSTANT;
-    my $storedmin = $args->{deltaG};
-    my $storedmax = $args->{deltaG};
     my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
 
+    my $reactantsmin=0.0;
+    my $reactantsmax=0.0;
     foreach my $r (@{$substrates[0]}){
 	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
 	my ($tmx,$tmn)=($max,$min);
 	if($r->{"COMPARTMENT"}->[0] eq "e"){
 	    ($tmx,$tmn)=(1.0,0.0000001);
 	}
-	$storedmin+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tmx));
-	$storedmax+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tmn));
+	$reactantsmin+=((0-$r->{"COEFFICIENT"}->[0])*log($tmn));
+	$reactantsmax+=((0-$r->{"COEFFICIENT"}->[0])*log($tmx));
     }
+
+    my $productsmin=0.0;
+    my $productsmax=0.0;
     foreach my $p (@{$substrates[1]}){
 	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
 	my ($tmx,$tmn)=($max,$min);
 	if($p->{"COMPARTMENT"}->[0] eq "e"){
 	    ($tmx,$tmn)=(1.0,0.0000001);
 	}
-	$storedmin+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tmn));
-	$storedmax+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tmx));
+	$productsmin+=($p->{"COEFFICIENT"}->[0]*log($tmn));
+	$productsmax+=($p->{"COEFFICIENT"}->[0]*log($tmx));
     }
+
+    my $CONST=$TEMPERATURE*$GAS_CONSTANT;
+
+    my $storedmax=$args->{deltaG}+($CONST*$productsmax)+($CONST*$reactantsmin)+$args->{deltaGerr};
+    my $storedmin=$args->{deltaG}+($CONST*$productsmin)+($CONST*$reactantsmax)-$args->{deltaGerr};
 
     if($storedmax<0){
 	return "=>"; #\tMdeltaG\t".$storedmin."_".$storedmax;
@@ -2273,8 +2281,8 @@ sub find_thermodynamic_reversibility {
 
     #Do heuristics
     #1: Calculate mMdeltaG
-    my $mMdeltaG=$args->{deltaG};
     my $conc=0.001;
+    my $prodreacs=0.0;
     foreach my $r (@{$substrates[0]}){
 	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
 	my $tconc=$conc;
@@ -2284,7 +2292,7 @@ sub find_thermodynamic_reversibility {
 	if($r->{"DATABASE"}->[0] eq "cpd00007"){
 	    $tconc=0.000001;
 	}
-	$mMdeltaG+=((0-$r->{"COEFFICIENT"}->[0])*$CONST*log($tconc));
+	$prodreacs+=((0-$r->{"COEFFICIENT"}->[0])*log($tconc));
     }
     foreach my $p (@{$substrates[1]}){
 	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
@@ -2295,8 +2303,10 @@ sub find_thermodynamic_reversibility {
 	if($p->{"DATABASE"}->[0] eq "cpd00007"){
 	    $tconc=0.000001;
 	}
-	$mMdeltaG+=($p->{"COEFFICIENT"}->[0]*$CONST*log($tconc));
+	$prodreacs+=($p->{"COEFFICIENT"}->[0]*log($tconc));
     }
+
+    my $mMdeltaG=$args->{deltaG}+($CONST*$prodreacs);
 
     if($mMdeltaG >= -2 && $mMdeltaG <= 2) {
 	return "<=>"; #\tmMdeltaG\t$mMdeltaG";
@@ -2306,11 +2316,6 @@ sub find_thermodynamic_reversibility {
     #2a: Find Phosphate stuff
     my %PhoHash=();
     foreach my $r (@{$substrates[0]}){
-#	$PhoHash{"ATP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00002");
-#	$PhoHash{"ADP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00008");
-#	$PhoHash{"AMP"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00018");
-#	$PhoHash{"Pi"}  = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00009");
-#	$PhoHash{"Ppi"} = $r->{"COEFFICIENT"}->[0] if($r->{"DATABASE"}->[0] eq "cpd00012");
 	$PhoHash{"ATP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00002");
 	$PhoHash{"ADP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00008");
 	$PhoHash{"AMP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00018");
@@ -2318,29 +2323,24 @@ sub find_thermodynamic_reversibility {
 	$PhoHash{"Ppi"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00012");
     }
     foreach my $p (@{$substrates[1]}){
-#	$PhoHash{"ATP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00002");
-#	$PhoHash{"ADP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00008");
-#	$PhoHash{"AMP"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00018");
-#	$PhoHash{"Pi"}  += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00009");
-#	$PhoHash{"Ppi"} += (0-$p->{"COEFFICIENT"}->[0]) if($p->{"DATABASE"}->[0] eq "cpd00012");
 	$PhoHash{"ATP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00002");
 	$PhoHash{"ADP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00008");
 	$PhoHash{"AMP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00018");
 	$PhoHash{"Pi"}  = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00009");
 	$PhoHash{"Ppi"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00012");
     }
-    #2b: Find minimum Phosphate stuff
 
+    #2b: Find minimum Phosphate stuff
     my $Points=0;
     my $minimum=10000;
-    if(exists($PhoHash{"ADP"})){
+    if(exists($PhoHash{"ATP"}) && exists($PhoHash{"Pi"}) && exists($PhoHash{"ADP"})){
 	foreach my $key ("ATP", "ADP", "Pi"){
 	    if(exists($PhoHash{$key})){
 		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
 	    }
 	}
 	$Points=$minimum if $minimum<10000;
-    }elsif(exists($PhoHash{"AMP"})){
+    }elsif(exists($PhoHash{"ATP"}) && exists($PhoHash{"Ppi"}) && exists($PhoHash{"AMP"})){
 	foreach my $key ("ATP", "AMP", "Ppi"){
 	    if(exists($PhoHash{$key})){
 		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
@@ -2360,14 +2360,15 @@ sub find_thermodynamic_reversibility {
 		"cpd00449"=>0,  #Dihydrolipoamide
 		"cpd00242"=>0); #HCO3-
 
+    my $lowEsum=0;
     foreach my $r (@{$substrates[0]}){
-	$Points += $r->{"COEFFICIENT"}->[0] if exists($lowE{$r->{"DATABASE"}->[0]});
-#	$Points += (0-$r->{"COEFFICIENT"}->[0]) if exists($lowE{$r->{"DATABASE"}->[0]});
+	$lowEsum += (0-$r->{"COEFFICIENT"}->[0]) if exists($lowE{$r->{"DATABASE"}->[0]});
     }
     foreach my $p (@{$substrates[1]}){
-#	$Points += $p->{"COEFFICIENT"}->[0] if exists($lowE{$p->{"DATABASE"}->[0]});
-	$Points += (0-$p->{"COEFFICIENT"}->[0]) if exists($lowE{$p->{"DATABASE"}->[0]});
+	$lowEsum += $p->{"COEFFICIENT"}->[0] if exists($lowE{$p->{"DATABASE"}->[0]});
     }
+
+    $Points-=$lowEsum;
 
     #test points
     if(($Points*$mMdeltaG) > 2 && $mMdeltaG < 0){

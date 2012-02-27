@@ -2583,6 +2583,7 @@ sub import_model_file {
 		autoCompleteMedia => "Complete",
 		generateprovenance => 1
 	});
+
 	#Calculating the full ID of the model
 	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
 		$args->{id} = $1;
@@ -2647,7 +2648,7 @@ sub import_model_file {
 		if ($row->{LOAD}->[0] =~ m/(bio\d+)/ && !defined($args->{biomassID})) {
 			$args->{biomassID} = $1;
 		}
-		if ($row->{LOAD}->[0] eq $args->{biomassID}) {
+		if ($args->{biomassID} && $row->{LOAD}->[0] eq $args->{biomassID}) {
 			$found = 1;	
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
@@ -2687,7 +2688,7 @@ sub import_model_file {
 	    });
 	    $modelObj->biomassReaction($args->{biomassID});
 	}
-	if ($found == 0) {
+	if ($found == 0 && $args->{biomassID}) {
 		$self->database()->create_object("rxnmdl",{
 			REACTION => $args->{biomassID},
 			MODEL => $args->{id},
@@ -3264,7 +3265,7 @@ sub import_model {
 		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t",$row->{"NAME"}->[0]."\n";
+		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]."\n";
 		    push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]);
 
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
@@ -3464,7 +3465,7 @@ sub import_model {
 			my $thermoreversibility='';
 			if($deltaG){
 			    $thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
-													    deltaG=>$deltaG});
+													    deltaG=>$deltaG},deltaGerr=>$deltaGErr);
 			}else{
 			    $deltaG='10000000';
 			    $deltaGErr='10000000';
