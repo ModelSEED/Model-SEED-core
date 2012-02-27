@@ -40,7 +40,7 @@ has compartments => ( is => 'rw', default => sub { return []; },
     isa => 'ArrayRef[ModelSEED::MS::Compartment]');
 # Constants
 has dbAttributes => ( is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
-has indecies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndecies');
+has indicies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndicies');
 
 has dbType => (is => 'ro', isa => 'Str',default => "Compound");
 #Internally maintained variables
@@ -292,7 +292,7 @@ sub buildIndex {
 	}
 }
 
-sub _buildIndecies { return {}; }
+sub _buildIndicies { return {}; }
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 
