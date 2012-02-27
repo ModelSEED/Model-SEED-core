@@ -282,9 +282,6 @@ BOOTSTRAP
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot$file" $arguments
 SCRIPT
-		#if ($os eq "windows") {
-        #    $script = "\@echo off\n" . $script . "pause\n";
-        #}
         open(my $fh, ">", $directoryRoot."/bin/".$plFileList->{$file}.$extension) || die($!);
         print $fh $script;
         close($fh);
@@ -366,7 +363,7 @@ SCRIPT
         open(my $fh, ">", $directoryRoot."/bin/".$filename.$extension) || die($!);
         print $fh $script;
         close($fh);
-		chmod 0775,$directoryRoot."/bin/".$function;
+		chmod 0775,$directoryRoot."/bin/".$filename.$extension;
 	}
 }
 #Configuring database

@@ -13,73 +13,64 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 
 #Attributes
-has 'uuid' => (is => 'rw', isa => 'Str', required => 1);
-has 'modDate' => (is => 'rw', isa => 'Str', required => 1);
+has 'uuid' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
+has 'modDate' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
 has 'id' => (is => 'rw', isa => 'Str', required => 1);
-has 'locked' => (is => 'rw', isa => 'Int', required => 1);
-has 'name' => (is => 'rw', isa => 'Str', required => 1);
-has 'abbreviation' => (is => 'rw', isa => 'Str', required => 1);
-has 'cksum' => (is => 'rw', isa => 'Str', required => 1);
-has 'unchargedFormula' => (is => 'rw', isa => 'Str', required => 1);
-has 'formula' => (is => 'rw', isa => 'Str', required => 1);
-has 'mass' => (is => 'rw', isa => 'Str', required => 1);
-has 'defaultCharge' => (is => 'rw', isa => 'Str', required => 1);
-has 'deltaG' => (is => 'rw', isa => 'Str', required => 1);
-has 'deltaGErr' => (is => 'rw', isa => 'Str', required => 1);
+has 'locked' => (is => 'rw', isa => 'Int', default => 0);
+has 'name' => (is => 'rw', isa => 'Str', default => '');
+has 'abbreviation' => (is => 'rw', isa => 'Str', default => '');
+has 'cksum' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum');
+has 'unchargedFormula' => (is => 'rw', isa => 'Str');
+has 'formula' => (is => 'rw', isa => 'Str');
+has 'mass' => (is => 'rw', isa => 'Num');
+has 'defaultCharge' => (is => 'rw', isa => 'Num');
+has 'deltaG' => (is => 'rw', isa => 'Num');
+has 'deltaGErr' => (is => 'rw', isa => 'Num');
 #Subobjects
-has 'aliases' => (is => 'rw', isa => 'HashRef', required => 1);
-has 'structures' => (is => 'rw', isa => 'HashRef', required => 1);
-has 'sets' => (is => 'rw', isa => 'HashRef', required => 1,default => sub{{}});
-has 'pKs' => (is => 'rw', isa => 'ArrayRef[HashRef]', required => 1);
+has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'structures' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'pk' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'compoundSets' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 #Constants
-has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","abbreviation","cksum","unchargedFormula","formula","mass","defaultCharge","deltaG","deltaGErr"]);
+has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
+    builder => '_buildDbAttributes' );
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Compound");
 #Internally maintained variables
 has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
 sub BUILDARGS {
     my ($self,$params) = @_;
-	$params = ModelSEED::utilities::ARGS($params,["biochemistry"],{
-		rawdata => undef#Raw data of form returned by raw data object manager API
-	});
-	if (defined($params->{rawdata})) {
-		if (defined($params->{rawdata}->{attributes})) {
-			foreach my $attribute (keys(%{$params->{rawdata}->{attributes}})) {
-				if (defined($params->{rawdata}->{attributes}->{$attribute}) && $params->{rawdata}->{attributes}->{$attribute} ne "undef") {
-					$params->{$attribute} = $params->{rawdata}->{attributes}->{$attribute};
-				}
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{aliases})) {
-			$params->{aliases} = {};
-			foreach my $alias (@{$params->{rawdata}->{relations}->{aliases}}) {
-				push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{CompoundStructure})) {
-			$params->{structures} = {};
-			foreach my $structure (@{$params->{rawdata}->{relations}->{CompoundStructure}}) {
-				$params->{structures}->{$structure->{attributes}->{type}} = $structure->{attributes}->{structure};
-				$params->{structures}->{$structure->{attributes}->{type}."_cksum"} = $structure->{attributes}->{cksum};
-			}
-		}
-		if (defined($params->{rawdata}->{relations}->{CompoundPk})) {
-			$params->{pKs} = [];
-			foreach my $pk (@{$params->{rawdata}->{relations}->{CompoundPk}}) {
-				push(@{$params->{pKs}},{
-					atom => $pk->{attributes}->{atom},
-					pk => $pk->{attributes}->{pk},
-					type => $pk->{attributes}->{type}
-				});
-			}
-		}
-	}
-	return $params;
+    my $attr = $params->{attributes};
+    my $rels = $params->{relationships};
+    if(defined($attr)) {
+        map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
+        delete $params->{attributes};
+    }
+    if(defined($rels)) {
+        foreach my $alias (@{$rels->{aliases} || []}) {
+            push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
+        }
+        foreach my $structure (@{$rels->{compound_structures} || []}) {
+            push(@{$params->{structures}->{$structure->{attributes}->{type}}},{
+            	structure => $structure->{attributes}->{structure},
+                modDate => $structure->{attributes}->{modDate},
+                cksum => $structure->{attributes}->{cksum}
+            });
+        }
+        foreach my $pk (@{$rels->{compound_pk} || []}) {
+            push(@{$params->{pk}->{$pk->{attributes}->{type}}},{
+            	atom => $pk->{attributes}->{atom},
+                pk => $pk->{attributes}->{pk},
+            });
+        }
+        delete $params->{relationships};
+    }
+    return $params;
 }
 
-sub BUILD {
-    my ($self,$params) = @_;
-	$params = ModelSEED::utilities::ARGS($params,[],{});
+sub addSet {
+    my ($self,$set) = @_;
+	push(@{$self->compoundSets()->{$set->type()}},$set);
 }
 
 sub serializeToDB {
@@ -132,6 +123,14 @@ sub serializeToDB {
 	}
 	return $data;
 }
+
+sub _buildDbAttributes {
+    return [qw( uuid modDate locked id name abbreviation cksum
+    unchargedFormula formula mass defaultCharge deltaG deltaGErr )];
+}
+
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -3,7 +3,6 @@ use Moose;
 use namespace::autoclean;
 use DateTime;
 use Data::UUID;
-use ModelSEED::MS::Complex;
 
 # Basic attributes
 has type => ( is => 'ro', isa => 'Str', default => 'Mapping');

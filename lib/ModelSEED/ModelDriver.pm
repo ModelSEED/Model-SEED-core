@@ -1778,14 +1778,29 @@ This function creates a model that includes all reactions in the current databas
 sub mdlmakedbmodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["model",1,undef,"The name of the model that will contain all the database reactions."],
+		["biomass",1,undef,"The name of the biomass reaction that will be used."],
+		["biochemistry",0,undef,"The biochemistry that will be used."],
+		["mimicGapfilling",0,1,"Match gapfilling"],
+		["allReversible",0,1,"Make every reaction in model reversible"],
 	],[@Data],"construct a model with all database reactions");
-    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    my $mdl =  $self->figmodel()->get_model("dbmdl-".$args->{biomass}.".".$self->figmodel()->userObj()->_id());
     if (!defined($mdl)) {
-    	ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+    	my $mdl = $self->figmodel()->create_model({
+			genome => "NONE",
+			id => "dbmdl-".$args->{biomass},
+			owner => ModelSEED::Interface::interface::USERNAME(),
+			biochemSource => $args->{biochemistry},
+			biomassReaction => $args->{biomass},
+			reconstruction => 0,
+			autocompletion => 0,
+			overwrite => 0
+		});	
     }
-    $mdl->generate_fulldb_model();
-	return "Set model reaction list to entire biochemistry database";
+    $mdl->GenerateModelProvenance({
+    	biochemSource => $args->{biochemistry}
+    });	
+    $mdl->generate_fulldb_model({biomass => $args->{biomass},mimicGapfilling => $args->{mimicGapfilling},allReversible => $args->{allReversible}});
+	return "Created database model ".$mdl->id()."!";
 }
 
 =head
@@ -1814,7 +1829,6 @@ sub mdladdright {
     });
 	return "Successfully added ".$args->{right}." rights for user ".$args->{user}." to model ".$args->{model}."!\n";	
 }
-
 =head
 =CATEGORY
 Metabolic Model Operations
@@ -1826,7 +1840,7 @@ This function is used to create new models in the Model SEED database.
 sub mdlcreatemodel {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["genome",1,undef,"A ',' delimited list of genomes for which new models should be created."],
+		["genome",1,undef,"A genome for which a new model should be created."],
 		["id",0,undef,"ID that the new model should have in the Model SEED database."],
 		["biomass",0,undef,"ID of the biomass reaction the new model should have in the Model SEED database."],
 		["owner",0,ModelSEED::Interface::interface::USERNAME(),"The login of the user account that should own the new model."],
@@ -1835,43 +1849,77 @@ sub mdlcreatemodel {
 		["autocompletion",0,0,"Set this FLAG to '1' to autoatically run the autocompletion algorithm on the new model as soon as it is created."],
 		["overwrite",0,0,"Set this FLAG to '1' to overwrite any model that has the same specified ID in the database."],
 	],[@Data],"create new Model SEED models");    
-    my $output = ModelSEED::Interface::interface::PROCESSIDLIST({
-		objectType => "genome",
-		delimiter => ",",
-		input => $args->{genome}
+	my $message;
+    my $mdl = $self->figmodel()->create_model({
+		genome => $args->{genome},
+		id => $args->{id},
+		owner => $args->{owner},
+		biochemSource => $args->{"biochemSource"},
+		biomassReaction => $args->{"biomass"},
+		reconstruction => $args->{"reconstruction"},
+		autocompletion => $args->{"autocompletion"},
+		overwrite => $args->{"overwrite"}
 	});
-	my $message = "";
-    if (@{$output} == 1 || $args->{usequeue} eq 0) {
-    	for (my $i=0; $i < @{$output}; $i++) {
-    		my $mdl = $self->figmodel()->create_model({
-				genome => $output->[0],
-				id => $args->{id},
-				owner => $args->{owner},
-				biochemSource => $args->{"biochemSource"},
-				biomassReaction => $args->{"biomass"},
-				reconstruction => $args->{"reconstruction"},
-				autocompletion => $args->{"autocompletion"},
-				overwrite => $args->{"overwrite"}
+	if (defined($mdl)) {
+		if ($args->{"reconstruction"} eq "0") {
+			$mdl->GenerateModelProvenance({
+			    biochemSource => $args->{biochemSource}
 			});
-			if (defined($mdl)) {
-				$message .= "Successfully created model ".$mdl->id()."!\n";
-			} else {
-				$message .= "Failed to create model ".$mdl->id()."!\n";
-			}
-    	}
+		}
+		$message .= "Successfully created model ".$mdl->id()."!\n";
 	} else {
-		for (my $i=0; $i < @{$output}; $i++) {
-	    	$args->{model} = $output->[$i];
-	    	$self->figmodel()->queue()->queueJob({
-				function => "mdlcreatemodel",
-				arguments => $args,
-				user => ModelSEED::Interface::interface::USERNAME()
-			});
-    	}
+		$message .= "Failed to create model ".$mdl->id()."!\n";
 	}
     return $message;
 }
-
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function creates a new private copy of another users model for the currently logged user
+=EXAMPLE
+./mdlcheckoutmodel -model Seed.83333.1
+=cut
+sub mdlcheckoutmodel {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Model to be checked out"],
+		["owner",0,ModelSEED::Interface::interface::USERNAME(),"The login name of the user that should own the model copy"],
+		["overwrite",0,0,"Indicates if any existing model with the same ID should be overwritten"],
+	],[@Data],"check out copy of existing model");    
+	my $existingMdl = $self->db()->get_object("model",{id => $args->{model}});
+	if (!defined($existingMdl)) {
+		ModelSEED::utilities::USEERROR("Model ".$args->{model}." not found in database! Make sure you have view privelages for this model!");
+	}
+	my $id = $args->{model};
+    if ($id =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
+		$id = $1;
+	} elsif ($id =~ m/^(.+)\.(\d+)$/) {
+		$id = $1;
+	}
+	if ($args->{owner} ne "master") {
+		my $usr = $self->db()->get_object("user",{login=>$args->{owner}});
+		ModelSEED::utilities::USEERROR("Invalid model owner: ".$args->{owner}) if (!defined($usr));
+		$id .= ".".$usr->_id();
+	}
+	if ($id eq $args->{model}) {
+		ModelSEED::utilities::USEERROR("Cannot checkout your own model!");	
+	}
+    my $mdl = $self->figmodel()->create_model({
+		genome => $existingMdl->genome(),
+		id => $id,
+		owner => $args->{owner},
+		biochemSource => undef,
+		biomassReaction => $existingMdl->biomassReaction(),
+		reconstruction => 0,
+		autocompletion => 0,
+		overwrite => $args->{"overwrite"}
+	});
+	if (!defined($mdl)) {
+		ModelSEED::utilities::ERROR("Model creation failed!");		
+	}
+	$mdl->copyModel({sourceModel => $args->{model}});
+    return "Successfully checked out model ".$args->{model}." as new model ".$id."!";
+}
 =head
 =CATEGORY
 Metabolic Model Operations

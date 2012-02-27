@@ -103,10 +103,19 @@ Description:
 =cut
 sub USEERROR {	
 	my ($message) = @_;
-	print $message."\n";
+	print STDERR "\n".$message."\n";
+	print STDERR "Critical error. Discontinuing current operation!\n";
 	exit();
 }
-
+=head3 USEWARNING
+Definition:
+	void ModelSEED::utilities::USEWARNING();
+Description:	
+=cut
+sub USEWARNING {	
+	my ($message) = @_;
+	print STDERR "\n".$message."\n\n";
+}
 =head3 WARNING
 Definition:
 	void ModelSEED::utilities::WARNING();

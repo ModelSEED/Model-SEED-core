@@ -227,14 +227,19 @@ sub getTestConfig {
 sub getDebugCoreApi {
     my ($self) = @_;
     if(!defined($self->{_debugCoreApi})) {
-        my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
-        my ($fh, $tmpFile) = File::Temp::tempfile();
-        close($fh);
-        system("cat $sqliteFile | sqlite3 $tmpFile");
+        #my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
+        #my ($fh, $tmpFile) = File::Temp::tempfile();
+        #close($fh);
+        #system("cat $sqliteFile | sqlite3 $tmpFile");
+        #$self->{_debugCoreApi} = ModelSEED::CoreApi->new({
+        #    database => $tmpFile,
+        #    driver => "SQLite",
+        #});
+        print File::Basename::dirname(__FILE__)."/../../data/NewScheme.db\n";
         $self->{_debugCoreApi} = ModelSEED::CoreApi->new({
-            database => $tmpFile,
+            database => File::Basename::dirname(__FILE__)."/../../data/NewScheme.db",
             driver => "SQLite",
-        }); 
+        });  
     }
     return $self->{_debugCoreApi};
 }

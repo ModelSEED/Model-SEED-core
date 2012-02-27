@@ -1837,7 +1837,8 @@ Description:
 sub balanceReaction {
     my ($self,$args) = @_;
     $args = $self->figmodel()->process_arguments($args,[],{
-	equation => undef,debug=>0});
+		equation => undef,debug=>0
+    });
     if (!defined($args->{equation})) {
 	$args->{equation} = $self->ppo()->equation();
     }
@@ -1886,14 +1887,14 @@ sub balanceReaction {
     }
 
     #Only do this for reactions belonging to one compartment
-    if(scalar(keys %RepresentedCompartments)>1){
-	my $output = {
-	    equation => $OriginalEquation,
-	    balanced => 0,
-	    status => "TR"
-	};
-	return $output;
-    }
+    #if(scalar(keys %RepresentedCompartments)>1){
+	#	my $output = {
+	#	    equation => $OriginalEquation,
+	#	    balanced => 0,
+	#	    status => "TR"
+	#	};
+	#	return $output;
+    #}
 
     #$args->{debug}=1;
 
@@ -1901,29 +1902,29 @@ sub balanceReaction {
     my %atoms=();
     my $charge=0;
     foreach my $cpd(keys %ReactantHash){
-	my $cpdObj=$self->figmodel()->get_compound($cpd);
-	my $atomKey=$cpdObj->atoms();
-	print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
-	foreach my $a(keys %$atomKey){
-	    print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
-	    $atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
-	    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
-	}
-	$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-	$charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+		my $cpdObj=$self->figmodel()->get_compound($cpd);
+		my $atomKey=$cpdObj->atoms();
+		print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+		foreach my $a(keys %$atomKey){
+		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
+		    $atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+		    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
+		}
+		$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+		$charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
     }
 
     foreach my $cpd(keys %ProductHash){
-	my $cpdObj=$self->figmodel()->get_compound($cpd);
-	my $atomKey=$cpdObj->atoms();
-	print STDERR "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
-	foreach my $a(keys %$atomKey){
-	    print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
-	    $atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
-	    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
-	}
-	$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-	$charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+		my $cpdObj=$self->figmodel()->get_compound($cpd);
+		my $atomKey=$cpdObj->atoms();
+		print STDERR "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+		foreach my $a(keys %$atomKey){
+		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
+		    $atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+		    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
+		}
+		$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+		$charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
     }
 
     print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
@@ -1931,57 +1932,57 @@ sub balanceReaction {
 
     my $status='';
     foreach my $a ( grep { $_ ne "H" && $_ ne "cpd12713" } sort keys %atoms){
-	if($atoms{$a}!=0){
-	    $balanced_equation=0;
-	    if(length($status)==0){
-		$status="MI:";
-	    }else{
-		$status.="/";
-	    }
-	    $status.=$a.$atoms{$a};
-	}
+		if($atoms{$a}!=0){
+		    $balanced_equation=0;
+		    if(length($status)==0){
+				$status="MI:";
+		    }else{
+				$status.="/";
+		    }
+		    $status.=$a.$atoms{$a};
+		}
     }
 
     #Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
     my @ignore=(')','n','*','noformula');
     foreach my $ig(@ignore){
-	if(exists($atoms{$ig})){
-	    $balanced_equation=0;
-	    last;
-	}
+		if(exists($atoms{$ig})){
+		    $balanced_equation=0;
+		    last;
+		}
     }
 
     #check protons
     my $Added_Protons=0;
     if(exists($atoms{'H'}) && $atoms{'H'} != 0){
-	if(length($status)==0 && $balanced_equation){
-	    #if balanced atoms, then balance protons
-	    print STDERR "Proton imbalance for ",$self->id(),"\t",$atoms{'H'},"\n" if $args->{debug};
-
-	    #Check to see if protons are present and handle appropriately
-	    if(exists($ReactantHash{'cpd00067'})){
-		$atoms{'H'}-=$ReactantHash{'cpd00067'};
-		delete($ReactantHash{'cpd00067'});
-	    }
-	    if(exists($ProductHash{'cpd00067'})){
-		$atoms{'H'}-=$ProductHash{'cpd00067'};
-		delete($ProductHash{'cpd00067'});
-	    }
-
-	    #If after removing protons, we still see
-	    if($atoms{'H'} < 0){
-		$ProductHash{'cpd00067'}=-$atoms{'H'};
-	    }elsif($atoms{'H'} > 0){
-		$ReactantHash{'cpd00067'}=-$atoms{'H'};
-	    }
-	    $Added_Protons=1;
-	    $status="OK|HB:".$atoms{'H'};
-	}else{
-	    if(length($status)!=0){
-		$status.="|";
-	    }
-	    $status.="HI:".$atoms{'H'};
-	}
+		if(length($status)==0 && $balanced_equation){
+		    #if balanced atoms, then balance protons
+		    print STDERR "Proton imbalance for ",$self->id(),"\t",$atoms{'H'},"\n" if $args->{debug};
+	
+		    #Check to see if protons are present and handle appropriately
+		    if(exists($ReactantHash{'cpd00067'})){
+				$atoms{'H'}-=$ReactantHash{'cpd00067'};
+				delete($ReactantHash{'cpd00067'});
+		    }
+		    if(exists($ProductHash{'cpd00067'})){
+				$atoms{'H'}-=$ProductHash{'cpd00067'};
+				delete($ProductHash{'cpd00067'});
+		    }
+	
+		    #If after removing protons, we still see
+		    if($atoms{'H'} < 0){
+				$ProductHash{'cpd00067'}=-$atoms{'H'};
+		    }elsif($atoms{'H'} > 0){
+				$ReactantHash{'cpd00067'}=-$atoms{'H'};
+		    }
+		    $Added_Protons=1;
+		    $status="OK|HB:".$atoms{'H'};
+		}else{
+		    if(length($status)!=0){
+				$status.="|";
+		    }
+		    $status.="HI:".$atoms{'H'};
+		}
     }
 
     if($Added_Protons){
@@ -2013,7 +2014,6 @@ sub balanceReaction {
 	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
 	    $charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
 	}
-
 	print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
     }
 
@@ -2021,38 +2021,38 @@ sub balanceReaction {
 
     my $Added_Electrons=0;
     if($charge!=0){
-	if(0){
-#	if((length($status)==0 && $balanced_equation) || $status eq "OK|HB"){
-	    #if balanced atoms, or balanced protins, then balance electrons
-	    print STDERR "Charge imbalance for ",$self->id(),"\t",$charge,"\n" if $args->{debug};
-	    
-	    if($charge < 0){
-		if(exists($ProductHash{'cpd12713'})){
-		    #$ProductHash{'cpd12713'}+=$charge;
+		if(0){
+	#	if((length($status)==0 && $balanced_equation) || $status eq "OK|HB"){
+		    #if balanced atoms, or balanced protins, then balance electrons
+		    print STDERR "Charge imbalance for ",$self->id(),"\t",$charge,"\n" if $args->{debug};
+		    
+		    if($charge < 0){
+			if(exists($ProductHash{'cpd12713'})){
+			    #$ProductHash{'cpd12713'}+=$charge;
+			}else{
+			    #$ProductHash{'cpd12713'}=$charge;
+			}
+		    }elsif($charge > 0){
+			if(exists($ReactantHash{'cpd12713'})){
+			    #$ReactantHash{'cpd12713'}+=$charge;
+			}else{
+			    #$ReactantHash{'cpd12713'}=$charge;
+			}
+		    }
+		    $Added_Electrons=1;
+		    if(length($status)!=0){
+			$status.="|CB:".$charge;
+		    }else{
+			$status="OK|CB:".$charge;
+		    }
 		}else{
-		    #$ProductHash{'cpd12713'}=$charge;
+		    if(length($status)!=0){
+			$status.="|";
+		    }else{
+			$status="OK|";
+		    }
+		    $status.="CI:".$charge;
 		}
-	    }elsif($charge > 0){
-		if(exists($ReactantHash{'cpd12713'})){
-		    #$ReactantHash{'cpd12713'}+=$charge;
-		}else{
-		    #$ReactantHash{'cpd12713'}=$charge;
-		}
-	    }
-	    $Added_Electrons=1;
-	    if(length($status)!=0){
-		$status.="|CB:".$charge;
-	    }else{
-		$status="OK|CB:".$charge;
-	    }
-	}else{
-	    if(length($status)!=0){
-		$status.="|";
-	    }else{
-		$status="OK|";
-	    }
-	    $status.="CI:".$charge;
-	}
     }
 
 

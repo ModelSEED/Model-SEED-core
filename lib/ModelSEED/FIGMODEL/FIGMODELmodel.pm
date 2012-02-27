@@ -250,12 +250,9 @@ sub initializeModel {
 		force => 1
 	});
 	$self->loadData();
-	$self->GenerateModelProvenance({
-		biochemSource => $args->{biochemSource}
-	});
-	$self->buildDBInterface();
 	if ($args->{reconstruction} eq "1") {
 		$self->reconstruction({
+	    	biochemSource => $args->{biochemSource},
 	    	checkpoint => 0,
 			autocompletion => $args->{autocompletion}
 		});
@@ -421,89 +418,49 @@ Description:
 =cut
 sub copyModel {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		newid=>undef,
-		owner=> $self->owner(),
-	});
-	my $usrObj = $self->figmodel()->database()->get_object("user",{login=>$args->{owner}});
-	if (!defined($args->{newid})) {
-		my $index = 0;
-		do {
-	
-			$args->{newid} = "Seed".$self->genome();
-			if ($index != 0) {
-				$args->{newid} .= "-".$index;
-			}
-			$args->{newid} .= ".".$usrObj->_id();
-			$index++;		
-		} while(defined($self->db()->get_object("model", { id => $args->{newid} }))); 
-	}
-	# TODO add validateID function, need to know passed user id is correct
-	# append ".userId" if that hasn't already been done
-	my $userId = $self->db()->get_object("user", { login => $args->{owner} })->_id();
-	if($args->{newid} !~  /\.$userId$/) {
-		$args->{newid} .= '.'.$userId;
-	}
-	if (defined($self->figmodel()->database()->get_object("model",{id=>$args->{newid}}))) {
-		ModelSEED::utilities::ERROR("A model with the suppied ID already exists");
+	$args = $self->figmodel()->process_arguments($args,["sourceModel"],{});
+	my $model = $self->figmodel()->get_model($args->{sourceModel});
+	if (!defined($model)) {
+		ModelSEED::utilities::ERROR("Model ".$args->{sourceModel}." not found!");
 	}
 	# Create copy of biomass function
-	my $biomass = $self->figmodel()->get_reaction($self->ppo()->biomassReaction());
-	my $biomassCopy = $biomass->copyReaction({owner => $args->{owner}});
+	my $biomass = $self->figmodel()->get_reaction($model->ppo()->biomassReaction());
+	my $biomassCopy = $biomass->copyReaction({owner => $self->owner()});
+	$self->ppo()->biomassReaction($biomassCopy->id());
 	# Copy directory structure
-	my $new_model_dir = $self->config("model directory")->[0] . $args->{owner} . '/' . $args->{newid};
-	if (-d $new_model_dir) {
-		ModelSEED::utilities::ERROR("Directory ".$new_model_dir." already exists for model ".$args->{newid});
+	File::Copy::Recursive::dircopy($model->directory(),$self->directory());
+	my $rxnmdl = $self->rxnmdl();
+	for (my $i=0; $i < @{$rxnmdl}; $i++) {
+		$rxnmdl->[$i]->delete();
 	}
-	my $current_model_dir = $self->directory();
-	$current_model_dir =~ s/\d+\/$//; # remove trailing version number
-	File::Copy::Recursive::dircopy($current_model_dir, $new_model_dir);   
-	# Build initial model, use ppo to get most configuration details
-	my $model_init_hash = { map { $_ => $self->ppo()->$_() } keys %{$self->ppo()->attributes()} };
-	delete $model_init_hash->{_id};			 
-	$model_init_hash->{id} = $args->{newid};	
-	$model_init_hash->{owner} = $args->{owner};
-	$model_init_hash->{biomassReaction} = $biomassCopy->id();
-	# Configuration needed for new() itself
-	$model_init_hash->{runPreliminaryReconstrution} = 0;
-	$model_init_hash->{gapfilling} = 0;
-	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
-		figmodel => $self->figmodel(),
-		id => $args->{newid},
-		init => $model_init_hash
-	});
-	# Give the current user temporary admin rights 
-#	$self->changeRight($self->figmodel()->user(), "admin", "force");
-	ModelSEED::utilities::ERROR("Error constructing new model ".$args->{newid}) if(!defined($mdl));
-	# Copy model rxnmdl ppo data
-	my $old_rxnmdls = $self->db()->get_objects("rxnmdl", { MODEL => $self->id() });
-	foreach my $old_rxnmdl (@$old_rxnmdls) {
-		my $hash = { map { $_ => $old_rxnmdl->$_() } keys %{$old_rxnmdl->attributes()} };
-		delete $hash->{_id};
-		$hash->{MODEL} = $args->{newid};
-		$mdl->db()->create_object("rxnmdl", $hash); 
-	}
-	# Copy over modelversions
-	my $model_versions = $self->db()->get_objects("model_version", { canonicalID => $self->id() });
-	foreach my $mdl_version (@$model_versions) {
-		my $hash = { map { $_ => $mdl_version->$_() } keys %{$mdl_version->attributes()} };
-		delete $hash->{_id};
-		# id needs to be "base.v\d+" keep the ".v\d+" use newbase
-		my $version;
-		if($hash->{id} =~ /(v\d+)$/) {
-		   $version = $1; 
+	$rxnmdl = $model->rxnmdl();
+	for (my $i=0; $i < @{$rxnmdl}; $i++) {
+		if ($rxnmdl->[$i]->REACTION() !~ m/^bio/) {
+			$self->db()->create_object("rxnmdl", {
+				MODEL => $self->id(),
+				REACTION => $rxnmdl->[$i]->REACTION(),
+				directionality => $rxnmdl->[$i]->directionality(),
+				compartment => $rxnmdl->[$i]->compartment(),
+				pegs => $rxnmdl->[$i]->pegs(),
+				confidence => $rxnmdl->[$i]->confidence(),
+				notes => $rxnmdl->[$i]->notes(),
+				reference => $rxnmdl->[$i]->reference()
+			});
+		} else {
+			$self->db()->create_object("rxnmdl", {
+				MODEL => $self->id(),
+				REACTION => $biomassCopy->id(),
+				directionality => $rxnmdl->[$i]->directionality(),
+				compartment => $rxnmdl->[$i]->compartment(),
+				pegs => $rxnmdl->[$i]->pegs(),
+				confidence => $rxnmdl->[$i]->confidence(),
+				notes => $rxnmdl->[$i]->notes(),
+				reference => $rxnmdl->[$i]->reference()
+			});
 		}
-		$hash->{id} = $args->{newid} . ".v$version";
-		$hash->{canonicalID} = $args->{newid};
-		$mdl->db()->create_object("model_version", $hash);
 	}
 	# Run process model
-	$mdl->processModel();
-	# Remove temporary admin rights if not the owner
-#	if($self->owner() ne $self->figmodel()->user()) {
-#		$self->changeRight($self->figmodel()->user(), "none");
-#	} 
-	return $mdl;
+	#$mdl->processModel(); 
 }
 
 =head3 figmodel
@@ -1897,29 +1854,31 @@ sub update_model_stats {
 	});
 	my $geneHash;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		my $pegs = $self->figmodel()->get_reaction()->parseGeneExpression({
-			expression => $rxnmdl->[$i]->pegs()
-		});
-		if (defined($pegs->{genes}->[0])) {
-			my $lcgene = lc($pegs->{genes}->[0]);
-			if ($lcgene eq "biolog") {
-				$counts->{biolog}++;
-			}elsif ($lcgene eq "growmatch") {
-				$counts->{growmatch}++;
-			}elsif ($lcgene eq "spontaneous") {
-				$counts->{spontaneous}++;
-			}elsif ($lcgene eq "unknown" || $lcgene eq "universal" || $lcgene eq "gap" || $lcgene eq "autocompletion") {
-				$counts->{autocompletion}++;
-			}elsif ($lcgene eq "biolog") {
-				$counts->{biolog}++;
-			} else {
-				for (my $j=0; $j < @{$pegs->{genes}}; $j++) {
-					push(@{$geneHash->{$pegs->{genes}->[$j]}},$rxnmdl->[$i]->REACTION());
-				}	
+		if (defined($rxnmdl->[$i])) {
+			my $pegs = $self->figmodel()->get_reaction()->parseGeneExpression({
+				expression => $rxnmdl->[$i]->pegs()
+			});
+			if (defined($pegs->{genes}->[0])) {
+				my $lcgene = lc($pegs->{genes}->[0]);
+				if ($lcgene eq "biolog") {
+					$counts->{biolog}++;
+				}elsif ($lcgene eq "growmatch") {
+					$counts->{growmatch}++;
+				}elsif ($lcgene eq "spontaneous") {
+					$counts->{spontaneous}++;
+				}elsif ($lcgene eq "unknown" || $lcgene eq "universal" || $lcgene eq "gap" || $lcgene eq "autocompletion") {
+					$counts->{autocompletion}++;
+				}elsif ($lcgene eq "biolog") {
+					$counts->{biolog}++;
+				} else {
+					for (my $j=0; $j < @{$pegs->{genes}}; $j++) {
+						push(@{$geneHash->{$pegs->{genes}->[$j]}},$rxnmdl->[$i]->REACTION());
+					}	
+				}
 			}
-		}
-		if (defined($rxnHash->{$rxnmdl->[$i]->REACTION()}) && $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0]->equation() =~ m/\[e\]/) {
-			$counts->{transporters}++;
+			if (defined($rxnHash->{$rxnmdl->[$i]->REACTION()}) && $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0]->equation() =~ m/\[e\]/) {
+				$counts->{transporters}++;
+			}
 		}
 	}
 	$counts->{genes} = keys(%{$geneHash});
@@ -2943,30 +2902,69 @@ Description:
 =cut
 sub generate_fulldb_model {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,["biomass"],{
+		mimicGapfilling => 1,
+		allReversible => 1
+	});
 	#Clearing the old models
 	my $rxnmdl = $self->rxnmdl();
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		$rxnmdl->[$i]->delete();
 	}
 	#Setting the biomass reaction if necessary
-	if ($self->ppo()->biomassReaction() !~ m/bio\d+/) {
-		$self->ppo()->biomassReaction("bio00001");
+	$self->ppo()->biomassReaction($args->{biomass});
+	my $excludedReactions;
+	my $array = [split(/[,;]/,$self->figmodel()->config("permanently knocked out reactions")->[0])];
+	for (my $i=0; $i < @{$array};$i++) {
+		$excludedReactions->{$array->[$i]} = 1;
 	}
+	my $exceptionRxn;
+	$array = [split(/[,;]/,$self->figmodel()->config("acceptable unbalanced reactions")->[0])];
+	for (my $i=0; $i < @{$array};$i++) {
+		$exceptionRxn->{$array->[$i]} = 1;
+	}
+	my $dissapprovedCompartments = [split(/[,;]/,$self->figmodel()->config("diapprovied compartments")->[0])];
 	#Regenerating all reactions
 	my $rxn = $self->db()->get_objects("reaction");
 	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < @{$rxn}; $i++) {
-		$self->db()->create_object("rxnmdl",{
-			MODEL => $self->id(),
-			REACTION => $rxn->[$i]->id(),
-			directionality => $rxnRevHash->{$rxn->[$i]->id()},
-			compartment => "c",
-			pegs => "UNKNOWN",
-			reference => "NONE",
-			notes => "NONE",
-			confidence => 5
-		});
+		my $include = 1;
+		if ($args->{mimicGapfilling} == 1 && !defined($exceptionRxn->{$rxn->[$i]->id()})) {
+			if (defined($excludedReactions->{$rxn->[$i]->id()})) {
+				$include = 0;
+			}
+			if ($include == 1) {
+				my $equation = $rxn->[$i]->equation();
+				for (my $j=0; $j < @{$dissapprovedCompartments}; $j++) {
+					my $c = "\\[".$dissapprovedCompartments->[$j]."\\]";
+					if ($equation =~ m/$c/) {
+						$include = 0;
+						last;
+					}
+				}
+			}
+			if ($include == 1) {
+				my $output = $self->figmodel()->get_reaction()->balanceReaction({
+					equation => $rxn->[$i]->equation()
+				});
+				if ($output->{status} !~ m/OK/ && $output->{status} !~ m/CI/) {
+					$include = 0;
+					print "Unbalanced:".$output->{status}."\n";
+				}
+			}
+		}
+		if ($include == 1) {
+			$self->db()->create_object("rxnmdl",{
+				MODEL => $self->id(),
+				REACTION => $rxn->[$i]->id(),
+				directionality => $rxnRevHash->{$rxn->[$i]->id()},
+				compartment => "c",
+				pegs => "UNKNOWN",
+				reference => "NONE",
+				notes => "NONE",
+				confidence => 5
+			});
+		}
 	}
 	$self->db()->create_object("rxnmdl",{
 		MODEL => $self->id(),
@@ -2983,8 +2981,6 @@ sub generate_fulldb_model {
 	return {success => 1};
 }
 
-
-
 =head3 reconstruction
 Definition:
 	FIGMODELmodel->reconstruction({
@@ -2997,8 +2993,13 @@ sub reconstruction {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		checkpoint => 1,
 		autocompletion => 1,
+		biochemSource => undef
 	});	
 	#Getting genome data and feature table
+	$self->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+	});
+	$self->buildDBInterface();
 	my $genomeObj = $self->genomeObj();
 	if (!defined($genomeObj)) {
 		$self->set_status(-2,"Could not create genome object!");
@@ -5859,31 +5860,33 @@ sub PrintSBMLFile {
 	my $rxnHash;
 	my $reactionCompartments;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
-		my $rxnObj;
-		if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
-			if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
-				$rxnObj = $rxnDBHash->{$rxnmdl->[$i]->REACTION()}->[0];
+		if (defined($rxnmdl->[$i])) {
+			$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
+			my $rxnObj;
+			if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
+				if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
+					$rxnObj = $rxnDBHash->{$rxnmdl->[$i]->REACTION()}->[0];
+				}
+			} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
+				$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
 			}
-		} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
-			$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
-		}
-		if (!defined($rxnObj)) {
-			ModelSEED::utilities::ERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
-		}
-		push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
-		push(@ReactionList,$rxnObj);
-		$_ = $rxnObj->equation();
-		my @MatchArray = /(cpd\d\d\d\d\d)/g;
-		for (my $j=0; $j < @MatchArray; $j++) {
-			$CompoundList{$MatchArray[$j]}->{"c"} = 1;
-		}
-		$_ = $rxnObj->equation();
-		@MatchArray = /(cpd\d\d\d\d\d\[\D\])/g;
-		for (my $j=0; $j < @MatchArray; $j++) {
-			if ($MatchArray[$j] =~ m/(cpd\d\d\d\d\d)\[(\D)\]/) {
-				$CompartmentsPresent{lc($2)} = 1;
-				$CompoundList{$1}->{lc($2)} = 1;
+			if (!defined($rxnObj)) {
+				ModelSEED::utilities::ERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
+			}
+			push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
+			push(@ReactionList,$rxnObj);
+			$_ = $rxnObj->equation();
+			my @MatchArray = /(cpd\d\d\d\d\d)/g;
+			for (my $j=0; $j < @MatchArray; $j++) {
+				$CompoundList{$MatchArray[$j]}->{"c"} = 1;
+			}
+			$_ = $rxnObj->equation();
+			@MatchArray = /(cpd\d\d\d\d\d\[\D\])/g;
+			for (my $j=0; $j < @MatchArray; $j++) {
+				if ($MatchArray[$j] =~ m/(cpd\d\d\d\d\d)\[(\D)\]/) {
+					$CompartmentsPresent{lc($2)} = 1;
+					$CompoundList{$1}->{lc($2)} = 1;
+				}
 			}
 		}
 	}

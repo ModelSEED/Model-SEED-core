@@ -26,7 +26,8 @@ has 'concentrations' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,defaul
 has 'maxFluxes' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
 has 'minFluxes' => (is => 'rw', isa => 'ArrayRef[Num]',required => 1,default => sub{[]});
 #Constants
-has 'dbAttributes' => (is => 'ro', isa => 'ArrayRef[Str]',default => ["uuid","modDate","locked","id","name","type"]);
+has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
+    builder => '_buildDbAttributes' );
 has 'dbType' => (is => 'ro', isa => 'Str',default => "Media");
 #Internally maintained variables
 has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
@@ -91,6 +92,13 @@ sub serializeToDB {
 	}	
 	return $data;
 }
+
+sub _buildDbAttributes {
+    return [qw( uuid modDate locked id name type )];
+}
+
+sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _buildModDate { return DateTime->now(); }
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -32,9 +32,11 @@ has types => ( is => 'rw', isa => 'HashRef', default => sub { return {map { $_ =
 has _managers => ( is => 'rw', isa => 'HashRef', default => sub { return {}; } );
 has plurals => ( is => 'rw', isa => 'HashRef', builder => '_buildAllPluralObjects', lazy => 1);
 has objectClasses => ( is => 'rw', isa => 'HashRef', lazy => 1,
-    builder => '_buildObjectClassMap');
-has objectManagerClasses => ( is => 'rw', isa => 'HashRef',
-    builder => '_buildObjectManagerClassMap', lazy => 1);
+    builder => '_buildObjectClassMap', traits => [ qw( Hash )],
+    handles => { objectClass => 'accessor' });
+has objectManagerClasses => ( is => 'rw', isa => 'HashRef', lazy => 1,
+    builder => '_buildObjectManagerClassMap', traits => [ qw( Hash )],
+    handles => { objectManagerClass => 'accessor' } );
 has namingConventions => ( is => 'ro', isa => 'HashRef', lazy => 1,
     builder => '_defaultNamingConventions');
 
@@ -140,7 +142,7 @@ sub new_object {
     if(ref($_[0]) eq 'HASH' && @_ == 1) {
         $args = shift @_;
     }
-    my $class = $self->objectClasses($type);
+    my $class = $self->objectClass($type);
     return undef unless defined($class);
     return $class->new(%$args, db => $self->{db});
 }
@@ -152,7 +154,7 @@ sub new_object {
 # the returned hash will have 1 for attribute values.
 sub getPrimaryKeys {
     my ($self, $type, $attrs) = @_;
-    my $objectClass = $self->ObjectClasses->{$type};
+    my $objectClass = $self->ObjectClass($type);
     return undef unless defined($objectClass);
     my $keys = $objectClass->meta->primary_key_column_names;
     my $rtv = { map { $_ => 1 } @$keys };
@@ -308,11 +310,13 @@ sub _buildObjectManagerClassMap {
 
 sub _objectMapHelper {
     my ($self, $classPrefix, $classSuffix) = @_;
+    $classPrefix = '' unless defined $classPrefix;
+    $classSuffix = '' unless defined $classSuffix;
     my $map = {};
     while( my ($class, $names) = each %{$self->namingConventions}) {
         my $real_class = $classPrefix.$class.$classSuffix;
         foreach my $name (@$names) {
-            $map->{$name} = $class;
+            $map->{$name} = $real_class;
         }
     }
     return $map;
@@ -330,7 +334,6 @@ sub _defaultNamingConventions {
         $cc =~ s/^_//;         # camel_case
         $nameMap->{$type} = [ $type, $cc ];
     }
-    $self->namingConventions($nameMap);
     return $nameMap; 
 }
 
