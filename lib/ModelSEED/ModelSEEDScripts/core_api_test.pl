@@ -11,6 +11,8 @@ use ModelSEED::CoreApi;
 
 my $bio_uuid = "358CFC9A-5E60-11E1-9EC2-C7374BC191FA";
 my $mapping_uuid = "699A201C-5E60-11E1-9EC2-C7374BC191FA";
+my $annotation_uuid = "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB";
+my $model_uuid = "MMMMMMMM-MMMM-MMMM-MMMM-MMMMMMMMMMMM";
 
 my $api = ModelSEED::CoreApi->new({
     database => "/home/paul/Documents/ModelSEEDCore/Model.db",
@@ -98,12 +100,19 @@ my $mapping = $api->getMapping({
 });
 print "Got mapping in " . sprintf("%.3f", time - $time) . " seconds\n";
 
-$mapping->{relationships}->{complexes} = [$mapping->{relationships}->{complexes}->[0]];
-$mapping->{relationships}->{roles} = [$mapping->{relationships}->{roles}->[0]];
+my $annotation = $api->getAnnotation({
+    uuid => $annotation_uuid,
+    user => "master",
+    with_all => 1
+});
 
-open OUT, ">out.txt";
-print OUT Dumper($mapping);
-close OUT;
+my $model = $api->getModel({
+    uuid => $model_uuid,
+    user => "master",
+    with_annotation => 1
+});
+
+print Dumper($model);
 
 sub file {
     $biochem->{relationships}->{reactions} = [$biochem->{relationships}->{reactions}->[0]];

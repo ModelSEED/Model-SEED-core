@@ -46,12 +46,31 @@ my $roleset_cols = ['uuid', 'modDate', 'locked', 'public', 'id', 'name',
 
 my $annotation_cols = ['uuid', 'modDate', 'locked', 'name', 'genome_uuid'];
 
-my $feature_cols = ['uuid', 'modDate', 'locked', 'id', 'cksum',
-		     'genome_uuid', 'start', 'stop'];
+my $genome_cols = ['uuid', 'modDate', 'locked', 'public', 'id', 'name',
+		   'source', 'type', 'taxonomy', 'cksum', 'size', 'genes',
+		   'gc', 'gramPositive', 'aerobic'];
+
+my $feature_cols = ['uuid', 'modDate', 'locked', 'id', 'cksum', 'genome_uuid',
+		    'start', 'stop', 'role_uuid', 'complete_string'];
 
 my $model_cols = ['uuid', 'modDate', 'locked', 'public', 'id', 'name', 'version', 'type',
 		  'status', 'reactions', 'compounds', 'annotations', 'growth',
 		  'current', 'mapping_uuid', 'biochemistry_uuid', 'annotation_uuid'];
+
+my $model_compartment_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'compartment_uuid',
+			      'compartmentIndex', 'label', 'pH', 'potential'];
+
+my $model_reaction_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', 'direction',
+			   'transproton', 'protons', 'model_compartment_uuid'];
+
+my $modelfba_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'media_uuid',
+		     'options', 'geneko', 'reactionko'];
+
+my $modeless_feature_cols = ['feature_uuid', 'modDate', 'growthFraction', 'essential'];
+
+my $modelfba_reaction_cols = ['reaction_uuid', 'min', 'max', 'class'];
+
+my $modelfba_compound_cols = ['compound_uuid', 'min', 'max', 'class'];
 
 sub new {
     my ($class, $args) = @_;
@@ -120,27 +139,15 @@ sub getBiochemistry {
     my $biochem = _processRows($rows, $biochem_cols, "Biochemistry")->[0];
 
     my $with = {
-	reactions => 'getReactions',
-	compounds => 'getCompounds',
-	media => 'getMedia',
-	reactionsets => 'getReactionSets',
-	compoundsets => 'getCompoundSets',
-	compartments => 'getCompartments'
+	reactions    => ['getReactions',    {biochemistry_uuid => $args->{uuid}}],
+	compounds    => ['getCompounds',    {biochemistry_uuid => $args->{uuid}}],
+	media        => ['getMedia',        {biochemistry_uuid => $args->{uuid}}],
+	reactionsets => ['getReactionSets', {biochemistry_uuid => $args->{uuid}}],
+	compoundsets => ['getCompoundSets', {biochemistry_uuid => $args->{uuid}}],
+	compartments => ['getCompartments', {biochemistry_uuid => $args->{uuid}}]
     };
 
-    if ($args->{with_all}) {
-	foreach my $rel (keys %$with) {
-	    my $sub = $with->{$rel};
-	    $biochem->{relationships}->{$rel} = $self->$sub({biochemistry_uuid => $args->{uuid}});
-	}
-    } else {
-	foreach my $rel (keys %$with) {
-	    if ($args->{"with_$rel"}) {
-		my $sub = $with->{$rel};
-		$biochem->{relationships}->{$rel} = $self->$sub({biochemistry_uuid => $args->{uuid}});
-	    }
-	}
-    }
+    $biochem->{relationships} = _getRelationships($self, $args, $with);
 
     return $biochem;
 }
@@ -583,24 +590,12 @@ sub getMapping {
     my $mapping = _processRows($rows, $mapping_cols, "Mapping")->[0];
 
     my $with = {
-	complexes => 'getComplexes',
-	roles     => 'getRoles',
-	rolesets  => 'getRoleSets'
+	complexes => ['getComplexes', {mapping_uuid => $args->{uuid}}],
+	roles     => ['getRoles',     {mapping_uuid => $args->{uuid}}],
+	rolesets  => ['getRoleSets',  {mapping_uuid => $args->{uuid}}]
     };
 
-    if ($args->{with_all}) {
-	foreach my $rel (keys %$with) {
-	    my $sub = $with->{$rel};
-	    $mapping->{relationships}->{$rel} = $self->$sub({mapping_uuid => $args->{uuid}});
-	}
-    } else {
-	foreach my $rel (keys %$with) {
-	    if ($args->{"with_$rel"}) {
-		my $sub = $with->{$rel};
-		$mapping->{relationships}->{$rel} = $self->$sub({mapping_uuid => $args->{uuid}});
-	    }
-	}
-    }
+    $mapping->{relationships} = _getRelationships($self, $args, $with);
 
     return $mapping;
 }
@@ -797,7 +792,8 @@ sub getAnnotation {
 	uuid           => {required => 1},
 	user           => {required => 1},
 	with_all       => {required => 0},
-	with_features  => {required => 0}
+	with_features  => {required => 0},
+	with_genome    => {required => 0}
     });
 
     # get the annotation object
@@ -813,54 +809,59 @@ sub getAnnotation {
     my $annotation = _processRows($rows, $annotation_cols, "Annotation")->[0];
 
     my $with = {
-	features => 'getFeatures'
+	features => ['getFeatures', {annotation_uuid => $args->{uuid}}],
+	genome   => ['getGenome',   {uuid => $annotation->{attributes}->{genome_uuid}}]
     };
 
-    if ($args->{with_all}) {
-	foreach my $rel (keys %$with) {
-	    my $sub = $with->{$rel};
-	    $annotation->{relationships}->{$rel} = $self->$sub({annotation_uuid => $args->{uuid}});
-	}
-    } else {
-	foreach my $rel (keys %$with) {
-	    if ($args->{"with_$rel"}) {
-		my $sub = $with->{$rel};
-		$annotation->{relationships}->{$rel} = $self->$sub({annotation_uuid => $args->{uuid}});
-	    }
-	}
-    }
+    $annotation->{relationships} = _getRelationships($self, $args, $with);
 
     return $annotation;
+}
+
+sub getGenome {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getGenome', {
+	uuid => {required => 1}
+    });
+
+    my $sql = "SELECT * FROM genomes WHERE uuid = ?";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{uuid});
+
+    # return undef if no genome
+    if (scalar @$rows == 0) {
+	return undef;
+    }
+
+    my $genome = _processRows($rows, $genome_cols, "Genome")->[0];
+
+    return $genome;
 }
 
 sub getFeatures {
     my ($self, $args) = @_;
 
     _processArgs($args, 'getFeatures', {
-	mapping_uuid => {required => 1},
-	query        => {required => 0},
-	limit        => {required => 0},
-	offset       => {required => 0}
+	annotation_uuid => {required => 1},
+	query           => {required => 0},
+	limit           => {required => 0},
+	offset          => {required => 0}
     });
 
-    my $sub_sql = "SELECT feature_uuid"
-	. " FROM annotation_features"
-	. " WHERE annotation_uuid = ?";
-
-    if (defined($args->{offset}) && defined($args->{limit})) {
-	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
-    }
-
-    my $where = "WHERE features.uuid IN ($sub_sql)";
+    my $sql = "SELECT features.*, annotation_features.role_uuid, annotation_features.complete_string"
+	. " FROM features, annotation_features"
+	. " WHERE features.uuid = annotation_features.feature_uuid"
+	. " AND annotation_features.annotation_uuid = ?";
 
     # parse the query, if it exists
     if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
-	$where .= " AND " . _parseQuery($args->{query});
+	$sql .= " AND " . _parseQuery($args->{query});
     }
 
-    # get the feature data
-    my $sql = "SELECT * FROM features"
-	. " $where";
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
 
     my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{annotation_uuid});
 
@@ -878,12 +879,18 @@ sub getModel {
     my ($self, $args) = @_;
 
     _processArgs($args, 'getModel', {
-	uuid           => {required => 1},
-	user           => {required => 1},
-	with_all       => {required => 0}
+	uuid              => {required => 1},
+	user              => {required => 1},
+	with_all          => {required => 0},
+	with_biochemistry => {required => 0},
+	with_mapping      => {required => 0},
+	with_annotation   => {required => 0},
+	with_compartments => {required => 0},
+	with_reactions    => {required => 0},
+	with_modelfbas    => {required => 0}
     });
 
-    # get the annotation object
+    # get the model object
     my $sql = "SELECT * FROM models"
 	. " WHERE uuid = ?";
 
@@ -895,7 +902,176 @@ sub getModel {
 
     my $model = _processRows($rows, $model_cols, "Model")->[0];
 
+    my $with = {
+	biochemistry => ['getBiochemistry', {
+	    uuid => $model->{attributes}->{biochemistry_uuid},
+	    user => $args->{user},
+	    with_all => 1}],
+	mapping      => ['getMapping', {
+	    uuid => $model->{attributes}->{mapping_uuid},
+	    user => $args->{user},
+	    with_all => 1}],
+	annotation   => ['getAnnotation', {
+	    uuid => $model->{attributes}->{annotation_uuid},
+	    user => $args->{user},
+	    with_all => 1}],
+	compartments => ['getModelCompartments', {model_uuid => $args->{uuid}}],
+	reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
+	modelfbas    => ['getModelFBAs',         {model_uuid => $args->{uuid}}]
+    };
+
+    $model->{relationships} = _getRelationships($self, $args, $with);
+
     return $model;
+}
+
+sub getModelCompartments {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getModelCompartments', {
+	model_uuid => {required => 1},
+	query      => {required => 0},
+	limit      => {required => 0},
+	offset     => {required => 0}
+    });
+
+    my $sql = "SELECT * FROM model_compartments"
+	. " WHERE model_compartments.model_uuid = ?";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$sql .= " AND " . _parseQuery($args->{query});
+    }
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+
+    # return empty set if no model compartments
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $model_compartments = _processRows($rows, $model_compartment_cols, "ModelCompartment");
+
+    return $model_compartments;
+}
+
+sub getModelReactions {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getModelReactions', {
+	model_uuid => {required => 1},
+	query      => {required => 0},
+	limit      => {required => 0},
+	offset     => {required => 0}
+    });
+
+    my $sql = "SELECT * FROM model_reactions"
+	. " WHERE model_reactions.model_uuid = ?";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$sql .= " AND " . _parseQuery($args->{query});
+    }
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+
+    # return empty set if no model reactions
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $model_reactions = _processRows($rows, $model_reaction_cols, "ModelReaction");
+
+    return $model_reactions;
+}
+
+sub getModelFBAs {
+    my ($self, $args) = @_;
+
+    _processArgs($args, 'getModelFBAs', {
+	model_uuid => {required => 1},
+	query      => {required => 0},
+	limit      => {required => 0},
+	offset     => {required => 0}
+    });
+
+    my $sub_sql = "SELECT uuid"
+	. " FROM modelfbas"
+	. " WHERE model_uuid = ?";
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $where = "WHERE modelfbas.uuid IN ($sub_sql)";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$where .= " AND " . _parseQuery($args->{query});
+    }
+
+    # get the modelfba data
+    my $sql = "SELECT * FROM modelfbas"
+	. " $where";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+
+    # return empty set if no modelfbas
+    if (scalar @$rows == 0) {
+	return [];
+    }
+
+    my $modelfbas = _processRows($rows, $modelfba_cols, "ModelFBA");
+
+    # get the modeless features
+    $sql = "SELECT modeless_features.* FROM modelfbas"
+	. " JOIN modeless_features ON modelfbas.uuid = modeless_features.modelfba_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+    my $modeless_features = _processJoinedRows($rows, $modeless_feature_cols, "ModelessFeature");
+
+    # get the reactions
+    $sql = "SELECT modelfba_reactions.* FROM modelfbas"
+	. " JOIN modelfba_reactions ON modelfbas.uuid = modelfba_reactions.modelfba_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+    my $reactions = _processJoinedRows($rows, $modelfba_reaction_cols, "ModelFBAReaction");
+
+    # get the compounds
+    $sql = "SELECT modelfba_compounds.* FROM modelfbas"
+	. " JOIN modelfba_compounds ON modelfbas.uuid = modelfba_compounds.modelfba_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+    my $compounds = _processJoinedRows($rows, $modelfba_compound_cols, "ModelFBACompound");
+
+    foreach my $modelfba (@$modelfbas) {
+	my $uuid = $modelfba->{attributes}->{uuid};
+
+	if (defined($modeless_features->{$uuid})) {
+	    $modelfba->{relationships}->{modeless_features} = $modeless_features->{$uuid};
+	}
+
+	if (defined($reactions->{$uuid})) {
+	    $modelfba->{relationships}->{reactions} = $reactions->{$uuid};
+	}
+
+	if (defined($compounds->{$uuid})) {
+	    $modelfba->{relationships}->{compounds} = $compounds->{$uuid};
+	}
+    }
+
+    return $modelfbas;
 }
 
 sub _processArgs {
@@ -969,6 +1145,27 @@ sub _processJoinedRows {
     }
 
     return $hash;
+}
+
+sub _getRelationships {
+    my ($self, $args, $with) = @_;
+
+    my $relationships = {};
+    if ($args->{with_all}) {
+	foreach my $rel (keys %$with) {
+	    my $sub = $with->{$rel}->[0];
+	    $relationships->{$rel} = $self->$sub($with->{$rel}->[1]);
+	}
+    } else {
+	foreach my $rel (keys %$with) {
+	    if ($args->{"with_".$rel}) {
+		my $sub = $with->{$rel}->[0];
+		$relationships->{$rel} = $self->$sub($with->{$rel}->[1]);
+	    }
+	}
+    }
+
+    return $relationships;
 }
 
 =head3
