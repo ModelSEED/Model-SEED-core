@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Wed Feb 22 14:57:52 2012
+-- Created on Tue Feb 28 13:30:28 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -328,7 +328,6 @@ CREATE INDEX mapping_reaction_rules_reaction_rule_fk ON mapping_reaction_rules (
 CREATE TABLE compound_aliases (
   compound_uuid CHAR(36) NOT NULL,
   alias VARCHAR(255) NOT NULL,
-  modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
@@ -344,7 +343,6 @@ CREATE TABLE compound_structures (
   compound_uuid CHAR(36) NOT NULL,
   structure TEXT NOT NULL,
   cksum VARCHAR(255) NOT NULL,
-  modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
   PRIMARY KEY (type, cksum, compound_uuid),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
@@ -360,7 +358,6 @@ CREATE INDEX compound_structures_compound_fk ON compound_structures (compound_uu
 CREATE TABLE reaction_aliases (
   reaction_uuid CHAR(36) NOT NULL,
   alias VARCHAR(255) NOT NULL,
-  modDate VARCHAR(45),
   type VARCHAR(32) NOT NULL,
   FOREIGN KEY(reaction_uuid) REFERENCES reactions(uuid)
 );

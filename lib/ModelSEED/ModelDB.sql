@@ -387,7 +387,6 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `compound_aliases` (
   `compound_uuid` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   INDEX `compound_aliases_type` (`type`),
   INDEX `compound_aliases_compound_fk` (`compound_uuid`),
@@ -405,7 +404,6 @@ CREATE TABLE IF NOT EXISTS `compound_structures` (
   `compound_uuid` CHAR(36) NOT NULL,
   `structure` TEXT NOT NULL,
   `cksum` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`type`, `cksum`, `compound_uuid`),
   INDEX `compound_structures_type` (`type`),
@@ -425,7 +423,6 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `reaction_aliases` (
   `reaction_uuid` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction_uuid`),
