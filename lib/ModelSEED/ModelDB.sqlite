@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Tue Feb 28 13:30:28 2012
+-- Created on Tue Feb 28 17:02:46 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -776,10 +776,10 @@ CREATE INDEX biochemistry_compartments_biochemistry_fk ON biochemistry_compartme
 CREATE TABLE compound_pks (
   compound_uuid CHAR(36) NOT NULL,
   modDate VARCHAR(45),
-  atom int(11),
+  atom int(11) NOT NULL,
   pk DOUBLE,
-  type CHAR(1),
-  PRIMARY KEY (compound_uuid),
+  type CHAR(1) NOT NULL,
+  PRIMARY KEY (compound_uuid, atom, type),
   FOREIGN KEY(compound_uuid) REFERENCES compounds(uuid)
 );
 

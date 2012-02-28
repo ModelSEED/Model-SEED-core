@@ -986,7 +986,7 @@ CREATE TABLE IF NOT EXISTS `compound_pks` (
   `atom` INTEGER NULL,
   `pk` DOUBLE NULL,
   `type` CHAR(1) NULL,
-  PRIMARY KEY (`compound_uuid`),
+  PRIMARY KEY (`compound_uuid`, `atom`, `type`),
   INDEX `compound_pks_compound_fk` (`compound_uuid`),
   CONSTRAINT `compound_pks_compound_fk`
     FOREIGN KEY (`compound_uuid`)
