@@ -40,7 +40,7 @@ has compartments => ( is => 'rw', default => sub { return []; },
     isa => 'ArrayRef[ModelSEED::MS::Compartment]');
 # Constants
 has dbAttributes => ( is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
-has indicies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndicies');
+has indices => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildindices');
 
 has dbType => (is => 'ro', isa => 'Str',default => "Compound");
 #Internally maintained variables
@@ -213,14 +213,14 @@ sub getObjects {
     }
     # resultSet is a map of $object => $object
     my $resultSet;
-    my $indicies = $self->indicies;
+    my $indices = $self->indices;
     while ( my ($attribute, $value) = each %$query ) {
         # Build the index if it does not already exist
-        unless (defined($indicies->{$type}) &&
-                defined($indicies->{$type}->{$attribute})) {
+        unless (defined($indices->{$type}) &&
+                defined($indices->{$type}->{$attribute})) {
     		$self->buildIndex({type => $type, attribute => $attribute});
     	}
-        my $index = $indicies->{$type};
+        my $index = $indices->{$type};
         my $newHits = $index->{$attribute}->{$value};
         # If any index returns empty, return empty.
         return [] if(!defined($newHits) || @$newHits == 0);
@@ -270,13 +270,13 @@ sub clearIndex {
 		attribute => undef
 	});
 	if (!defined($args->{type})) {
-		$self->indicies({});
+		$self->indices({});
 	} else {
 		$self->checkType($args->{type});
 		if (!defined($args->{attribute})) {
-			$self->indicies->{$args->{type}} = {};	
+			$self->indices->{$args->{type}} = {};	
 		} else {
-			$self->indicies->{$args->{type}}->{$args->{attribute}} = {};
+			$self->indices->{$args->{type}}->{$args->{attribute}} = {};
 		}
 	}
 }
@@ -288,11 +288,11 @@ sub buildIndex {
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};
 	for (my $i=0; $i < @{$objects}; $i++) {
-		push(@{$self->indicies->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
+		push(@{$self->indices->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
 	}
 }
 
-sub _buildIndicies { return {}; }
+sub _buildindices { return {}; }
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 
