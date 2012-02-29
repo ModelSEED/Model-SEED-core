@@ -7433,86 +7433,279 @@ sub genclassifyrespiration {
 	return $genomeObj->classifyrespiration();
 }
 
-
-sub testsub{
-	
-	
-	my $sap = SAPserver->new();
-	my $genomes = $sap->all_genomes(-prokaryotic => 1);
-
-	foreach my $genome_id (keys %$genomes)
-		{
-    my $genome_name = $genomes->{$genome_id};
-    print "$genome_id\t$genome_name\n";
-		}
-	
-}
-
-sub testsub1{
-	
-	  my $sapObject = SAPserver->new();
-   my $protHash = $sapObject->all_proteins(-id => 360108.3);
-   
-   for my $geneID (sort { by_fig_id($a,$b) } keys %$protHash) {
-      print "$geneID: $protHash->{$geneID}\n";
-	
-	}
-
-}
-
-
-sub testsub2{
-	
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["genome",1,undef,"SEED ID of the genome to be analyzed"],
-		["subsystem",1,undef,"Subsystem for which genes should be listed"]
-	],[@Data],"classifying the type of respiration of a genome based on the functions present");
-	my $sap = $self->figmodel()->sapSvr($args->{source});
-    
-        my $subsysHash = $sap->pegs_in_subsystems({
-                                -genomes => $args -> {genome},
-                                -subsystems => [$args->{subsystem}]
-                            });
-
-			           #print Data::Dumper->Dump([$subsysHash]);
-			           
-	my $genomes = $args->{'genome'};
-	my $ss      = [$args->{'subsystem'}];
-	my $ssH        = $sap->pegs_in_subsystems(-genomes => $genomes, -subsystems => $ss);
-
-foreach my $s(@$ss)
-{
-	
-       my $roleH = $ssH->{$s};
-       my @roles = keys(%$roleH);
-       foreach my $role (@roles)
-       {
-           my $pegs = $roleH->{$role};
-           #print ($s,$role,$pegs);
-           print "$role\n";
-           
-           foreach my $p (@$pegs){
-           	
-           	print "$p,";
-           }
-           print "\n";
-       }
-
-}		     
-	
-}
-
-
-
-
 =head
 =CATEGORY
 Genome Operations
 =DESCRIPTION
-Classifying the type of respiration of a genome based on the functions present
+Classifying the type of respiration of a genome based on functional roles w/o considering subsystems
 =EXAMPLE
 =cut
+
+
+sub respiration_gene {
+	
+	
+  	open POUTFILE, ">respiration_by_genename1.txt" or die "COUlnd't open  the file: $!\n";
+	
+	my $sap = SAPserver->new();
+	my $genomes = $sap->all_genomes(-prokaryotic => 1);
+	foreach my $genome_id (keys %$genomes)
+		{
+		my $q_count =0;
+		my $mk_count =0;
+		my $tca_count =0;
+		my $f_count =0;
+    	my $genome_name = $genomes->{$genome_id};
+    	#print "$genome_id\t$genome_name\n";
+    	my $featureHash = $sap->feature_assignments({
+                                -genome => $genome_id,
+                                -type => 'peg',
+                                -hypothetical => 0
+                            });
+    
+    
+    
+    		foreach my $peg (%$featureHash){
+     	
+     			my $pegname = $featureHash->{$peg};
+     	
+     				if ( $pegname eq "Succinate dehydrogenase iron-sulfur protein (EC 1.3.99.1)" || $pegname eq "Citrate synthase (si) (EC 2.3.3.1)" || $pegname eq "2-oxoglutarate dehydrogenase E1 component (EC 1.2.4.2)" || $pegname eq "Fumarate hydratase class I, aerobic (EC 4.2.1.2)" || $pegname eq "Dihydrolipoamide succinyltransferase component (E2) of 2-oxoglutarate dehydrogenase complex (EC 2.3.1.61)" || $pegname eq "Succinyl-CoA ligase [ADP-forming] alpha chain (EC 6.2.1.5)" || $pegname eq "Archaeal succinyl-CoA ligase [ADP-forming] alpha chain (EC 6.2.1.5)"){
+     				
+     					$tca_count++;   # 7
+     				}
+     				
+     			    elsif ( $pegname eq "Menaquinone-specific isochorismate synthase (EC 5.4.4.2)"   || $pegname eq "Naphthoate synthase (EC 4.1.3.36)"   || $pegname eq "O-succinylbenzoate synthase (EC 4.2.1.113)"  || $pegname eq "2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate synthase (EC 4.2.99.20)"){
+     				
+     				 	$mk_count++;  #4
+     			    }
+     			    
+     			    elsif ( $pegname eq "Menaquinone via futalosine step 1" || $pegname eq "Menaquinone via futalosine step 2"  ||  $pegname eq "Menaquinone via futalosine step 3" || $pegname eq "Menaquinone via futalosine step 4"){
+     				
+     				    $mk_count++;  #4
+     					
+     			    }
+     			    
+     			    elsif ( $pegname eq "2-octaprenyl-6-methoxyphenol hydroxylase (EC 1.14.13.-)" || $pegname eq "2-octaprenyl-3-methyl-6-methoxy-1,4-benzoquinol hydroxylase (EC 1.14.13.-)" || $pegname eq "Chorismate--pyruvate lyase (EC 4.1.3.40)"){
+     				
+     					$q_count++;   #3
+     				}
+     			    
+     			    elsif ( $pegname eq "Aerobic respiration control protein arcA" || $pegname eq "Aerobic respiration control sensor protein arcB (EC 2.7.3.-)"){
+     				
+     					$f_count++;
+     				}
+     			    
+     			   else{
+     			   	
+     			   	next;
+     			   } 
+     			    
+     	     } # end of foreach
+    
+    
+    				print "Q - $q_count  MK - $mk_count  TCA - $tca_count  F - $f_count\t"  ;
+    				print POUTFILE "Q - $q_count  MK - $mk_count  TCA - $tca_count  F - $f_count\t"  ;
+    
+    				if ($q_count >= 3 && $mk_count >=3){
+    					
+    					
+    					print "$genome_id\t$genome_name\t facultative\n";
+    					print POUTFILE "$genome_id\t$genome_name\t facultative\n";
+    					
+    					
+    				}
+    				
+    				elsif($f_count >=2){
+    					
+    					print "$genome_id\t$genome_name\t facultative\n";
+    					print POUTFILE "$genome_id\t$genome_name\t facultative\n";
+    				}
+    
+    				elsif (  ($q_count>=2 || $mk_count >= 3) && $tca_count>=5){
+    					
+    					print "$genome_id\t$genome_name\t obligate aerobic\n";
+    					print POUTFILE "$genome_id\t$genome_name\t obligate aerobic\n";
+    					
+    				}
+    
+    				elsif ( ($q_count< 2 || $mk_count < 2) && $tca_count>=5){
+    					
+    					print "$genome_id\t$genome_name\t probable aerobic- using TCA\n";
+    					print POUTFILE "$genome_id\t$genome_name\t probable aerobic- using TCA\n";
+    					
+    				}
+    				
+    				elsif ( ($q_count< 2 || $mk_count < 2) && $tca_count < 5){
+    					
+    					print "$genome_id\t$genome_name\t anaerobe\n";
+    					print POUTFILE "$genome_id\t$genome_name\t anaerobe\n";
+    					
+    				}
+    				
+    				else{
+    					
+    					print "$genome_id\t$genome_name\t no good data to determine\n";
+    					print POUTFILE "$genome_id\t$genome_name\t  no good data to determine\n";
+    					
+    				}
+    		
+		}# end of foreach (every genome)
+
+	
+close POUTFILE;
+	
+} # end respiration_gene	
+	
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functional roles in the subsytems
+=EXAMPLE
+=cut
+
+sub respiration_etc{
+	
+open SUBOUTPUT, ">resp_data_all.txt" or die "COUlnd't open  the   file: $!\n";
+open SUBOUTPUTM, ">resp_data_good.txt" or die "COUlnd't open  the   file: $!\n";
+
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+    
+
+	if ($args->{'genome'} eq "ALL" ) {
+	
+		my $sapGenomes = SAPserver->new();
+		my $genomesALL = $sapGenomes->all_genomes(-prokaryotic => 1);
+
+			foreach my $genome_id (keys %$genomesALL){
+			
+    			my $genome_name = $genomesALL->{$genome_id};
+    			
+				my @subarray = ('Menaquinone and Phylloquinone Biosynthesis','Menaquinone Biosynthesis via Futalosine','Ubiquinone Biosynthesis','TCA Cycle');
+				my $subarraycount = @subarray;
+				my %figs;
+				my $figcount=0;
+				my @figcount;
+				my $figoarrarycount=0;
+
+  				for(my $i=0; $i<$subarraycount; $i++){		
+  		           
+					my $genomes = $genome_id;
+					my $ss      = [$subarray[$i]];
+					my $ssH     = $sap->pegs_in_subsystems(-genomes => $genomes, -subsystems => $ss);
+    				my $funrole=0;
+  
+   					foreach my $s(@$ss){
+	
+       					my $roleH = $ssH->{$s};
+       					my @roles = keys(%$roleH);
+       					my @figonlyarray;
+       					my @figarray; 
+       
+       
+       					foreach my $role (@roles)
+       					{
+           					my $pegs = $roleH->{$role};
+           					push @figarray, $role;
+           					push @figarray, $s;  
+           					$funrole++;
+                             
+           					foreach my $p (@$pegs){
+      					   	push @figarray, $p;
+        					push @figonlyarray, $p;
+            				last;
+           					}
+           					$figs{$role} = [@figarray];
+           					next;
+          
+       					} # end foreach 2
+       				
+       				$figoarrarycount= @figonlyarray;
+       		    	push @figcount, $figoarrarycount;
+				
+					} # end foreach 3
+                   
+   
+  			   } #end for 
+  
+                 
+   if  (     ($figcount[0]	> 5 || $figcount[1] > 7) &&  $figcount[2]>6 && $figcount[3]> 9 )   { 
+   	
+   print "\n$genome_id\t$genome_name  - facultative (E.coli type)";
+   print SUBOUTPUT "\n$genome_id\t$genome_name\tfacultative (E.coli type)";
+   print SUBOUTPUTM "\n$genome_id\t$genome_name\tfacultative (E.coli type)";
+   	
+   }
+   
+   elsif (($figcount[0]	> 5 || $figcount[1] > 7) &&  ($figcount[2]< 6 && $figcount[3]> 9) ){
+   	
+   	
+   	print "\n$genome_id\t$genome_name  - aerobic (B.subtilis type)/facultative (rare)";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\taerobic (B.subtilis type)/facultative (rare)";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\taerobic (B.subtilis type)/facultative (rare)";
+   } 
+   
+   elsif (($figcount[0]	< 5 || $figcount[1] < 7) &&  ($figcount[2]> 6 && $figcount[3]> 9) ){
+   	
+   	
+   	print "\n$genome_id\t$genome_name - obligate aerobe (Gram negative - Acinetobacter type)";
+   	print SUBOUTPUT"\n$genome_id\t$genome_name\tobligate aerobe (Gram negative - Acinetobacter type)";
+   	print SUBOUTPUTM"\n$genome_id\t$genome_name\tobligate aerobe (Gram negative - Acinetobacter type)";
+   } 
+   elsif ($figcount[0]	eq 0 && $figcount[1] eq 0 &&  $figcount[2] eq 0 && $figcount[3] eq 0){
+   	
+   	
+   	print "\n$genome_id\t$genome_name -no genes in subsystems";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tno genes in subsystems";
+   	
+   } 
+   
+   
+   elsif (     ($figcount[0]	< 5 || $figcount[1] < 7 || $figcount[2] < 6 ) && $figcount[3]> 9        ) {
+   	
+   	
+   	
+   	print "\n$genome_id\t$genome_name is probably aerobic ";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tprobable aerobic ";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\tprobable aerobic ";
+   	
+   }
+   elsif ( $figcount[3]< 9 ) {
+   	
+   	
+   	
+   	print "\n$genome_id\t$genome_name is obligate anaerobic (clostridium type)";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tobligate anaerobic (clostridium type)";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\tobligate anaerobic (clostridium type)";
+   	
+   } 
+   else{
+   	
+   	print "\n$genome_id\t$genome_name - genes not in the subsystem to determine - unknown";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tgenes not in the subsystem to determine - unknown";
+   }
+   
+   
+      
+    print "\t@figcount";
+    print SUBOUTPUT "\t@figcount";
+    
+     
+    }# end of foreach  genomesALL
+	
+			
+ } # end of if genome ALL
+       
+  
+close SUBOUTPUT;
+close SUBOUTPUTM;
+
+} # end of testsub 3;
+
 sub genlistsubsystemgenes {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -7527,9 +7720,6 @@ sub genlistsubsystemgenes {
 		-roleForm => "full",
 	});
 	
-
- 	
- 	
  	print Data::Dumper->Dump([$subsys]);
 }
 
