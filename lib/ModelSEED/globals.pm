@@ -10,8 +10,8 @@ package ModelSEED::globals;
 my $globalFIGMODEL;
 
 sub CREATEFIGMODEL {
-	my ($infigmodel) = @_;
-	$globalFIGMODEL = ModelSEED::FIGMODEL->new();
+	my ($args) = @_;
+	$globalFIGMODEL = ModelSEED::FIGMODEL->new($args);
 }
 
 sub SETFIGMODEL {

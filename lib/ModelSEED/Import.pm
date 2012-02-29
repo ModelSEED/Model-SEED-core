@@ -338,6 +338,7 @@ sub _makeTypesToHashFns {
         return md5_hex($f->{reaction}->($_[0]->reaction) . $_[0]->type);
     };
     $f->{compartment} = sub {
+        confess "here" unless(defined($_[0]) && defined($_[0]->id));
         return md5_hex($_[0]->id . ($_[0]->name || ''));
     };
     $f->{reaction_rule_transport} = sub {
@@ -1161,7 +1162,6 @@ sub importAnnotationFromDir {
 
     # Directory will contain a features.txt file
     my $file = "$dir/features.txt";
-
     # Try to get from file-hash
     my $existingAnno = $self->fileCache("annotation", [$file]);
     if ($existingAnno) {
@@ -1281,7 +1281,7 @@ sub importModelFromDir {
     }
 
     # Import or add annotation object
-    if (-d "$dir/annotations") {
+    if (-d "$dir/annotations" && -f "$dir/annotations/features.txt") {
         my $genomeId = $id . "-annotation";
         $RDB_annotation
             = $self->importAnnotationFromDir("$dir/annotations", $username,

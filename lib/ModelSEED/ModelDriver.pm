@@ -28,7 +28,7 @@ Description:
 =cut
 sub new { 
 	my $self = {_finishedfile => "NONE"};
-	ModelSEED::globals::CREATEFIGMODEL();
+	ModelSEED::globals::CREATEFIGMODEL({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()});
 	ModelSEED::Interface::interface::CREATEWORKSPACE({});
     return bless $self;
 }
