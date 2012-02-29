@@ -564,11 +564,23 @@ Definition:
 Description:
 	This function returns a list of the DNA sequence for every contig of the genome
 =cut
+
 sub classifyrespiration {
     my ($self,$args) = @_;
 	$args = ModelSEED::globals::ARGS($args,[],{
 		genome => $self->genome(),
 	});
+
+	my $g_id = $args->{genome};
+
+	  if ($g_id eq "ALL"){
+	  	
+	  	print " Got it ALL\n";
+	  	
+	  }
+
+	print "Here is the genome ....$g_id\n";
+
 	my $sap = $self->figmodel()->sapSvr($args->{source});
 	my $subsys = $sap->ids_in_subsystems({
 		-subsystems => ["TCA Cycle"],
@@ -584,4 +596,27 @@ sub classifyrespiration {
 	}
 	return $args->{genome}." is not handled by our current tests!";
 }
+
+
+	
+=head
+open SUBOUTPUT, ">c:/Respiration/resp_data_all.txt" or die "COUlnd't open  the   file: $!\n";
+open SUBOUTPUTM, ">c:/Respiration/resp_data_good.txt" or die "COUlnd't open  the   file: $!\n";
+
+	  
+close SUBOUTPUT;
+close SUBOUTPUTM;
+=cut
+
+
+
+
+
+
+
+
+
+
+
+
 1;
