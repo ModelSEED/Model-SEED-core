@@ -8,12 +8,6 @@
 # Date of module creation: 9/6/2011
 ########################################################################
 use strict;
-if (defined($ENV{"MSCONFIGDIR"})) {
-	use lib $ENV{"MSCONFIGDIR"};
-} else {
-	use lib '/vol/model-prod/Model-SEED-core/config/';
-}
-use ModelSEEDbootstrap;
 use ModelSEED::ModelDriver;
 use ModelSEED::Interface::interface;
 use Try::Tiny;
