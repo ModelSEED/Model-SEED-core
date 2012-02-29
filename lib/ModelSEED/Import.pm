@@ -150,6 +150,7 @@ sub cache {
 sub uuidCache {
     my ($self, $type, $key, $uuid) = @_;
     if(defined($uuid)) {
+        confess $type unless(defined($key));
         return $self->{uuid_cache}->{$type}->{$key} = $uuid;
     } elsif(defined($key)) {
         return $self->{uuid_cache}->{$type}->{$key};
@@ -278,7 +279,7 @@ sub printDBMappingsToDir {
 
 sub printDBBiochemistryToDir {
     my ($self, $dir) = @_;
-    $dir = $self->standardizeDirectorY($dir);
+    $dir = $self->standardizeDirectory($dir);
     my $types = [ 'compound', 'cpdals', 'reaction', 'rxnals', ];
     my $config = {
         delimiter => "\t",
@@ -287,7 +288,7 @@ sub printDBBiochemistryToDir {
     foreach my $type (@$types) {
         $config->{filename} = "$dir/$type.txt";
         next if ( -e $config->{filename} );
-        my $objs = $self->fm->dtabase->get_objects($type);
+        my $objs = $self->fm->database->get_objects($type);
         my $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
         $tbl->save();
     }
@@ -735,7 +736,7 @@ sub _makeConversionFns {
     };
     $f->{feature} = sub {
         my ($self, $row, $ctx) = @_;
-        my $genome = $self->uuidCache("genome", $row->{GENOME}->[0]);
+        my $genome = $self->idCache("genome", $row->{GENOME}->[0]);
         return undef unless (defined($genome));
         my $min   = $row->{"MIN LOCATION"}->[0];
         my $max   = $row->{"MAX LOCATION"}->[0];
@@ -745,7 +746,7 @@ sub _makeConversionFns {
             start       => $start,
             stop        => $stop,
             id          => $row->{ID}->[0],
-            genome_uuid => $genome,
+            genome_uuid => $genome->uuid,
         };
     };
     $f->{compartment} = sub {
@@ -980,7 +981,7 @@ sub importBiochemistryFromDir {
 sub importMappingFromDir {
     my ($self, $dir, $RDB_biochemObject, $username, $name) = @_;
     my $missed = {};
-
+    warn "Entering importMappingFromDir, seriously wtf\n";
     # first validate that the dir exists and has the right files
     $self->om->db->begin_work;
     my $ctx = $self->cache;
@@ -1026,8 +1027,11 @@ sub importMappingFromDir {
     }
 
     # Now create mapping object
+    warn "Creating mapping object\n";
     my $RDB_mappingObject = $self->om()->create_object('mapping');
-    $RDB_mappingObject->biochemistry($RDB_biochemObject);
+    warn "Adding biochemistry_uuid to mapping object\n";
+    $RDB_mappingObject->biochemistry_uuid($RDB_biochemObject->uuid);
+    warn "Added biochemistry_uuid to mapping object\n";
 
     # Create complexes
     for (my $i = 0; $i < $tables->{complex}->size(); $i++) {
@@ -1065,9 +1069,6 @@ sub importMappingFromDir {
             = $self->getOrCreateObject('complex_role', $hash);
         $RDB_complexRoleObject->save();
     }
-    $RDB_mappingObject->add_mapping_aliases(
-        {username => $username, id => $name});
-
     # Create reactionRule
     for (my $i = 0; $i < $tables->{reactionRule}->size(); $i++) {
         my $row      = $tables->{reactionRule}->get_row($i);
@@ -1103,14 +1104,12 @@ sub importMappingFromDir {
                 = $self->getOrCreateObject("reaction_rule_transport", $hash);
         }
     }
-
     # Now create if it doesn't already exist
     my $mapping_hash = $self->hash("mapping", $RDB_mappingObject);
     $self->fileCache("mapping", [values %$files], $mapping_hash);
     my $map = $self->cache("mapping", $mapping_hash, $RDB_mappingObject);
     $self->checker->check("Imported mapping $username/$name [complete] ",
         elapsed(), $missed);
-
     # Add alias that we wanted
     $map->add_mapping_aliases({username => $username, id => $name});
 
@@ -1122,6 +1121,7 @@ sub importMappingFromDir {
 
 sub getGenomeObject {
     my ($self, $genomeID) = @_;
+    warn $genomeID;
     unless (defined($self->idCache("genome", $genomeID))) {
         my $columns = ['dna-size', 'gc-content', 'pegs', 'name', 'taxonomy',
             'md5_hex'];
@@ -1130,8 +1130,20 @@ sub getGenomeObject {
                 -data => $columns,
             }
         );
+        # FIXME - terrible terrible hack until SAPserver is fixed
+        if(!defined($genomeData) && $genomeID eq '83333.1') {
+            $genomeData->{$genomeID} = [
+                4639221,                   # size
+                undef,                     # gc
+                4314,                      # genes
+                "Escherichia coli K12",    # name
+                "83333",                   # taxonomy
+                undef,                     # cksum
+            ];
+        }
         unless (defined($genomeData)) {
-            warn "Unable to get genome data from SAPserver!\n";
+            warn "Unable to get genome data from SAPserver! $!\n";
+            warn Dumper $genomeData;
             return undef;
         }
         my $hash = {
@@ -1145,9 +1157,9 @@ sub getGenomeObject {
             taxonomy => $genomeData->{$genomeID}->[4],
         };
         my $obj = $self->getOrCreateObject("genome", $hash);
-        warn "Unable to create genome object $genomeID:\n"
-            . Dumper($hash) . "\n"
-            unless (defined($obj));
+
+        my $cksum = $self->hash("genome", $obj);
+        $self->idCache("genome", $genomeID, $cksum);
     }
     return $self->idCache("genome", $genomeID);
 }
@@ -1262,9 +1274,11 @@ sub importModelFromDir {
     
     # Import or add mapping object
     if ($isNotImported) {
-        $RDB_mapping = $self->getDefaultMapping();
+        warn "Building default mapping with " . $RDB_biochemistry->uuid . "\n";
+        $RDB_mapping = $self->getDefaultMapping($RDB_biochemistry);
     } elsif (-d "$dir/mapping") {
         my $mappingId = $id . "-mapping";
+        warn "Building mapping with " . $RDB_biochemistry->uuid . "\n";
         $RDB_mapping
             = $self->importMappingFromDir("$dir/mapping", $RDB_biochemistry,
             $username, $mappingId);
@@ -1370,7 +1384,8 @@ sub importModelFromDir {
     }
     $RDB_model->biomasses($rdb_biomasses);
     my $model_hash = $self->hash("model", $RDB_model);
-
+    $RDB_model->add_model_aliases({ username => $username, id => $id});
+    $RDB_model->save();
     # TODO - file hash for models
     $self->checker->check("Imported model $username/$id [complete] ",
         elapsed(), $missed);
@@ -1525,7 +1540,7 @@ sub getDefaultBiochemistry {
         return $alreadyExists;
     } else { 
         # Generate data files and import
-        my $dir = tempdir();
+        my $dir = File::Temp::tempdir();
         $self->printDBBiochemistryToDir($dir);
         my $bio = $self->importBiochemistryFromDir($dir, "master", "default");
         File::Path::rmtree $dir;
@@ -1534,17 +1549,23 @@ sub getDefaultBiochemistry {
 }
 
 sub getDefaultMapping {
-    my ($self) = @_;
+    my ($self, $biochemistry) = @_;
+    warn "Entering getDefaultMapping\n";
     my $alreadyExists = $self->om->get_object_by_alias(
-        "biochemistry", "master", "default"
+        "mapping", "master", "default"
     );
+    unless(defined $biochemistry) {
+        $biochemistry = $self->getDefaultBiochemistry()
+    }
     if (defined $alreadyExists) {
+        warn Dumper $alreadyExists;
+        warn "returning the default mapping object\n";
         return $alreadyExists;
     } else {
         # Generate data files and import
-        my $dir = tempdir();
+        my $dir = File::Temp::tempdir();
         $self->printDBMappingsToDir($dir);
-        my $map = $self->importMappingFromDir($dir, "master", "default");
+        my $map = $self->importMappingFromDir($dir, $biochemistry, "master", "default");
         File::Path::rmtree $dir;
         return $map;
     }

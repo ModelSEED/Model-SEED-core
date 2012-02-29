@@ -10,6 +10,9 @@ use ModelSEED::utilities;
 package ModelSEED::MS::Compound;
 use Moose;
 use Moose::Util::TypeConstraints;
+use Data::UUID;
+use DateTime;
+use Digest::MD5 qw(md5_hex);
 use namespace::autoclean;
 
 #Attributes
@@ -21,7 +24,7 @@ has 'name' => (is => 'rw', isa => 'Str', default => '');
 has 'abbreviation' => (is => 'rw', isa => 'Str', default => '');
 has 'cksum' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum');
 has 'unchargedFormula' => (is => 'rw', isa => 'Str');
-has 'formula' => (is => 'rw', isa => 'Str');
+has 'formula' => (is => 'rw', isa => 'Str', default => '');
 has 'mass' => (is => 'rw', isa => 'Num');
 has 'defaultCharge' => (is => 'rw', isa => 'Num');
 has 'deltaG' => (is => 'rw', isa => 'Num');
@@ -29,7 +32,7 @@ has 'deltaGErr' => (is => 'rw', isa => 'Num');
 #Subobjects
 has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 has 'structures' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
-has 'pk' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+has 'pKs' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
 has 'compoundSets' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
@@ -82,10 +85,10 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relations}->{compound_aliases} = [];
+	$data->{relationships}->{compound_aliases} = [];
 	foreach my $aliastype (keys(%{$self->aliases()})) {
 		foreach my $alias (@{$self->aliases()->{$aliastype}}) {
-			push(@{$data->{relations}->{compound_aliases}},{
+			push(@{$data->{relationships}->{compound_aliases}},{
 				type => "CompoundAlias",
 				attributes => {
 					compound_uuid => $self->uuid(),
@@ -95,10 +98,10 @@ sub serializeToDB {
 			});
 		}
 	}
-	$data->{relations}->{compound_structures} = [];
+	$data->{relationships}->{compound_structures} = [];
 	foreach my $structureType (keys(%{$self->structures()})) {
 		if ($structureType !~ m/cksum$/) {
-			push(@{$data->{relations}->{compound_structures}},{
+			push(@{$data->{relationships}->{compound_structures}},{
 				type => "CompoundStructure",
 				attributes => {
 					compound_uuid => $self->uuid(),
@@ -109,9 +112,9 @@ sub serializeToDB {
 			});	
 		}
 	}
-	$data->{relations}->{compound_pk} = [];
+	$data->{relationships}->{compound_pk} = [];
 	foreach my $pk (@{$self->pKs()}) {
-		push(@{$data->{relations}->{compound_pk}},{
+		push(@{$data->{relationships}->{compound_pk}},{
 			type => "CompoundPk",
 			attributes => {
 				compound_uuid => $self->uuid(),
@@ -131,6 +134,12 @@ sub _buildDbAttributes {
 
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }
+sub _buildCksum {
+    my ($self) = @_;
+    return md5_hex($self->id
+            . $self->name
+            . $self->formula);
+}
 
 __PACKAGE__->meta->make_immutable;
 1;

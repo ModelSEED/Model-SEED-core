@@ -15,19 +15,23 @@ use namespace::autoclean;
 
 #Attributes
 has 'uuid' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
-has 'modDate' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
-has 'id' => (is => 'rw', isa => 'Str', required => 1);
-has 'locked' => (is => 'rw', isa => 'Int', default => 0);
-has 'name' => (is => 'rw', isa => 'Str', default => "");
+has 'modDate' =>
+    (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
+has 'id'     => (is => 'rw', isa => 'Str', required => 1);
+has 'locked' => (is => 'rw', isa => 'Int', default  => 0);
+has 'name'   => (is => 'rw', isa => 'Str', default  => "");
 has 'abbreviation' => (is => 'rw', isa => 'Str');
-has 'cksum' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum' );
-has 'deltaG' => (is => 'rw', isa => 'Str');
-has 'deltaGErr' => (is => 'rw', isa => 'Str');
-has 'compartment_uuid' => (is => 'rw', isa => 'Str', required => 1);
-has 'defaultTransproton' => (is => 'rw', isa => 'Num', default => 0);
-has 'defaultProtons' => (is => 'rw', isa => 'Num', default => 0);
-has 'reversibility' => (is => 'rw', isa => 'Str', default => '=');
+has 'cksum' =>
+    (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum');
+has 'deltaG'              => (is => 'rw', isa => 'Str');
+has 'deltaGErr'           => (is => 'rw', isa => 'Str');
+has 'compartment_uuid'    => (is => 'rw', isa => 'Str', required => 1);
+has 'defaultTransproton'  => (is => 'rw', isa => 'Num', default => 0);
+has 'defaultProtons'      => (is => 'rw', isa => 'Num', default => 0);
+has 'reversibility'       => (is => 'rw', isa => 'Str', default => '=');
 has 'thermoReversibility' => (is => 'rw', isa => 'Str');
+has 'equation' =>
+    (is => 'ro', isa => 'Str', lazy => 1, builder => '_buildEquation');
 
 #Subobjects
 has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
@@ -56,7 +60,7 @@ sub BUILDARGS {
         }
         $params->{reactants} = [];
 		$params->{transported} = [];
-		my ($reactants,$products,$imported,$exported);
+		my ($reactants,$products,$imported,$exported) = ( [], [], [], [] );
 		foreach my $reagent (@{$rels->{reagents}}) {
 			my $cpd = $bio->getCompound({uuid => $reagent->{attributes}->{compound_uuid}});
 			if (!defined($cpd)) {
@@ -166,6 +170,27 @@ sub _buildDbAttributes {
 
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }
+sub _buildEquation {
+    my $self = shift @_;
+    my $reactants = [sort grep { $_->{coefficient} < 0 } @{$self->reactants}];
+    my $products  = [sort grep { $_->{coefficient} > 0 } @{$self->reactants}];
+    my $eqStr = [];
+    foreach my $side ($reactants, $products) {
+        my $eq = [];
+        foreach my $side (@$side) {
+            my $str   = "";
+            my $coff  = $side->{coefficient};
+            my $name  = $side->{compound}->name;
+            my $index = $side->{compartmentIndex};
+            $str .= "($coff) " if abs($coff) > 1;
+            $str .= $name;
+            $str .= "[$index]" if $index > 0;
+            push(@$eq, $str);
+        }
+        push(@$eqStr, join(" + ", @$eq));
+    }
+    return join($self->reversibility, @$eqStr);
+}
 
 __PACKAGE__->meta->make_immutable;
 1;
