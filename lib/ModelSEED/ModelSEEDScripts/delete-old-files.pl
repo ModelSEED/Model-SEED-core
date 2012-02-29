@@ -18,7 +18,7 @@ if (defined($ARGV[0]) && -d $ARGV[0]) {
 }
 
 my $maxage;
-if (defined($ARGV[1]) && $maxage =~ m/^\d+$/) {
+if (defined($ARGV[1]) && $ARGV[1] =~ m/^\d+$/) {
 	$maxage = $ARGV[1];
 } else {
 	print "delete-old-files (directory) (max age in hours)\n\n";
