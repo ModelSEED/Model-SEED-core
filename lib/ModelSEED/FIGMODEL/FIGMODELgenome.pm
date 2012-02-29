@@ -783,7 +783,7 @@ sub getGeneSimilarityHitTable {
 }
 
 sub getTreeSimilarityHitTable {
-
+	print "This is a test!";
 }
 
 1;
