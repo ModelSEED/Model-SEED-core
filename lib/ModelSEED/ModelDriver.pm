@@ -534,7 +534,30 @@ sub msworkspace {
 	})};
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
-
+=head
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+Creates a new job in the Model SEED job database
+=EXAMPLE
+./mscreatejob
+=cut
+sub mscreatejob {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["command",1,0,"Command for the job"],
+		["user",0,ModelSEED::Interface::interface::USERNAME(),"Owner for the job"],
+		["queue",1,0,"Queue for the job"],
+	],[@Data],"prints workspace information");
+	$args->{command} =~ s/\:/?/;
+	$self->figmodel()->database()->create_object("job",{
+		USER => $args->{user},
+		QUEUETIME => ModelSEED::utilities::TIMESTAMP(),
+		EXCLUSIVEKEY => $args->{command}."_".$args->{user},
+		COMMAND => $args->{command},
+		QUEUE => $args->{queue}
+	});
+}
 =head
 =CATEGORY
 Workspace Operations
