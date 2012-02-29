@@ -15,6 +15,7 @@ if (defined($ENV{"MSCONFIGDIR"})) {
 }
 use ModelSEEDbootstrap;
 use ModelSEED::ModelDriver;
+use ModelSEED::Interface::interface;
 use Try::Tiny;
 use File::Temp;
 use Cwd;
