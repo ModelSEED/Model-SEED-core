@@ -11,7 +11,7 @@ __PACKAGE__->meta->setup(
 
     columns => [
         uuid       => { type => 'character', length => 36, not_null => 1 },
-        modDate    => { type => 'varchar', length => 45 },
+        modDate    => { type => 'datetime' },
         locked     => { type => 'integer' },
         model_uuid => { type => 'character', length => 36, not_null => 1 },
         media_uuid => { type => 'character', length => 36, not_null => 1 },

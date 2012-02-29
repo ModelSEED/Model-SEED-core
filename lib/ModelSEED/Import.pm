@@ -1124,23 +1124,12 @@ sub getGenomeObject {
     warn $genomeID;
     unless (defined($self->idCache("genome", $genomeID))) {
         my $columns = ['dna-size', 'gc-content', 'pegs', 'name', 'taxonomy',
-            'md5_hex'];
+            'md5'];
         my $genomeData = $self->sap->genome_data(
             {   -ids  => [$genomeID],
                 -data => $columns,
             }
         );
-        # FIXME - terrible terrible hack until SAPserver is fixed
-        if(!defined($genomeData) && $genomeID eq '83333.1') {
-            $genomeData->{$genomeID} = [
-                4639221,                   # size
-                undef,                     # gc
-                4314,                      # genes
-                "Escherichia coli K12",    # name
-                "83333",                   # taxonomy
-                undef,                     # cksum
-            ];
-        }
         unless (defined($genomeData)) {
             warn "Unable to get genome data from SAPserver! $!\n";
             warn Dumper $genomeData;

@@ -159,9 +159,9 @@ CREATE TABLE IF NOT EXISTS `genomes` (
   `locked` TINYINT(1)  NULL,
   `public` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
-  `name` VARCHAR(32) NULL,
-  `source` VARCHAR(32) NULL,
-  `type` VARCHAR(32) NULL,
+  `name` VARCHAR(255) NULL,
+  `source` VARCHAR(255) NULL,
+  `type` VARCHAR(255) NULL,
   `taxonomy` VARCHAR(255) NULL,
   `cksum` VARCHAR(255) NULL,
   `size` INTEGER NULL,
@@ -764,7 +764,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `modelfbas` (
   `uuid` CHAR(36) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
+  `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `model_uuid` CHAR(36) NOT NULL,
   `media_uuid` CHAR(36) NOT NULL,
