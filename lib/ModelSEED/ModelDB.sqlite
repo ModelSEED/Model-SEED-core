@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Wed Feb 29 15:11:55 2012
+-- Created on Wed Feb 29 15:57:51 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -199,7 +199,7 @@ CREATE TABLE roles (
   modDate DATETIME,
   locked TINYINT(1),
   id VARCHAR(32),
-  name VARCHAR(255),
+  name TEXT,
   searchname VARCHAR(255),
   feature_uuid CHAR(36),
   PRIMARY KEY (uuid),
@@ -614,7 +614,7 @@ CREATE INDEX model_transported_reagents_modelCompartment_fk ON model_transported
 --
 CREATE TABLE modelfbas (
   uuid CHAR(36) NOT NULL,
-  modDate VARCHAR(45),
+  modDate DATETIME,
   locked TINYINT(1),
   model_uuid CHAR(36) NOT NULL,
   media_uuid CHAR(36) NOT NULL,

@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS `roles` (
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
-  `name` VARCHAR(255) NULL,
+  `name` TEXT NULL,
   `searchname` VARCHAR(255) NULL,
   `feature_uuid` CHAR(36) NULL,
   PRIMARY KEY (`uuid`),
