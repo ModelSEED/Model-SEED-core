@@ -148,6 +148,7 @@ sub convert_to_search_role {
 	my $searchname = lc($args->{name});
 	$searchname =~ s/\d+\.\d+\.\d+\.[-0123456789]+//g;
 	$searchname =~ s/\s//g;
+	$searchname =~ s/#.*//;
 	return $searchname;
 }
 =head3 role_is_valid

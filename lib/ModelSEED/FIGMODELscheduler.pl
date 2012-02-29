@@ -177,7 +177,8 @@ sub monitor {
 										$command =~ s/\s/___/g;
 										$command =~ s/\(/.../g;
 										$command =~ s/\)/,,,/g;
-										my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"finish?".$filename."\" \"".$command."\"");
+										my $usrObj = $self->figmodel()->db()->get_object("user",{login => $object->USER()});
+										my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
 										#Getting the job ID
 										if (defined($output)) {
 											foreach my $line (@{$output}) {

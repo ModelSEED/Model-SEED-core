@@ -41,7 +41,8 @@ use ModelSEED::FIGMODEL::FIGMODELgenome;
 use ModelSEED::FIGMODEL::FIGMODELmapping;
 use ModelSEED::FIGMODEL::FIGMODELinterval;
 use ModelSEED::FIGMODEL::FIGMODELmedia;
-use ModelSEED::FIGMODEL::workspace;
+use ModelSEED::Interface::workspace;
+use ModelSEED::Interface::interface;
 use ModelSEED::FIGMODEL::queue;
 use ModelSEED::MooseDB::user;
 
@@ -125,10 +126,10 @@ sub new {
 		$self->{_user_acount}->[0] = $userObj;
 	} else {
 		if (!defined($username) &&
-            defined($ENV{"FIGMODEL_USER"}) &&
-            defined($ENV{"FIGMODEL_PASSWORD"})) {
-			$username = $ENV{"FIGMODEL_USER"};
-			$password = $ENV{"FIGMODEL_PASSWORD"};
+            defined(ModelSEED::Interface::interface::USERNAME()) &&
+            defined(ModelSEED::Interface::interface::PASSWORD())) {
+			$username = ModelSEED::Interface::interface::USERNAME();
+			$password = ModelSEED::Interface::interface::PASSWORD();
 		}
 		if (defined($username) && length($username) > 0 &&
             defined($password) && length($password) > 0) {
@@ -310,7 +311,7 @@ sub globalMessage {
 		message => $args->{msg},
 		function => $function,
 		"package" => $package,
-		"time" => ModelSEED::globals::TIMESTAMP(),
+		"time" => ModelSEED::utilities::TIMESTAMP(),
 		user => $self->user(),
 		id => $args->{id},
 		thread => $args->{thread},
@@ -499,7 +500,7 @@ Description:
 =cut
 sub process_arguments {
 	my ($self,$args,$mandatoryArguments,$optionalArguments) = @_;
-	$args = ModelSEED::globals::ARGS($args,$mandatoryArguments,$optionalArguments);
+	$args = ModelSEED::utilities::ARGS($args,$mandatoryArguments,$optionalArguments);
 	if (defined($args->{cgi}) || ((defined($args->{user}) || defined($args->{username})) && defined($args->{password}))) {
 		$self->authenticate($args);
 	}
@@ -658,8 +659,10 @@ sub sapSvr {
 	if (!defined($target)) {
 		$target = 'PUBSEED';
 	}
+	if ($target eq "PSEED") {
+		$target = 'PUBSEED';		
+	}
 	$ENV{'SAS_SERVER'} = $target;
-	
 	return SAPserver->new();
 }
 
@@ -684,7 +687,16 @@ sub database {
 	my($self) = @_;
 	return $self->{"_figmodeldatabase"}->[0];
 }
-
+=head3 ws
+Definition:
+	workspace = FIGMODEL->ws();
+Description:
+	Returns a workspace object
+=cut
+sub ws {
+	my ($self) = @_;
+	return ModelSEED::Interface::interface::WORKSPACE();
+}
 =head3 web
 Definition:
 	FIGMODELweb = FIGMODEL->web();
@@ -716,101 +728,6 @@ sub queue {
 	}
 	return $self->{_queue};
 }
-
-=head3 workspace
-Definition:
-	FIGMODELweb = FIGMODEL->workspace();
-Description:
-	Function returns a workspace object.
-=cut
-sub ws {
-	my($self) = @_;
-	if (!defined($self->{_workspace}->[0])) {
-		$self->loadWorkspace();
-	}
-	return $self->{_workspace}->[0];
-}
-=head3 loadWorkspace
-Definition:
-	FIGMODELweb = FIGMODEL->loadWorkspace();
-Description:
-	Loads the current workspace when FIGMODEL->new() is called
-=cut
-sub loadWorkspace {
-	my ($self) = @_;
-	$self->{_workspace} = [ ModelSEED::FIGMODEL::workspace->new({
-        root => $self->config("Workspace directory")->[0],
-		binDirectory => $self->config("software root directory")->[0]."bin/",
-		owner => $self->user(),
-		clear => 0,
-		copy => undef
-	})];
-}
-=head3 switchWorkspace
-Definition:
-    FIGMODEL->switchWorkspace({
-		name => string:new workspace name
-		copy => string:name of an existing workspace to replicate
-		clear => 0/1:clears the workspace directory before using it
-	});
-Description:
-	Switches and creates a new workspace
-=cut
-sub switchWorkspace {
-	my ($self,$args) = @_;
-	$self->process_arguments($args,["name"],{
-		clear => 0,
-		copy => undef
-	});
-	my $ws = ModelSEED::FIGMODEL::workspace->new({
-        root => $self->config("Workspace directory")->[0],
-        binDirectory => $self->config("software root directory")->[0]."bin/",
-		id => $args->{name},
-		owner => $self->user(),
-		clear => $args->{clear},
-		copy => $args->{copy}
-	});
-    # Updating local cache and current.txt file
-    $self->{_workspace}->[0] = $ws;
-}
-
-=head3 listWorkspaces
-Definition:
-    string = FIGMODEL->listWorkspaces({
-        owner => username
-    });
-Description:
-    Return a list of all workspaces owned by username.
-    Default username is currently logged in user.
-    
-=cut
-sub listWorkspaces {
-    my ($self,$args) = @_;
-    $self->process_arguments($args,[],{
-        owner => $self->user()
-    },0);
-    my $owners = [$args->{owner}];
-    if ($args->{owner} eq "ALL") {
-        $owners = [glob($self->config("Workspace directory")->[0]."*")];
-        for (my $i=0; $i < @{$owners}; $i++) {
-            if ($owners->[$i] =~ m/\/([^\/]+)$/) {
-                $owners->[$i] = $1;
-            }
-        }
-    }
-    my $list;
-    for (my $i=0; $i < @{$owners};$i++) {
-        my $tempList = [glob($self->config("Workspace directory")->[0].$owners->[$i]."/*")];
-        for (my $j=0; $j < @{$tempList}; $j++) {
-            if ($tempList->[$j] !~ m/current\.txt$/ && $tempList->[$j] =~ m/\/([^\/]+)$/) {
-                push(@{$list},$owners->[$i].".".$1);
-            }
-        }
-    }
-    return $list;
-}
-
-
 =head3 mapping
 Definition:
 	FIGMODELmapping = FIGMODEL->mapping();
@@ -913,26 +830,13 @@ sub authenticate {
 		}	
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
-			if (defined($ENV{"FIGMODEL_USER"})) {
-				my $data = $self->database()->load_single_column_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm");
-				for (my $i=0; $i < @{$data};$i++) {
-					if ($data->[$i] =~ m/FIGMODEL_PASSWORD/) {
-						$data->[$i] = '$ENV{FIGMODEL_PASSWORD} = "public";';
-					}
-					if ($data->[$i] =~ m/FIGMODEL_USER/) {
-						$data->[$i] = '$ENV{FIGMODEL_USER} = "public";';
-					}
-				}
-				$self->database()->print_array_to_file($ENV{MODEL_SEED_CORE}."/config/ModelSEEDbootstrap.pm",$data);
-				ModelSEED::globals::ERROR("Environment configured to log into a nonexistant account! Automatically logging out! Please attempt to log in again!");
-			} else {
-				ModelSEED::globals::ERROR("No user account found with name: ".$args->{username}."!");
-			}
+			ModelSEED::Interface::interface::SWITCHUSER("public","public");
+			ModelSEED::utilities::ERROR("Environment configured to log into a nonexistant account! Automatically logging out! Please attempt to log in again!");
 		}
 		if ($usrObj->check_password($args->{password}) == 1 || $usrObj->password() eq $args->{password}) {
 			$self->{_user_acount}->[0] = $usrObj;
 		} else {
-			ModelSEED::globals::ERROR("Input password does not match user account!");
+			ModelSEED::utilities::ERROR("Input password does not match user account!");
 		}
 	}
 	return undef;
@@ -949,12 +853,12 @@ Description:
 =cut
 sub import_seed_account {
 	my($self,$args) = @_;
-	ModelSEED::globals::ARGS($args,["username"],{password => undef});
+	ModelSEED::utilities::ARGS($args,["username"],{password => undef});
 	#Checking that you are not already in the SEED environment
-	ModelSEED::globals::ERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
+	ModelSEED::utilities::ERROR("Only a valid operation on nonseed hosted systems.") if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov");
 	#Checking if user account already exists with specified name
 	my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
-	ModelSEED::globals::ERROR("A user account already exists locally with the specified username. This account must be deleted!") if (defined($usrObj));
+	ModelSEED::utilities::ERROR("A user account already exists locally with the specified username. This account must be deleted!") if (defined($usrObj));
 	#Getting password from user if not provided
 	if (!defined($args->{password})) {
 		print "Enter password for SEED account:";
@@ -1415,6 +1319,122 @@ sub optimizeClusters {
 	}
 	$self->database()->print_array_to_file($args->{directory}."New".$args->{filename},$output);
 }
+
+=head3 compareModels
+Definition:
+	{} = FIGMODEL->compareModels({
+		modellist => []
+	});
+Description:
+	This function calculates the all vs all distances between the input set of models
+=cut
+sub compareModels {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args,["modellist"],{});
+	my $rxnMdlHash;
+	for (my $i=0; $i < @{$args->{modellist}}; $i++) {
+		my $rxnMdls = $self->database()->get_objects("rxnmdl",{MODEL=>$args->{modellist}->[$i]});
+		for (my $j=0; $j < @{$rxnMdls}; $j++) {
+			if ($rxnMdls->[$j]->pegs() !~ m/GAP/ && $rxnMdls->[$j]->pegs() !~ m/AUTO/ && $rxnMdls->[$j]->pegs() !~ m/GROW/) {
+				$rxnMdlHash->{$rxnMdls->[$j]->REACTION()}->{$args->{modellist}->[$i]} = $rxnMdls->[$j]->pegs();
+			}
+		}
+	}
+	my $headings = ["Reaction","Rowtype","Roles","Subsystem","SS class one","SS class two","KEGG Map","KEGG ID","Equation","EC"];
+	push(@{$headings},@{$args->{modellist}});
+	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,"",undef,"\t","|",undef);
+	my $objs = $self->database()->get_objects("rxnals",{type=>"KEGG"});
+	my $keggIDs;
+	for (my $i=0; $i < @{$objs}; $i++) {
+		$keggIDs->{$objs->[$i]->REACTION()}->{$objs->[$i]->alias()} = 1;
+	}
+	my $roleHash = $self->mapping()->get_role_rxn_hash();
+	my $roles;
+	foreach my $rxn (keys(%{$roleHash})) {
+		foreach my $role (keys(%{$roleHash->{$rxn}})) {
+			$roles->{$rxn}->{$roleHash->{$rxn}->{$role}->name()} = 1;
+		}
+	}
+	my $mapHash = $self->get_map_hash({type => "reaction"});
+	my $rxnKEGGMap;
+	foreach my $rxn (keys(%{$mapHash})) {
+		foreach my $diagram (keys(%{$mapHash->{$rxn}})) {
+			$rxnKEGGMap->{$rxn}->{$mapHash->{$rxn}->{$diagram}->name()} = 1;
+		}
+	}
+	my $rxnSubsys;
+	my $ssdata;
+	my $subsysHash = $self->mapping()->get_subsy_rxn_hash();
+	foreach my $rxn (keys(%{$subsysHash})) {
+		foreach my $subsys (keys(%{$subsysHash->{$rxn}})) {
+			$rxnSubsys->{$rxn}->{$subsysHash->{$rxn}->{$subsys}->name()} = 1;
+			$ssdata->{$subsysHash->{$rxn}->{$subsys}->name()} = $subsysHash->{$rxn}->{$subsys};
+		}
+	}
+	my $rxnHash;
+	$objs = $self->database()->get_objects("reaction");
+	for (my $i=0; $i < @{$objs}; $i++) {
+		$rxnHash->{$objs->[$i]->id()} = $objs->[$i];
+	}
+	foreach my $rxn (keys(%{$rxnMdlHash})) {
+		if (defined($rxnHash->{$rxn})) {
+			if (defined($rxnSubsys->{$rxn}) || defined($rxnKEGGMap->{$rxn})) {
+				foreach my $subsys (keys(%{$rxnSubsys->{$rxn}})) {
+					my $row = {
+						Rowtype => ["Subsystem"],
+						Reaction => [$rxn],
+						Roles => [keys(%{$roles->{$rxn}})],
+						Subsystem => [$subsys],
+						"SS class one" => [$ssdata->{$subsys}->classOne()],
+						"SS class two" => [$ssdata->{$subsys}->classTwo()],
+						"KEGG Map" => [keys(%{$rxnKEGGMap->{$rxn}})],
+						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+						Equation => [$rxnHash->{$rxn}->definition()]
+					};
+					foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+						$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+					}
+					$tbl->add_row($row);
+				}
+				foreach my $map (keys(%{$rxnKEGGMap->{$rxn}})) {
+					my $row = {
+						Rowtype => ["Map"],
+						Reaction => [$rxn],
+						Roles => [keys(%{$roles->{$rxn}})],
+						Subsystem => [keys(%{$rxnSubsys->{$rxn}})],
+						"SS class one" => [],
+						"SS class two" => [],
+						"KEGG Map" => [$map],
+						"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+						EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+						Equation => [$rxnHash->{$rxn}->definition()]
+					};
+					foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+						$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+					}
+					$tbl->add_row($row);
+				}
+			} else {
+				my $row = {
+					Rowtype => ["None"],
+					Reaction => [$rxn],
+					Roles => [keys(%{$roles->{$rxn}})],
+					Subsystem => ["None"],
+					"KEGG Map" => ["None"],
+					"KEGG ID" => [keys(%{$keggIDs->{$rxn}})],
+					EC => [split(/\|/,$rxnHash->{$rxn}->enzyme())],
+					Equation => [$rxnHash->{$rxn}->definition()]
+				};
+				foreach my $model (keys(%{$rxnMdlHash->{$rxn}})) {
+					$row->{$model} = [split(/\|/,$rxnMdlHash->{$rxn}->{$model})];
+				}
+				$tbl->add_row($row);	
+			}
+		}
+	}
+	return {"reaction comparison" => $tbl};
+}
 =head3 calculateModelDistances
 Definition:
 	{} = FIGMODEL->calculateModelDistances({
@@ -1582,50 +1602,52 @@ sub parseSBMLToTable {
     #Seaver 07/07/11
     #Processing file or directory
     if(defined($args->{directory})){
-	if(substr($args->{directory},-1) ne "/"){
-	    $args->{directory}.="/";
-	}
-	
-	if(!defined($args->{error}) && !-d $args->{directory}){
-	    $args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
-	}
-	
-	my $dir = $args->{directory};
-	my $name = $args->{model_name};
-	$name = "ModelData" if !$name;
-	$name.="-";
-	
-	$args = $self->process_arguments($args,["directory"],{
-	    SBMLFile => $dir."ModelData.xml",
-	    compartmentFiles => $dir.$name."compartments.tbl",
-	    compoundFiles => $dir.$name."compounds.tbl",
-	    reactionFiles => $dir.$name."reactions.tbl"
-					 });
-	
-	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-	}
-	
-    }elsif(defined($args->{file})){
-	my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
-	my $name = $args->{model_name};
-	$name = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1) if !$name;
-	$name.="-";
+		if(substr($args->{directory},-1) ne "/"){
+		    $args->{directory}.="/";
+		}
+		if(!defined($args->{error}) && !-d $args->{directory}){
+		    $args->{error}="Value for directory parameter (".$args->{directory}.") is not a directory\n";
+		}
+		my $dir = $args->{directory};
+		my $name = $args->{model_name};
+		$name = "ModelData" if !$name;
+		$name.="-";
+		$args = $self->process_arguments($args,["directory"],{
+		    SBMLFile => $dir."ModelData.xml",
+		    compartmentFiles => $dir.$name."compartments.tbl",
+		    compoundFiles => $dir.$name."compounds.tbl",
+		    reactionFiles => $dir.$name."reactions.tbl"
+		});
+		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+		    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
+		}
+    } elsif(defined($args->{file})){
+		my $dir=substr($args->{file},0,rindex($args->{file},'/')+1);
+		my $name = $args->{model_name};
+		$name = substr($args->{file},rindex($args->{file},'/')+1,rindex($args->{file},'.')-rindex($args->{file},'/')-1) if !$name;
+		$name.="-";
 
-	$args = $self->process_arguments($args,["file"],{
-	    SBMLFile => $args->{file},
-	    compartmentFiles => $dir.$name."compartments.tbl",
-	    compoundFiles => $dir.$name."compounds.tbl",
-	    reactionFiles => $dir.$name."reactions.tbl"
-					 });
-	
-	if(!defined($args->{error}) && !-f $args->{SBMLFile}){
-	    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
-	}
-	
+		$args = $self->process_arguments($args,["file"],{
+		    SBMLFile => $args->{file},
+		    compartmentFiles => $dir.$name."compartments.tbl",
+		    compoundFiles => $dir.$name."compounds.tbl",
+		    reactionFiles => $dir.$name."reactions.tbl"
+		});
+		if(!defined($args->{error}) && !-f $args->{SBMLFile}){
+		    $args->{error}=" SBML File (".$args->{SBMLFile}.") not found\n";
+		}
+    } elsif(defined($args->{filedata})){
+    	#Printing the file data to a temporary file
+    	(my $fh, $args->{file}) = File::Temp::tempfile("sbml-XXXXXXX");
+		close($fh);
+    	ModelSEED::utilities::PRINTFILE($args->{file},$args->{filedata});
+    	$args = $self->process_arguments($args,["file"],{
+		    SBMLFile => $args->{file},
+		    compartmentFiles => "",
+		    compoundFiles => "",
+		    reactionFiles => ""
+		});
     }
-    
-    return $self->new_error_message({function => "parseSBMLtoTable",args=>$args}) if (defined($args->{error}));
     
     my $parser = XML::DOM::Parser->new();
     my $doc = $parser->parsefile($args->{SBMLFile});
@@ -1675,6 +1697,9 @@ sub parseSBMLToTable {
     $cmpdAttrs{KEGG}=$TableHeadings{KEGG};
     $cmpdAttrs{METACYC}=$TableHeadings{METACYC};
 
+    #Add name if its not there
+    $cmpdAttrs{NAMES}=$TableHeadings{name} if !exists($cmpdAttrs{NAMES});
+
     my %CmpdCmptTranslation=();
     $TableList->{compound} = ModelSEED::FIGMODEL::FIGMODELTable->new([ sort { $cmpdAttrs{$a} <=> $cmpdAttrs{$b} } keys %cmpdAttrs],
 								     $args->{compoundFiles},undef,"\t","|",undef);
@@ -1691,17 +1716,20 @@ sub parseSBMLToTable {
 	$CmpdCmptTranslation{$row->{ID}->[0]}=$row->{COMPARTMENT}->[0];
 	$row->{METACYC}->[0]="";
 	$row->{KEGG}->[0]="" if !exists($row->{KEGG});
+	$row->{NAMES}->[0]=$row->{ID}->[0] if !exists($row->{NAMES});
 	$TableList->{compound}->add_row($row);
     }
 
     my @rxns = $doc->getElementsByTagName("reaction");
     my %rxnAttrs=();
-    foreach my $attr($rxns[0]->getAttributes()->getValues()){
-	$name=$attr->getName();
-	$HeadingTranslation{$name}=uc($name);
-	$HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
-	$HeadingTranslation{$name} = ($name eq "reversible") ? "DIRECTIONALITY" : $HeadingTranslation{$name};
-	$rxnAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+    foreach my $rxn(@rxns){
+	foreach my $attr($rxn->getAttributes()->getValues()){
+	    $name=$attr->getName();
+	    $HeadingTranslation{$name}=uc($name);
+	    $HeadingTranslation{$name} .= ($name eq "name") ? "S" : "";
+	    $HeadingTranslation{$name} = ($name eq "reversible") ? "DIRECTIONALITY" : $HeadingTranslation{$name};
+	    $rxnAttrs{$HeadingTranslation{$name}}= (exists($TableHeadings{$attr->getName()})) ? $TableHeadings{$attr->getName()} : 100;
+	}
     }
 
     my $nodehash={};
@@ -1751,7 +1779,7 @@ sub parseSBMLToTable {
 	$row->{ENZYMES}->[0]="";
 	$TableList->{reaction}->add_row($row);
     }
-
+	$TableList->{SUCCESS} = 1;
     return $TableList;
 }
 
@@ -2532,23 +2560,16 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id"],{
-		filename => undef,
-		biomassFile => undef,
+	$args = $self->process_arguments($args,["id","modelfiledata","biomassEquation"],{
 		genome => "NONE",
-		owner => undef,
-		public => undef,
+		biomassID => undef,
+		owner => "master",
+		public => 0,
 		overwrite => 0,
-		provenance => undef,
+		biochemSource => undef,
 		autoCompleteMedia => "Complete",
 		generateprovenance => 1
 	});
-	if (!defined($args->{filename})) {
-		$args->{filename} = $self->ws()->directory().$args->{id}.".mdl";
-	}
-	if (!-e $args->{filename}) {
-		ModelSEED::globals::ERROR("Could not find model specification file: ".$args->{filename}."!");		
-	}
 	#Calculating the full ID of the model
 	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
 		$args->{id} = $1;
@@ -2557,12 +2578,12 @@ sub import_model_file {
 	}
 	if ($args->{owner} ne "master") {
 		my $usr = $self->database()->get_object("user",{login=>$args->{owner}});
-		ModelSEED::globals::ERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
+		ModelSEED::utilities::ERROR("invalid model owner: ".$args->{owner}) if (!defined($usr));
 		$args->{id} .= ".".$usr->_id();
 	}
 	#Warning if genome id not used
 	if(!exists($args->{genome}) || $args->{genome} eq "NONE"){
-	    ModelSEED::globals::WARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
+	    ModelSEED::utilities::USEWARNING("You did not associate a SEED genome id with this model.  You may use the '-genome' parameter switch to do so");
 	}
 
 	#Checking if the model exists, and if not, creating the model
@@ -2581,21 +2602,24 @@ sub import_model_file {
 		$modelObj = $mdl->ppo();
 		$mdl = $self->get_model($args->{id});
 	} elsif ($args->{overwrite} == 0) {
-		ModelSEED::globals::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
-	} else {
+		ModelSEED::utilities::ERROR($args->{id}." already exists and overwrite request was not provided. Import halted.".$args->{owner});
+	}
+	if (!defined($mdl)) {
 		$mdl = $self->get_model($args->{id});
-		if ($args->{generateprovenance} == 1) {
-			$mdl->GenerateModelProvenance({
-			    biochemSource => $args->{biochemSource}
-			});
-		}
 		my $rights = $self->database()->get_object_rights($modelObj,"model");
 		if (!defined($rights->{admin})) {
-			ModelSEED::globals::ERROR("No rights to alter model object");
+			ModelSEED::utilities::USEERROR("No rights to alter model object!");
 		}
+		$mdl->genome($args->{genome}) if $args->{genome} ne "NONE";
+		$mdl->autocompleteMedia($args->{autoCompleteMedia}) if $args->{autoCompleteMedia} ne "Complete";
 	}
 	if (!-defined($mdl)) {
-		ModelSEED::globals::ERROR("Could not load/create model ".$mdl."!");
+		ModelSEED::utilities::ERROR("Could not load/create model ".$mdl."!");
+	}
+	if ($args->{generateprovenance} == 1) {
+		$mdl->GenerateModelProvenance({
+		    biochemSource => $args->{biochemSource}
+		});
 	}
 	#Clearing current model data in the database
 	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
@@ -2604,12 +2628,15 @@ sub import_model_file {
 			$objs->[$i]->delete();	
 		}
 	}
-	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{filename},"[;\\t]","|",1,["LOAD"]);
-	my $biomassID;
+	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table_from_array("",$args->{modelfiledata},"[;\\t]","|",1,["LOAD"]);
+	my $found = 0;
 	for (my $i=0; $i < $rxnmdl->size();$i++) {
 		my $row = $rxnmdl->get_row($i);
-		if ($row->{LOAD}->[0] =~ m/(bio\d+)/) {
-			$biomassID = $1;
+		if ($row->{LOAD}->[0] =~ m/(bio\d+)/ && !defined($args->{biomassID})) {
+			$args->{biomassID} = $1;
+		}
+		if ($row->{LOAD}->[0] eq $args->{biomassID}) {
+			$found = 1;	
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
 			REACTION => $row->{LOAD}->[0],
@@ -2619,6 +2646,9 @@ sub import_model_file {
 		if (!defined($rxnObj)) {
 			if ($row->{CONFIDENCE}->[0] !~ m/^\d+$/) {
 				$row->{CONFIDENCE}->[0] = 3;	
+			}
+			if (!defined($row->{"ASSOCIATED PEG"})) {
+				$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
 			}
 			$self->database()->create_object("rxnmdl",{
 				REACTION => $row->{LOAD}->[0],
@@ -2638,29 +2668,24 @@ sub import_model_file {
 		}
 	}
 	#Loading biomass reaction file
-	if (!defined($args->{biomassFile})) {
-	    $biomassID="" if !defined($biomassID);
-	    $args->{biomassFile} = $self->ws()->directory().$biomassID.".bof";
-	}
-	if (!-e $args->{biomassFile}) {
-		ModelSEED::globals::WARNING("Could not find biomass specification file: ".$args->{biomassFile}."!");	
-	}else{
-	    my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$args->{biomassFile},delimiter=>"\t",-load => 1});
+	if (defined($args->{biomassEquation})) {
 	    my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
-		equation => $obj->{EQUATION}->[0],
-		biomassID => $obj->{DATABASE}->[0]
-	        });
-	    $modelObj->biomassReaction($obj->{DATABASE}->[0]);
-#	    $self->database()->create_object("rxnmdl",{
-#		REACTION => $row->{LOAD}->[0],
-#		MODEL => $args->{id},
-#		directionality => $row->{DIRECTIONALITY}->[0],
-#		compartment => $row->{COMPARTMENT}->[0],
-#		pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-#		confidence => $row->{CONFIDENCE}->[0],
-#		notes => $row->{NOTES}->[0],
-#		reference => $row->{REFERENCE}->[0]
-#		});
+			equation => $args->{biomassEquation},
+			biomassID => $args->{biomassID}
+	    });
+	    $modelObj->biomassReaction($args->{biomassID});
+	}
+	if ($found == 0) {
+		$self->database()->create_object("rxnmdl",{
+			REACTION => $args->{biomassID},
+			MODEL => $args->{id},
+			directionality => "=>",
+			compartment => "c",
+			pegs => "UNIVERSAL",
+			confidence => 5,
+			notes => "",
+			reference => ""
+		});
 	}
 	return $modelObj;
 }
@@ -2694,13 +2719,11 @@ sub import_biochem {
 	}
 	#Loading the compound table
 	my $translation = {};
-	print "Test1\n";
 	if (defined($args->{compounds})) {
 		my $tbl = $args->{compounds};
-		print "Test2\n";
 		for (my $i=0; $i < $tbl->size();$i++) {
 			my $row = $tbl->get_row($i);
-			print "Processing compound ".$row->{"ID"}."\n";
+			print "Processing compound ".$row->{"ID"}->[0]."\n";
 			if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
 				next;
 			}
@@ -2808,6 +2831,14 @@ sub import_biochem {
 					$cpd->stringcode($row->{"STRINGCODE"}->[0]);
 				    }
 				}
+				if (defined($row->{"ABSTRACT COMPOUND"}->[0])){
+				    if(defined($cpd->abstractCompound()) && $cpd->abstractCompound() ne $row->{"ABSTRACT COMPOUND"}->[0]){
+					$Changes.="abstractCompound different for ".$cpd->id()." from ".$cpd->abstractCompound()." to ".$row->{"ABSTRACT COMPOUND"}->[0]."\n";
+				    } 
+				    if (!defined($cpd->abstractCompound()) || length($cpd->abstractCompound()) == 0 || $cpd->abstractCompound() eq "none") {
+					$cpd->abstractCompound($row->{"ABSTRACT COMPOUND"}->[0]);
+				    }
+				}
 			    if(length($Changes)>0){
 				print $Changes;
 			    }
@@ -2829,6 +2860,9 @@ sub import_biochem {
 			    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
 				$row->{"STRINGCODE"}->[0] = "nostringcode";
 			    }
+			    if (!defined($row->{"ABSTRACT COMPOUND"}->[0]) || $row->{"ABSTRACT COMPOUND"}->[0] eq "") {
+				$row->{"ABSTRACT COMPOUND"}->[0] = "none";
+			    }
 			    $cpd = $args->{figmodel}->database()->create_object("compound",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -2836,6 +2870,7 @@ sub import_biochem {
 				mass => $row->{"MASS"}->[0],
 				charge => $row->{"CHARGE"}->[0],
 				stringcode => $row->{"STRINGCODE"}->[0],
+				abstractCompound => $row->{"ABSTRACT COMPOUND"}->[0],
 				formula => $row->{"FORMULA"}->[0],
 				deltaG => 10000000,
 				deltaGErr => 10000000,
@@ -2861,13 +2896,11 @@ sub import_biochem {
 			$translation->{$row->{"ID"}->[0]} = $cpd->id();
 		}
 	}
-	print "Test3\n";
 	if (defined($args->{reactions})) {
-		print "Test4\n";
 		my $tbl = $args->{reactions};
 		for (my $i=0; $i < $args->{reactions}->size();$i++) {
 			my $row = $tbl->get_row($i);
-			print "Processing compound ".$row->{"EQUATION"}."\n";
+			print "Processing reaction ".$row->{"ID"}->[0]."\n";
 			if (!defined($row->{"EQUATION"}->[0])) {
 				next;	
 			}
@@ -2885,6 +2918,9 @@ sub import_biochem {
 			}
 			if (!defined($row->{"NOTES"}->[0])) {
 				$row->{"NOTES"}->[0] = "NONE";
+			}
+			if (!defined($row->{"ABSTRACT REACTION"}->[0])) {
+				$row->{"ABSTRACT REACTION"}->[0] = "none";
 			}
 			if (!defined($row->{"PEGS"}->[0])) {
 				$row->{"PEGS"}->[0] = "UNKNOWN";
@@ -2994,6 +3030,7 @@ sub import_biochem {
 					code => $codeResults->{code},
 					equation => $codeResults->{fullEquation},
 					definition => $row->{"EQUATION"}->[0],
+					abstractReaction => $row->{"ABSTRACT REACTION"}->[0],
 					deltaG => 10000000,
 					deltaGErr => 10000000,
 					reversibility => $row->{"DIRECTIONALITY"}->[0],
@@ -3033,17 +3070,14 @@ Description:
 =cut
 sub import_model {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["baseid"],{
-		path => $self->ws()->directory(),
+	$args = $self->process_arguments($args,["baseid","compoundTable","reactionTable"],{
 		owner => $self->user(),
 		genome => "NONE",
 		public => 0,
 		overwrite => 0,
 		biochemSource => undef 
 	});
-	return $self->new_error_message({function => "import_model",args => $args}) if (defined($args->{error}));
-	my $result = {success => 1};
-
+	my $result = {};
 	#Calculating the full ID of the model
 	my $id = $args->{baseid};
 	if ($args->{owner} ne "master") {
@@ -3051,14 +3085,6 @@ sub import_model {
 		return $self->new_error_message({message=> "invalid model owner: ".$args->{owner},function => "import_model",args => $args}) if (!defined($usr));
 		$id .= ".".$usr->_id();
 	}
-
-	my $print_output=$self->ws()->directory()."mdl-importmodel_Output_".$id;
-	my $oldout;
-	print "Output printed to ",$print_output,"\n";
-	open($oldout, ">&STDOUT") or warn "Can't dup STDOUT: $!";
-	open(STDOUT, '>', $print_output) or warn "Can't redirect STDOUT: $!";
-	select STDOUT; $| = 1;
-
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->get_object("model",{id => $id});
@@ -3073,12 +3099,13 @@ sub import_model {
 		});
 	} elsif ($args->{overwrite} == 0) {
 		return $self->new_error_message({message=> $id." already exists and overwrite request was not provided. Import halted.".$args->{owner},function => "import_model",args => $args});
-	}else{
-	    $mdl = $self->get_model($id);
-		$mdl->GenerateModelProvenance({
-		    biochemSource => $args->{biochemSource}
-		});	
+	};
+	if (!defined($mdl)) {
+		 $mdl = $self->get_model($id);
 	}
+	$mdl->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+	});
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
 	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
@@ -3092,13 +3119,9 @@ sub import_model {
 	}
 	#Loading the compound table
 	my $translation;
-	if (!-e $args->{path}.$args->{baseid}."-compounds.tbl") {
-		return $self->new_error_message({
-			message=> "could not find import file:".$args->{path}.$args->{baseid}."-compounds.tbl",
-			function => "import_model",
-			args => $args } )
-	}
-	my $tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-compounds.tbl","\t","|",0,["ID"]);
+	my $tbl = $args->{compoundTable};
+	open(NEWCPD, "> ".$self->ws()->directory()."mdl-importmodel_New_Compounds_".$id);
+	open(FOUNDCPD, "> ".$self->ws()->directory()."mdl-importmodel_Found_Compounds_".$id);
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
 		if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
@@ -3107,143 +3130,155 @@ sub import_model {
 		#Finding if existing compound shares search name
 		my $cpd;
 		my $newStrings=();
-		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ){
+		my $how_found;
+		foreach my $stringcode ( @{$row->{"STRINGCODE"}} ) {
 		    next if $stringcode !~ /^InChI=/; #InChIs only
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $stringcode,type => "stringcode%"});
 		    if (defined($cpdals) && !defined($cpd)) {
-			$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			print "Found using InChI string ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				$cpd =  $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				$how_found=$cpdals->type();
+				push(@{$result->{outputFile}},"Found using InChI string: ".$cpd->id()." for id ".$row->{ID}->[0]);
 		    }
 		    if(!defined($cpdals)){
-			$newStrings->{$stringcode}=1;
+				$newStrings->{$stringcode}=1;
 		    }
 		}
 
 		my $newNames=();
 		for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
 		    if (length($row->{"NAMES"}->[$j]) > 0) {
-			my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
-			for (my $k=0; $k < @{$searchNames}; $k++) {
-			    #Look for searchname in original 'searchname' type
-			    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
-			    
-			    #if not, look for it in previous imports
-			    if (!defined($cpdals)) {
-				my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
-				for (my $m = 0; $m < @{$cpdalss}; $m++) {
-				    $cpdals = $cpdalss->[$m];
-				    last;
+				my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
+				for (my $k=0; $k < @{$searchNames}; $k++) {
+				    #Look for searchname in original 'searchname' type
+				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
+				    
+				    #if not, look for it in previous imports
+				    if (!defined($cpdals)) {
+						my $cpdalss = $mdl->figmodel()->database()->get_objects("cpdals",{alias => $searchNames->[$k],type=>"searchname%"});
+						for (my $m = 0; $m < @{$cpdalss}; $m++) {
+						    $cpdals = $cpdalss->[$m];
+						    last;
+						}
+				    }
+				    if (defined($cpdals)) {
+						if (!defined($cpd)) {
+						    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						    $how_found=$cpdals->type();
+						}
+				    } else {
+						#prevent use of names that being with cpd, for obvious confusion
+						#with ModelSEED identifiers
+						next if substr($searchNames->[$k],0,3) eq "cpd";
+						
+						#stopgap to prevent names being inserted that are too close
+						#this occurs because the database doesn't recognize upper/lower case when
+						#using indexes
+						if(!exists($newNames->{search}->{$searchNames->[$k]})){
+						    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+						}
+				    }
 				}
-			    }
-			    if (defined($cpdals)) {
-				if (!defined($cpd)) {
-				    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-				    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+				if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
+					my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
+					if (defined($cpdals)) {
+						$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						$how_found=$cpdals->type();
+					}
 				}
-			    } else {
-				#prevent use of names that being with cpd, for obvious confusion
-				#with ModelSEED identifiers
-				next if substr($searchNames->[$k],0,3) eq "cpd";
-				
-				#stopgap to prevent names being inserted that are too close
-				#this occurs because the database doesn't recognize upper/lower case when
-				#using indexes
-				if(!exists($newNames->{search}->{$searchNames->[$k]})){
-				    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+				if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
+				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+				    if (defined($cpdals)) {
+						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						$how_found=$cpdals->type();
+				    }
 				}
-				$newNames->{search}->{$searchNames->[$k]} = 1;
-				
-			    }
-			}
+				if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
+				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
+				    if (defined($cpdals)) {
+						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+						print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						$how_found=$cpdals->type();
+				    }
+				}
 		    }
 		}
-		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
-			if (defined($cpdals)) {
-				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-				print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-			}
-		}
-		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
-			if (defined($cpdals)) {
-			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-			}
-		}
-
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
+		    print FOUNDCPD $cpd->id(),"\t",$row->{"ID"}->[0],"\t",$how_found,"\n";
 		    my $Changes="";
 			if (defined($row->{"CHARGE"}->[0])){
 			    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
-				$Changes.="Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."\n";
+			    	push(@{$result->{outputFile}},"Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]);
 			    } 
 			    if (!$cpd->charge() || $cpd->charge() == 10000000){
-				$cpd->charge($row->{"CHARGE"}->[0]);
+					$cpd->charge($row->{"CHARGE"}->[0]);
 			    }
 			}
 			if (defined($row->{"MASS"}->[0])){
 			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0]){
-				$Changes.="Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]."\n";
+			    	push(@{$result->{outputFile}},"Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
 			    } 
 			    if (!$cpd->mass() || $cpd->mass() == 10000000){
-				$cpd->mass($row->{"MASS"}->[0]);
+					$cpd->mass($row->{"MASS"}->[0]);
 			    }
 			}
 			if (defined($row->{"FORMULA"}->[0])){
 			    if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
-				$Changes.="Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]."\n";
+					push(@{$result->{outputFile}},"Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
 			    } 
 			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0 || $cpd->formula() eq "noformula") {
-				$cpd->formula($row->{"FORMULA"}->[0]);
+					$cpd->formula($row->{"FORMULA"}->[0]);
 			    }
 			}
 
 			if (defined($row->{"STRINGCODE"}->[0])){
 			    if(defined($cpd->stringcode()) && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
-				$Changes.="Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]."\n";
+					$Changes.="Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]."\n";
 			    } 
 			    if (!defined($cpd->stringcode()) || length($cpd->stringcode()) == 0 || $cpd->stringcode() eq "nostringcode") {
-				$cpd->stringcode($row->{"STRINGCODE"}->[0]);
+					$cpd->stringcode($row->{"STRINGCODE"}->[0]);
 			    }
 			}
 		    if(length($Changes)>0){
-			print $Changes;
+				push(@{$result->{outputFile}},$Changes);
 		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-		    print "New ".$newid." for ".$row->{"ID"}->[0]."\t",$row->{"NAMES"}->[0],"\n";
+		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\n";
+		    push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]);
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
-			$row->{"MASS"}->[0] = 10000000;	
+				$row->{"MASS"}->[0] = 10000000;	
 		    }
 		    if (!defined($row->{"CHARGE"}->[0]) || $row->{"CHARGE"}->[0] eq "") {
-			$row->{"CHARGE"}->[0] = 10000000;	
+				$row->{"CHARGE"}->[0] = 10000000;	
 		    }
 		    if (!defined($row->{"ABBREV"}->[0]) || $row->{"ABBREV"}->[0] eq "") {
-			$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
+				$row->{"ABBREV"}->[0] = $row->{"NAMES"}->[0];	
 		    }
 		    if (!defined($row->{"FORMULA"}->[0]) || $row->{"FORMULA"}->[0] eq "") {
-			$row->{"FORMULA"}->[0] = "noformula";	
+				$row->{"FORMULA"}->[0] = "noformula";	
 		    }
 		    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
-			$row->{"STRINGCODE"}->[0] = "nostringcode";
+				$row->{"STRINGCODE"}->[0] = "nostringcode";
 		    }
 		    $cpd = $mdl->figmodel()->database()->create_object("compound",{
-			id => $newid,
-			name => $row->{"NAMES"}->[0],
-			abbrev => $row->{"ABBREV"}->[0],
-			mass => $row->{"MASS"}->[0],
-			charge => $row->{"CHARGE"}->[0],
-			stringcode => $row->{"STRINGCODE"}->[0],
-			formula => $row->{"FORMULA"}->[0],
-			deltaG => 10000000,
-			deltaGErr => 10000000,
-			owner => $args->{owner},
-			modificationDate => time(),
-			creationDate => time(),
-			public => 1,
-			scope => $id
+				id => $newid,
+				name => $row->{"NAMES"}->[0],
+				abbrev => $row->{"ABBREV"}->[0],
+				mass => $row->{"MASS"}->[0],
+				charge => $row->{"CHARGE"}->[0],
+				stringcode => $row->{"STRINGCODE"}->[0],
+				formula => $row->{"FORMULA"}->[0],
+				deltaG => 10000000,
+				deltaGErr => 10000000,
+				owner => $args->{owner},
+				modificationDate => time(),
+				creationDate => time(),
+				public => 1,
+				scope => $id
 			});
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
@@ -3255,15 +3290,16 @@ sub import_model {
 		foreach my $stringcode ( keys %$newStrings ){
 		    $mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => "stringcode".$id, alias => $stringcode});
 		}
-
 		$mdl->figmodel()->database()->create_object("cpdals",{COMPOUND => $cpd->id(), type => $id, alias => $row->{"ID"}->[0]});
-
 		$translation->{$row->{"ID"}->[0]} = $cpd->id();
 	}
+	close(FOUNDCPD);
+	close(NEWCPD);
 
 	#Loading the reaction table
-	return $self->new_error_message({message=> "could not find import file:".$args->{path}.$args->{baseid}."-reactions.tbl",function => "import_model",args => $args}) if (!-e $args->{path}.$args->{baseid}."-reactions.tbl");
-	$tbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{baseid}."-reactions.tbl","\t","|",0,["ID"]);
+	open(NEWRXN, "> ".$self->ws()->directory()."mdl-importmodel_New_Reactions_".$id);
+	open(FOUNDRXN, "> ".$self->ws()->directory()."mdl-importmodel_Found_Reactions_".$id);
+	$tbl = $args->{reactionTable};
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
 		if (!defined($row->{"EQUATION"}->[0])) {
@@ -3308,7 +3344,7 @@ sub import_model {
 		if ($codeResults->{code} =~ m/cpd11416/) {
 			my $newid;
 			if (defined($mdl->biomassReaction()) && length($mdl->biomassReaction()) > 0 && lc($mdl->biomassReaction()) ne "none") {
-			    print $mdl->biomassReaction(),"mdl\n";
+			    push(@{$result->{outputFile}},$mdl->biomassReaction()."mdl");
 				$newid = $mdl->biomassReaction();
 			}
 			my $bofobj = $self->get_reaction()->add_biomass_reaction_from_equation({
@@ -3328,7 +3364,7 @@ sub import_model {
 			}
 			$mdl->biomassReaction($bofobj->id());			
 			$translation->{$row->{"ID"}->[0]} = $bofobj->id();
-			print "Created Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation}."\n";
+			push(@{$result->{outputFile}},"Created Biomass Reaction:".$newid." for ".$row->{"ID"}->[0]."\t".$codeResults->{fullEquation});
 			next;
 		}
 		if (!defined($row->{"DIRECTIONALITY"}->[0])) {
@@ -3356,7 +3392,8 @@ sub import_model {
 			}
 		}
 		if (defined($rxn)) {
-			print "Found ".$rxn->id()." for ".$row->{"ID"}->[0]."\n";
+			print FOUNDRXN $rxn->id(),"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\n";
+			push(@{$result->{outputFile}},"Found:".$rxn->id()." for ".$row->{"ID"}->[0]);
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
@@ -3382,7 +3419,8 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print "New ".$newid." for ".$row->{"ID"}->[0]." with code ".$codeResults->{code}."\n";
+			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
+			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code});
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -3403,6 +3441,7 @@ sub import_model {
 				scope => $id
 			});
 		}
+
 		$mdl->figmodel()->database()->create_object("rxnals",{
 			REACTION => $rxn->id(),
 			type => $id,
@@ -3416,7 +3455,7 @@ sub import_model {
 		});
 
 		if (defined($rxnmdl)) {
-		    print "Duplicate found for reaction ",$rxnmdl->REACTION()," for model ",$rxnmdl->MODEL(),"\n";
+		    push(@{$result->{outputFile}},"Duplicate found for reaction ".$rxnmdl->REACTION()." for model ".$rxnmdl->MODEL());
 			if ($rxnmdl->directionality() ne $row->{"DIRECTIONALITY"}->[0]) {
 				$rxnmdl->directionality("<=>");
 			}
@@ -3455,16 +3494,15 @@ sub import_model {
 		}
 	}
 
+	close(NEWRXN);
+	close(FOUNDRXN);
+
 	for (my $i=0; $i < @{$importTables}; $i++) {
 		$mdl->figmodel()->database()->unfreezeFileSyncing($importTables->[$i]);
 	}
 	$mdl->processModel();
-
-	#restore STDOUT
-	open(STDOUT, ">&", $oldout) or warn "Can't dup \$oldout: $!";
-
-	print "The model has been successfully imported as \"",$id,"\"\n";
-
+	$result->{"model ID"} = $mdl->id();
+	$result->{SUCCESS} = 1;	
 	return $result;
 }
 
@@ -7888,71 +7926,6 @@ sub ParseForLinks {
 	return $Text;
 }
 
-=head3 ProcessIDList
-Definition:
-	(HashRef::TypeList) = $model->ProcessIDList(IDList)
-Description:
-	This function parses the input ID list and returns parsed IDs in a hash ref of the ID types
-Example:
-=cut
-
-sub ProcessIDList {
-	my ($self,$IDList) = @_;
-
-	#Converting the $IDList into a flat array ref of IDs
-	my $NewIDList;
-	if (defined($IDList) && ref($IDList) ne 'ARRAY') {
-		my @TempArray = split(/,/,$IDList);
-		for (my $j=0; $j < @TempArray; $j++) {
-			push(@{$NewIDList},$TempArray[$j]);
-		}
-	} elsif (defined($IDList)) {
-		for (my $i=0; $i < @{$IDList}; $i++) {
-			my @TempArray = split(/,/,$IDList->[$i]);
-			for (my $j=0; $j < @TempArray; $j++) {
-				push(@{$NewIDList},$TempArray[$j]);
-			}
-		}
-	}
-
-	#Determining the type of each ID
-	my $TypeLists;
-	if (defined($NewIDList)) {
-		for (my $i=0; $i < @{$NewIDList}; $i++) {
-			if ($NewIDList->[$i] ne "ALL") {
-				if ($NewIDList->[$i] =~ m/^fig\|(\d+\.\d+)\.(.+)$/) {
-					push(@{$TypeLists->{"FEATURES"}->{$1}},$2);
-				} elsif ($NewIDList->[$i] =~ m/^figint\|(\d+\.\d+)\.(.+)$/) {
-					push(@{$TypeLists->{"INTERVALS"}->{$1}},$2);
-				} elsif ($NewIDList->[$i] =~ m/^figstr\|(\d+\.\d+)\.(.+)$/) {
-					push(@{$TypeLists->{"STRAINS"}->{$1}},$2);
-				} elsif ($NewIDList->[$i] =~ m/^figmodel\|(.+)$/) {
-					my $ModelID = $1;
-					my $ModelData = $self->get_model($ModelID);
-					if (defined($ModelData)) {
-						$TypeLists->{"MODELS"}->{$ModelID} = $ModelData;
-					}
-				} elsif ($NewIDList->[$i] =~ m/^fig\|(\d+\.\d+)$/ || $NewIDList->[$i] =~ m/^(\d+\.\d+)$/) {
-					push(@{$TypeLists->{"GENOMES"}},$1);
-				} elsif ($NewIDList->[$i] =~ m/^(rxn\d\d\d\d\d)$/) {
-					push(@{$TypeLists->{"REACTIONS"}},$1);
-				} elsif ($NewIDList->[$i] =~ m/^(cpd\d\d\d\d\d)$/) {
-					push(@{$TypeLists->{"COMPOUNDS"}},$1);
-				} else {
-					my $ModelData = $self->get_model($NewIDList->[$i]);
-					if (defined($ModelData)) {
-						$TypeLists->{"MODELS"}->{$NewIDList->[$i]} = $ModelData;
-					} else {
-						push(@{$TypeLists->{"ATTRIBUTES"}},$1);
-					}
-				}
-			}
-		}
-	}
-
-	return $TypeLists;
-}
-
 sub CreateLink {
 	my ($self,$ID,$ObjectType,$Parameter) = @_;
 
@@ -8840,47 +8813,6 @@ sub process_strain_data {
 
 =head2 Utility methods
 
-=head3 processIDList
-Definition:
-	[string] = FIGMODEL->processIDList({
-		objectType => string,
-		delimiter => ",",
-		column => "id",
-		parameters => {},
-		input => string
-	});
-Description:	
-=cut
-sub processIDList {
-	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["objectType","input"],{
-		delimiter => ",",
-		parameters => {},
-		column => "id"
-	});
-	if ($args->{input} =~ m/\.lst$/) {
-		if ($args->{input} =~ m/^\// && -e $args->{input}) {	
-			return $self->database()->load_single_column_file($args->{input},"");
-		} elsif (-e $self->ws()->directory().$args->{input}) {
-			return $self->database()->load_single_column_file($self->ws()->directory().$args->{input},"");
-		}
-		ModelSEED::globals::ERROR("Cannot obtain ppo data for reaction");
-	} elsif ($args->{input} eq "ALL") {
-		my $objects = $self->database()->get_objects($args->{objectType},$args->{parameters});
-		my $function = $args->{column};
-		my $results;
-		for (my $i=0; $i < @{$objects}; $i++) {
-			if (defined($objects->[$i]->$function())) {
-				push(@{$results},$objects->[$i]->$function());	
-			}
-		}
-		return $results;
-	} else {
-		return [split($args->{delimiter},$args->{input})];
-	}
-	ModelSEED::globals::ERROR("Unhandled use case");
-}
-
 =head3 put_two_column_array_in_hash
 Definition:
 	({string:1 => string:2},{string:2 => string:1}) = FIGMODEL->put_two_column_array_in_hash([[string:1,string:2]]);
@@ -8901,6 +8833,26 @@ sub put_two_column_array_in_hash {
 		}
 	}
 	return ($HashRefOne,$HashRefTwo);
+}
+
+
+=head3 make_xls
+Definition:
+  {} = FIGMODEL->make_xls();
+Description:
+=cut
+sub make_xls {
+    my ( $self, $args ) = @_;
+    $args = $self->process_arguments( $args,
+        [ "filename", "sheetnames", "sheetdata" ], {} );
+    my $workbook = $args->{filename};
+    for ( my $i = 0 ; $i < @{ $args->{sheetdata} } ; $i++ ) {
+        $workbook = $args->{sheetdata}->[$i]->add_as_sheet(
+            $args->{sheetnames}->[$i], $workbook
+        );
+    }
+    $workbook->close();
+    return;
 }
 
 =head3 put_hash_in_two_column_array
@@ -9211,22 +9163,6 @@ sub copyMergeHash {
 		}	
 	}
 	return $result;
-}
-
-=head3 make_xls
-Definition:
-	{} = FIGMODEL->make_xls();
-Description:
-=cut
-sub make_xls {
-    my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["filename","sheetnames","sheetdata"],{});
-    my $workbook = $args->{filename};
-    for(my $i=0; $i<@{$args->{sheetdata}}; $i++) {
-        $workbook = $args->{sheetdata}->[$i]->add_as_sheet($args->{sheetnames}->[$i],$workbook);
-    }
-    $workbook->close();
-    return;
 }
 
 =head2 Pass-through functions that will soon be deleted entirely

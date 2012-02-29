@@ -455,4 +455,42 @@ sub charge {
     my $self=shift;
     return $self->ppo()->charge();
 }
+
+
+=head3 molAnalysis
+Definition:
+    Output = FIGMODELcompound->molAnalysis({
+    	molfiles => [string]:molfile names or molfile text itself
+    	ids => [string]:cpd IDs corresponding to each molfile
+    });
+    Output = {
+    	string:id => {
+    		molfile => string:filename or content,
+    		groups => string:group list,
+    		charge => double,
+    		formula => string:molecular formula from structure,
+    		stringcode => string:molecular structure in string format,
+    		mass => double,
+    		deltaG => double,
+    		deltaGerr => double
+    	}	
+    };
+=cut
+sub molAnalysis {
+    my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["molfiles","ids"],{});
+    my $fba = $self->figmodel()->fba();
+    print "Running Mol File analysis in ",$fba->directory(),"\n";
+    $fba->setMolAnalysisStudy($args);
+    $fba->runFBA({
+	printToScratch => $self->figmodel()->config("print to scratch")->[0],
+	studyType => "MolfileAnalysis",
+	parameterFile => "MolfileAnalysisParameters.txt"
+		 });
+    my $results = $fba->parseMolAnalysisStudy();
+    $fba->clearOutput();
+    return $results;
+    return {};
+}
+
 1;

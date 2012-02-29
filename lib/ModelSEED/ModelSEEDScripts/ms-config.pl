@@ -182,10 +182,12 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     	$envSettings->{MFATOOLKITCCFLAGS} .=  " -I".$Config->{Optimizers}->{includeDirectoryGLPK};
     	$envSettings->{MFATOOLKITCCLNFLAGS} .= "-L".$Config->{Optimizers}->{libraryDirectoryGLPK}." -lglpk";
     }
-    if (defined($Config->{Optimizers}->{includeDirectoryCPLEX})) {
-    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
-    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
-    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    if (defined($Config->{Optimizers}->{licenceDirectoryCPLEX})) {
+    	 if (defined($Config->{Optimizers}->{libraryDirectoryCPLEX})) {
+	    	 $envSettings->{MFATOOLKITCCLNFLAGS} .= " -L".$Config->{Optimizers}->{libraryDirectoryCPLEX}." -lcplex -lm -lpthread -lz";
+	    	 $envSettings->{MFATOOLKITCCFLAGS} .= " -I".$Config->{Optimizers}->{includeDirectoryCPLEX};
+	    	 $envSettings->{CPLEXAPI} = "CPLEXapi.cpp";
+    	 }
     	 $envSettings->{ILOG_LICENSE_FILE} = $Config->{Optimizers}->{licenceDirectoryCPLEX};
     	 if ($os eq "osx") {
     	 	$envSettings->{MFATOOLKITCCLNFLAGS} .= " -framework CoreFoundation -framework IOKit";
@@ -280,9 +282,6 @@ BOOTSTRAP
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot$file" $arguments
 SCRIPT
-		#if ($os eq "windows") {
-        #    $script = "\@echo off\n" . $script . "pause\n";
-        #}
         open(my $fh, ">", $directoryRoot."/bin/".$plFileList->{$file}.$extension) || die($!);
         print $fh $script;
         close($fh);
@@ -292,6 +291,7 @@ SCRIPT
 #Creating shell scripts for select model driver functions
 {
 	my $functionList = [
+		"ms-lasterror",
 		"ms-createuser",
 		"ms-deleteuser",
 		"ms-switchworkspace",
@@ -324,6 +324,7 @@ SCRIPT
 		"mdl-parsesbml",
 		"mdl-importmodel",
 		"mdl-changedrains",
+		"mdl-comparemodels",
 		"util-matrixdist"
 	];
 	my $obsoleteList = [
@@ -351,16 +352,18 @@ SCRIPT
 		}
 	}
 	foreach my $function (@{$functionList}) {
-		if (-e $directoryRoot."/bin/".$function.$extension) {
-			unlink $directoryRoot."/bin/".$function.$extension;
+		my $filename = $function;
+		if (-e $directoryRoot."/bin/".$filename.$extension) {
+			unlink $directoryRoot."/bin/".$filename.$extension;
 		}
+		$function =~ s/-//;
 		my $script = <<SCRIPT;
 perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
 SCRIPT
-        open(my $fh, ">", $directoryRoot."/bin/".$function.$extension) || die($!);
+        open(my $fh, ">", $directoryRoot."/bin/".$filename.$extension) || die($!);
         print $fh $script;
         close($fh);
-		chmod 0775,$directoryRoot."/bin/".$function;
+		chmod 0775,$directoryRoot."/bin/".$filename.$extension;
 	}
 }
 #Configuring database

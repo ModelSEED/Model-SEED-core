@@ -19,7 +19,7 @@ Description:
 =cut
 sub new {
 	my ($class,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["figmodel"],{
+	$args = ModelSEED::utilities::ARGS($args,["figmodel"],{
 		id => undef,
 		init => undef
 	});
@@ -34,7 +34,7 @@ sub new {
 		$self->initializeModel($args->{init});
 		return $self;
 	} elsif (!defined($args->{id})) {
-		ModelSEED::globals::ERROR("Cannot load a model object without specifying an ID!");
+		ModelSEED::utilities::ERROR("Cannot load a model object without specifying an ID!");
 	} else {
 		#Setting and parsing the model ID
 		$self->setIDandVersion($args->{id});
@@ -107,16 +107,16 @@ sub loadData {
 	if (!defined($self->{_data})) {
 		my $obj = $self->db()->sudo_get_object("model",{id => $self->baseid()});
 		if (defined($obj)) {
-			ModelSEED::globals::ERROR("You do not have the privelages to view the model ".$self->baseid()."!");
+			ModelSEED::utilities::ERROR("You do not have the privelages to view the model ".$self->baseid()."!");
 		}
-		ModelSEED::globals::ERROR("Model ".$self->baseid()." could not be found in database!");
+		ModelSEED::utilities::ERROR("Model ".$self->baseid()." could not be found in database!");
 	}
 	#Checking if the user has selected an nonstandard version of the model
 	if (defined($self->selectedVersion())) {
 		if ($self->selectedVersion() ne $self->{_data}->version()) {
 			$self->{_data} = $self->db()->get_object("model_version", {id => $self->id()});
 			if (!defined($self->{_data})) {
-				ModelSEED::globals::ERROR("Model ".$self->baseid()." does not have the selected version ".$self->selectedVersion()."!");
+				ModelSEED::utilities::ERROR("Model ".$self->baseid()." does not have the selected version ".$self->selectedVersion()."!");
 			}
 		} else {
 			#If you have selected the canonical model, by default, selectedVersion should be undef, and ID should be the baseid
@@ -182,8 +182,8 @@ sub initializeModel {
 		overwrite => 0,
 	});
 	if(!defined($args->{id}) && $args->{genome} eq "NONE"){
-#		ModelSEED::globals::ERROR("Cannot load a model object without specifying an ID!");
-		ModelSEED::globals::ERROR("Neither a model id nor a genome has been defined, the model cannot therefore be initialized!");    
+#		ModelSEED::utilities::ERROR("Cannot load a model object without specifying an ID!");
+		ModelSEED::utilities::ERROR("Neither a model id nor a genome has been defined, the model cannot therefore be initialized!");    
 	}
 	if (!defined($args->{id})) {
 		$args->{id} = "Seed".$args->{genome};
@@ -193,7 +193,7 @@ sub initializeModel {
 	if(defined($args->{owner}) && $args->{owner} ne "master") {
 		my $user = $self->db()->get_object("user",{login=>$args->{owner}});
 		if(!defined($user)) {
-			ModelSEED::globals::ERROR("No valid user for ".$args->{owner}.", failed to create model!");
+			ModelSEED::utilities::ERROR("No valid user for ".$args->{owner}.", failed to create model!");
 		}
 		if ($args->{id} =~ m/Seed\d+\.\d+/) {
 			if ($args->{id} =~ m/(Seed\d+\.\d+)\.\d+$/) {
@@ -222,7 +222,7 @@ sub initializeModel {
 		if ($args->{overwrite} == 1 && $mdlObj->owner() eq $args->{owner}) {
 			$mdlObj->delete();
 		} else {
-			ModelSEED::globals::ERROR("A model called ".$args->{id}." already exists.");
+			ModelSEED::utilities::ERROR("A model called ".$args->{id}." already exists.");
 		}
 	}
 	$self->db()->create_object("model",{ 
@@ -250,12 +250,9 @@ sub initializeModel {
 		force => 1
 	});
 	$self->loadData();
-	$self->GenerateModelProvenance({
-		biochemSource => $args->{biochemSource}
-	});
-	$self->buildDBInterface();
 	if ($args->{reconstruction} eq "1") {
 		$self->reconstruction({
+	    	biochemSource => $args->{biochemSource},
 	    	checkpoint => 0,
 			autocompletion => $args->{autocompletion}
 		});
@@ -320,10 +317,10 @@ Description:
 =cut
 sub drains {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{});
+	$args = ModelSEED::utilities::ARGS($args,[],{});
 	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0"; 
 	if (-e $self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt") {
-		my $data = ModelSEED::globals::LOADFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
+		my $data = ModelSEED::utilities::LOADFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt");
 		$drainString = $data->[0];
 	}
 	return $drainString;
@@ -337,7 +334,7 @@ Description:
 =cut
 sub changeDrains {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		inputs => undef,
 		drains => undef
 	});
@@ -367,7 +364,7 @@ sub changeDrains {
 		$drainString .= ";".$drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max};
 	}
 	if ($drainString ne "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0") {
-		ModelSEED::globals::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
+		ModelSEED::utilities::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
 	}
 	return $drainString;
 }
@@ -421,89 +418,49 @@ Description:
 =cut
 sub copyModel {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{
-		newid=>undef,
-		owner=> $self->owner(),
-	});
-	my $usrObj = $self->figmodel()->database()->get_object("user",{login=>$args->{owner}});
-	if (!defined($args->{newid})) {
-		my $index = 0;
-		do {
-	
-			$args->{newid} = "Seed".$self->genome();
-			if ($index != 0) {
-				$args->{newid} .= "-".$index;
-			}
-			$args->{newid} .= ".".$usrObj->_id();
-			$index++;		
-		} while(defined($self->db()->get_object("model", { id => $args->{newid} }))); 
-	}
-	# TODO add validateID function, need to know passed user id is correct
-	# append ".userId" if that hasn't already been done
-	my $userId = $self->db()->get_object("user", { login => $args->{owner} })->_id();
-	if($args->{newid} !~  /\.$userId$/) {
-		$args->{newid} .= '.'.$userId;
-	}
-	if (defined($self->figmodel()->database()->get_object("model",{id=>$args->{newid}}))) {
-		ModelSEED::globals::ERROR("A model with the suppied ID already exists");
+	$args = $self->figmodel()->process_arguments($args,["sourceModel"],{});
+	my $model = $self->figmodel()->get_model($args->{sourceModel});
+	if (!defined($model)) {
+		ModelSEED::utilities::ERROR("Model ".$args->{sourceModel}." not found!");
 	}
 	# Create copy of biomass function
-	my $biomass = $self->figmodel()->get_reaction($self->ppo()->biomassReaction());
-	my $biomassCopy = $biomass->copyReaction({owner => $args->{owner}});
+	my $biomass = $self->figmodel()->get_reaction($model->ppo()->biomassReaction());
+	my $biomassCopy = $biomass->copyReaction({owner => $self->owner()});
+	$self->ppo()->biomassReaction($biomassCopy->id());
 	# Copy directory structure
-	my $new_model_dir = $self->config("model directory")->[0] . $args->{owner} . '/' . $args->{newid};
-	if (-d $new_model_dir) {
-		ModelSEED::globals::ERROR("Directory ".$new_model_dir." already exists for model ".$args->{newid});
+	File::Copy::Recursive::dircopy($model->directory(),$self->directory());
+	my $rxnmdl = $self->rxnmdl();
+	for (my $i=0; $i < @{$rxnmdl}; $i++) {
+		$rxnmdl->[$i]->delete();
 	}
-	my $current_model_dir = $self->directory();
-	$current_model_dir =~ s/\d+\/$//; # remove trailing version number
-	File::Copy::Recursive::dircopy($current_model_dir, $new_model_dir);   
-	# Build initial model, use ppo to get most configuration details
-	my $model_init_hash = { map { $_ => $self->ppo()->$_() } keys %{$self->ppo()->attributes()} };
-	delete $model_init_hash->{_id};			 
-	$model_init_hash->{id} = $args->{newid};	
-	$model_init_hash->{owner} = $args->{owner};
-	$model_init_hash->{biomassReaction} = $biomassCopy->id();
-	# Configuration needed for new() itself
-	$model_init_hash->{runPreliminaryReconstrution} = 0;
-	$model_init_hash->{gapfilling} = 0;
-	my $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
-		figmodel => $self->figmodel(),
-		id => $args->{newid},
-		init => $model_init_hash
-	});
-	# Give the current user temporary admin rights 
-#	$self->changeRight($self->figmodel()->user(), "admin", "force");
-	ModelSEED::globals::ERROR("Error constructing new model ".$args->{newid}) if(!defined($mdl));
-	# Copy model rxnmdl ppo data
-	my $old_rxnmdls = $self->db()->get_objects("rxnmdl", { MODEL => $self->id() });
-	foreach my $old_rxnmdl (@$old_rxnmdls) {
-		my $hash = { map { $_ => $old_rxnmdl->$_() } keys %{$old_rxnmdl->attributes()} };
-		delete $hash->{_id};
-		$hash->{MODEL} = $args->{newid};
-		$mdl->db()->create_object("rxnmdl", $hash); 
-	}
-	# Copy over modelversions
-	my $model_versions = $self->db()->get_objects("model_version", { canonicalID => $self->id() });
-	foreach my $mdl_version (@$model_versions) {
-		my $hash = { map { $_ => $mdl_version->$_() } keys %{$mdl_version->attributes()} };
-		delete $hash->{_id};
-		# id needs to be "base.v\d+" keep the ".v\d+" use newbase
-		my $version;
-		if($hash->{id} =~ /(v\d+)$/) {
-		   $version = $1; 
+	$rxnmdl = $model->rxnmdl();
+	for (my $i=0; $i < @{$rxnmdl}; $i++) {
+		if ($rxnmdl->[$i]->REACTION() !~ m/^bio/) {
+			$self->db()->create_object("rxnmdl", {
+				MODEL => $self->id(),
+				REACTION => $rxnmdl->[$i]->REACTION(),
+				directionality => $rxnmdl->[$i]->directionality(),
+				compartment => $rxnmdl->[$i]->compartment(),
+				pegs => $rxnmdl->[$i]->pegs(),
+				confidence => $rxnmdl->[$i]->confidence(),
+				notes => $rxnmdl->[$i]->notes(),
+				reference => $rxnmdl->[$i]->reference()
+			});
+		} else {
+			$self->db()->create_object("rxnmdl", {
+				MODEL => $self->id(),
+				REACTION => $biomassCopy->id(),
+				directionality => $rxnmdl->[$i]->directionality(),
+				compartment => $rxnmdl->[$i]->compartment(),
+				pegs => $rxnmdl->[$i]->pegs(),
+				confidence => $rxnmdl->[$i]->confidence(),
+				notes => $rxnmdl->[$i]->notes(),
+				reference => $rxnmdl->[$i]->reference()
+			});
 		}
-		$hash->{id} = $args->{newid} . ".v$version";
-		$hash->{canonicalID} = $args->{newid};
-		$mdl->db()->create_object("model_version", $hash);
 	}
 	# Run process model
-	$mdl->processModel();
-	# Remove temporary admin rights if not the owner
-#	if($self->owner() ne $self->figmodel()->user()) {
-#		$self->changeRight($self->figmodel()->user(), "none");
-#	} 
-	return $mdl;
+	#$mdl->processModel(); 
 }
 
 =head3 figmodel
@@ -536,7 +493,7 @@ Description:
 =cut
 sub genomeObj {
 	my ($self) = @_;
-	if (lc($self->genome()) eq "none" && lc($self->genome()) eq "unknown") {
+	if (lc($self->genome()) eq "none" || lc($self->genome()) eq "unknown") {
 		return undef;
 	}
 	if (!defined($self->{_genomeObj})) {
@@ -637,7 +594,10 @@ Description:
 	Returns model genome
 =cut
 sub genome {
-	my ($self) = @_;
+	my ($self,$newGenome) = @_;
+	if (defined($newGenome)) {
+		return $self->ppo()->genome($newGenome);
+	}
 	return $self->ppo()->genome();
 }
 
@@ -695,7 +655,7 @@ sub users {
 	}
 	# Add a "view" right to PUBLIC for public models
 	if(!defined($self->ppo())) {
-		ModelSEED::globals::ERROR("Cannot check model rights without a defined PPO object!");
+		ModelSEED::utilities::ERROR("Cannot check model rights without a defined PPO object!");
 	}
 	if($self->ppo()->public() eq 1) {
 		$obj->{PUBLIC} = "view";
@@ -721,7 +681,7 @@ sub changeRight {
 		$args->{username} = $self->owner(); #I cannot set this as a default argument, because sometime owner is not defined
 	}
 	if ($args->{force} ne 1 && !$self->isAdministrable()) {
-		ModelSEED::globals::ERROR("User ".$self->figmodel()->user()." lacks privelages to change rights of model ".$self->id());
+		ModelSEED::utilities::ERROR("User ".$self->figmodel()->user()." lacks privelages to change rights of model ".$self->id());
 	}
 	$self->db()->change_permissions({
 		objectID => $self->id(),
@@ -794,7 +754,7 @@ sub transfer_genome_rights_to_model {
 		username => $self->figmodel()->userObj()->login(),
 		password => $self->figmodel()->userObj()->password()
 	});
-	ModelSEED::globals::ERROR("Could not load user list for model!") if (!defined($output->{$self->genome()}));
+	ModelSEED::utilities::ERROR("Could not load user list for model!") if (!defined($output->{$self->genome()}));
 	foreach my $user (keys(%{$output->{$self->genome()}})) {
 		$self->db()->change_permissions({
 			objectID => $self->id(),
@@ -872,11 +832,11 @@ sub get_reaction_data {
 		} elsif ($args =~ m/[rb][ix][no]\d\d\d\d\d/) {
 			$args = {-id => $args};
 		} else {
-			ModelSEED::globals::ERROR("No ID or index specified!");
+			ModelSEED::utilities::ERROR("No ID or index specified!");
 		}
 	}
 	if (!defined($args->{-id}) && !defined($args->{-index})) {
-		ModelSEED::globals::ERROR("No ID or index specified!");
+		ModelSEED::utilities::ERROR("No ID or index specified!");
 	}
 	my $rxnTbl = $self->reaction_table();
 	if (!defined($rxnTbl)) {
@@ -1030,7 +990,7 @@ sub get_reaction_equation {
 		$obj = $self->figmodel()->database()->get_object("bof",{id => $1});
 	}
 	if (!defined($obj)) {
-		ModelSEED::globals::ERROR("can't find reaction ".$rxnData->{LOAD}->[0]." in database!");
+		ModelSEED::utilities::ERROR("can't find reaction ".$rxnData->{LOAD}->[0]." in database!");
 	}
 	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $equation = $obj->equation();
@@ -1139,11 +1099,11 @@ sub create_table_prototype {
 	#Checking if the table definition exists in the FIGMODELconfig file
 	my $tbldef = $self->figmodel()->config($TableName);
 	if (!defined($tbldef)) {
-		ModelSEED::globals::ERROR("Definition not found for ".$TableName);
+		ModelSEED::utilities::ERROR("Definition not found for ".$TableName);
 	}
 	#Checking that this is a database table
 	if (!defined($tbldef->{tabletype}) || $tbldef->{tabletype}->[0] ne "ModelTable") {
-		ModelSEED::globals::ERROR($TableName." is not a model table!");
+		ModelSEED::utilities::ERROR($TableName." is not a model table!");
 	}
 	#Setting default values for table parameters
 	my $prefix;
@@ -1694,7 +1654,7 @@ sub biomassReaction {
 	if (defined($newBiomass)) {
 		my $bioobj = $self->db()->get_object("bof",{id=>$newBiomass});
 		if (!defined($bioobj)) {
-			ModelSEED::globals::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
+			ModelSEED::utilities::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
 		}
 		my $oldBiomass = $self->ppo()->biomassReaction();
 		my $found = 0;
@@ -1894,29 +1854,31 @@ sub update_model_stats {
 	});
 	my $geneHash;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		my $pegs = $self->figmodel()->get_reaction()->parseGeneExpression({
-			expression => $rxnmdl->[$i]->pegs()
-		});
-		if (defined($pegs->{genes}->[0])) {
-			my $lcgene = lc($pegs->{genes}->[0]);
-			if ($lcgene eq "biolog") {
-				$counts->{biolog}++;
-			}elsif ($lcgene eq "growmatch") {
-				$counts->{growmatch}++;
-			}elsif ($lcgene eq "spontaneous") {
-				$counts->{spontaneous}++;
-			}elsif ($lcgene eq "unknown" || $lcgene eq "universal" || $lcgene eq "gap" || $lcgene eq "autocompletion") {
-				$counts->{autocompletion}++;
-			}elsif ($lcgene eq "biolog") {
-				$counts->{biolog}++;
-			} else {
-				for (my $j=0; $j < @{$pegs->{genes}}; $j++) {
-					push(@{$geneHash->{$pegs->{genes}->[$j]}},$rxnmdl->[$i]->REACTION());
-				}	
+		if (defined($rxnmdl->[$i])) {
+			my $pegs = $self->figmodel()->get_reaction()->parseGeneExpression({
+				expression => $rxnmdl->[$i]->pegs()
+			});
+			if (defined($pegs->{genes}->[0])) {
+				my $lcgene = lc($pegs->{genes}->[0]);
+				if ($lcgene eq "biolog") {
+					$counts->{biolog}++;
+				}elsif ($lcgene eq "growmatch") {
+					$counts->{growmatch}++;
+				}elsif ($lcgene eq "spontaneous") {
+					$counts->{spontaneous}++;
+				}elsif ($lcgene eq "unknown" || $lcgene eq "universal" || $lcgene eq "gap" || $lcgene eq "autocompletion") {
+					$counts->{autocompletion}++;
+				}elsif ($lcgene eq "biolog") {
+					$counts->{biolog}++;
+				} else {
+					for (my $j=0; $j < @{$pegs->{genes}}; $j++) {
+						push(@{$geneHash->{$pegs->{genes}->[$j]}},$rxnmdl->[$i]->REACTION());
+					}	
+				}
 			}
-		}
-		if (defined($rxnHash->{$rxnmdl->[$i]->REACTION()}) && $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0]->equation() =~ m/\[e\]/) {
-			$counts->{transporters}++;
+			if (defined($rxnHash->{$rxnmdl->[$i]->REACTION()}) && $rxnHash->{$rxnmdl->[$i]->REACTION()}->[0]->equation() =~ m/\[e\]/) {
+				$counts->{transporters}++;
+			}
 		}
 	}
 	$counts->{genes} = keys(%{$geneHash});
@@ -1929,6 +1891,9 @@ sub update_model_stats {
 	$self->ppo()->transporters($counts->{transporters});
 	$self->ppo()->autoCompleteReactions($counts->{autocompletion});
 	$self->ppo()->associatedSubsystemGenes($counts->{genes});
+	if (defined($self->genomeObj())) {
+		$self->ppo()->name($self->genomeObj()->name());
+	}
 	#Setting the model class
 	my $class = "";
 	for (my $i=0; $i < @{$self->figmodel()->config("class list")}; $i++) {
@@ -2067,7 +2032,7 @@ sub completeGapfilling {
 			forcePrintModel => 1,
 			runProblem=>1
 		});
-		ModelSEED::globals::ERROR("Could not calculate inactive reactions") if (!defined($results->{tb}));
+		ModelSEED::utilities::ERROR("Could not calculate inactive reactions") if (!defined($results->{tb}));
 		delete $args->{fbaStartParameters}->{options}->{freeGrowth};
 		my $inactive;
 		foreach my $obj (keys(%{$results->{tb}})) {
@@ -2082,6 +2047,7 @@ sub completeGapfilling {
 	}
 	print "Printing gapfilling parameters in : ",$fbaObj->directory()."/CompleteGapfillingParameters.txt\n";
 	#Printing gapfilling parameters
+	my $gfresults;
 	if (!-e $fbaObj->directory()."/CompleteGapfillingParameters.txt") {
 		if ($args->{adddrains} == 1) {
 			$args->{fbaStartParameters}->{options}->{adddrains} = 1;
@@ -2096,7 +2062,7 @@ sub completeGapfilling {
 					minimumFluxForPositiveUseConstraint=> "0.01",
 					gapfillCoefficientsFile => $args->{gapfillCoefficientsFile},
 					inactiveReactionBonus => $args->{inactiveReactionBonus}
-				}	
+				}
 			},
 			problemDirectory => $args->{problemDirectory},
 			parameterFile => "CompleteGapfillingParameters.txt",
@@ -2108,6 +2074,7 @@ sub completeGapfilling {
 		delete $args->{fbaStartParameters}->{options}->{adddrains};
 		delete $args->{fbaStartParameters}->{parameters}->{"create file on completion"};
 		print "Finished runFBAStudy\n";
+		$gfresults = $results;
 	}
 	#Exiting now if the user did not request that the gapfilling be run
 	if ($args->{rungapfilling} == 0) {
@@ -2118,12 +2085,12 @@ sub completeGapfilling {
 	}
 	#Checking that a gapfilling solution was printed
 	if (!-e $fbaObj->directory()."/GapfillingComplete.txt") {
-		ModelSEED::globals::ERROR("Gapfilling of model ".$self->id()." failed!");	
+		ModelSEED::utilities::ERROR("Gapfilling of model ".$self->id()." failed!");	
 	}
 	#Loading the gapfilling solution into the model
 	$results = $self->integrateGapfillingSolution({
 		directory => $fbaObj->directory(),
-		gapfillResults => $results
+		gapfillResults => $results->{completeGapfillingResult}
 	});
 	print "Calculting the growth with which to test the model\n";
 	#Calculating the growth to test the model
@@ -2157,7 +2124,7 @@ sub completeGapfilling {
 	$self->update_model_stats();
 	#$self->update_stats_for_gap_filling(time() - $start);
 	#$self->figmodel()->processModel();
-	return $results;
+	return $gfresults;
 }
 
 =head3 integrateGapfillingSolution
@@ -2182,30 +2149,35 @@ sub integrateGapfillingSolution {
 	system("cp ".$args->{directory}."/CompleteGapfillingOutput.txt ".$self->directory()."/GapfillingOutput.txt");
 	my $solutionHash;
 	foreach my $rxn (keys(%{$args->{gapfillResults}})) {
-		if (defined($args->{gapfillResults}->{$rxn}->{gapfilled}->[0])) {
-			for (my $i=0; $i < @{$args->{gapfillResults}->{$rxn}->{gapfilled}}; $i++) {
-				if ($args->{gapfillResults}->{$rxn}->{gapfilled}->[$i] =~ m/(.)(rxn\d+)/) {
-					my $gapRxn = $2;
-					my $gapSign = $1;
-					my $sign = "=>";
-					if ($gapSign eq "-") {
-						$sign = "<=";
-					}
-					if (defined($solutionHash->{$gapRxn}->{sign}) && $solutionHash->{$gapRxn}->{sign} ne $sign) {
-						$sign = "<=>";
-					}
-					$solutionHash->{$gapRxn}->{sign} = $sign;
-					push(@{$solutionHash->{$gapRxn}->{target}},$rxn);
-					if (defined($args->{gapfillResults}->{$rxn}->{repaired}->[0])) {
-						for (my $j=0; $j < @{$args->{gapfillResults}->{$rxn}->{repaired}}; $j++) {
-							if ($args->{gapfillResults}->{$rxn}->{repaired}->[$j] =~ m/(.)(rxn\d+)/) {
-								$solutionHash->{$gapRxn}->{repaired}->{$2} = 1;
+		if ($rxn =~ m/bio\d+/ || $rxn =~ m/rxn\d+/ || $rxn =~ m/cpd\d+/) {
+			if (ref($args->{gapfillResults}->{$rxn}) eq "HASH" && defined($args->{gapfillResults}->{$rxn}->{gapfilled}->[0])) {
+				for (my $i=0; $i < @{$args->{gapfillResults}->{$rxn}->{gapfilled}}; $i++) {
+					if ($args->{gapfillResults}->{$rxn}->{gapfilled}->[$i] =~ m/(.)(rxn\d+)/) {
+						my $gapRxn = $2;
+						my $gapSign = $1;
+						my $sign = "=>";
+						if ($gapSign eq "-") {
+							$sign = "<=";
+						}
+						if (defined($solutionHash->{$gapRxn}->{sign}) && $solutionHash->{$gapRxn}->{sign} ne $sign) {
+							$sign = "<=>";
+						}
+						$solutionHash->{$gapRxn}->{sign} = $sign;
+						push(@{$solutionHash->{$gapRxn}->{target}},$rxn);
+						if (defined($args->{gapfillResults}->{$rxn}->{repaired}->[0])) {
+							for (my $j=0; $j < @{$args->{gapfillResults}->{$rxn}->{repaired}}; $j++) {
+								if ($args->{gapfillResults}->{$rxn}->{repaired}->[$j] =~ m/(.)(rxn\d+)/) {
+									$solutionHash->{$gapRxn}->{repaired}->{$2} = 1;
+								}
 							}
 						}
 					}
 				}
 			}
 		}
+	}
+	foreach my $rxn (keys(%{$solutionHash})) {
+		print $rxn."\t".$solutionHash->{$rxn}->{sign}."\n";
 	}
 	#Loading the reaction table located in the problem directory and adjusting based on the gapfilling solution
 	my $rxns = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{directory}."/".$self->id().".tbl",
@@ -2242,12 +2214,12 @@ sub integrateGapfillingSolution {
 	for (my $i=0; $i < @{$rxnObjs}; $i++) {
 		my $row = $rxns->get_table_by_key($rxnObjs->[$i]->REACTION(),"LOAD")->get_row_by_key($rxnObjs->[$i]->compartment(),"COMPARTMENT");
 		if (defined($row)) {
-			print "Adjusting reaction ".$rxnObjs->[$i]->REACTION()."\n";
+			#print "Adjusting reaction ".$rxnObjs->[$i]->REACTION()."\n";
 			$rxnObjs->[$i]->directionality($row->{DIRECTIONALITY}->[0]);
 			my $newpegs = join("|",@{$row->{"ASSOCIATED PEG"}});
-			print $newpegs."\t";
+			#print $newpegs."\t";
 			$newpegs =~ s/\\//g;
-			print $newpegs."\n";
+			#print $newpegs."\n";
 			$rxnObjs->[$i]->pegs($newpegs);
 			$rxnObjs->[$i]->confidence($row->{CONFIDENCE}->[0]);
 			$repRow = $rxnObjs->[$i];
@@ -2351,7 +2323,7 @@ sub GapFillModel {
 
 	#Looking for gapfilling report
 	if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingReport.txt") {
-		ModelSEED::globals::ERROR("no gapfilling solution found!");
+		ModelSEED::utilities::ERROR("no gapfilling solution found!");
 		system($self->figmodel()->config("Model driver executable")->[0]." \"setmodelstatus?".$self->id()."?1?Autocompletion___failed___to___find___solution\"");
 		return $self->figmodel()->fail();
 	}
@@ -2806,7 +2778,6 @@ sub calculate_model_changes {
 		unlink($self->directory()."OriginalModel-".$self->id()."-".$filename.".txt");
 	}
 }
-
 =head3 datagapfill
 Definition:
 	success()/fail() = FIGMODELmodel->datagapfill();
@@ -2821,7 +2792,7 @@ sub datagapfill {
 		#Checking that the solution exists
 		if (!-e $self->config("MFAToolkit output directory")->[0].$UniqueFilename."/GapFillingSolutionTable.txt") {
 			$self->figmodel()->database()->print_array_to_file($self->directory().$self->id().$self->selectedVersion()."-GFS.txt",["Experiment;Solution index;Solution cost;Solution reactions"]);
-			ModelSEED::globals::ERROR("Could not find MFA output file!");
+			ModelSEED::utilities::ERROR("Could not find MFA output file!");
 		}
 		my $GapFillResultTable = ModelSEED::FIGMODEL::FIGMODELTable::load_table(
             $self->config("MFAToolkit output directory")->[0]."$UniqueFilename/GapFillingSolutionTable.txt",";","",0,undef);
@@ -2931,30 +2902,69 @@ Description:
 =cut
 sub generate_fulldb_model {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{});
+	$args = $self->figmodel()->process_arguments($args,["biomass"],{
+		mimicGapfilling => 1,
+		allReversible => 1
+	});
 	#Clearing the old models
 	my $rxnmdl = $self->rxnmdl();
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		$rxnmdl->[$i]->delete();
 	}
 	#Setting the biomass reaction if necessary
-	if ($self->ppo()->biomassReaction() !~ m/bio\d+/) {
-		$self->ppo()->biomassReaction("bio00001");
+	$self->ppo()->biomassReaction($args->{biomass});
+	my $excludedReactions;
+	my $array = [split(/[,;]/,$self->figmodel()->config("permanently knocked out reactions")->[0])];
+	for (my $i=0; $i < @{$array};$i++) {
+		$excludedReactions->{$array->[$i]} = 1;
 	}
+	my $exceptionRxn;
+	$array = [split(/[,;]/,$self->figmodel()->config("acceptable unbalanced reactions")->[0])];
+	for (my $i=0; $i < @{$array};$i++) {
+		$exceptionRxn->{$array->[$i]} = 1;
+	}
+	my $dissapprovedCompartments = [split(/[,;]/,$self->figmodel()->config("diapprovied compartments")->[0])];
 	#Regenerating all reactions
 	my $rxn = $self->db()->get_objects("reaction");
 	my $rxnRevHash = $self->figmodel()->get_reaction()->get_reaction_reversibility_hash();
 	for (my $i=0; $i < @{$rxn}; $i++) {
-		$self->db()->create_object("rxnmdl",{
-			MODEL => $self->id(),
-			REACTION => $rxn->[$i]->id(),
-			directionality => $rxnRevHash->{$rxn->[$i]->id()},
-			compartment => "c",
-			pegs => "UNKNOWN",
-			reference => "NONE",
-			notes => "NONE",
-			confidence => 5
-		});
+		my $include = 1;
+		if ($args->{mimicGapfilling} == 1 && !defined($exceptionRxn->{$rxn->[$i]->id()})) {
+			if (defined($excludedReactions->{$rxn->[$i]->id()})) {
+				$include = 0;
+			}
+			if ($include == 1) {
+				my $equation = $rxn->[$i]->equation();
+				for (my $j=0; $j < @{$dissapprovedCompartments}; $j++) {
+					my $c = "\\[".$dissapprovedCompartments->[$j]."\\]";
+					if ($equation =~ m/$c/) {
+						$include = 0;
+						last;
+					}
+				}
+			}
+			if ($include == 1) {
+				my $output = $self->figmodel()->get_reaction()->balanceReaction({
+					equation => $rxn->[$i]->equation()
+				});
+				if ($output->{status} !~ m/OK/ && $output->{status} !~ m/CI/) {
+					$include = 0;
+					print "Unbalanced:".$output->{status}."\n";
+				}
+			}
+		}
+		if ($include == 1) {
+			$self->db()->create_object("rxnmdl",{
+				MODEL => $self->id(),
+				REACTION => $rxn->[$i]->id(),
+				directionality => $rxnRevHash->{$rxn->[$i]->id()},
+				compartment => "c",
+				pegs => "UNKNOWN",
+				reference => "NONE",
+				notes => "NONE",
+				confidence => 5
+			});
+		}
 	}
 	$self->db()->create_object("rxnmdl",{
 		MODEL => $self->id(),
@@ -2971,8 +2981,6 @@ sub generate_fulldb_model {
 	return {success => 1};
 }
 
-
-
 =head3 reconstruction
 Definition:
 	FIGMODELmodel->reconstruction({
@@ -2985,17 +2993,22 @@ sub reconstruction {
 	$args = $self->figmodel()->process_arguments($args,[],{
 		checkpoint => 1,
 		autocompletion => 1,
+		biochemSource => undef
 	});	
 	#Getting genome data and feature table
+	$self->GenerateModelProvenance({
+		biochemSource => $args->{biochemSource}
+	});
+	$self->buildDBInterface();
 	my $genomeObj = $self->genomeObj();
 	if (!defined($genomeObj)) {
 		$self->set_status(-2,"Could not create genome object!");
-		ModelSEED::globals::ERROR("Could not create genome object!");
+		ModelSEED::utilities::ERROR("Could not create genome object!");
 	}
 	my $ftrTbl = $genomeObj->feature_table();
 	if (!defined($ftrTbl)) {
 		$self->set_status(-2,"Could not obtain feature table for genome!");
-		ModelSEED::globals::ERROR("Could not obtain feature table!");
+		ModelSEED::utilities::ERROR("Could not obtain feature table!");
 	}
 	#Checking that the number of genes exceeds the minimum size
 	if ($ftrTbl->size() < $self->config("minimum genome size for modeling")->[0]) {
@@ -3004,11 +3017,11 @@ sub reconstruction {
 	#Checking that a directory exists for the model (should have been created in "new" function)
 	my $directory = $self->directory();
 	if (!-d $directory) {
-		ModelSEED::globals::ERROR("Model directory does not exist!");
+		ModelSEED::utilities::ERROR("Model directory does not exist!");
 	}
 	#Reseting status so model is built twice at the same time
 	if ($self->status() == 0) {
-		ModelSEED::globals::ERROR("model is already being built. Canceling current build.");
+		ModelSEED::utilities::ERROR("model is already being built. Canceling current build.");
 	}elsif ($self->status() == 1) {
 		$self->set_status(0,"Rebuilding preliminary reconstruction");
 	} else {
@@ -3050,7 +3063,7 @@ sub reconstruction {
 		locations => $locations
 	});
 	if (!defined($ReactionHash)) {
-		ModelSEED::globals::ERROR("Could not generate reaction GPR!");
+		ModelSEED::utilities::ERROR("Could not generate reaction GPR!");
 	}
 	#Creating the model reaction table
 	my $newRxnRowHash;
@@ -3130,14 +3143,14 @@ sub reconstruction {
 		$biomassID = $self->BuildSpecificBiomassReaction();
 		if ($biomassID !~ m/bio\d\d\d\d\d/) {
 			$self->set_status(-2,"Preliminary reconstruction failed: could not generate biomass reaction");
-			ModelSEED::globals::ERROR("Could not generate biomass reaction!");
+			ModelSEED::utilities::ERROR("Could not generate biomass reaction!");
 		}
 	}
 	#Getting the biomass reaction PPO object
 	my $bioRxn = $self->figmodel()->database()->get_object("bof",{id=>$biomassID});
 	if (!defined($bioRxn)) {
 		 $self->set_status(-2,"Preliminary reconstruction failed: could not find biomass reaction ".$biomassID);
-		ModelSEED::globals::ERROR("Could not find biomass reaction ".$biomassID);
+		ModelSEED::utilities::ERROR("Could not find biomass reaction ".$biomassID);
 	}
 	#Getting the list of essential reactions for biomass reaction
 	my $ReactionList;
@@ -3494,7 +3507,7 @@ sub ArchiveModel {
 
 	#Checking that the model file exists
 	if (!(-e $self->filename())) {
-		ModelSEED::globals::ERROR("Model file ".$self->filename()." not found!");
+		ModelSEED::utilities::ERROR("Model file ".$self->filename()." not found!");
 	}
 
 	#Copying the model file
@@ -3523,7 +3536,11 @@ sub printModelFileForMFAToolkit {
 			push(@{$output},$line);
 		}
 	}
-	$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
+	if ($args->{filename} ne "ARRAY") {
+		$self->figmodel()->database()->print_array_to_file($args->{filename},$output);
+	} else {
+		return $output;
+	}
 	return {success=>1};
 }
 
@@ -3545,7 +3562,7 @@ sub PrintModelDataToFile {
 
 	#Copying the model file printed by the toolkit out of the output directory and into the model directory
 	if (!-e $self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selectedVersion().".txt") {
-		ModelSEED::globals::ERROR("New model file not created due to an error. Check that the input modelfile exists.");
+		ModelSEED::utilities::ERROR("New model file not created due to an error. Check that the input modelfile exists.");
 	}
 
 	$Command = 'cp "'.$self->config("MFAToolkit output directory")->[0].$OutputIndex."/".$self->id().$self->selectedVersion().'.txt" "'.$self->directory().$self->id().$self->selectedVersion().'Data.txt"';
@@ -3565,7 +3582,6 @@ sub GenerateModelProvenance {
 		targetDirectory => $self->directory(),
 		clearCurrentProvenance => 1
 	});
-	print "Directory:".$args->{targetDirectory}."\n";
 	# Current directory structure:
 	# biochemistry/
 	#	 reaction.txt
@@ -3605,12 +3621,17 @@ sub GenerateModelProvenance {
 		}
 		if (defined($args->{biochemSource})){
 		    print "Copying biochemistry from ",$args->{biochemSource},"\n";
-		    if(! -d $args->{biochemSource}){
-			ModelSEED::globals::ERROR("Biochemistry source is not a directory! ".$args->{biochemSource});
-			return $self->figmodel()->fail();
-		    }else{
-			system("cp ".$args->{biochemSource}."* ".$biochemd);
+		    if (!-d $args->{biochemSource}) {
+		    	my $object = ModelSEED::globals::GETFIGMODEL()->database()->get_object("model",{"id" => $args->{biochemSource}});
+				if (!defined($object)) {
+					ModelSEED::utilities::ERROR("Biochemistry source is not a directory or a model! ".$args->{biochemSource});
+				}
+				$args->{biochemSource} = ModelSEED::globals::GETFIGMODEL()->get_model($args->{biochemSource})->directory()."biochemistry/";
 		    }
+		    if (!-d $args->{biochemSource}) {
+		    	ModelSEED::utilities::ERROR("Biochemistry source is not a directory or a model! ".$args->{biochemSource});
+		    }
+			system("cp ".$args->{biochemSource}."* ".$biochemd);
 		}
 		if (!-e $biochemd.'reaction.txt') {
 			my $rxn_config = {
@@ -4116,7 +4137,7 @@ sub removeReactions {
 		trackChanges=>1,
 	});
 	# check editability, parsing of arguments
-	ModelSEED::globals::ERROR("Model ".$self->id()." is not editable!") if(not $self->isEditable());
+	ModelSEED::utilities::ERROR("Model ".$self->id()." is not editable!") if(not $self->isEditable());
 	# generate hash of id.compartment => 1
 	my $id_compartment_hash = {
 		map { $args->{ids}->[$_].($args->{compartments}->[$_] || 'c') => 1 }
@@ -4148,7 +4169,7 @@ sub validateModelDirectory {
 	my ($self, $dir) = @_;
 	my $errF = sub {
 		my $msg = shift @_;
-		ModelSEED::globals::ERROR($msg);
+		ModelSEED::utilities::ERROR($msg);
 	};
 	$dir = $self->directory() unless defined($dir);
 	return $errF->("base directory $dir missing") unless -d $dir; # no directory == fail
@@ -4185,7 +4206,7 @@ revert(id, x)
 =cut
 sub checkpoint {
 	my ($self) = @_;
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	my $dir = $self->directory();
 	$self->flatten($dir."rxnmdl.txt");
 	$self->increment();
@@ -4194,12 +4215,12 @@ sub checkpoint {
 
 sub revert { 
 	my ($self, $version) = @_;
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	$version = "v$version" if($version =~ /^\d+$/);
 	$version = $self->id().".".$version if ($version =~ /^v\d+$/);
 	my $test = $self->figmodel()->get_model($version);
 	unless(defined($test)) {
-		ModelSEED::globals::ERROR("Unable to find model version $version! Doing nothing.");
+		ModelSEED::utilities::ERROR("Unable to find model version $version! Doing nothing.");
 	}
     if(!-d $self->config("database root directory")->[0]."tmp/") {
         mkdir $self->config("database root directory")->[0]."tmp/";
@@ -4219,7 +4240,7 @@ sub revert {
 sub copyProvenanceFrom {
 	my ($self, $source) = @_;
 	unless(-d $source) {
-		ModelSEED::globals::ERROR("Cannont find directory $source");
+		ModelSEED::utilities::ERROR("Cannont find directory $source");
 	}
 	my $target = $self->directory();
 	if(!-d $target) {
@@ -4241,7 +4262,7 @@ sub copyProvenanceFrom {
 
 sub flatten {
 	my ($self, $target) = @_;
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $config = {
 		filename => $target,
@@ -4256,7 +4277,7 @@ sub flatten {
 
 sub _drop_ppo_database {
 	my ($self) = @_;
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	my $db = $self->figmodel()->database();
 	my $rxn_mdls = $db->get_objects('rxnmdl',
 		{ MODEL => $self->id() });
@@ -4269,7 +4290,7 @@ sub _drop_ppo_database {
 	
 sub increment {
 	my ($self) = @_;		
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	my $hash = { map { $_ => $self->ppo()->$_() } keys %{$self->ppo()->attributes()} };
 	my $parts = $self->parseId($self->fullId());
 	$hash->{canonicalID} = $hash->{id};
@@ -4279,16 +4300,16 @@ sub increment {
 	$self->fullId($self->id()); # update id to unversioned copy (otherwise directory() will be wrong   
 	delete $self->{_directory}; # reset directory cache
 	unless(defined($obj)) {
-		ModelSEED::globals::ERROR("Unable to create entry in model_version table!");
+		ModelSEED::utilities::ERROR("Unable to create entry in model_version table!");
 	}
 }
 
 sub restore {
 	my ($self, $versionToRestore, $finalVersionNumber) = @_;
-	return ModelSEED::globals::ERROR("Model is not editable!") if(!$self->isEditable());
+	return ModelSEED::utilities::ERROR("Model is not editable!") if(!$self->isEditable());
 	my $mdl = $self->figmodel()->get_model($versionToRestore);
 	if(!defined($mdl)) {
-		ModelSEED::globals::ERROR("Model to restore $versionToRestore could not be found!");
+		ModelSEED::utilities::ERROR("Model to restore $versionToRestore could not be found!");
 	}
 	# do Model row object
 	my $new_ppo = { map { $_ => $mdl->ppo()->$_() } keys %{$mdl->ppo()->attributes()} };
@@ -4925,7 +4946,7 @@ sub GapFillingAlgorithm {
 			user => $self->owner()
 		});
 	} else {
-		ModelSEED::globals::ERROR("No false negative predictions found. Data gap filling not necessary!");
+		ModelSEED::utilities::ERROR("No false negative predictions found. Data gap filling not necessary!");
 	}
 
 	return $self->figmodel()->success();
@@ -5572,13 +5593,13 @@ sub BuildSpecificBiomassReaction {
 			cellWallCoef=>"NONE",cofactorCoef=>"NONE",essentialRxn=>"NONE"
 		});
 		if (!defined($bioObj)) {
-			ModelSEED::globals::ERROR("Could not create new biomass reaction ".$biomassID);
+			ModelSEED::utilities::ERROR("Could not create new biomass reaction ".$biomassID);
 		}
 	} else {
 		#Getting the biomass DB handler from the database
 		my $objs = $self->figmodel()->database()->get_objects("bof",{id=>$biomassID});
 		if (!defined($objs->[0])) {
-			ModelSEED::globals::ERROR("Could not find biomass reaction ".$biomassID." in database!");
+			ModelSEED::utilities::ERROR("Could not find biomass reaction ".$biomassID." in database!");
 		}
 		$bioObj = $objs->[0];
 		$bioObj->owner($self->owner());
@@ -5812,7 +5833,7 @@ sub PrintSBMLFile {
 	
 	#Handling media formulation for SBML file
 	my $mediaCpd;
-	if ($args->{media} ne "Complete" && ref($args->{media}) eq "SCALAR") {
+	if ($args->{media} ne "Complete") {
 		$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
 	}
 	if (!defined($args->{media})) {
@@ -5839,31 +5860,33 @@ sub PrintSBMLFile {
 	my $rxnHash;
 	my $reactionCompartments;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
-		$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
-		my $rxnObj;
-		if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
-			if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
-				$rxnObj = $rxnDBHash->{$rxnmdl->[$i]->REACTION()}->[0];
+		if (defined($rxnmdl->[$i])) {
+			$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
+			my $rxnObj;
+			if ($rxnmdl->[$i]->REACTION() =~ m/rxn\d\d\d\d\d/) {
+				if (defined($rxnDBHash->{$rxnmdl->[$i]->REACTION()})) {
+					$rxnObj = $rxnDBHash->{$rxnmdl->[$i]->REACTION()}->[0];
+				}
+			} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
+				$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
 			}
-		} elsif ($rxnmdl->[$i]->REACTION() =~ m/bio\d\d\d\d\d/) {
-			$rxnObj = $self->figmodel()->database()->get_object("bof",{id=>$rxnmdl->[$i]->REACTION()});	
-		}
-		if (!defined($rxnObj)) {
-			ModelSEED::globals::ERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
-		}
-		push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
-		push(@ReactionList,$rxnObj);
-		$_ = $rxnObj->equation();
-		my @MatchArray = /(cpd\d\d\d\d\d)/g;
-		for (my $j=0; $j < @MatchArray; $j++) {
-			$CompoundList{$MatchArray[$j]}->{"c"} = 1;
-		}
-		$_ = $rxnObj->equation();
-		@MatchArray = /(cpd\d\d\d\d\d\[\D\])/g;
-		for (my $j=0; $j < @MatchArray; $j++) {
-			if ($MatchArray[$j] =~ m/(cpd\d\d\d\d\d)\[(\D)\]/) {
-				$CompartmentsPresent{lc($2)} = 1;
-				$CompoundList{$1}->{lc($2)} = 1;
+			if (!defined($rxnObj)) {
+				ModelSEED::utilities::ERROR("Model ".$self->id()." reaction ".$rxnmdl->[$i]->REACTION()." could not be found in model database!");
+			}
+			push(@{$reactionCompartments},$rxnmdl->[$i]->compartment());
+			push(@ReactionList,$rxnObj);
+			$_ = $rxnObj->equation();
+			my @MatchArray = /(cpd\d\d\d\d\d)/g;
+			for (my $j=0; $j < @MatchArray; $j++) {
+				$CompoundList{$MatchArray[$j]}->{"c"} = 1;
+			}
+			$_ = $rxnObj->equation();
+			@MatchArray = /(cpd\d\d\d\d\d\[\D\])/g;
+			for (my $j=0; $j < @MatchArray; $j++) {
+				if ($MatchArray[$j] =~ m/(cpd\d\d\d\d\d)\[(\D)\]/) {
+					$CompartmentsPresent{lc($2)} = 1;
+					$CompoundList{$1}->{lc($2)} = 1;
+				}
 			}
 		}
 	}
@@ -6202,7 +6225,7 @@ sub publicTable {
 	} elsif ($args->{type} eq "F") {
 		   return $self->generate_feature_data_table($args);
 	}
-	ModelSEED::globals::ERROR("Input type not recognized");
+	ModelSEED::utilities::ERROR("Input type not recognized");
 }
 
 =head3 rxnmdl
@@ -6806,18 +6829,18 @@ Description:
 sub integrateUploadedChanges {
 	my ($self,$username) = @_;
 	if (!-e $self->directory().$self->id()."-uploadtable.tbl") {
-		ModelSEED::globals::ERROR("uploaded file not found for model!");
+		ModelSEED::utilities::ERROR("uploaded file not found for model!");
 	}
 	my $tbl = $self->load_model_table("ModelReactionUpload",1);
 	if (!defined($tbl)) {
-		ModelSEED::globals::ERROR("could not load uploaded reaction table!");
+		ModelSEED::utilities::ERROR("could not load uploaded reaction table!");
 	}
 	if (substr($tbl->prefix(),0,length($self->id())) ne $self->id()) {
-		ModelSEED::globals::ERROR("model labeled in uploaded file does not match reference model!");
+		ModelSEED::utilities::ERROR("model labeled in uploaded file does not match reference model!");
 	}
 	my $newrxntbl = $self->reaction_table(1);
 	if (!defined($newrxntbl)) {
-		ModelSEED::globals::ERROR("could not load reaction table!");
+		ModelSEED::utilities::ERROR("could not load reaction table!");
 	}
 	for (my $i=0; $i < $newrxntbl->size(); $i++) {
 		my $row = $newrxntbl->get_row($i);
@@ -7358,7 +7381,7 @@ sub runFBAStudy {
 	File::Path::mkpath($fbaObj->directory()."/reaction/");
 	my $bioRxn=$self->biomassReaction();
 	if(!defined($bioRxn) || $bioRxn eq "NONE"){
-		ModelSEED::globals::ERROR("Model ".$self->id()." does not contain a biomass function");
+		ModelSEED::utilities::ERROR("Model ".$self->id()." does not contain a biomass function");
 	}
 	$self->figmodel()->get_reaction($bioRxn)->print_file_from_ppo({filename => $fbaObj->directory()."/reaction/".$bioRxn});
 	$fbaObj->createProblemDirectory({
@@ -7494,7 +7517,7 @@ sub fbaComboDeletions {
 		runProblem => 1,
 		clearOuput => 1
 	});
-	ModelSEED::globals::ERROR("Could not load results for combination knockout study") if (!defined($results->{Wildtype}));	
+	ModelSEED::utilities::ERROR("Could not load results for combination knockout study") if (!defined($results->{Wildtype}));	
 	my $output = {wildtype => $results->{Wildtype}};
 	foreach my $genes (keys(%{$results})) {
 		if ($results->{$genes} < 0.000001) {
@@ -7563,7 +7586,7 @@ sub fbaFVA {
 		clearOuput => 1
 	});
 	#Checking that results were returned
-	ModelSEED::globals::ERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
+	ModelSEED::utilities::ERROR("No results returned by flux balance analysis.") if (!defined($results->{tb}));
 	#Loading data into database if requested
 	if ($args->{saveFVAResults} == 1) {
 		my $parameters = "";
@@ -7654,7 +7677,7 @@ sub fbaCalculateGrowth {
 =cut
 sub fbaCalculateMinimalMedia {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		numsolutions => 1,
 		fbaStartParameters => {},
 	});
@@ -8048,7 +8071,7 @@ Description:
 
 sub fbaGapGen {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		targetParameters => {},
 		referenceParameters => {},
 		numSolutions => 1
@@ -8280,7 +8303,7 @@ sub remove_reaction {
 	my ($self, $rxnId, $compartment) = @_;
 	my $result = $self->removeReactions({ids=>[$rxnId],compartments=>[$compartment],reason=>"Model controls",user=>$self->owner(),trackChanges=>1});
 	if (defined($result->{error})) {
-		ModelSEED::globals::ERROR($result->{error});
+		ModelSEED::utilities::ERROR($result->{error});
 	}
 	return {};
 }

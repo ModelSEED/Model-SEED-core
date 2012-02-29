@@ -10,11 +10,8 @@ __PACKAGE__->meta->setup(
     columns => [
         reaction_uuid => { type => 'character', length => 36, not_null => 1 },
         alias         => { type => 'varchar', length => 255, not_null => 1 },
-        modDate       => { type => 'varchar', length => 45 },
         type          => { type => 'varchar', length => 32, not_null => 1 },
     ],
-
-    primary_key_columns => [ 'type', 'alias' ],
 
     foreign_keys => [
         reaction => {

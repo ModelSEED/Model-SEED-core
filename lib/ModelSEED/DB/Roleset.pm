@@ -3,6 +3,7 @@ package ModelSEED::DB::Roleset;
 
 use strict;
 use Data::UUID;
+use DateTime;
 
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
 
@@ -25,24 +26,16 @@ __PACKAGE__->meta->setup(
     primary_key_columns => [ 'uuid' ],
 
     relationships => [
-        children => {
-            map_class => 'ModelSEED::DB::RolesetParent',
-            map_from  => 'parent',
-            map_to    => 'child',
-            type      => 'many to many',
-        },
-
-        parents => {
-            map_class => 'ModelSEED::DB::RolesetParent',
-            map_from  => 'child',
-            map_to    => 'parent',
-            type      => 'many to many',
-        },
-
         roles => {
             map_class => 'ModelSEED::DB::RolesetRole',
             map_from  => 'roleset',
             map_to    => 'role',
+            type      => 'many to many',
+        },
+        mappings => {
+            map_class => 'ModelSEED::DB::MappingRoleset',
+            map_from  => 'roleset',
+            map_to    => 'biochemistry',
             type      => 'many to many',
         },
     ],
@@ -61,6 +54,9 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
             return Data::UUID->new()->create_str();
         }   
 });
+
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 
 1;

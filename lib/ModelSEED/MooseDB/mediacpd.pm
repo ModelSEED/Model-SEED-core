@@ -28,7 +28,7 @@ has 'minFlux' => (is => 'ro', isa => 'Int', required => 1, index => 4, metaclass
 
 sub BUILD {
     my ($self,$params) = @_;
-	$params = ModelSEED::globals::ARGS($params,[],{});
+	$params = ModelSEED::utilities::ARGS($params,[],{});
 }
 
 around 'BUILDARGS' => sub {
@@ -56,7 +56,7 @@ sub print {
 
 sub parse {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["filedata"],{});
+	$args = ModelSEED::utilities::ARGS($args,["filedata"],{});
 	for (my $i=0; $i < @{$args->{filedata}}; $i++) {
 		my $array = [split(/\t/,$args->{filedata}->[$i])];
 		my $function = $array->[0];

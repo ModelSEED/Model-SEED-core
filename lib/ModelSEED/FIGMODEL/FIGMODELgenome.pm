@@ -16,7 +16,7 @@ Description:
 =cut
 sub new {
 	my ($class,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,["genome"],{});
+	$args = ModelSEED::utilities::ARGS($args,["genome"],{});
 	my $self = {_genome => $args->{genome}};
 	bless $self;
     $self->{_ppo} = $self->figmodel()->database()->get_object("genomestats",{GENOME => $self->genome()});
@@ -25,7 +25,7 @@ sub new {
 			$self->{_ppo} = $self->update_genome_stats();
 		}
 		if (!defined($self->{_ppo})) {
-			ModelSEED::globals::ERROR("Could not find genome in database:".$self->genome());
+			ModelSEED::utilities::ERROR("Could not find genome in database:".$self->genome());
 		}
 	}
 	return $self;
@@ -168,7 +168,7 @@ Description:
 =cut
 sub feature_table {
 	my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		genome => $self->genome(),
 		getSequences => 0,
 		getEssentiality => 1,
@@ -567,7 +567,7 @@ Description:
 
 sub classifyrespiration {
     my ($self,$args) = @_;
-	$args = ModelSEED::globals::ARGS($args,[],{
+	$args = ModelSEED::utilities::ARGS($args,[],{
 		genome => $self->genome(),
 	});
 
@@ -597,26 +597,193 @@ sub classifyrespiration {
 	return $args->{genome}." is not handled by our current tests!";
 }
 
+sub getGeneSimilarityHitTable {
+    my ($self, $args) = @_;
+    my $sap = SAPserver->new();
 
-	
-=head
-open SUBOUTPUT, ">c:/Respiration/resp_data_all.txt" or die "COUlnd't open  the   file: $!\n";
-open SUBOUTPUTM, ">c:/Respiration/resp_data_good.txt" or die "COUlnd't open  the   file: $!\n";
+    print "Getting genes for: " . $self->genome;
+    my $time = time();
+    my $feature_objs = $self->feature_table()->get_objects();
+    print " (took " . (time() - $time) . "s)\n";
 
-	  
-close SUBOUTPUT;
-close SUBOUTPUTM;
-=cut
+    my @features;
+    map {push(@features, $_->ID)} @$feature_objs;
 
+    my $role = $self->figmodel()->get_role();
 
+    # get the distances from the tree
+    print "Getting genome distances";
+    $time = time();
+    my $tree_file = "data/genome/16s.tree";
+    if (!-e $tree_file) {
+	die "Error: Couldn't find tree file: $tree_file\n";
+    }
 
+    my $tree = ffxtree::read_tree($tree_file);
+    my $distances = ffxtree::distances_from_tip($tree, $self->genome());
+    print " (took " . (time() - $time) . "s)\n";
 
+    my $start = 0;
+    my $results = [];
+    $time = time();
+    while ($start < scalar @features) {
+	my $stop = ($start + 99) >= scalar @features ? scalar @features - 1 : $start + 99;
 
+	print "Processing genes " . ($start+1) . " to " . ($stop+1);
 
+	my @feat_chunk = @features[$start..$stop];
+	my @all_sims = SeedUtils::sims(\@feat_chunk, undef, 1, 'fig');
 
+	$start += 100;
 
+	# reduce the data, only need gene, sim gene, and score
+	my @sims;
+	my $features_to_match = [];
+	foreach my $sim (@all_sims) {
+	    push(@sims, [$sim->[0], $sim->[1], $sim->[10]]);
+	    push(@$features_to_match, $sim->[1]);
+	}
 
+	my $gene_to_function = $sap->ids_to_functions({
+	    -ids => $features_to_match
+        });
 
+	# hash from gene to feature to list of sim genes
+	my $gene_hash = {};
+	foreach my $sim (@sims) {
+	    my $gene = $sim->[0];
+	    my $sim_gene = $sim->[1];
+	    unless (exists($gene_hash->{$gene})) {
+		$gene_hash->{$gene} = {};
+	    }
 
+	    my $function = $gene_to_function->{$sim_gene};
+
+	    if (defined $function && $function ne '') {
+		$function = $role->convert_to_search_role({ name => $function });
+
+		unless (exists($gene_hash->{$gene}->{$function})) {
+		    $gene_hash->{$gene}->{$function} = [];
+		}
+
+		push(@{$gene_hash->{$gene}->{$function}}, $sim);
+	    }
+	}
+
+	# loop through genes
+	foreach my $gene (keys %$gene_hash) {
+	    # loop through functions
+	    foreach my $function (keys %{$gene_hash->{$gene}}) {
+		my $sims = $gene_hash->{$gene}->{$function};
+
+		my $first = 1;
+		my $min_score_sim;
+		my $min_dist_sim;
+		my $avg_score = 0;
+		my $avg_dist = 0;
+		my $num_hits = scalar @$sims;
+
+		# loop through sim hits, want to find:
+		#  1. sim with lowest score (including distance)
+		#  2. sim with lowest distance (including score)
+		#  3. average score
+		#  4. average distance
+
+		foreach my $sim (@$sims) {
+		    # calculate distance
+		    my $genome = $sim->[1];
+		    $genome =~ s/fig\|//;
+		    $genome =~ s/\.peg.*//;
+
+		    if (exists $distances->{$genome}) {
+			$sim->[3] = $distances->{$genome};
+		    } else {
+			$sim->[3] = 100;
+		    }
+
+		    if ($first) {
+			$min_score_sim = $sim;
+			$min_dist_sim = $sim;
+			$first = 0;
+		    } else {
+			# see if score is lower
+			if ($sim->[2] > $min_score_sim->[2]) {
+			    # majority of cases
+			} elsif ($sim->[2] = $min_score_sim->[2]) {
+			    # pick sim with lowest genome distance
+			    if ($sim->[3] < $min_score_sim->[3]) {
+				$min_score_sim = $sim;
+			    }
+			} else {
+			    $min_score_sim = $sim;
+			}
+
+			# see if distance is lower
+			if ($sim->[3] > $min_dist_sim->[3]) {
+			    # majority of cases
+			} elsif ($sim->[3] = $min_dist_sim->[3]) {
+			    # pick sim with lowest score
+			    if ($sim->[2] < $min_dist_sim->[2]) {
+				$min_dist_sim = $sim;
+			    }
+			} else {
+			    $min_dist_sim = $sim;
+			}
+		    }
+
+		    # add values to averages
+		    if ($sim->[2] > 0) {
+			$avg_score += log($sim->[2])/log(10);
+		    } else {
+			$avg_score -= 300;
+		    }
+
+		    $avg_dist += $sim->[3];
+		}
+
+		$avg_score = $avg_score / $num_hits;
+		$avg_dist = $avg_dist / $num_hits;
+
+		my $row = [
+			 $gene,
+			 $function,
+			 $min_score_sim->[2],
+			 $min_score_sim->[3],
+			 $min_score_sim->[1],
+			 $min_dist_sim->[3],
+			 $min_dist_sim->[2],
+			 $min_dist_sim->[1],
+			 $avg_score,
+			 $avg_dist,
+			 $num_hits
+		    ];
+
+		push(@$results, $row);
+	    }
+	}
+
+	print " (took " . (time() - $time) . "s)\n";
+	$time = time();
+
+	# stop early
+#	if ($start > 300) {
+#	    last;
+#	}
+    }
+
+    # print results to a table
+    open GENEHITS, ">" . $self->genome() . "GeneHitTable.tbl" or die $!;
+    print GENEHITS join("\t", qw(Gene SimFunction MinScore MinScoreDist MinScoreGene MinDist MinDistScore MinDistGene AvgScore AvgDist NumHits)), "\n";
+
+    foreach my $row (@$results) {
+	print GENEHITS join("\t", @$row), "\n";
+    }
+
+    return;
+}
+
+sub getTreeSimilarityHitTable {
+
+}
 
 1;

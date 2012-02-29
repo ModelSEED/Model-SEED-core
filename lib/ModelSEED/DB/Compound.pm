@@ -1,10 +1,33 @@
 package ModelSEED::DB::Compound;
-
-
 use strict;
 use Data::UUID;
-
+use DateTime;
+use ModelSEED::ApiHelpers;
 use base qw(ModelSEED::DB::DB::Object::AutoBase2);
+
+sub default {
+    return {
+	columns => "*",
+	with_rels => ["compound_aliases"],
+	ref_rels => []
+    }
+}
+
+sub serialize {
+    my ($self, $args, $ctx) = @_;
+    my $hash = {};
+    ModelSEED::ApiHelpers::serializeAttributes(
+        $self, [$self->meta->columns], $hash);
+    my $aliases = [];
+    foreach my $alias ($self->compound_aliases) {
+        push(@$aliases, { type => $alias->type, alias => $alias->alias});
+    }
+    $hash->{compound_aliases} = $aliases;
+    return $hash;
+}
+
+    
+
 
 __PACKAGE__->meta->setup(
     table   => 'compounds',
@@ -103,6 +126,8 @@ __PACKAGE__->meta->column('uuid')->add_trigger(
         }   
 });
 
+__PACKAGE__->meta->column('modDate')->add_trigger(
+   on_save => sub { return DateTime->now() });
 
 1;
 

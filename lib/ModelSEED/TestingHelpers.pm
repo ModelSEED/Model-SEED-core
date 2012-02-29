@@ -18,10 +18,13 @@
 use strict;
 use warnings;
 use File::Copy::Recursive qw(dircopy);
+use Cwd qw(abs_path);
+use File::Basename qw(dirname basename);
 use File::Path qw(make_path remove_tree);
 use File::Temp;
 use ModelSEED::FIGMODEL;
 use Data::Dumper;
+use ModelSEED::CoreApi;
 
 package ModelSEED::TestingHelpers;
 
@@ -172,7 +175,7 @@ sub getTestConfig {
     my $TestDbURL = "http://bioseed.mcs.anl.gov/~devoid/TestDB.tgz";
     my $dataDir = $prod->config('database root directory')->[0]; 
     if ( !-d $dataDir ) {
-        ModelSEED::globals::ERROR("database root directory not found at $dataDir\n");
+        ModelSEED::utilities::ERROR("database root directory not found at $dataDir\n");
     }
     $dataDir =~ s/\/$//;
     # Ideally we have a copy of all of the test data already
@@ -184,13 +187,13 @@ sub getTestConfig {
         if ( !-f "$dataDir/TestDB.tgz") {
             system("curl $TestDbURL 2> /dev/null > $dataDir/TestDB.tgz");#Note, this does not work in windows...
             if (!-f "$dataDir/TestDB.tgz") {
-                ModelSEED::globals::ERROR("Unable to copy TestDB.tgz from $TestDbURL");
+                ModelSEED::utilities::ERROR("Unable to copy TestDB.tgz from $TestDbURL");
             }
         }
         mkdir $TestDataDir;
         system("tar -xzf $dataDir/TestDB.tgz -C $TestDataDir");#Note, this does not work in windows...
         if( !-d "$TestDataDir/data/ModelDB" || !-f "$TestDataDir/data/ModelDB/ModelDB.sqlite") {
-            ModelSEED::globals::ERROR("TestDB.tgz does not look like I expected!");
+            ModelSEED::utilities::ERROR("TestDB.tgz does not look like I expected!");
         }
         system("sqlite3 $TestDataDir/data/ModelDB/ModelDB.db < $TestDataDir/data/ModelDB/ModelDB.sqlite");
     } 
@@ -220,4 +223,24 @@ sub getTestConfig {
     $rtv->{"Workspace directory"} = [File::Temp::tempdir()];
     return $rtv;
 } 
+
+sub getDebugCoreApi {
+    my ($self) = @_;
+    if(!defined($self->{_debugCoreApi})) {
+        #my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
+        #my ($fh, $tmpFile) = File::Temp::tempfile();
+        #close($fh);
+        #system("cat $sqliteFile | sqlite3 $tmpFile");
+        #$self->{_debugCoreApi} = ModelSEED::CoreApi->new({
+        #    database => $tmpFile,
+        #    driver => "SQLite",
+        #});
+        print File::Basename::dirname(__FILE__)."/../../data/NewScheme.db\n";
+        $self->{_debugCoreApi} = ModelSEED::CoreApi->new({
+            database => File::Basename::dirname(__FILE__)."/../../data/NewScheme.db",
+            driver => "SQLite",
+        });  
+    }
+    return $self->{_debugCoreApi};
+}
 1;
