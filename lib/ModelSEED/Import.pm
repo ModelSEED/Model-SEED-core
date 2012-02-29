@@ -826,7 +826,6 @@ sub _makeConversionFns {
 sub importBiochemistryFromDir {
     my ($self, $dir, $username, $name) = @_;
     my $missed = {};
-    $self->om->db->begin_work;
     $dir = $self->standardizeDirectory($dir);
     unless (-d $dir) {
         warn "Unable to filed $dir\n";
@@ -854,7 +853,6 @@ sub importBiochemistryFromDir {
         $existingBiochem->add_biochemistry_aliases(
             {username => $username, id => $name});
         $existingBiochem->save();
-        $self->om->db->commit;
         $self->checker->check(
             "Imported biochemistry $username/$name [filehash] ",
             elapsed(), $missed);
@@ -975,7 +973,6 @@ sub importBiochemistryFromDir {
 
     # TODO - check if we've added this already, lock if not already locked
     $bio->save();
-    $self->om->db->commit;
     return $bio;
 }
 
@@ -983,11 +980,9 @@ sub importMappingFromDir {
     my ($self, $dir, $RDB_biochemObject, $username, $name) = @_;
     my $missed = {};
     # first validate that the dir exists and has the right files
-    $self->om->db->begin_work;
     my $ctx = $self->cache;
     unless (-d $dir) {
         $self->logger->log("Unable to find $dir\n");
-        $self->om->db->commit;
         return undef;
     }
     $dir = $self->standardizeDirectory($dir);
@@ -1007,7 +1002,6 @@ sub importMappingFromDir {
         $existingMap->add_mapping_aliases(
             {username => $username, id => $name});
         $existingMap->save();
-        $self->om->db->commit;
         $self->checker->check("Imported Mapping $username/$name [filehash] ",
             elapsed(), $missed);
         return $existingMap;
@@ -1112,7 +1106,6 @@ sub importMappingFromDir {
 
     # TODO - check if we've added this already, lock if not already locked
     $map->save();
-    $self->om->db->commit;
     return $map;
 }
 
@@ -1152,7 +1145,6 @@ sub getGenomeObject {
 sub importAnnotationFromDir {
     my ($self, $dir, $username, $id) = @_;
     my $missed = {};
-    $self->om->db->begin_work;
     elapsed();
 
     # Directory will contain a features.txt file
@@ -1163,7 +1155,6 @@ sub importAnnotationFromDir {
         $existingAnno->add_mapping_aliases(
             {username => $username, id => $id});
         $existingAnno->save();
-        $self->om->db->commit;
         $self->checker->check("Imported Annotation $username/$id [filehash] ",
             elapsed(), $missed);
         return $existingAnno;
@@ -1181,7 +1172,6 @@ sub importAnnotationFromDir {
             unless (defined($RDB_genome));
         unless (defined($RDB_genome)) {
             push(@{$missed->{genome}}, $row->{GENOME}->[0]);
-            $self->om->db->commit;
             $self->checker->check(
                 "Failed to import annotation for $username/$id ",
                 elapsed(), $missed);
@@ -1226,7 +1216,6 @@ sub importAnnotationFromDir {
     my $final = $self->cache("annotation", $annotation_hash, $RDB_annotation);
     $self->checker->check("Imported annotation $username/$id [complete] ",
         elapsed(), $missed);
-    $self->om->db->commit;
     return $final;
 }
 
@@ -1290,7 +1279,6 @@ sub importModelFromDir {
     }
 
     # do rxnmdl
-    $self->om->db->begin_work;
     my $file = "$dir/rxnmdl.txt";
     my $tbl;
     my $config = {
@@ -1372,7 +1360,6 @@ sub importModelFromDir {
     # TODO - file hash for models
     $self->checker->check("Imported model $username/$id [complete] ",
         elapsed(), $missed);
-    $self->om->db->commit;
     return $RDB_model;
 }
 
