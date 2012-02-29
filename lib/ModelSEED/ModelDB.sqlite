@@ -1,6 +1,6 @@
 -- 
 -- Created by SQL::Translator::Producer::SQLite
--- Created on Tue Feb 28 17:02:46 2012
+-- Created on Wed Feb 29 15:11:55 2012
 -- 
 
 BEGIN TRANSACTION;
@@ -150,9 +150,9 @@ CREATE TABLE genomes (
   locked TINYINT(1),
   public TINYINT(1),
   id VARCHAR(32),
-  name VARCHAR(32),
-  source VARCHAR(32),
-  type VARCHAR(32),
+  name VARCHAR(255),
+  source VARCHAR(255),
+  type VARCHAR(255),
   taxonomy VARCHAR(255),
   cksum VARCHAR(255),
   size int(11),
