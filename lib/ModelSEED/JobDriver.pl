@@ -13,14 +13,14 @@ if (defined($ENV{"MSCONFIGDIR"})) {
 } else {
 	use lib '/vol/model-prod/Model-SEED-core/config/';
 }
-use ModelSEEDboootstrap;
+use ModelSEEDbootstrap;
 use ModelSEED::ModelDriver;
 use Try::Tiny;
 use File::Temp;
 use Cwd;
 my $JOBDIR =  "/vol/model-prod/jobfiles/";
 if (defined($ENV{"MSJOBDIR"})) {
-	use lib $ENV{"MSCONFIGDIR"};
+	$JOBDIR = $ENV{"MSJOBDIR"};
 }
 #Creating temporary environment file
 my ($fh, $filename) = File::Temp::tempfile(
