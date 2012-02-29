@@ -17,34 +17,52 @@ use ModelSEED::MS::CompoundSet;
 use ModelSEED::MS::Media;
 use Carp qw(cluck);
 use namespace::autoclean;
+use DateTime;
+use Data::UUID;
 
-has om => (is => 'ro', isa => 'ModelSEED::CoreApi');
-has uuid => (is => 'ro', isa => 'Str', required => 1);
-has modDate => (is => 'ro', isa => 'Str');
-has locked => (is => 'ro', isa => 'Int', default => 0);
-has public => (is => 'ro', isa => 'Int', default => 1);
-has name => (is => 'ro', isa => 'Str');
+
+has om      => (is => 'rw', isa => 'ModelSEED::CoreApi');
+has uuid    => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
+has locked  => (is => 'rw', isa => 'Int', default => 0);
+has public  => (is => 'rw', isa => 'Int', default => 1);
+has name    => (is => 'rw', isa => 'Str', default => '');
 
 # Subobjects
-has reactions => (is => 'rw', default => sub { return []; },
-    isa =>'ArrayRef[ModelSEED::MS::Reaction]');
-has compounds => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compound]');
-has media => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Media]');
-has reactionset => ( is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Reactionset]');
-has compoundset => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compoundset]');
-has compartments => ( is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compartment]');
-# Constants
-has dbAttributes => ( is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
-has indices => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildindices');
+has reactions => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]'
+);
+has compounds => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]'
+);
+has media => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]'
+);
+has reactionsets => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]'
+);
+has compoundsets => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]'
+);
+has compartments => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compartment]'
+);
 
-has dbType => (is => 'ro', isa => 'Str',default => "Compound");
+# Constants
+has dbAttributes =>
+    (is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
+has indices =>
+    (is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildindices');
+has _type => (is => 'ro', isa => 'Str', default => "Biochemistry");
+
 #Internally maintained variables
-has changed => (is => 'rw', isa => 'Bool',default => 0);
+has changed => (is => 'rw', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
     my ($self, $params) = @_;
@@ -66,10 +84,10 @@ sub BUILD {
             compartments => "ModelSEED::MS::Compartment",
 			reactions => "ModelSEED::MS::Reaction",
 			media => "ModelSEED::MS::Media",
-			reactionset => "ModelSEED::MS::Reactionset",
-			compoundset => "ModelSEED::MS::Compoundset",
+			reactionsets => "ModelSEED::MS::Reactionset",
+			compoundsets => "ModelSEED::MS::Compoundset",
 		};
-        my $order = [qw(compounds compartments reactions media reactionset compoundset)];
+        my $order = [qw(compounds compartments reactions media reactionsets compoundsets)];
         foreach my $name (@$order) {
             my $values = $rels->{$name};
             $params->{$name} = [];
@@ -86,17 +104,11 @@ sub BUILD {
 
 sub save {
     my ($self, $om) = @_;
-    $om = $self->om unless(defined($om));
+    $om = $self->om unless (defined($om));
     if (!defined($om)) {
-    	ModelSEED::utilities::ERROR("No ObjectManager");
+        ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    
-    
-    
-    
-    
-    
-    return $om->save($self->type, $self->serializeToDB());
+    return $om->save($self->_type, $self->serializeToDB());
 }
 
 sub _load_reactions {
@@ -160,7 +172,7 @@ sub serializeToDB {
     my @relations = qw( media compartments compounds reactions compoundsets reactionsets );
 	foreach my $relation (@relations) {
         $data->{relationships}->{$relation} = [];
-        foreach my $obj ($self->$relation) {
+        foreach my $obj (@{$self->$relation}) {
             push(@{$data->{relationships}->{$relation}}, $obj->serializeToDB());
         }
 	}
@@ -292,6 +304,7 @@ sub buildIndex {
 	}
 }
 
+sub _buildDbAttributes { return [ qw( uuid modDate name locked public ) ]; }
 sub _buildindices { return {}; }
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
