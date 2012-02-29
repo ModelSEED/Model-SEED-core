@@ -437,7 +437,7 @@ sub _makeTypesToHashFns {
             $_[0]->id . join(',', sort map { $_->id } $_[0]->parents));
     };
     $f->{model_compartment} = sub {
-        return md5_hex($f->{compartment}->($_[0]->compartment)
+        return md5_hex($_[0]->compartment_uuid
                 . $_[0]->compartmentIndex
                 . $f->{model}->($_[0]->model));
     };
