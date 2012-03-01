@@ -131,7 +131,6 @@ if (defined($currentFunction)) {
 #Calling functions
 for (my $i=0; $i < @{$functions}; $i++) {
 	my $function = $functions->[$i]->{name};
-	print $function."\n";
 	my @Data = ($function);
 	if (keys(%{$functions->[$i]->{argHash}}) > 0) {
 		push(@Data,$functions->[$i]->{argHash});
@@ -139,7 +138,9 @@ for (my $i=0; $i < @{$functions}; $i++) {
 		push(@Data,@{$functions->[$i]->{argList}});
 	}
 	try {
+    	print $function."1\n";
     	$Status .= $driv->$function(@Data);
+    	print $function."2\n";
     	print $Status."\n";
    	} catch {
         printErrorLog($_);
