@@ -103,6 +103,7 @@ sub monitor {
 			my $stillRunning;
 			for (my $m=0; $m < @{$running}; $m++) {
 				my $object = $running->[$m];
+				print "Command:".$object->COMMAND()."\n";
 				my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
 				if (-e $filename) {
 					#Adding the job to the finished job list
