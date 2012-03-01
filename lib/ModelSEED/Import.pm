@@ -310,7 +310,7 @@ sub _makeTypesToHashFns {
                 . ($_[0]->formula || '')
                 . join(',',
                 sort map { $f->{compound_alias}->($_) }
-                    $_[0]->compound_aliases)
+                    ($_[0]->compound_aliases || ()))
         );
     };
     $f->{compound_alias} = sub {
@@ -811,7 +811,7 @@ sub _makeConversionFns {
         my ($self, $row) = @_;
         my $compound = $self->uuidCache("compound", $row->{compound}->[0]);
         my $compartment
-            = $self->uuidCache("model_compartment", $row->{compartment}->[0]);
+            = $self->uuidCache("model_compartment", $row->{model_compartment}->[0]);
         return {
             model_compartment_uuid => $compartment,
             compound_uuid          => $compound,
@@ -982,7 +982,6 @@ sub importBiochemistryFromDir {
 sub importMappingFromDir {
     my ($self, $dir, $RDB_biochemObject, $username, $name) = @_;
     my $missed = {};
-    warn "Entering importMappingFromDir, seriously wtf\n";
     # first validate that the dir exists and has the right files
     $self->om->db->begin_work;
     my $ctx = $self->cache;
@@ -1028,11 +1027,8 @@ sub importMappingFromDir {
     }
 
     # Now create mapping object
-    warn "Creating mapping object\n";
     my $RDB_mappingObject = $self->om()->create_object('mapping');
-    warn "Adding biochemistry_uuid to mapping object\n";
     $RDB_mappingObject->biochemistry_uuid($RDB_biochemObject->uuid);
-    warn "Added biochemistry_uuid to mapping object\n";
 
     # Create complexes
     for (my $i = 0; $i < $tables->{complex}->size(); $i++) {
@@ -1122,7 +1118,6 @@ sub importMappingFromDir {
 
 sub getGenomeObject {
     my ($self, $genomeID) = @_;
-    warn $genomeID;
     unless (defined($self->idCache("genome", $genomeID))) {
         my $columns = ['dna-size', 'gc-content', 'pegs', 'name', 'taxonomy',
             'md5'];
@@ -1263,7 +1258,6 @@ sub importModelFromDir {
     
     # Import or add mapping object
     if ($isNotImported) {
-        warn "Building default mapping with " . $RDB_biochemistry->uuid . "\n";
         $RDB_mapping = $self->getDefaultMapping($RDB_biochemistry);
     } elsif (-d "$dir/mapping") {
         my $mappingId = $id . "-mapping";
@@ -1464,8 +1458,6 @@ sub getDefaultMedia {
                 my $compound_uuid
                     = $self->uuidCache("compound", $mediaCpd->entity());
                 unless ($compound_uuid) {
-                    warn "Couldn't find compound "
-                        . $mediaCpd->entity() . "\n";
                     next;
                 }
                 my $hash = {
@@ -1510,7 +1502,7 @@ sub getBiomass {
         my $row = {
             compound    => [$cpdbof->COMPOUND],
             coefficient => [$cpdbof->coefficient],
-            compartment => [$cpdbof->compartment],
+            model_compartment => [$cpdbof->compartment],
         };
         my $hash = $self->convert("biomass_compound", $row);
         push(@$biomassCompounds, $hash);
@@ -1539,7 +1531,6 @@ sub getDefaultBiochemistry {
 
 sub getDefaultMapping {
     my ($self, $biochemistry) = @_;
-    warn "Entering getDefaultMapping\n";
     my $alreadyExists = $self->om->get_object_by_alias(
         "mapping", "master", "default"
     );
