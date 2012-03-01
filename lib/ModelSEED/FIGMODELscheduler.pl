@@ -81,9 +81,7 @@ sub monitor {
 		} else {
 			#Getting the maximum number of processes for this queue
 			my $maxProcesses = $queues->[0]->MAXPROCESSES();
-			print "Max process:".$maxProcesses."\n";
 			#Getting the queued job list
-			print "Queue:".$queues->[0]->ID()."\n";
 			my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queues->[0]->ID()});
 			for (my $i=0; $i < @{$queued}; $i++) {
 				print "Command:".$queued->[$i]->COMMAND()."\n";
@@ -179,6 +177,7 @@ sub monitor {
 										$command =~ s/\(/.../g;
 										$command =~ s/\)/,,,/g;
 										my $usrObj = $self->figmodel()->db()->get_object("user",{login => $object->USER()});
+										print "Running:".$command."\n";
 										my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
 										#Getting the job ID
 										if (defined($output)) {
