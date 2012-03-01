@@ -15,7 +15,7 @@ __PACKAGE__->meta->setup(
         modDate      => { type => 'datetime' },
         locked       => { type => 'integer' },
         id           => { type => 'varchar', length => 32 },
-        name         => { type => 'varchar', length => 255 },
+        name         => { type => 'text' },
         searchname   => { type => 'varchar', length => 255 },
         feature_uuid => { type => 'character', length => 36 },
     ],

@@ -564,11 +564,23 @@ Definition:
 Description:
 	This function returns a list of the DNA sequence for every contig of the genome
 =cut
+
 sub classifyrespiration {
     my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		genome => $self->genome(),
 	});
+
+	my $g_id = $args->{genome};
+
+	  if ($g_id eq "ALL"){
+	  	
+	  	print " Got it ALL\n";
+	  	
+	  }
+
+	print "Here is the genome ....$g_id\n";
+
 	my $sap = $self->figmodel()->sapSvr($args->{source});
 	my $subsys = $sap->ids_in_subsystems({
 		-subsystems => ["TCA Cycle"],
@@ -771,7 +783,7 @@ sub getGeneSimilarityHitTable {
 }
 
 sub getTreeSimilarityHitTable {
-
+	
 }
 
 1;
