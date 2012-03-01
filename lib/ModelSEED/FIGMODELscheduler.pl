@@ -83,6 +83,7 @@ sub monitor {
 			my $maxProcesses = $queues->[0]->MAXPROCESSES();
 			print "Max process:".$maxProcesses."\n";
 			#Getting the queued job list
+			print "Queue:".$queues->[0]->ID()."\n";
 			my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queues->[0]->ID()});
 			for (my $i=0; $i < @{$queued}; $i++) {
 				print "Command:".$queued->[$i]->COMMAND()."\n";
