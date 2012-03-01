@@ -81,8 +81,12 @@ sub monitor {
 		} else {
 			#Getting the maximum number of processes for this queue
 			my $maxProcesses = $queues->[0]->MAXPROCESSES();
+			print "Max process:".$maxProcesses."\n";
 			#Getting the queued job list
 			my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queues->[0]->ID()});
+			for (my $i=0; $i < @{$queued}; $i++) {
+				print "Command:".$queued->[$i]->COMMAND()."\n";
+			}
 			#Getting the list of running processes
 			my $running = $self->db()->get_objects("job",{STATE => 1,QUEUE => $queues->[0]->ID()});
 			#Getting the list of jobs in the qsub queue
@@ -138,7 +142,6 @@ sub monitor {
                 }
             }
 			#Checking if processors are available
-			print "test1\n";
 			if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
 				my $jobSlotsRemaining = $maxProcesses - $runningCount;
 				for (my $m=0; $m < 10; $m++) {
