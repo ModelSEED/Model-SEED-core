@@ -39,7 +39,7 @@ $sched->$FunctionName(@Data);
 package scheduler;
 
 sub new {
-	my $self = {_figmodel => ModelSEED::FIGMODEL->new("master")};
+	my $self = {_figmodel => ModelSEED::FIGMODEL->new()};
     return bless $self;
 }
 
@@ -48,14 +48,9 @@ sub figmodel {
 	return $self->{_figmodel};
 }
 
-sub jobdb {
-	my ($self) = @_;
-	return $self->figmodel()->database()->get_object_manager("job");
-}
-
-sub queuedb {
-	my ($self) = @_;
-	return $self->figmodel()->database()->get_object_manager("queue");
+sub db {
+    my ($self) = @_;
+	return $self->figmodel()->database();
 }
 
 sub timestamp {
@@ -80,16 +75,16 @@ sub monitor {
 	#Starting the monitoring cycle
 	while ($continue == 1) {
 		#Getting the list of queues
-		my $queues = $self->queuedb()->get_objects({'NAME' => $queue});
+		my $queues = $self->db()->get_objects("queue",{'NAME' => $queue});
 		if (!defined($queues->[0])) {
 			$continue = 0;	
 		} else {
 			#Getting the maximum number of processes for this queue
 			my $maxProcesses = $queues->[0]->MAXPROCESSES();
 			#Getting the queued job list
-			my $queued = $self->jobdb()->get_objects({STATE => 0,QUEUE => $queues->[0]->ID()});
+			my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queues->[0]->ID()});
 			#Getting the list of running processes
-			my $running = $self->jobdb()->get_objects({STATE => 1,QUEUE => $queues->[0]->ID()});
+			my $running = $self->db()->get_objects("job",{STATE => 1,QUEUE => $queues->[0]->ID()});
 			#Getting the list of jobs in the qsub queue
 			my $output = $self->figmodel()->runexecutable("qstat");
 			my $runningJobs;
@@ -212,7 +207,7 @@ sub add {
 	#Setting the owner of the process being added
 	my $Queue = -1;
 	if (defined($Data[3])) {
-		my $objects = $self->queuedb()->get_objects( { 'NAME' => $Data[3] } );
+		my $objects = $self->db()->get_objects("queue",{ 'NAME' => $Data[3] } );
 		if (defined($objects) && defined($objects->[0])) {
 			$Queue = $objects->[0]->ID();
 		}
@@ -237,7 +232,7 @@ sub add {
 
 	#Adding the data to the queue
 	foreach my $Item (@{$List}) {
-		my $object = $self->jobdb()->create({ 'COMMAND' => $Item,
+		my $object = $self->db()->create_object("job",{ 'COMMAND' => $Item,
 							 'ID' => -rand(100000),
 							 'PROCESSID' => 0,
 							 'PRIORITY' => $Priority,
@@ -258,7 +253,7 @@ sub delete {
 		return "ARGUMENT SYNTAX FAIL";
     }
     
-    my $objects = $self->jobdb()->get_objects( { 'ID' => $Data[1] } );
+    my $objects = $self->db()->get_objects("job",{ 'ID' => $Data[1] } );
     if (defined($objects) && defined($objects->[0])) {
     	my $object = $objects->[0]; 
     	if ($object->STATE() == 1) {
@@ -279,7 +274,7 @@ sub delete {
 sub haltalljobs {
     my($self,@Data) = @_;
 	#Clearing the queued and running jobs
-	my $objects = $self->jobdb()->get_objects();
+	my $objects = $self->db()->get_objects("job");
     for (my $i=0; $i < @{$objects}; $i++) {
     	my $object = $objects->[$i]; 
     	if ($object->STATE() == 1) {

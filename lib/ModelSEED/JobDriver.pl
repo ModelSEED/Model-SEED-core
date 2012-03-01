@@ -138,9 +138,7 @@ for (my $i=0; $i < @{$functions}; $i++) {
 		push(@Data,@{$functions->[$i]->{argList}});
 	}
 	try {
-    	print $function."1\n";
     	$Status .= $driv->$function(@Data);
-    	print $function."2\n";
     	print $Status."\n";
    	} catch {
         printErrorLog($_);
