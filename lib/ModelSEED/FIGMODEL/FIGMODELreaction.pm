@@ -1844,8 +1844,6 @@ sub balanceReaction {
     }
     my $balanced_equation=0;
 
-    print STDERR $args->{equation},"\n";
-
     #Ready to start parsing equation
     my ($Reactants,$Products) = $self->substrates_from_equation({equation=>$args->{equation}});
     #build a hash
@@ -2102,7 +2100,7 @@ sub balanceReaction {
 	    }
 	    if($ProductHash{$Products[$i]}{"COEFF"} ne "0" && $ProductHash{$Products[$i]}{"COEFF"} ne "1" && $ProductHash{$Products[$i]}{"COEFF"} ne "-1"){
 		$ProductHash{$Products[$i]} =~ s/^-//;
-		$ProductString .= "(".$ProductHash{$Products[$i]}.") ";
+		$ProductString .= "(".$ProductHash{$Products[$i]}{"COEFF"}.") ";
 	    }
 	    $ProductString .= $Products[$i];
 	    if($ProductHash{$Products[$i]}{"COMP"} ne "c"){$ProductString.="[".$ProductHash{$Products[$i]}{"COMP"}."]";}
