@@ -143,6 +143,7 @@ sub monitor {
 			#Checking if processors are available
 			if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
 				my $jobSlotsRemaining = $maxProcesses - $runningCount;
+				print "test-".$runningCount."\n";
 				for (my $m=0; $m < 10; $m++) {
 					if ($jobSlotsRemaining <= 0) {
 						last;
