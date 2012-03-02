@@ -85,10 +85,10 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relationships}->{compound_aliases} = [];
-	foreach my $aliastype (keys(%{$self->aliases()})) {
+	$data->{relationships}->{aliases} = [];
+	foreach my $aliastype (sort keys(%{$self->aliases()})) {
 		foreach my $alias (@{$self->aliases()->{$aliastype}}) {
-			push(@{$data->{relationships}->{compound_aliases}},{
+			push(@{$data->{relationships}->{aliases}},{
 				type => "CompoundAlias",
 				attributes => {
 					compound_uuid => $self->uuid(),
@@ -99,7 +99,7 @@ sub serializeToDB {
 		}
 	}
 	$data->{relationships}->{compound_structures} = [];
-	foreach my $structureType (keys(%{$self->structures()})) {
+	foreach my $structureType (sort keys(%{$self->structures()})) {
 		if ($structureType !~ m/cksum$/) {
 			push(@{$data->{relationships}->{compound_structures}},{
 				type => "CompoundStructure",

@@ -19,6 +19,8 @@ use Carp qw(cluck);
 use namespace::autoclean;
 use DateTime;
 use Data::UUID;
+use Data::Dumper;
+$Data::Dumper::Maxdepth = 2;
 
 
 has om      => (is => 'rw', isa => 'ModelSEED::CoreApi');
@@ -92,10 +94,12 @@ sub BUILD {
             my $values = $rels->{$name};
             $params->{$name} = [];
             my $class = $subObjects->{$name};
+            my $objects = [];
             foreach my $data (@$values) {
                 $data->{biochemistry} = $self;
-                push(@{$self->{$name}}, $class->new($data));
+                push(@$objects, $class->new($data));
             }
+            $self->$name($objects);
 		}
         delete $params->{relationships}
     }
@@ -169,8 +173,8 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-    my @relations = qw( media compartments compounds reactions compoundsets reactionsets );
-	foreach my $relation (@relations) {
+    my $relations = [qw( media compartments compounds reactions compoundsets reactionsets )];
+	foreach my $relation (@$relations) {
         $data->{relationships}->{$relation} = [];
         foreach my $obj (@{$self->$relation}) {
             push(@{$data->{relationships}->{$relation}}, $obj->serializeToDB());

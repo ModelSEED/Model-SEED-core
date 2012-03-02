@@ -8,35 +8,41 @@
 use strict;
 use ModelSEED::utilities;
 use ModelSEED::MS::Compound;
+use ModelSEED::MS::Compartment;
 package ModelSEED::MS::Reaction;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
+use Digest::MD5 qw(md5_hex);
 
 #Attributes
-has 'uuid' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
-has 'modDate' =>
-    (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
-has 'id'     => (is => 'rw', isa => 'Str', required => 1);
-has 'locked' => (is => 'rw', isa => 'Int', default  => 0);
-has 'name'   => (is => 'rw', isa => 'Str', default  => "");
-has 'abbreviation' => (is => 'rw', isa => 'Str');
-has 'cksum' =>
-    (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildCksum');
-has 'deltaG'              => (is => 'rw', isa => 'Str');
+has 'uuid'     => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
+has 'modDate'  => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
+has 'id'       => (is => 'rw', isa => 'Str', required => 1);
+has 'locked'   => (is => 'rw', isa => 'Int', default  => 0);
+has 'name'     => (is => 'rw', isa => 'Str', default  => "");
+has 'cksum'    => (is => 'rw', isa => 'Str');
+has 'deltaG'   => (is => 'rw', isa => 'Str');
+has 'equation' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_buildEquation');
 has 'deltaGErr'           => (is => 'rw', isa => 'Str');
+has 'abbreviation'        => (is => 'rw', isa => 'Str');
 has 'compartment_uuid'    => (is => 'rw', isa => 'Str', required => 1);
 has 'defaultTransproton'  => (is => 'rw', isa => 'Num', default => 0);
 has 'defaultProtons'      => (is => 'rw', isa => 'Num', default => 0);
 has 'reversibility'       => (is => 'rw', isa => 'Str', default => '=');
 has 'thermoReversibility' => (is => 'rw', isa => 'Str');
-has 'equation' =>
-    (is => 'ro', isa => 'Str', lazy => 1, builder => '_buildEquation');
 
 #Subobjects
 has 'aliases' => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
-has 'reactants' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
+has 'reagents' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
 has 'transported' => (is => 'rw', isa => 'ArrayRef', default => sub { return []; });
+has 'compartment' => (
+    is      => 'rw',
+    isa     => 'Maybe[ModelSEED::MS::Compartment]',
+    lazy   => 1,
+    builder => '_getCompartment'
+);
+
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]', 
     builder => '_buildDbAttributes' );
@@ -50,58 +56,46 @@ sub BUILDARGS {
     my $rels = $params->{relationships};
     my $bio  = $params->{biochemistry};
     delete $params->{biochemistry};
+    # Set up attributes
     if(defined($attr)) {
         map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
         delete $params->{attributes};
     }
+    # Set up relationships
     if(defined($rels)) {
+        # Set up aliases
         foreach my $alias (@{$rels->{aliases} || []}) {
             push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
         }
-        $params->{reactants} = [];
-		$params->{transported} = [];
-		my ($reactants,$products,$imported,$exported) = ( [], [], [], [] );
+        my ($reagents, $transported) = ([], []);
 		foreach my $reagent (@{$rels->{reagents}}) {
-			my $cpd = $bio->getCompound({uuid => $reagent->{attributes}->{compound_uuid}});
-			if (!defined($cpd)) {
-				ModelSEED::utilities::ERROR("Could not find reaction compound ".$reagent->{attributes}->{compound_uuid}." in parent biochemistry!");	
-			}
+            my $cpd;
+            my $id = $reagent->{attributes}->{compound_uuid};
+            if (defined($bio)) {
+                $cpd = $bio->getCompound({uuid => $id});
+                die "Unknown compound: $id" unless(defined($cpd));
+            }
 			if ($reagent->{attributes}->{compartmentIndex} == 0) {
-				if ($reagent->{attributes}->{coefficient} < 0) {
-					push(@{$reactants},{
+                    my $hash = {
 						coefficient => $reagent->{attributes}->{coefficient},
-						compound => $cpd,
+                        compound_uuid => $id,
 						cofactor => $reagent->{attributes}->{cofactor}
-					});
-				} elsif ($reagent->{attributes}->{coefficient} > 0) {
-					push(@{$products},{
-						coefficient => $reagent->{attributes}->{coefficient},
-						compound => $cpd,
-						cofactor => $reagent->{attributes}->{cofactor}
-					});
-				}
+					};
+                    $hash->{compound} = $cpd if(defined($cpd));
+                    push(@$reagents, $hash);
 			} else {
-				if ($reagent->{attributes}->{coefficient} < 0) {
-					push(@{$exported},{
-						compartment => $reagent->{attributes}->{compartmentIndex},
-						coefficient => $reagent->{attributes}->{coefficient},
-						compound => $cpd,
-						cofactor => $reagent->{attributes}->{cofactor}
-					});
-				} elsif ($reagent->{attributes}->{coefficient} > 0) {
-					push(@{$imported},{
-						compartment => $reagent->{attributes}->{compartmentIndex},
-						coefficient => $reagent->{attributes}->{coefficient},
-						compound => $cpd,
-						cofactor => $reagent->{attributes}->{cofactor}
-					});
-				}
+                my $hash = {
+                    compartment => $reagent->{attributes}->{compartmentIndex},
+                    coefficient => $reagent->{attributes}->{coefficient},
+                    compound_uuid => $id,
+                    cofactor => $reagent->{attributes}->{cofactor}
+                };
+                $hash->{compound} = $cpd if(defined($cpd));
+                push(@$transported, $hash);
 			}
 		}
-		push(@{$params->{reactants}},@{$reactants});
-		push(@{$params->{reactants}},@{$products});
-		push(@{$params->{transported}},@{$imported});
-		push(@{$params->{transported}},@{$exported}); 
+        $params->{reagents} = $reagents;
+        $params->{transported} = $transported;
     }
     delete $params->{relationships};
 	return $params;
@@ -116,10 +110,10 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relations}->{reaction_aliases} = [];
-	foreach my $aliastype (keys(%{$self->aliases()})) {
-		foreach my $alias (@{$self->aliases()->{$aliastype}}) {
-			push(@{$data->{relations}->{reaction_aliases}},{
+	$data->{relationships}->{aliases} = [];
+	foreach my $aliastype (sort keys(%{$self->aliases()})) {
+		foreach my $alias (sort @{$self->aliases()->{$aliastype}}) {
+			push(@{$data->{relationships}->{aliases}},{
 				type => "ReactionAlias",
 				attributes => {
 					reaction_uuid => $self->uuid(),
@@ -129,25 +123,31 @@ sub serializeToDB {
 			});
 		}
 	}
-	$data->{relations}->{reagents} = [];
-	foreach my $reactant (@{$self->reactants()}) {
-		push(@{$data->{relations}->{reagents}},{
+	$data->{relationships}->{reagents} = [];
+    foreach my $reactant (
+        sort { $a->{compound_uuid} cmp $b->{compound_uuid} }
+        @{$self->reagents}
+        ) {
+		push(@{$data->{relationships}->{reagents}},{
 			type => "Reagent",
 			attributes => {
 				reaction_uuid => $self->uuid(),
-				compound_uuid => $reactant->{compound}->uuid(),
+				compound_uuid => $reactant->{compound_uuid},
 				compartmentIndex => 0,
 				coefficient => $reactant->{coefficient},
 				cofactor => $reactant->{cofactor}
 			}					
 		});
 	}
-	foreach my $reactant (@{$self->transported()}) {
-		push(@{$data->{relations}->{reagents}},{
+	foreach my $reactant (
+        sort { $a->{compound_uuid} cmp $b->{compound_uuid} }
+        @{$self->transported}
+    ) {
+		push(@{$data->{relationships}->{reagents}},{
 			type => "Reagent",
 			attributes => {
 				reaction_uuid => $self->uuid(),
-				compound_uuid => $reactant->{compound}->uuid(),
+				compound_uuid => $reactant->{compound_uuid},
 				compartmentIndex => $reactant->{compartment},
 				coefficient => $reactant->{coefficient},
 				cofactor => $reactant->{cofactor}
@@ -159,7 +159,7 @@ sub serializeToDB {
 
 sub transportedReactants {
     my $self = shift @_;
-    return [ grep { $_->compartmentIndex > 0 } @{$self->reactants} ];
+    return [ grep { $_->compartmentIndex > 0 } @{$self->reagents} ];
 }
 
 sub _buildDbAttributes {
@@ -172,15 +172,16 @@ sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }
 sub _buildEquation {
     my $self = shift @_;
-    my $reactants = [sort grep { $_->{coefficient} < 0 } @{$self->reactants}];
-    my $products  = [sort grep { $_->{coefficient} > 0 } @{$self->reactants}];
+    my $reactants = [sort grep { $_->{coefficient} < 0 } @{$self->reagents}];
+    my $products  = [sort grep { $_->{coefficient} > 0 } @{$self->reagents}];
     my $eqStr = [];
     foreach my $side ($reactants, $products) {
         my $eq = [];
         foreach my $side (@$side) {
             my $str   = "";
             my $coff  = $side->{coefficient};
-            my $name  = $side->{compound}->name;
+            my $name  = (defined($side->{compound})) ?
+                $side->{compound}->name : $side->{compound_uuid};
             my $index = $side->{compartmentIndex};
             $str .= "($coff) " if abs($coff) > 1;
             $str .= $name;
@@ -190,6 +191,23 @@ sub _buildEquation {
         push(@$eqStr, join(" + ", @$eq));
     }
     return join($self->reversibility, @$eqStr);
+}
+sub updateChecksum {
+    my $self = shift @_;
+    my $reactants = [sort grep { $_->{coefficient} < 0 } @{$self->reagents}];
+    my $products  = [sort grep { $_->{coefficient} > 0 } @{$self->reagents}];
+    $reactants = [ map { $_->cksum } sort { $a->cksum cmp $b->cksum } @$reactants ];
+    $products = [ map { $_->cksum } sort { $a->cksum cmp $b->cksum } @$products ];
+    $self->cksum(md5_hex( 
+        $self->compartment->uuid .
+        join("", (@$reactants, @$products))
+    ));
+    return $self->cksum;
+}
+sub _getCompartment {
+    my ($self) = @_;
+    die "No Biochemistry" unless defined $self->biochemistry;
+    return $self->biochemistry->getCompartment({ uuid => $self->compartment_uuid });
 }
 
 __PACKAGE__->meta->make_immutable;

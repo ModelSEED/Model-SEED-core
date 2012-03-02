@@ -2,17 +2,41 @@
 use Test::More;
 use Test::Exception;
 use Test::MockObject;
+use Test::Deep;
+use Data::Dumper;
+use Clone qw(clone);
 
 use File::Basename;
 use JSON::Any;
 use ModelSEED::MS::Biochemistry;
 my $testCount = 0;
 
+# Simple subroutine that calls Test::Deep
+# bag() on arrays in a deep datastructure.
+# FIXME - right now locking up
+sub bagIt {
+    my $obj = shift;
+    my $ref = ref($obj);
+    if ($ref eq 'ARRAY') {
+        return Test::Deep::bag(
+            map { $_ = bagIt($_) }
+            @$obj
+        );
+    } elsif ($ref eq 'HASH') {
+        return {
+            map { $_ => bagIt( $obj->{$_} ) }
+            keys %$obj
+        };
+    } else {
+        return $obj;
+    }
+}
+
 my ($bio, $data);
 {
     # Need to have biochemistry-data.json file in same directory as this test.
     my $dataFile = File::Basename::dirname(__FILE__)."/biochemistry-object.json";
-    ok (-f $dataFile), "Could not find $dataFile that contains biochemistry data!";
+    ok -f $dataFile, "Could not find $dataFile that contains biochemistry data!";
     local $/;
     open(my $fh, "<", $dataFile) || die("Could not open file $dataFile: $!");
     $text = <$fh>;
@@ -59,6 +83,17 @@ my ($bio, $data);
     $testCount += 3;
 }
 
+# Testing serializeToDB
+{
+    my $serial1 = $bio->serializeToDB();
+    my $clone = clone $serial1;
+    my $bio2 = ModelSEED::MS::Biochemistry->new($clone);
+    my $serial2 = $bio2->serializeToDB();
+    $serial1 = bagIt($serial1);
+    #$serial2 = bagIt($serial2);
+    cmp_deeply $serial2, $serial1, "serializeToDB should have round trip integrity";
+    $testCount += 1;
+}
 
 # Testing save
 {
