@@ -357,13 +357,14 @@ sub printjobs {
 	my $objects = $self->db()->get_objects("job",$query);
 	print "ID\tSTATE\tUSER\tQUEUE\tCOMMAND\tSTATUS\tSTART\tQUEUETIME\tFINISHED\tPRIORITY\tPROCESSID\n";
 	for (my $i=0; $i < @{$objects}; $i++) {
+		$objects->[$i]->ID($objects->[$i]->_id());
 		print $self->printJob($objects->[$i])."\n";
 	}
 }
 
 sub printJob {
     my($self,$job) = @_;
-	return $job->ID()."\t".$job->STATE()."\t".$job->USER()."\t".$job->QUEUE()."\t".$job->COMMAND()."\t".$job->STATUS()."\t".$job->START()."\t".$job->QUEUETIME()."\t".$job->FINISHED()."\t".$job->PRIORITY()."\t".$job->PROCESSID()."\n";
+	return $job->ID()."\t".$job->STATE()."\t".$job->USER()."\t".$job->QUEUE()."\t".$job->COMMAND()."\t".$job->STATUS()."\t".$job->START()."\t".$job->QUEUETIME()."\t".$job->FINISHED()."\t".$job->PRIORITY()."\t".$job->PROCESSID();
 }
 
 1;
