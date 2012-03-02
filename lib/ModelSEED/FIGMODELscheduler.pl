@@ -178,8 +178,10 @@ sub monitor {
 							#	next;
 							#}
 							if (defined($object) && $object->PRIORITY() == $m) {
+								print "Test10-".$m."-".$j."\n";
 								$object->START($self->timestamp());
 								if ($object->COMMAND() =~ m/HALTALLJOBS/) {
+									print "Test11-".$m."-".$j."\n";
 									$object->STATE(2);
 									$object->STATUS("SUCCESS");
 									$object->FINISHED($self->timestamp());
@@ -187,6 +189,7 @@ sub monitor {
 									print "Test6\n";
 									return;
 								} else {
+                                    print "Test12-".$m."-".$j."\n";
                                     #if(defined($object->EXCLUSIVEKEY())) {
                                     #    $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
                                     #}
