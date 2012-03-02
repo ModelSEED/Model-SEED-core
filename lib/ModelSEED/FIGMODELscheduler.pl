@@ -71,7 +71,11 @@ sub monitor {
 	my $continue = 1;
 	my $troubleJobs;
     #Getting the name of the queue this script will be handling
-    my $queue = $Data[1];
+    my $queue = $self->db()->get_objects("queue",{'NAME' => $Data[1]});
+    if (!defined($queue)) {
+    	print STDERR "Queue not found!";
+		return "ARGUMENT SYNTAX FAIL";
+    }
 	#Starting the monitoring cycle
 	while ($continue == 1) {
 		#Transforming jobs from the old system
@@ -89,133 +93,124 @@ sub monitor {
 				$oldJobs->[$i]->STATE(0);
 			}
 		}
-		#Getting the list of queues
-		my $queues = $self->db()->get_objects("queue",{'NAME' => $queue});
-		if (!defined($queues->[0])) {
-			$continue = 0;	
-		} else {
-			#Getting the maximum number of processes for this queue
-			my $maxProcesses = $queues->[0]->MAXPROCESSES();
-			#Getting the queued job list
-			my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queues->[0]->ID()});
-			for (my $i=0; $i < @{$queued}; $i++) {
-				print "Command:".$queued->[$i]->COMMAND()."\n";
-			}
-			#Getting the list of running processes
-			my $running = $self->db()->get_objects("job",{STATE => 1,QUEUE => $queues->[0]->ID()});
-			#Getting the list of jobs in the qsub queue
-			my $output = $self->figmodel()->runexecutable("qstat");
-			my $runningJobs;
-			if (defined($output)) {
-				foreach my $line (@{$output}) {
-					if ($line =~ m/^(\d+)\s/) {
-						$runningJobs->{$1} = 1;
-					}
+		#Getting the maximum number of processes for this queue
+		my $maxProcesses = $queue->MAXPROCESSES();
+		#Getting the queued job list
+		my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queue->ID()});
+		#Getting the list of running processes
+		my $running = $self->db()->get_objects("job",{STATE => 1,QUEUE => $queue->ID()});
+		#Getting the list of jobs in the qsub queue
+		my $output = $self->figmodel()->runexecutable("qstat");
+		my $runningJobs;
+		if (defined($output)) {
+			foreach my $line (@{$output}) {
+				if ($line =~ m/^(\d+)\s/) {
+					$runningJobs->{$1} = 1;
 				}
 			}
-			#Checking how many jobs are still running
-			my $runningCount = 0;
-			my $stillRunning;
-			for (my $m=0; $m < @{$running}; $m++) {
-				my $object = $running->[$m];
-				print "Command:".$object->COMMAND()."\n";
-				my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
-				if (-e $filename) {
-					#Adding the job to the finished job list
-					my $list = $self->figmodel()->database()->load_single_column_file($filename,"");
-			    	$object->STATE(2);
-    				$object->STATUS($list->[0]);
-    				$object->FINISHED($self->timestamp());
-			    	#Clearing the file
-					unlink($filename);
-					if (defined($troubleJobs->{$object->PROCESSID()})) {
-						delete $troubleJobs->{$object->PROCESSID()};
+		}
+		#Checking how many jobs are still running
+		my $runningCount = 0;
+		my $stillRunning;
+		for (my $m=0; $m < @{$running}; $m++) {
+			my $object = $running->[$m];
+			print "Command:".$object->COMMAND()."\n";
+			my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
+			if (-e $filename) {
+				#Adding the job to the finished job list
+				my $list = $self->figmodel()->database()->load_single_column_file($filename,"");
+		    	$object->STATE(2);
+    			$object->STATUS($list->[0]);
+    			$object->FINISHED($self->timestamp());
+		    	#Clearing the file
+				unlink($filename);
+				if (defined($troubleJobs->{$object->PROCESSID()})) {
+					delete $troubleJobs->{$object->PROCESSID()};
+				}
+			} elsif (!defined($runningJobs->{$object->PROCESSID()})) {
+				if (defined($troubleJobs->{$object->PROCESSID()}) && $troubleJobs->{$object->PROCESSID()} >= 2) {
+					if (!-e $filename) {
+						#This job is crashed
+						$object->STATE(2);
+    					$object->STATUS("CRASHED");
+    					$object->FINISHED($self->timestamp());
 					}
-				} elsif (!defined($runningJobs->{$object->PROCESSID()})) {
-					if (defined($troubleJobs->{$object->PROCESSID()}) && $troubleJobs->{$object->PROCESSID()} >= 2) {
-						if (!-e $filename) {
-							#This job is crashed
-							$object->STATE(2);
-    						$object->STATUS("CRASHED");
-    						$object->FINISHED($self->timestamp());
-						}
-					} elsif (defined($troubleJobs->{$object->PROCESSID()})) {
-						$troubleJobs->{$object->PROCESSID()}++;
-					} else {
-						$troubleJobs->{$object->PROCESSID()} = 0;
-					}
+				} elsif (defined($troubleJobs->{$object->PROCESSID()})) {
+					$troubleJobs->{$object->PROCESSID()}++;
 				} else {
-					#Adjusting running count
-					push(@{$stillRunning},$object);
-					$runningCount++;
+					$troubleJobs->{$object->PROCESSID()} = 0;
 				}
+			} else {
+				#Adjusting running count
+				push(@{$stillRunning},$object);
+				$runningCount++;
 			}
-            my $takenExclusiveKeys = {};
-            foreach my $job (@$stillRunning) {
-                if(defined($job) && defined($job->EXCLUSIVEKEY())) {
-                    $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
-                }
+		}
+        my $takenExclusiveKeys = {};
+        foreach my $job (@$stillRunning) {
+            if(defined($job) && defined($job->EXCLUSIVEKEY())) {
+                $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
             }
-			#Checking if processors are available
-			if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
-				my $jobSlotsRemaining = $maxProcesses - $runningCount;
-				print "test-".$runningCount."\n";
-				for (my $m=0; $m < 10; $m++) {
-					if ($jobSlotsRemaining <= 0) {
-						last;
-					} else {
-						for (my $j=0; $j < @{$queued}; $j++) {
-							print "test-".$j."\n";
-							if ($jobSlotsRemaining <= 0) {
-								last;
-							} else {
-								my $object = $queued->[$j];
-                                next if(defined($object) && defined($object->EXCLUSIVEKEY()) &&
-                                    defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()}));
-								if (defined($object) && $object->PRIORITY() == $m) {
-									$object->START($self->timestamp());
-									if ($object->COMMAND() =~ m/HALTALLJOBS/) {
-										$object->STATE(2);
-										$object->STATUS("SUCCESS");
-										$object->FINISHED($self->timestamp());
-										$self->haltalljobs();
-										return;
-									} else {
-                                        if(defined($object->EXCLUSIVEKEY())) {
-                                            $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
-                                        }
-										$jobSlotsRemaining--;
-										$runningCount++;
-										$object->STATE(1);
-										$object->STATUS("Running...");
-										my $command = $object->COMMAND();
-										my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
-										$command =~ s/\s/___/g;
-										$command =~ s/\(/.../g;
-										$command =~ s/\)/,,,/g;
-										my $usrObj = $self->figmodel()->db()->get_object("user",{login => $object->USER()});
-										print "Running:".$command."\n";
-										my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
-										#Getting the job ID
-										if (defined($output)) {
-											foreach my $line (@{$output}) {
-												if ($line =~ m/Your\sjob\s(\d+)\s/) {
-													my $newID = ($1+1-1);
-													$object->PROCESSID($newID);
-												}
+        }
+		#Checking if processors are available
+		if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
+			my $jobSlotsRemaining = $maxProcesses - $runningCount;
+			print "test-".$runningCount."\n";
+			for (my $m=0; $m < 10; $m++) {
+				if ($jobSlotsRemaining <= 0) {
+					last;
+				} else {
+					for (my $j=0; $j < @{$queued}; $j++) {
+						print "test-".$j."\n";
+						if ($jobSlotsRemaining <= 0) {
+							last;
+						} else {
+							my $object = $queued->[$j];
+                            next if(defined($object) && defined($object->EXCLUSIVEKEY()) &&
+                                defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()}));
+							if (defined($object) && $object->PRIORITY() == $m) {
+								$object->START($self->timestamp());
+								if ($object->COMMAND() =~ m/HALTALLJOBS/) {
+									$object->STATE(2);
+									$object->STATUS("SUCCESS");
+									$object->FINISHED($self->timestamp());
+									$self->haltalljobs();
+									return;
+								} else {
+                                    if(defined($object->EXCLUSIVEKEY())) {
+                                        $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
+                                    }
+									$jobSlotsRemaining--;
+									$runningCount++;
+									$object->STATE(1);
+									$object->STATUS("Running...");
+									my $command = $object->COMMAND();
+									my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
+									$command =~ s/\s/___/g;
+									$command =~ s/\(/.../g;
+									$command =~ s/\)/,,,/g;
+									my $usrObj = $self->figmodel()->db()->get_object("user",{login => $object->USER()});
+									print "Running:".$command."\n";
+									my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
+									#Getting the job ID
+									if (defined($output)) {
+										foreach my $line (@{$output}) {
+											if ($line =~ m/Your\sjob\s(\d+)\s/) {
+												my $newID = ($1+1-1);
+												$object->PROCESSID($newID);
 											}
 										}
-										delete $queued->[$j];
 									}
+									delete $queued->[$j];
 								}
 							}
 						}
 					}
 				}
 			}
-			print "Sleeping...\n";
-			sleep(30);
 		}
+		print "Sleeping...\n";
+		sleep(30);
 	}
 }
 
