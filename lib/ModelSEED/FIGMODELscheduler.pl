@@ -154,22 +154,25 @@ sub monitor {
                 $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
             }
         }
-        print "Test3\n";
+        print "Test2\n";
 		#Checking if processors are available
 		if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
 			my $jobSlotsRemaining = $maxProcesses - $runningCount;
-			print "test-".$runningCount."\n";
+			print "Test3-".$runningCount."\n";
 			for (my $m=0; $m < 10; $m++) {
+				print "Test4-".$m."\n";
 				if ($jobSlotsRemaining <= 0) {
-					print "Test4\n";
+					print "Test5-".$m."\n";
 					last;
 				} else {
+					print "Test6-".$m."\n";
 					for (my $j=0; $j < @{$queued}; $j++) {
-						print "test-".$j."\n";
+						print "Test7-".$m."-".$j."\n";
 						if ($jobSlotsRemaining <= 0) {
-							print "Test5\n";
+							print "Test8-".$m."-".$j."\n";
 							last;
 						} else {
+							print "Test9-".$m."-".$j."\n";
 							my $object = $queued->[$j];
                             next if(defined($object) && defined($object->EXCLUSIVEKEY()) &&
                                 defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()}));
@@ -215,7 +218,6 @@ sub monitor {
 				}
 			}
 		}
-		print "Test4\n";
 		print "Sleeping...\n";
 		sleep(30);
 	}
