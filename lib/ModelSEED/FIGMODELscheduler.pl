@@ -77,7 +77,9 @@ sub monitor {
 		return "ARGUMENT SYNTAX FAIL";
     }
 	#Starting the monitoring cycle
+	my $loop = 0;
 	while ($continue == 1) {
+		print "Loop ".$loop."\n";
 		#Transforming jobs from the old system
 		my $querylist = [{STATE=>0,QUEUE=>0},{STATE=>1,QUEUE=>0},{STATE=>0,QUEUE=>3},{STATE=>1,QUEUE=>3}];
 		for (my $j=0; $j < @{$querylist}; $j++) {
@@ -94,6 +96,7 @@ sub monitor {
 			}
 		}
 		#Getting the maximum number of processes for this queue
+		print "Test1\n";
 		my $maxProcesses = $queue->MAXPROCESSES();
 		#Getting the queued job list
 		my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queue->ID()});
@@ -146,12 +149,14 @@ sub monitor {
 				$runningCount++;
 			}
 		}
+		print "Test2\n";
         my $takenExclusiveKeys = {};
         foreach my $job (@$stillRunning) {
             if(defined($job) && defined($job->EXCLUSIVEKEY())) {
                 $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
             }
         }
+        print "Test3\n";
 		#Checking if processors are available
 		if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
 			my $jobSlotsRemaining = $maxProcesses - $runningCount;
@@ -209,6 +214,7 @@ sub monitor {
 				}
 			}
 		}
+		print "Test4\n";
 		print "Sleeping...\n";
 		sleep(30);
 	}
