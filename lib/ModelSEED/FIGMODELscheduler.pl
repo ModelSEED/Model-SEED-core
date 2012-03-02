@@ -96,7 +96,6 @@ sub monitor {
 			}
 		}
 		#Getting the maximum number of processes for this queue
-		print "Test1\n";
 		my $maxProcesses = $queue->MAXPROCESSES();
 		#Getting the queued job list
 		my $queued = $self->db()->get_objects("job",{STATE => 0,QUEUE => $queue->ID()});
@@ -149,7 +148,6 @@ sub monitor {
 				$runningCount++;
 			}
 		}
-		print "Test2\n";
         my $takenExclusiveKeys = {};
         foreach my $job (@$stillRunning) {
             if(defined($job) && defined($job->EXCLUSIVEKEY())) {
@@ -163,11 +161,13 @@ sub monitor {
 			print "test-".$runningCount."\n";
 			for (my $m=0; $m < 10; $m++) {
 				if ($jobSlotsRemaining <= 0) {
+					print "Test4\n";
 					last;
 				} else {
 					for (my $j=0; $j < @{$queued}; $j++) {
 						print "test-".$j."\n";
 						if ($jobSlotsRemaining <= 0) {
+							print "Test5\n";
 							last;
 						} else {
 							my $object = $queued->[$j];
@@ -180,6 +180,7 @@ sub monitor {
 									$object->STATUS("SUCCESS");
 									$object->FINISHED($self->timestamp());
 									$self->haltalljobs();
+									print "Test6\n";
 									return;
 								} else {
                                     if(defined($object->EXCLUSIVEKEY())) {
