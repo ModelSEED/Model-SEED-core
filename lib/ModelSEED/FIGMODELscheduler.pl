@@ -74,6 +74,21 @@ sub monitor {
     my $queue = $Data[1];
 	#Starting the monitoring cycle
 	while ($continue == 1) {
+		#Transforming jobs from the old system
+		my $querylist = [{STATE=>0,QUEUE=>0},{STATE=>1,QUEUE=>0},{STATE=>0,QUEUE=>3},{STATE=>1,QUEUE=>3}];
+		for (my $j=0; $j < @{$querylist}; $j++) {
+			my $oldJobs = $self->db()->get_objects("job",$querylist->[$j]);
+			for (my $i=0; $i < @{$oldJobs}; $i++) {
+				if ($oldJobs->[$i]->COMMAND() =~ m/^preliminaryreconstruction\?(.+)/) {
+					$oldJobs->[$i]->COMMAND("mdlreconstruction?".$1);
+					if ($oldJobs->[$i]->COMMAND() !~ m/\?1$/) {
+						$oldJobs->[$i]->COMMAND($oldJobs->[$i]->COMMAND()."?1");
+					}
+				}
+				$oldJobs->[$i]->QUEUE(6);
+				$oldJobs->[$i]->STATE(0);
+			}
+		}
 		#Getting the list of queues
 		my $queues = $self->db()->get_objects("queue",{'NAME' => $queue});
 		if (!defined($queues->[0])) {
