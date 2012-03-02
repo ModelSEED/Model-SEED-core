@@ -330,8 +330,8 @@ sub resetjob {
 	for (my $i=0; $i < @{$jobs}; $i++) {
 		my $object = $self->db()->get_object("job",{ID => $jobs->[$i]});
 		if (defined($object)) {
-			print "Resetting job:".$self->printJob($object)."\n";
 			$object->STATE(0);
+			print "Resetting job:".$self->printJob($object)."\n";
 		} else {
 			print "Job ID ".$jobs->[$i]." not found!\n";
 		}
@@ -357,7 +357,6 @@ sub printjobs {
 	my $objects = $self->db()->get_objects("job",$query);
 	print "ID\tSTATE\tUSER\tQUEUE\tCOMMAND\tSTATUS\tSTART\tQUEUETIME\tFINISHED\tPRIORITY\tPROCESSID\n";
 	for (my $i=0; $i < @{$objects}; $i++) {
-		$objects->[$i]->ID($objects->[$i]->_id());
 		print $self->printJob($objects->[$i])."\n";
 	}
 }
