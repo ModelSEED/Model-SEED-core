@@ -77,8 +77,9 @@ sub monitor {
 		return "ARGUMENT SYNTAX FAIL";
     }
 	#Starting the monitoring cycle
-	my $oldJobs = $self->db()->get_objects("job",{STATUS=>"CRASHED",QUEUE=>6});
+	my $oldJobs = $self->db()->get_objects("job",{STATE=>2,STATUS=>"CRASHED",QUEUE=>6});
 	for (my $i=0; $i < @{$oldJobs}; $i++) {
+		print $oldJobs->[$i]->COMMAND()."\n";
 		$oldJobs->[$i]->STATE(0);
 	}
 	while ($continue == 1) {
