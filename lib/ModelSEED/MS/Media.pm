@@ -95,20 +95,9 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relations}->{media_compounds} = [];
-	my $compounds = $self->compounds();
-	for (my $i=0; $i < @{$compounds}; $i++) {
-		push(@{$data->{relations}->{media_compounds}},{
-			type => "MediaCompound",
-			attributes => {
-				media_uuid => $self->uuid(),
-				compound_uuid => $compounds->[$i]->uuid(),
-				concentration => $self->concentrations()->[$i],
-				minflux => $self->minFluxes()->[$i],
-				maxflux => $self->maxFluxes()->[$i]
-			},
-			relations => {}
-		});
+	$data->{relationships}->{media_compounds} = [];
+    foreach my $mediaCpd (@{$self->media_compounds}) {
+		push(@{$data->{relationships}->{media_compounds}}, $mediaCpd->serializeToDB());
 	}	
 	return $data;
 }
