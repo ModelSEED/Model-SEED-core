@@ -32,6 +32,48 @@ sub new {
 	ModelSEED::Interface::interface::CREATEWORKSPACE({});
     return bless $self;
 }
+=head3 api
+Definition:
+	CoreAPI = driver->api();
+Description:
+	Returns a CoreAPI object
+=cut
+sub api {
+	my ($self,$api) = @_;
+	if (defined($biochemistry)) {
+		$self->{_biochemistry} = $biochemistry;
+	}
+	if (!defined()) {
+		my $data = $self->api()->getBiochemistry({
+	    	uuid => ModelSEED::Interface::interface::BIOCHEMISTRY(),
+			with_all => 1,
+			user => ModelSEED::Interface::interface::USERNAME()
+	    });
+	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
+	}
+	return $self->{_biochemistry};
+}
+=head3 biochemistry
+Definition:
+	Biochemistry = driver->biochemistry();
+Description:
+	Returns a Biochemistry object
+=cut
+sub biochemistry {
+	my ($self,$biochemistry) = @_;
+	if (defined($biochemistry)) {
+		$self->{_biochemistry} = $biochemistry;
+	}
+	if (!defined()) {
+		my $data = $self->api()->getBiochemistry({
+	    	uuid => ModelSEED::Interface::interface::BIOCHEMISTRY(),
+			with_all => 1,
+			user => ModelSEED::Interface::interface::USERNAME()
+	    });
+	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
+	}
+	return $self->{_biochemistry};
+}
 =head3 figmodel
 Definition:
 	FIGMODEL = driver->figmodel();
@@ -238,236 +280,6 @@ XATNYS
     }
     return ($args, $otherArgs);
 }
-            
-
-=head
-=CATEGORY
-Database Operations
-=DESCRIPTION
-This function lists all objects matching the input type and query
-=EXAMPLE
-./db-listobjects
-=cut
-sub dblistobjects {
-    my ($self, @Data) = @_;
-    my $args = $self->check([
-		["type",1,undef,"Type of object to be listed"],
-		["query",0,undef,"A '|' delimited list of queries described as 'field=A'"],
-		["sudo",0,0,"Set to '1' to list all objects in database regardless of rights"]
-	],[@Data],"blast sequences against genomes");
-    my $query = {};
-    if (defined($args->{query})) {
-    	my $queries = [split(/\|/,$args->{query})];
-    	for (my $i=0; $i < @{$queries}; $i++) {
-    		my $array = [split(/\=/,$queries->[$i])];
-    		if (defined($array->[1])) {
-    			$query->{$array->[0]} = $array->[1];
-    		}
-    	}
-    }
-    my $objs;
-    if ($args->{sudo} == 1) {
-    	$objs = $self->db()->sudo_get_objects($args->{type},$query);
-    } else {
-    	$objs = $self->db()->get_objects($args->{type},$query);
-    }
-    if (!defined($objs) || !defined($objs->[0])) {
-    	return "No objects found matching input type and query!";
-    }
-    my $attributes = [keys(%{$objs->[0]->attributes()})];
-    my $output = [join("\t",@{$attributes})];
-    for (my $i=0; $i < @{$objs}; $i++) {
-    	my $line;
-    	for (my $j=0; $j < @{$attributes}; $j++) {
-    		if ($j > 0) {
-    			$line .= "\t";	
-    		}
-    		my $function = $attributes->[$j];
-    		$line .= $objs->[$i]->$function();
-    	}
-    	push(@{$output},$line);
-    }
-    my $num = @{$objs};
-    ModelSEED::utilities::PRINTFILE($self->ws()->directory()."Query-".$args->{type}.".tbl",$output);
-    return "Successfully printed ".$num." objects to file ".$self->ws()->directory()."Query-".$args->{type}.".tbl";
-}
-=head
-=CATEGORY
-Database Operations
-=DESCRIPTION
-This function creates a new object defined in the specified file in the database 
-=EXAMPLE
-./db-createobject
-=cut
-sub dbcreateobject {
-    my ($self, @Data) = @_;
-    my $args = $self->check([
-		["filename",1,undef,"Name of file containing object data"],
-	],[@Data],"create new object in the database");
-    if (!-e $self->ws()->directory().$args->{filename}) {
-    	return "Failed! Could not find specified file: ".$self->ws()->directory().$args->{filename}."!";
-    }
-    my $array = [split(/\./,$args->{filename})];
-    my $type = pop(@{$array});
-    my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{filename});
-    my $datahash = {};
-    for (my $i=0; $i < @{$data}; $i++) {
-    	my $linearray = [split(/\t/,$data->[$i])];
-    	if (defined($linearray->[1])) {
-    		$datahash->{$linearray->[0]} = $linearray->[1];
-    	}
-    }
-    $self->db()->create_object($type,$datahash);
-    return "Successfully loaded new object of type ".$type." from file ".$self->ws()->directory().$args->{filename}."!";
-}
-=head
-=CATEGORY
-Temporary Operations
-=DESCRIPTION
-This function handles the transition of models in the old database into the new database system
-=EXAMPLE
-./temptransfermodels 
-=cut
-sub temptransfermodels {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"model to be transfered"],
-	],[@Data],"transitions models in the old database into the new database system");
-	my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
-		objectType => "model",
-		delimiter => ",",
-		column => "id",
-		parameters => undef,
-		input => $args->{model}
-	});
-	for (my $i=0; $i < @{$models}; $i++) {
-		my $obj = $self->db()->get_object("model",{id => $models->[$i]});
-		my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
-		if (!-d $mdldir) {
-			print "Generating provenance for ".$models->[$i]."!\n";
-			File::Path::mkpath $mdldir."biochemistry/";
-			File::Path::mkpath $mdldir."mapping/";
-			File::Path::mkpath $mdldir."annotations/";
-			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
-			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
-#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
-#				my $genome = $self->figmodel()->get_genome($obj->genome());
-#				if (defined($genome)) {
-#					my $feature_table = $genome->feature_table();
-#					$feature_table->save($mdldir.'annotations/features.txt');
-#				}
-#			}				
-		}
-		my $objs = $self->db()->get_objects("rxnmdl",{MODEL => $models->[$i]});
-		my $numRxn = @{$objs};
-		if ($numRxn == 0 || ($models->[$i] =~ m/Seed\d+\.\d+/ && $models->[$i] !~ m/Seed\d+\.\d+\.796/)) {
-			print "Populating rxnmdl table!\n";
-			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
-			if (defined($mdltbl)) {
-				for (my $j=0; $j < $mdltbl->size(); $j++) {
-					my $row = $mdltbl->get_row($j);
-					if (defined($row->{LOAD}->[0])) {
-						if (!defined($row->{DIRECTIONALITY})) {
-							$row->{DIRECTIONALITY}->[0] = "<=>";
-						}
-						if (!defined($row->{COMPARTMENT})) {
-							$row->{COMPARTMENT}->[0] = "c";
-						}
-						if (!defined($row->{REFERENCE})) {
-							$row->{REFERENCE}->[0] = "none";
-						}
-						if (!defined($row->{NOTES})) {
-							$row->{NOTES}->[0] = "none";
-						}
-						if (!defined($row->{CONFIDENCE})) {
-							$row->{CONFIDENCE}->[0] = 5;
-						}
-						if (!defined($row->{"ASSOCIATED PEG"})) {
-							$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
-						}
-						$self->db()->create_object("rxnmdl",{
-							MODEL => $models->[$i],
-							REACTION => $row->{LOAD}->[0],
-							directionality => $row->{DIRECTIONALITY}->[0],
-							compartment => $row->{COMPARTMENT}->[0],
-							pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-							confidence => $row->{CONFIDENCE}->[0],
-							notes => join("|",@{$row->{NOTES}}),
-							reference => join("|",@{$row->{REFERENCE}})
-						});
-					}
-				}
-			} else {
-				print "Model ".$models->[$i]." reaction table not found!\n";
-			}
-		} elsif ($numRxn > 100) {
-			print "Model ".$models->[$i]." fully populated!\n";
-		} else {
-			print "Model ".$models->[$i]." appears to be too small!\n";	
-		}
-	}
-    return "SUCCESS";
-}
-=head
-=CATEGORY
-Workspace Operations
-=DESCRIPTION
-Sometimes rather than importing an account from the SEED (which you would do using the ''mslogin'' command), you want to create a stand-alone account in the local Model SEED database only. To do this, use the ''createlocaluser'' binary. Once the local account exists, you can use the ''login'' binary to log into your local Model SEED account. This allows you to access, create, and manipulate private data in your local database. HOWEVER, because this is a local account only, you will not be able to use the account to access any private data in the SEED system. For this reason, we recommend importing a SEED account using the ''login'' binary rather than making local accounts with no SEED equivalent. If you require a SEED account, please go to the registration page: [http://pubseed.theseed.org/seedviewer.cgi?page=Register SEED account registration].
-=EXAMPLE
-./mscreateuser -login "username" -password "password" -firstname "my firstname" -lastname "my lastname" -email "my email"
-=cut
-sub mscreateuser {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["login",1,undef,"Login name of the new user account."],
-		["password",1,undef,"Password for the new user account, which will be stored in encryted form."],
-		["firstname",1,undef,"First name of the new proposed user."],
-		["lastname",1,undef,"Last name of the new proposed user."],
-		["email",1,undef,"Email of the new proposed user."]
-	],[@Data],"creating a new local account for a model SEED installation");
-	if ($self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
-		ModelSEED::utilities::ERROR("Cannot use this function to add user to any database except ModelDB");
-	}
-	my $usr = $self->db()->get_object("user",{login => $args->{login}});
-	if (defined($usr)) {
-		ModelSEED::utilities::ERROR("User with login ".$args->{login}." already exists!");	
-	}
-	$usr = $self->db()->create_object("user",{
-		login => $args->{login},
-		password => "NONE",
-		firstname => $args->{"firstname"},
-		lastname => $args->{"lastname"},
-		email => $args->{email}
-	});
-	$usr->set_password($args->{password});
-    return "SUCCESS";
-}
-
-=head
-=CATEGORY
-Workspace Operations
-=DESCRIPTION
-This function deletes the local copy of the specified user account from the local Model SEED distribution. This function WILL NOT delete accounts from the centralized SEED database.
-=EXAMPLE
-./msdeleteuser -login "username" -password "password"
-=cut
-sub msdeleteuser {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["login",0,$ENV{FIGMODEL_USER},"Login of the useraccount to be deleted."],
-		["password",0,$ENV{FIGMODEL_PASSWORD},"Password of the useraccount to be deleted."],
-	],[@Data],"deleting the local instantiation of the specified user account");
-	if ($self->config("PPO_tbl_user")->{host}->[0] eq "bio-app-authdb.mcs.anl.gov") {
-		ModelSEED::utilities::ERROR("This function cannot be used in the centralized SEED database!");
-	}
-	$self->figmodel()->authenticate($args);
-	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
-		ModelSEED::utilities::ERROR("No account found that matches the input credentials!");
-	}
-	$self->figmodel()->userObj()->delete();
-	return "Account successfully deleted!\n";
-}
-
 =head
 =CATEGORY
 Workspace Operations
@@ -536,30 +348,7 @@ sub msworkspace {
 	})};
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
-=head
-=CATEGORY
-Workspace Operations
-=DESCRIPTION
-Creates a new job in the Model SEED job database
-=EXAMPLE
-./mscreatejob
-=cut
-sub mscreatejob {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["command",1,0,"Command for the job"],
-		["user",0,ModelSEED::Interface::interface::USERNAME(),"Owner for the job"],
-		["queue",1,0,"Queue for the job"],
-	],[@Data],"prints workspace information");
-	$args->{command} =~ s/\:/?/;
-	$self->figmodel()->database()->create_object("job",{
-		USER => $args->{user},
-		QUEUETIME => ModelSEED::utilities::TIMESTAMP(),
-		EXCLUSIVEKEY => $args->{command}."_".$args->{user},
-		COMMAND => $args->{command},
-		QUEUE => $args->{queue}
-	});
-}
+
 =head
 =CATEGORY
 Workspace Operations
