@@ -71,7 +71,7 @@ sub monitor {
 	my $continue = 1;
 	my $troubleJobs;
     #Getting the name of the queue this script will be handling
-    my $queue = $self->db()->get_objects("queue",{'NAME' => $Data[1]});
+    my $queue = $self->db()->get_object("queue",{'NAME' => $Data[1]});
     if (!defined($queue)) {
     	print STDERR "Queue not found!";
 		return "ARGUMENT SYNTAX FAIL";
