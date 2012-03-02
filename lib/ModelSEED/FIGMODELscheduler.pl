@@ -320,4 +320,50 @@ sub haltalljobs {
 	}
 }
 
+sub resetjob {
+    my($self,@Data) = @_;
+	if (@Data < 2) {
+		print "Syntax for this command: resetjob:(Job id).\n\n";
+		return "ARGUMENT SYNTAX FAIL";
+    }
+	my $jobs = [split(/;/,$Data[1])];
+	for (my $i=0; $i < @{$jobs}; $i++) {
+		my $object = $self->db()->get_object("job",{ID => $jobs->[$i]});
+		if (defined($object)) {
+			print "Resetting job:".$self->printJob($object)."\n";
+			$object->STATE(0);
+		} else {
+			print "Job ID ".$jobs->[$i]." not found!\n";
+		}
+	}
+}
+
+sub printjobs {
+    my($self,@Data) = @_;
+	if (@Data < 2) {
+		print "Syntax for this command: printjobs:(State):(Queue):(User):(Crashed).\n\n";
+		return "ARGUMENT SYNTAX FAIL";
+    }
+	my $query = {STATE => $Data[1]};
+	if (defined($Data[2])) {
+		$query->{QUEUE} = $Data[2];	
+	}
+	if (defined($Data[3])) {
+		$query->{USER} = $Data[3];	
+	}
+	if (defined($Data[4])) {
+		$query->{STATUS} = "CRASHED";	
+	}
+	my $objects = $self->db()->get_objects("job",$query);
+	print "ID\tSTATE\tUSER\tQUEUE\tCOMMAND\tSTATUS\tSTART\tQUEUETIME\tFINISHED\tPRIORITY\tPROCESSID\n";
+	for (my $i=0; $i < @{$objects}; $i++) {
+		print $self->printJob($objects->[$i])."\n";
+	}
+}
+
+sub printJob {
+    my($self,$job) = @_;
+	return $job->ID()."\t".$job->STATE()."\t".$job->USER()."\t".$job->QUEUE()."\t".$job->COMMAND()."\t".$job->STATUS()."\t".$job->START()."\t".$job->QUEUETIME()."\t".$job->FINISHED()."\t".$job->PRIORITY()."\t".$job->PROCESSID()."\n";
+}
+
 1;
