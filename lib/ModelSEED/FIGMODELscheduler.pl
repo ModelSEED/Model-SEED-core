@@ -198,10 +198,12 @@ sub monitor {
 									$object->STATE(1);
 									$object->STATUS("Running...");
 									my $command = $object->COMMAND();
+									print "Test13-".$m."-".$j."\n";
 									my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
 									$command =~ s/\s/___/g;
 									$command =~ s/\(/.../g;
 									$command =~ s/\)/,,,/g;
+									print "Test14-".$m."-".$j."\n";
 									my $usrObj = $self->figmodel()->db()->get_object("user",{login => $object->USER()});
 									print "Running:".$command."\n";
 									my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
