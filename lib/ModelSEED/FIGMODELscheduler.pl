@@ -77,9 +77,7 @@ sub monitor {
 		return "ARGUMENT SYNTAX FAIL";
     }
 	#Starting the monitoring cycle
-	my $loop = 0;
 	while ($continue == 1) {
-		print "Loop ".$loop."\n";
 		#Transforming jobs from the old system
 		my $querylist = [{STATE=>0,QUEUE=>0},{STATE=>1,QUEUE=>0},{STATE=>0,QUEUE=>3},{STATE=>1,QUEUE=>3}];
 		for (my $j=0; $j < @{$querylist}; $j++) {
@@ -116,7 +114,6 @@ sub monitor {
 		my $stillRunning;
 		for (my $m=0; $m < @{$running}; $m++) {
 			my $object = $running->[$m];
-			print "Command:".$object->COMMAND()."\n";
 			my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
 			if (-e $filename) {
 				#Adding the job to the finished job list
@@ -154,42 +151,30 @@ sub monitor {
         #        $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
         #    }
         #}
-        print "Test2\n";
 		#Checking if processors are available
 		if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
 			my $jobSlotsRemaining = $maxProcesses - $runningCount;
-			print "Test3-".$runningCount."\n";
 			for (my $m=0; $m < 10; $m++) {
-				print "Test4-".$m."\n";
 				if ($jobSlotsRemaining <= 0) {
-					print "Test5-".$m."\n";
 					last;
 				} else {
-					print "Test6-".$m."\n";
 					for (my $j=0; $j < @{$queued}; $j++) {
-						print "Test7-".$m."-".$j."\n";
 						if ($jobSlotsRemaining <= 0) {
-							print "Test8-".$m."-".$j."\n";
 							last;
 						} else {
-							print "Test9-".$m."-".$j."\n";
 							my $object = $queued->[$j];
 							#if(defined($object) && defined($object->EXCLUSIVEKEY()) && defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()})) {
 							#	next;
 							#}
 							if (defined($object) && $object->PRIORITY() == $m) {
-								print "Test10-".$m."-".$j."\n";
 								$object->START($self->timestamp());
 								if ($object->COMMAND() =~ m/HALTALLJOBS/) {
-									print "Test11-".$m."-".$j."\n";
 									$object->STATE(2);
 									$object->STATUS("SUCCESS");
 									$object->FINISHED($self->timestamp());
 									$self->haltalljobs();
-									print "Test6\n";
 									return;
 								} else {
-                                    print "Test12-".$m."-".$j."\n";
                                     #if(defined($object->EXCLUSIVEKEY())) {
                                     #    $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
                                     #}
@@ -198,14 +183,11 @@ sub monitor {
 									$object->STATE(1);
 									$object->STATUS("Running...");
 									my $command = $object->COMMAND();
-									print "Test13-".$m."-".$j."\n";
 									my $filename = $self->figmodel()->config("temp file directory")->[0]."JobFile-".$object->ID().".txt";
 									$command =~ s/\s/___/g;
 									$command =~ s/\(/.../g;
 									$command =~ s/\)/,,,/g;
-									print "Test14-".$m."-".$j."\n";
 									my $usrObj = $self->figmodel()->database()->get_object("user",{login => $object->USER()});
-									print "Running:".$command."\n";
 									my $output = $self->figmodel()->runexecutable($self->figmodel()->config("Recursive model driver executable")->[0]." \"environment?".$object->USER()."?".$usrObj->password()."?NONE?local?NONE \"finish?".$filename."\" \"".$command."\"");
 									#Getting the job ID
 									if (defined($output)) {
