@@ -148,12 +148,12 @@ sub monitor {
 				$runningCount++;
 			}
 		}
-        my $takenExclusiveKeys = {};
-        foreach my $job (@$stillRunning) {
-            if(defined($job) && defined($job->EXCLUSIVEKEY())) {
-                $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
-            }
-        }
+        #my $takenExclusiveKeys = {};
+        #foreach my $job (@$stillRunning) {
+        #    if(defined($job) && defined($job->EXCLUSIVEKEY())) {
+        #        $takenExclusiveKeys->{$job->EXCLUSIVEKEY()} = 1;
+        #    }
+        #}
         print "Test2\n";
 		#Checking if processors are available
 		if ($runningCount < $maxProcesses && defined($queued) && @{$queued} > 0) {
@@ -174,8 +174,9 @@ sub monitor {
 						} else {
 							print "Test9-".$m."-".$j."\n";
 							my $object = $queued->[$j];
-                            next if(defined($object) && defined($object->EXCLUSIVEKEY()) &&
-                                defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()}));
+							#if(defined($object) && defined($object->EXCLUSIVEKEY()) && defined($takenExclusiveKeys->{$object->EXCLUSIVEKEY()})) {
+							#	next;
+							#}
 							if (defined($object) && $object->PRIORITY() == $m) {
 								$object->START($self->timestamp());
 								if ($object->COMMAND() =~ m/HALTALLJOBS/) {
@@ -186,9 +187,9 @@ sub monitor {
 									print "Test6\n";
 									return;
 								} else {
-                                    if(defined($object->EXCLUSIVEKEY())) {
-                                        $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
-                                    }
+                                    #if(defined($object->EXCLUSIVEKEY())) {
+                                    #    $takenExclusiveKeys->{$object->EXCLUSIVEKEY()} = 1;
+                                    #}
 									$jobSlotsRemaining--;
 									$runningCount++;
 									$object->STATE(1);
