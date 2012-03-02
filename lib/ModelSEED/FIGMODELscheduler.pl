@@ -77,6 +77,10 @@ sub monitor {
 		return "ARGUMENT SYNTAX FAIL";
     }
 	#Starting the monitoring cycle
+	my $oldJobs = $self->db()->get_objects("job",{STATUS=>"CRASHED",QUEUE=>6});
+	for (my $i=0; $i < @{$oldJobs}; $i++) {
+		$oldJobs->[$i]->STATE(0);
+	}
 	while ($continue == 1) {
 		#Transforming jobs from the old system
 		my $querylist = [{STATE=>0,QUEUE=>0},{STATE=>1,QUEUE=>0},{STATE=>0,QUEUE=>3},{STATE=>1,QUEUE=>3}];
