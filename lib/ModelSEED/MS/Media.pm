@@ -16,7 +16,6 @@ use DateTime;
 use Data::UUID;
 
 #Attributes
-
 has uuid    => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
 has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
 has id      => (is => 'rw', isa => 'Str', default => '');
@@ -37,13 +36,11 @@ has 'dbAttributes' => (
     isa     => 'ArrayRef[Str]',
     builder => '_buildDbAttributes'
 );
-has 'dbType' => (is => 'ro', isa => 'Str', default => "Media");
-
-#Internally maintained variables
-has 'changed' => (is => 'rw', isa => 'Bool', default => 0);
+has _type => (is => 'ro', isa => 'Str', default => 'Media');
 
 sub BUILDARGS {
     my ($self, $params) = @_;
+    delete $params->{type};
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
     my $bio  = $params->{biochemistry};
@@ -87,8 +84,7 @@ sub concentrations {
 }
 
 sub serializeToDB {
-    my ($self,$params) = @_;
-	$params = ModelSEED::utilities::ARGS($params,[],{});
+    my ($self) = @_;
 	my $data = {};
 	my $attributes = $self->dbAttributes();
 	for (my $i=0; $i < @{$attributes}; $i++) {
@@ -98,7 +94,8 @@ sub serializeToDB {
 	$data->{relationships}->{media_compounds} = [];
     foreach my $mediaCpd (@{$self->media_compounds}) {
 		push(@{$data->{relationships}->{media_compounds}}, $mediaCpd->serializeToDB());
-	}	
+	}
+	$data->{type} = $self->_type();
 	return $data;
 }
 
@@ -118,9 +115,9 @@ sub printToFile {
 		"Compounds{",
 		"Compound ID\tConcentration\tMin flux\tMax flux"
 	];
-	my $compounds = $self->compounds();
+	my $compounds = $self->media_compounds();
 	for (my $i=0; $i < @{$compounds}; $i++) {
-		push(@{$data},$compounds->[$i]->id()."\t".$compounds->[$i]->concentration()."\t".$compounds->[$i]->minflux()."\t".$compounds->[$i]->maxflux());
+		push(@{$data},$compounds->[$i]->compound()->id()."\t".$compounds->[$i]->concentration()."\t".$compounds->[$i]->minflux()."\t".$compounds->[$i]->maxflux());
 	}
 	push(@{$data},"}");
 	if (defined($args->{filename})) {

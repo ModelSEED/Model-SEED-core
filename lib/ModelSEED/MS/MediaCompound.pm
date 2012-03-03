@@ -4,7 +4,7 @@ use namespace::autoclean;
 use Carp;
 
 # Constants
-has _type => (is => 'rw', isa => 'Str', default => 'MediaCompound');
+has _type => (is => 'ro', isa => 'Str', default => 'MediaCompound');
 
 # Attributes
 has biochemistry =>
@@ -15,7 +15,6 @@ has minflux       => (is => 'rw', isa => 'Num', default  => -100);
 has maxflux       => (is => 'rw', isa => 'Num', default  => 100);
 
 # Subobjects
-
 has compound      => (
     is       => 'rw',
     isa      => 'ModelSEED::MS::Compound',
@@ -26,6 +25,7 @@ has compound      => (
 
 sub BUILDARGS {
     my ($self, $params) = @_;
+    delete $params->{type};
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
     if (defined($attr)) {
@@ -33,6 +33,20 @@ sub BUILDARGS {
             grep { defined($attr->{$_}) } keys %$attr;
         delete $params->{attributes};
     }
+    if (defined($params->{compound_id})) {
+    	if (!defined($params->{compound_uuid})) {
+    		if (!defined($params->{biochemistry})) {
+    			ModelSEED::utilities::ERROR("Must have biochemistry if specifying media with compound_id!");
+    		}
+    		my $obj = $params->{biochemistry}->getObject({ type => "compounds", query => {id => $params->{compound_id}}});
+    		if (!defined($obj)) {
+    			ModelSEED::utilities::ERROR("Could not find compound ".$params->{compound_id}." in biochemistry ".$params->{biochemistry}->uuid()."!");	
+    		}
+    		$params->{compound_uuid} = $obj->uuid();
+    		$params->{compound} = $obj;
+    	}
+    	delete $params->{compound_id};
+	}
     # Here we build the compound if it is supplied directly.
     if (  !defined($params->{biochemistry})
         && defined($params->{relationships}->{compound}))

@@ -16,6 +16,7 @@ use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use ModelSEED::CoreApi;
 use ModelSEED::globals;
+use ModelSEED::MS::ObjectParser;
 use ModelSEED::MS::Biochemistry;
 use File::Basename qw(dirname basename);
 
@@ -63,12 +64,13 @@ sub biochemistry {
 	if (defined($biochemistry)) {
 		$self->{_biochemistry} = $biochemistry;
 	}
-	if (!defined()) {
+	if (!defined($self->{_biochemistry})) {
 		my $data = $self->api()->getBiochemistry({
 	    	uuid => $self->ws()->biochemistry(),
 			with_all => 1,
 			user => ModelSEED::Interface::interface::USERNAME()
 	    });
+	    $data->{om} = $self->api();
 	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
 	}
 	return $self->{_biochemistry};
@@ -327,12 +329,15 @@ sub bcload {
 	],[@Data],"Creates (or alters) an object in the Model SEED database");
 	my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
 	if (defined($obj) && $args->{overwrite} == 0) {
-		ModelSEED::utilities::USEERROR("No object of type ".$args->{type}." and with id ".$args->{id}." found in biochemistry ".$self->biochemistry()->uuid()."!");
+		ModelSEED::utilities::USEERROR("Object of type ".$args->{type}." with id ".$args->{id}." already exists in biochemistry ".$self->biochemistry()->uuid().". Must set overwrite flag to load object!");
 	}
-	my $data = ModelSEED::ObjectParser::loadObjectFile({type => $args->{type},id => $args->{id},directory => $self->ws()->directory()});
-	my $newObj = ModelSEED::MS::Media->new({biochemistry => $self,attributes => $data->{attributes},relationships => $data->{relationships}});
-	$self->biochemistry()->addMedia($newObj);
+	my $data = ModelSEED::MS::ObjectParser::loadObjectFile({type => $args->{type},id => $args->{id},directory => $self->ws()->directory()});
+	my $newObj = ModelSEED::MS::Media->new({biochemistry => $self->biochemistry(),attributes => $data->{attributes},relationships => $data->{relationships}});
+	$self->biochemistry()->add($newObj);
+	my $time = time();
+	print "Saving!\n";
 	$self->biochemistry()->save();
+	print "Save time:".$time-time()."\n";
 	return {success => 1,message => "Successfully loaded ".$args->{type}." object from file with id ".$args->{id}."."};
 }
 

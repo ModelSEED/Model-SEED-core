@@ -206,29 +206,35 @@ sub serializeToDB {
 ######################################################################
 #Object addition functions
 ######################################################################
-sub addMedia {
+sub add {
     my ($self,$object) = @_;
-    #Checking if a media matching the input media id already exists
-    my $oldObj = $self->getObject({type => "Media",query => {id => $object->id()}});
+    my $type = $self->checkType($object->_type());
+    #Checking if an object matching the input object already exists
+    my $oldObj = $self->getObject({type => $type,query => {uuid => $object->uuid()}});
+    if (!defined($oldObj)) {
+    	$oldObj = $self->getObject({type => $type,query => {id => $object->id()}});
+    } elsif ($oldObj->id() ne $object->id()) {
+    	ModelSEED::utilities::ERROR("Added object has identical uuid to an object in the database, but ids are different!");		
+    }
     if (defined($oldObj)) {
     	if ($oldObj->locked() != 1) {
     		$object->uuid($oldObj->uuid());
     	}
-    	my $medialist = $self->media();
-    	for (my $i=0; $i < @{$medialist}; $i++) {
-    		if ($medialist->[$i] eq $oldObj) {
-    			$medialist->[$i] = $object;
+    	my $list = $self->$type();
+    	for (my $i=0; $i < @{$list}; $i++) {
+    		if ($list->[$i] eq $oldObj) {
+    			$list->[$i] = $object;
     		}
     	}
-    	$self->clearIndex({type=>"Media"});
+    	$self->clearIndex({type=>$type});
     } else {
-    	push(@{$self->media()},$object);
-    	if (defined($self->indices()->{media})) {
-    		foreach my $attribute (keys(%{$self->indices()->{media}})) {
-    			push(@{$self->indices()->{media}->{$attribute}->{$object->$attribute()}},$object);
+    	push(@{$self->$type()},$object);
+    	if (defined($self->indices()->{$type})) {
+    		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
+    			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
     		}
     	}
-    } 
+    }
 }
 
 ######################################################################
@@ -322,7 +328,7 @@ sub checkType {
         Compartment => "compartments",
     };
     if (!defined($types->{$type})) {
-        die "Invalid Type";
+        ModelSEED::utilities::ERROR("Invalid type: ".$type);
     }
     return $types->{$type};
 }

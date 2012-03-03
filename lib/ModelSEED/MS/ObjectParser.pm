@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use Carp qw(cluck);
-package ModelSEED::ObjectParser;
+package ModelSEED::MS::ObjectParser;
 
 my $loadableTypes = {
 	media => 1
@@ -9,14 +9,14 @@ my $loadableTypes = {
 
 =head3 loadObjectFile
 Definition:
-	{} = ModelSEED::ObjectParser::loadObjectFile({
+	{} = ModelSEED::MS::ObjectParser::loadObjectFile({
 		type => string:object type,
 		id => string:object ID
 	});
 Description:
 	This function loads object data from file
 Example:
-{} = ModelSEED::ObjectParser::loadObjectFile({type => "media",id=>"LB"});
+{} = ModelSEED::MS::ObjectParser::loadObjectFile({type => "media",id=>"LB"});
 =cut
 sub loadObjectFile {
 	my ($args) = @_;
@@ -33,7 +33,7 @@ sub loadObjectFile {
 			if (!defined($args->{directory})) {
 				ModelSEED::utilities::ERROR("Must provide directory, filename, or filedata!");
 			}
-			$args->{filename} = $args->{directory}.$args->{id}.$args->{type};
+			$args->{filename} = $args->{directory}.$args->{id}.".".$args->{type};
 		}
 		if (!-e $args->{filename}) {
 			ModelSEED::utilities::ERROR("Object file ".$args->{filename}." not found!");
@@ -43,19 +43,24 @@ sub loadObjectFile {
 	if (!defined($args->{filedata})) {
 		ModelSEED::utilities::ERROR("File data not loaded!");
 	}
-	my $function = "ModelSEED::ObjectParser::".$args->{type}."Parser";
-	return $function($args->{filedata});
+	my $result;
+	{
+		my $function = "ModelSEED::MS::ObjectParser::".$args->{type}."Parser";
+		no strict "refs";
+		$result = &$function({filedata => $args->{filedata}});
+	} 
+	return $result;
 }
 
 =head3 mediaParser
 Definition:
-	{} = ModelSEED::ObjectParser::mediaParser({
+	{} = ModelSEED::MS::ObjectParser::mediaParser({
 		filedata => [string]
 	});
 Description:
 	This function parses the media file into the object datastructure
 Example:
-{} = ModelSEED::ObjectParser::mediaParser({filedata => [...]});
+{} = ModelSEED::MS::ObjectParser::mediaParser({filedata => [...]});
 =cut
 sub mediaParser {
 	my ($args) = @_;
@@ -64,8 +69,9 @@ sub mediaParser {
 	my $acceptedAttributes = {
 		id => 1,name => 1,type => 1
 	};
+	
 	my $translation = {
-		"ID" => "compound_id",
+		"Compound ID" => "compound_id",
 		"Concentration"  => "concentration",
 		"Min flux"  => "minflux",
 		"Max flux"  => "maxflux"
@@ -92,9 +98,9 @@ sub mediaParser {
 			};
 			my $array = [split(/\t/,$args->{filedata}->[$i])];
 			for (my $j=0; $j < @{$array}; $j++) {
-				$cpdData->{attributes}->{$translation->{$headings->[$j]}} = $array->{$j};
+				$cpdData->{attributes}->{$translation->{$headings->[$j]}} = $array->[$j];
 			}
-			push(@{$data->{relationships}},$cpdData);
+			push(@{$data->{relationships}->{media_compounds}},$cpdData);
 		}
 	}
 	return $data;
