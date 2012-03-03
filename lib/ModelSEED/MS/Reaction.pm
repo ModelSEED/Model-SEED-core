@@ -46,7 +46,7 @@ has 'compartment' => (
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]', 
     builder => '_buildDbAttributes' );
-has 'dbType' => (is => 'ro', isa => 'Str',default => "Reaction");
+has '_type' => (is => 'ro', isa => 'Str',default => "Reaction");
 #Internally maintained variables
 has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
@@ -54,6 +54,8 @@ sub BUILDARGS {
     my ($self,$params) = @_;
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
+    $params->{_type} = $params->{type};
+    delete $params->{type};
     my $bio  = $params->{biochemistry};
     delete $params->{biochemistry};
     # Set up attributes
@@ -104,16 +106,16 @@ sub BUILDARGS {
 sub serializeToDB {
     my ($self,$params) = @_;
 	$params = ModelSEED::utilities::ARGS($params,[],{});
-	my $data = {};
+	my $data = { type => $self->_type };
 	my $attributes = $self->dbAttributes();
 	for (my $i=0; $i < @{$attributes}; $i++) {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relationships}->{aliases} = [];
+	$data->{relationships}->{reaction_aliases} = [];
 	foreach my $aliastype (sort keys(%{$self->aliases()})) {
 		foreach my $alias (sort @{$self->aliases()->{$aliastype}}) {
-			push(@{$data->{relationships}->{aliases}},{
+			push(@{$data->{relationships}->{reaction_aliases}},{
 				type => "ReactionAlias",
 				attributes => {
 					reaction_uuid => $self->uuid(),

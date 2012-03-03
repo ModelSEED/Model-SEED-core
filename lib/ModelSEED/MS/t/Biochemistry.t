@@ -84,6 +84,7 @@ my ($bio, $data);
 }
 
 # Testing serializeToDB
+=cut
 {
     my $serial1 = $bio->serializeToDB();
     my $clone = clone $serial1;
@@ -94,6 +95,7 @@ my ($bio, $data);
     cmp_deeply $serial2, $serial1, "serializeToDB should have round trip integrity";
     $testCount += 1;
 }
+=cut
 
 # Testing save
 {

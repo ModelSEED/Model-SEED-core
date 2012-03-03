@@ -36,7 +36,10 @@ has 'dbAttributes' => (
     isa     => 'ArrayRef[Str]',
     builder => '_buildDbAttributes'
 );
-has _type => (is => 'ro', isa => 'Str', default => 'Media');
+has '_type' => (is => 'ro', isa => 'Str', default => "Media");
+
+#Internally maintained variables
+has 'changed' => (is => 'rw', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
     my ($self, $params) = @_;
@@ -44,6 +47,8 @@ sub BUILDARGS {
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
     my $bio  = $params->{biochemistry};
+    $params->{_type} = $params->{type};
+    delete $params->{type};
     delete $params->{biochemistry};
     if (defined($attr)) {
         map { $params->{$_} = $attr->{$_} }
@@ -53,6 +58,7 @@ sub BUILDARGS {
     if (defined($rels)) {
         foreach my $media_compound (@{$rels->{media_compounds}}) {
             $media_compound->{biochemistry} = $bio if (defined($bio));
+            $media_compound->{media_uuid} = $params->{uuid};
             push(
                 @{$params->{media_compounds}},
                 ModelSEED::MS::MediaCompound->new($media_compound)
@@ -84,8 +90,8 @@ sub concentrations {
 }
 
 sub serializeToDB {
-    my ($self) = @_;
-	my $data = {};
+    my ($self,$params) = @_;
+	my $data = { type => $self->_type };
 	my $attributes = $self->dbAttributes();
 	for (my $i=0; $i < @{$attributes}; $i++) {
 		my $function = $attributes->[$i];

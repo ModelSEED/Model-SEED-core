@@ -37,7 +37,7 @@ has 'compoundSets' => (is => 'rw', isa => 'HashRef', default => sub { return {};
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]',
     builder => '_buildDbAttributes' );
-has 'dbType' => (is => 'ro', isa => 'Str',default => "Compound");
+has '_type' => ( is => 'ro', isa => 'Str',default => "Compound" );
 #Internally maintained variables
 has 'changed' => (is => 'rw', isa => 'Bool',default => 0);
 
@@ -45,6 +45,8 @@ sub BUILDARGS {
     my ($self,$params) = @_;
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
+    $params->{_type} = $params->{type};
+    delete $params->{type};
     if(defined($attr)) {
         map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
         delete $params->{attributes};
@@ -79,16 +81,16 @@ sub addSet {
 sub serializeToDB {
     my ($self,$params) = @_;
 	$params = ModelSEED::utilities::ARGS($params,[],{});
-	my $data = {};
+	my $data = { type => $self->_type };
 	my $attributes = $self->dbAttributes();
 	for (my $i=0; $i < @{$attributes}; $i++) {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-	$data->{relationships}->{aliases} = [];
+	$data->{relationships}->{compound_aliases} = [];
 	foreach my $aliastype (sort keys(%{$self->aliases()})) {
 		foreach my $alias (@{$self->aliases()->{$aliastype}}) {
-			push(@{$data->{relationships}->{aliases}},{
+			push(@{$data->{relationships}->{compound_aliases}},{
 				type => "CompoundAlias",
 				attributes => {
 					compound_uuid => $self->uuid(),

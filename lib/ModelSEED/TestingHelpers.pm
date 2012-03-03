@@ -23,10 +23,11 @@ use File::Basename qw(dirname basename);
 use File::Path qw(make_path remove_tree);
 use File::Temp;
 use ModelSEED::FIGMODEL;
-use Data::Dumper;
 use ModelSEED::CoreApi;
+use DBI;
 
 package ModelSEED::TestingHelpers;
+use Data::Dumper;
 
 sub new {
     my ($class) = @_;
@@ -227,19 +228,14 @@ sub getTestConfig {
 sub getDebugCoreApi {
     my ($self) = @_;
     if(!defined($self->{_debugCoreApi})) {
-        #my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
-        #my ($fh, $tmpFile) = File::Temp::tempfile();
-        #close($fh);
-        #system("cat $sqliteFile | sqlite3 $tmpFile");
-        #$self->{_debugCoreApi} = ModelSEED::CoreApi->new({
-        #    database => $tmpFile,
-        #    driver => "SQLite",
-        #});
-        print File::Basename::dirname(__FILE__)."/../../data/NewScheme.db\n";
+        my $sqliteFile = File::Basename::dirname(__FILE__) . "/ModelDB.sqlite";
+        my ($fh, $tmpFile) = File::Temp::tempfile();
+        close($fh);
+        system("cat $sqliteFile | sqlite3 $tmpFile");
         $self->{_debugCoreApi} = ModelSEED::CoreApi->new({
-            database => File::Basename::dirname(__FILE__)."/../../data/NewScheme.db",
+            database => $tmpFile,
             driver => "SQLite",
-        });  
+        });
     }
     return $self->{_debugCoreApi};
 }
