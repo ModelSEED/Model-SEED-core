@@ -44,9 +44,6 @@ has 'changed' => (is => 'rw', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
     my ($self, $params) = @_;
-    if (defined($params->{file})) {
-    	$params = $self->parseTextFile($params);
-    }
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
     my $bio  = $params->{biochemistry};
@@ -106,54 +103,7 @@ sub serializeToDB {
 }
 
 sub _buildDbAttributes {
-    return [qw( uuid modDate locked id name type )];
-}
-
-sub parseTextFile {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["file"],{});
-	if (-e $args->{file}) {
-		$args->{file} = ModelSEED::utilities::LOAD($args->{file});
-	}
-	my $data;
-	my $acceptedAttributes = {
-		id => 1,name => 1,type => 1
-	};
-	my $translation = {
-		"ID" => "compound_id",
-		"Concentration"  => "concentration",
-		"Min flux"  => "minflux",
-		"Max flux"  => "maxflux"
-	};
-	my $section = "none";
-	my $headings;
-	for (my $i=0; $i < @{$args->{file}}; $i++) {
-		if ($args->{file}->[$i] =~ m/^Attributes\{/) {
-			$section = "attributes";	
-		} elsif ($args->{file}->[$i] =~ m/^\}/) {
-			$section = "none";
-		} elsif ($args->{file}->[$i] =~ m/^Compounds\{/) {
-			$section = "compounds";
-			$headings = [split(/\t/,$args->{file}->[$i+1])];
-			$i++;
-		} elsif ($section eq "attributes") {
-			my $array = [split(/\t/,$args->{file}->[$i])];
-			if (defined($acceptedAttributes->{$array->[0]})) {
-				$data->{attributes}->{$array->[0]} = $array->[1];
-			}
-		} elsif ($section eq "compounds") {
-			my $cpdData = {
-				attributes => {media_id = $data->{attributes}->{id}},
-				relationships => []
-			};
-			my $array = [split(/\t/,$args->{file}->[$i])];
-			for (my $j=0; $j < @{$array}; $j++) {
-				$cpdData->{attributes}->{$translation->{$headings->[$j]}} = $array->{$j};
-			}
-			push(@{$data->{relationships}},$cpdData);
-		}
-	}
-	return $data;
+    return [qw( uuid id name type modDate locked )];
 }
 
 sub printToFile {

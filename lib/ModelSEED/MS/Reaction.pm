@@ -163,9 +163,9 @@ sub transportedReactants {
 }
 
 sub _buildDbAttributes {
-    return [qw( uuid modDate locked id name abbreviation cksum
-    equation deltaG deltaGErr reversibility thermoReversibility
-    defaultProtons compartment_uuid defaultTransproton )];
+    return [qw( uuid id  name abbreviation equation deltaG deltaGErr
+       reversibility thermoReversibility
+    defaultProtons compartment_uuid defaultTransproton modDate locked cksum)];
 }
 
 sub _buildUUID { return Data::UUID->new()->create_str(); }

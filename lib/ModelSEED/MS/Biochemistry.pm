@@ -163,6 +163,26 @@ sub _load_compartments {
     return $compartments;
 }
     
+######################################################################
+#Output Functions
+######################################################################
+sub printTable {
+    my ($self,$object) = @_;
+    my $output;
+	my $type = $self->checkType($object);
+    my $objects = $self->$type();
+    if (!defined($objects->[0])) {
+    	return {headings => [],rows => [[]]};
+    }
+    $output->{headings} = $objects->[0]->dbAttributes();
+    for (my $i=0; $i < @{$objects};$i++) {
+    	for (my $j=0; $j < @{$output->{headings}};$j++) {
+    		my $attribute = $output->{headings}->[$j];
+    		$output->{rows}->[$i]->[$j] = $objects->[$i]->$attribute();
+    	}
+    }
+    return $output;
+}
 
 sub serializeToDB {
     my ($self,$params) = @_;
@@ -181,6 +201,34 @@ sub serializeToDB {
         }
 	}
 	return $data;
+}
+
+######################################################################
+#Object addition functions
+######################################################################
+sub addMedia {
+    my ($self,$object) = @_;
+    #Checking if a media matching the input media id already exists
+    my $oldObj = $self->getObject({type => "Media",query => {id => $object->id()}});
+    if (defined($oldObj)) {
+    	if ($oldObj->locked() != 1) {
+    		$object->uuid($oldObj->uuid());
+    	}
+    	my $medialist = $self->media();
+    	for (my $i=0; $i < @{$medialist}; $i++) {
+    		if ($medialist->[$i] eq $oldObj) {
+    			$medialist->[$i] = $object;
+    		}
+    	}
+    	$self->clearIndex({type=>"Media"});
+    } else {
+    	push(@{$self->media()},$object);
+    	if (defined($self->indices()->{media})) {
+    		foreach my $attribute (keys(%{$self->indices()->{media}})) {
+    			push(@{$self->indices()->{media}->{$attribute}->{$object->$attribute()}},$object);
+    		}
+    	}
+    } 
 }
 
 ######################################################################

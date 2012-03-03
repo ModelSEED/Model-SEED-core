@@ -11,14 +11,15 @@
 ########################################################################
 
 use strict;
+use lib "../../config/";
+use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
-use ModelSEED::FIGMODEL::FIGMODELTable;
-use ModelSEED::ServerBackends::FBAMODEL;
-use Getopt::Long qw(GetOptionsFromArray);
-use YAML;
-use YAML::Dumper;
+use ModelSEED::CoreApi;
+use ModelSEED::globals;
+use ModelSEED::MS::Biochemistry;
+use File::Basename qw(dirname basename);
 
-package ModelSEED::ModelDriver;
+package ModelSEED::ModelDriverV2;
 
 =head3 new
 Definition:
@@ -40,18 +41,16 @@ Description:
 =cut
 sub api {
 	my ($self,$api) = @_;
-	if (defined($biochemistry)) {
-		$self->{_biochemistry} = $biochemistry;
+	if (defined($api)) {
+		$self->{_api} = $api;
 	}
-	if (!defined()) {
-		my $data = $self->api()->getBiochemistry({
-	    	uuid => ModelSEED::Interface::interface::BIOCHEMISTRY(),
-			with_all => 1,
-			user => ModelSEED::Interface::interface::USERNAME()
-	    });
-	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
+	if (!defined($self->{_api})) {
+		$self->{_api} = ModelSEED::CoreApi->new({
+            database => File::Basename::dirname(__FILE__)."/../../data/NewScheme.db",
+            driver => "SQLite",
+        });
 	}
-	return $self->{_biochemistry};
+	return $self->{_api};
 }
 =head3 biochemistry
 Definition:
@@ -66,7 +65,7 @@ sub biochemistry {
 	}
 	if (!defined()) {
 		my $data = $self->api()->getBiochemistry({
-	    	uuid => ModelSEED::Interface::interface::BIOCHEMISTRY(),
+	    	uuid => $self->ws()->biochemistry(),
 			with_all => 1,
 			user => ModelSEED::Interface::interface::USERNAME()
 	    });
@@ -252,43 +251,89 @@ sub outputdirectory {
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
-This function is used to print a media formulation to the current workspace.
+This function lists the types of biochemistry objects
 =EXAMPLE
-./bcprintmedia -media Carbon-D-glucose
+bc-listtypes
 =cut
-sub bcprintmedia {
+sub bclisttypes {
+    my($self,@Data) = @_;
+	my $args = $self->check([],[@Data],"lists the types of biochemistry objects");
+    return {success => 1,message => "Biochemistry types:\n".join("\n",@{[
+    	"media",
+    	"reaction",
+    	"compound",
+    	"compoundset",
+    	"reactionset"
+    ]})};
+}
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function prints a table of objects from the biochemistry database
+=EXAMPLE
+bc-list media
+=cut
+sub bclist {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["media",1,undef,"Name of the media formulation to be printed."],
-	],[@Data],"print Model SEED media formulation");
-    my $media = $self->db()->get_moose_object("media",{id => $args->{media}});
-	ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{media}.".media",$media->print());
-	return "Successfully printed media '".$args->{media}."' to file '". $self->ws()->directory().$args->{media}.".media'!";
+		["type",1,undef,"type of the object to be printed"],
+	],[@Data],"prints a table of objects from the biochemistry");
+    $self->biochemistry()->checkType($args->{type});
+    my $tbl = $self->biochemistry()->printTable($args->{type});
+    my $rows;
+    for (my $i=0; $i < @{$tbl->{rows}};$i++) {
+    	push(@{$rows},join("\t",@{$tbl->{rows}->[$i]}));
+    }
+    return {success => 1,message =>
+    	"Biochemistry ".$args->{type}." objects:\n".
+    	join("\t",@{$tbl->{headings}})."\n".
+    	join("\n",@{$rows})
+    };
 }
-
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function prints a file with object data to the workspace
+=EXAMPLE
+bc-print media "Carbon-D-Glucose"
+=cut
+sub bcprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["type",1,undef,"type of the object to be printed"],
+		["id",1,undef,"id of object to be printed"]
+	],[@Data],"prints a file with object data to the workspace");
+    my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+    if (!defined($obj)) {
+    	ModelSEED::utilities::USEERROR("No object of type ".$args->{type}." and with id ".$args->{id}." found in biochemistry ".$self->biochemistry()->uuid()."!");
+    }
+    $obj->printToFile({filename=>$self->ws()->directory().$args->{id}.".".$args->{type}});
+    return {success => 1,message => "Object successfully printed to file ".$args->{id}.".".$args->{type}." in workspace!"};
+}
 =head
 =CATEGORY
 Biochemistry Operations
 =DESCRIPTION
 This function is used to create or alter a media condition in the Model SEED database given either a list of compounds in the media or a file specifying the media compounds and minimum and maximum uptake rates.
 =EXAMPLE
-./bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
+bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
 =cut
-sub bcloadmedia {
+sub bcload {
     my($self,@Data) = @_;
 	my $args = $self->check([
-		["media",1,undef,"The name of the media formulation being created or altered."],
-		["public",0,0,"Set directory in which FBA problem output files will be stored."],
-		["owner",0,(ModelSEED::Interface::interface::USERNAME()),"Login of the user account who will own this media condition."],
-		["overwrite",0,0,"If you set this parameter to '1', any existing media with the same input name will be overwritten."]
-	],[@Data],"Creates (or alters) a media condition in the Model SEED database");
-    my $media;
-    if (!-e $self->ws()->directory().$args->{media}) {
-    	ModelSEED::utilities::ERROR("Could not find media file ".$self->ws()->directory().$args->{media});
-    }
-    $media = $self->db()->create_moose_object("media",{db => $self->db(),filedata => ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{media})});
-    $media->syncWithPPODB({overwrite => $args->{overwrite}}); 
-    return "Successfully loaded media ".$args->{media}." to database as ".$media->id();
+		["type",1,undef,"type of the object to be loaded"],
+		["id",1,undef,"id of the object to be loaded"],
+		["overwrite",0,0,"overwrite the existing object?"]
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+	if (defined($obj) && $args->{overwrite} == 0) {
+		ModelSEED::utilities::USEERROR("No object of type ".$args->{type}." and with id ".$args->{id}." found in biochemistry ".$self->biochemistry()->uuid()."!");
+	}
+	my $data = ModelSEED::ObjectParser::loadObjectFile({type => $args->{type},id => $args->{id},directory => $self->ws()->directory()});
+	my $newObj = ModelSEED::MS::Media->new({biochemistry => $self,attributes => $data->{attributes},relationships => $data->{relationships}});
+	$self->biochemistry()->addMedia($newObj);
+	$self->biochemistry()->save();
+	return {success => 1,message => "Successfully loaded ".$args->{type}." object from file with id ".$args->{id}."."};
 }
 
 1;
