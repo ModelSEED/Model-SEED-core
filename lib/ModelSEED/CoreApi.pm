@@ -3,6 +3,7 @@ package ModelSEED::CoreApi;
 use strict;
 use warnings;
 use DBI;
+use Try::Tiny;
 
 
 # TODO: list these columns in separate module and import
@@ -1204,11 +1205,11 @@ sub _parseQuery {
 }
 
 sub save {
-    my ($self, $object, $user) = @_;
+    my ($self, $type, $object, $user) = @_;
     $self->{om}->db->begin_work;
     my $success = 1;
     try {
-        $self->_innerSave($object, $user);
+        $self->_innerSave($type, $object, $user);
     } catch { $success = 0; };
     if($success) {
         $self->{om}->db->commit;
@@ -1219,14 +1220,14 @@ sub save {
 }
 
 sub _innerSave {
-    my ($self, $object, $user) = @_;
+    my ($self, $type, $object, $user) = @_;
     if(!defined($self->{om})) {
         # until we get moose lazy loaders in here
         $self->_initOM();
     }
     my $attrs = $object->{attributes};
     my $rels  = $object->{relationships};
-    my $type  = $object->{type};
+    #$type = $object->{type};
     my $primaryKeyLookup = $self->{om}->getPrimaryKeys($type, $attrs);      
     my $rObj = $self->{om}->new_object($type, $primaryKeyLookup);
     my $res = $rObj->load(speculative => 1);
@@ -1239,12 +1240,12 @@ sub _innerSave {
             # is a 'to many' relationship
             my $many = [];
             foreach my $subObj (@{$rels->{$rel}}) {
-                push(@$many, $self->_innerSave($subObj, $user));
+                push(@$many, $self->_innerSave($subObj->{type}, $subObj, $user));
             }
             $rObj->$rel($many);
         } else {
             # is a 'to one' relationship
-            my $rSubObj = $self->_innerSave($rels->{$rel}, $user);
+            my $rSubObj = $self->_innerSave($rel->{type}, $rels->{$rel}, $user);
             $rObj->$rel($rSubObj);
         }
     }

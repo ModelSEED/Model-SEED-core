@@ -13,6 +13,7 @@ has compound_uuid => (is => 'rw', isa => 'Str', required => 1);
 has concentration => (is => 'rw', isa => 'Num', default  => 1);
 has minflux       => (is => 'rw', isa => 'Num', default  => -100);
 has maxflux       => (is => 'rw', isa => 'Num', default  => 100);
+has media_uuid    => (is => 'rw', isa => 'Str', required => 1);
 
 # Subobjects
 has compound      => (
@@ -75,6 +76,7 @@ sub serializeToDB {
     return {
         type       => $self->_type,
         attributes => {
+            media_uuid    => $self->media_uuid,
             compound_uuid => $self->compound_uuid,
             concentration => $self->concentration,
             minflux       => $self->minflux,

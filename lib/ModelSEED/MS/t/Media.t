@@ -14,7 +14,7 @@ my ($media, $data);
 {
     # Need to have biochemistry-data.json file in same directory as this test.
     my $dataFile = File::Basename::dirname(__FILE__)."/biochemistry-object.json";
-    ok (-f $dataFile), "Could not find $dataFile that contains biochemistry data!";
+    ok -f $dataFile, "Could not find $dataFile that contains biochemistry data!";
     local $/;
     open(my $fh, "<", $dataFile) || die("Could not open file $dataFile: $!");
     $text = <$fh>;
@@ -72,10 +72,7 @@ my ($media, $data);
     my $data2 = $media2->serializeToDB;
     is_deeply $data2, $data1, "Should have round-trip integrity.";
     $testCount += 1;
+    warn Dumper $data2;
 }
-
-
-        
-
 
 done_testing($testCount);
