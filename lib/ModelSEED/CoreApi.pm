@@ -16,6 +16,10 @@ my $reaction_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'abbreviation',
 
 my $reagent_cols = ['reaction_uuid', 'compound_uuid', 'compartmentIndex',
 		    'coefficient', 'cofactor'];
+		    
+my $biomass_cols = ['uuid', 'modDate', 'locked', 'id', 'name'];
+
+my $biomass_compound_cols = ['biomass_uuid','compound_uuid','model_compartment_uuid', 'coefficient'];
 
 my $compound_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'abbreviation',
 		     'cksum', 'unchargedFormula', 'formula', 'mass',
@@ -62,6 +66,9 @@ my $model_compartment_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'compar
 			      'compartmentIndex', 'label', 'pH', 'potential'];
 
 my $model_reaction_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', 'direction',
+			   'transproton', 'protons', 'model_compartment_uuid'];
+			   
+my $model_biomass_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', 'direction',
 			   'transproton', 'protons', 'model_compartment_uuid'];
 
 my $modelfba_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'media_uuid',
@@ -201,7 +208,7 @@ sub getReactions {
     my $aliases = _processJoinedRows($rows, $aliases_cols, "ReactionAlias");
 
     # get the reagents
-    $sql = "SELECT reactions.uuid, reagents.* FROM reactions"
+    $sql = "SELECT reagents.* FROM reactions"
 	. " JOIN reagents ON reactions.uuid = reagents.reaction_uuid"
 	. " $where";
 
@@ -209,7 +216,7 @@ sub getReactions {
     my $reagents = _processJoinedRows($rows, $reagent_cols, "Reagent");
 
     # get the reactionsets
-    $sql = "SELECT reactions.uuid, reactionset_reactions.reactionset_uuid FROM reactions"
+    $sql = "SELECT reactionset_reactions.reactionset_uuid FROM reactions"
 	. " JOIN reactionset_reactions ON reactions.uuid = reactionset_reactions.reaction_uuid"
 	. " $where";
 
@@ -889,7 +896,8 @@ sub getModel {
 	with_annotation   => {required => 0},
 	with_compartments => {required => 0},
 	with_reactions    => {required => 0},
-	with_modelfbas    => {required => 0}
+	with_modelfbas    => {required => 0},
+	with_biomass      => {required => 0},
     });
 
     # get the model object
@@ -923,6 +931,7 @@ sub getModel {
 	    with_all => 1}],
 	compartments => ['getModelCompartments', {model_uuid => $args->{uuid}}],
 	reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
+	biomass      => ['getModelBiomass',    {model_uuid => $args->{uuid}}],
 	modelfbas    => ['getModelFBAs',         {model_uuid => $args->{uuid}}]
     };
 
@@ -997,6 +1006,60 @@ sub getModelReactions {
     my $model_reactions = _processRows($rows, $model_reaction_cols, "ModelReaction");
 
     return $model_reactions;
+}
+
+sub getModelBiomass {
+    my ($self, $args) = @_;
+    _processArgs($args, 'getReactions', {
+	model_uuid        => {required => 1},
+	query             => {required => 0},
+	limit             => {required => 0},
+	offset            => {required => 0}
+    });
+
+    my $sub_sql = "SELECT biomass_uuid"
+	. " FROM model_biomass"
+	. " WHERE model_uuid = ?";
+
+    if (defined($args->{offset}) && defined($args->{limit})) {
+	$sub_sql .= " LIMIT " . $args->{limit} . " OFFSET " . $args->{offset};
+    }
+
+    my $where = "WHERE biomasses.uuid IN ($sub_sql)";
+
+    # parse the query, if it exists
+    if (defined($args->{query}) && scalar @{$args->{query}} > 0) {
+	$where .= " AND " . _parseQuery($args->{query});
+    }
+
+    # get the biomass data
+    my $sql = "SELECT * FROM biomasses"
+	. " $where";
+
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+
+    # return empty set if no biomass
+    if (scalar @$rows == 0) {
+	return [];
+    }
+    my $biomasses = _processRows($rows, $biomass_cols, "Biomass");
+
+    # get the aliases
+    $sql = "SELECT biomass_compounds.* FROM biomasses"
+	. " JOIN biomass_compounds on biomasses.uuid = biomass_compounds.biomass_uuid"
+	. " $where";
+
+    $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{model_uuid});
+    my $biocpds = _processJoinedRows($rows, $biomass_compound_cols, "BiomassCompounds");
+
+    foreach my $biomass (@$biomasses) {
+		my $uuid = $biomass->{attributes}->{uuid};
+		if (defined($biocpds->{$uuid})) {
+		    $biomass->{relationships}->{compounds} = $biocpds->{$uuid};
+		}
+    }
+
+    return $biomasses;
 }
 
 sub getModelFBAs {
@@ -1142,9 +1205,8 @@ sub _processJoinedRows {
 	    type => $type,
 	    attributes => {}
 	};
-
 	for (my $i=0; $i<$num_cols; $i++) {
-	    $data->{attributes}->{$cols->[$i]} = $row->[$i+1];
+	    $data->{attributes}->{$cols->[$i]} = $row->[$i];
 	}
 
 	push(@{$hash->{$id}}, $data);

@@ -143,14 +143,14 @@ sub printToFile {
 	push(@{$data},"Biomass rxn\tBiomass cpd\tCoefficient\tCompartment");
 	foreach my $biomass (@{$self->mdlbiomass()}) {
 		foreach my $biomassCpd (@{$biomass->biomasscompounds()}) {
-			push(@{$data},$biomass->id()."\t".$biomassCpd->compound()."\t".$biomassCpd->coefficient()."\t".$biomassCpd->compartment()->id());
+			push(@{$data},$biomass->id()."\t".$biomassCpd->compound()->id()."\t".$biomassCpd->coefficient()."\t".$biomassCpd->compartment()->id());
 		}
 	}
 	push(@{$data},"}");
 	push(@{$data},"Reactions{");
 	push(@{$data},"Reaction ID\tDirection\tCompartment\tProtons\tGPR\tEquation");
 	foreach my $reaction (@{$self->mdlreactions()}) {
-		push(@{$data},$reaction->reaction()->id()."\t".$reaction->direction()."\t".$reaction->compartment()->id()."\t".$reaction->protons()."\t".$reaction->equation());
+		push(@{$data},$reaction->reaction()->id()."\t".$reaction->direction()."\t".$reaction->compartment()->id()."\t".$reaction->protons()."\t".join("|",@{$reaction->gpr()})."\t".$reaction->equation());
 	}
 	push(@{$data},"}");
 	if (defined($args->{filename})) {

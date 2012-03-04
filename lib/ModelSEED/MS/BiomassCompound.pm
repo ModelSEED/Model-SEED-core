@@ -27,7 +27,7 @@ has coefficient => (is => 'rw', isa => 'Num', required => 1);
 
 #Subobjects
 has compound => (is => 'rw',isa => 'ModelSEED::MS::Compound',lazy => 1,builder => '_getCompound');
-has mdlcompartment => (is => 'rw',isa => 'ModelSEED::MS::ModelCompartment',lazy => 1,builder => '_getCompartment');
+has compartment => (is => 'rw',isa => 'ModelSEED::MS::ModelCompartment',lazy => 1,builder => '_getCompartment');
 
 #Constants
 has 'dbAttributes' => (is => 'ro',isa => 'ArrayRef[Str]',builder => '_buildDbAttributes');
@@ -77,7 +77,7 @@ sub _getCompound {
 sub _getCompartment {
 	my ($self) = @_;
 	if (defined($self->model())) {
-        my $cmp = $self->model()->getCompartment({uuid => $self->model_compartment_uuid});
+        my $cmp = $self->model()->getModelCompartment({uuid => $self->model_compartment_uuid});
         if (!defined($cmp)) {
         	ModelSEED::utilities::ERROR("Model compartment ".$self->model_compartment_uuid." not found in model!");
         }

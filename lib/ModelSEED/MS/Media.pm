@@ -43,11 +43,9 @@ has 'changed' => (is => 'rw', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
     my ($self, $params) = @_;
-    delete $params->{type};
     my $attr = $params->{attributes};
     my $rels = $params->{relationships};
     my $bio  = $params->{biochemistry};
-    $params->{_type} = $params->{type};
     delete $params->{type};
     delete $params->{biochemistry};
     if (defined($attr)) {

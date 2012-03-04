@@ -23,10 +23,10 @@ has reaction_uuid     => (is => 'rw', isa => 'Str', default  => "");
 has model_compartment_uuid     => (is => 'rw', isa => 'Str', default  => "");
 has direction     => (is => 'rw', isa => 'Str', default  => "");
 has transproton    => (is => 'rw', isa => 'Num');
-has protons   => (is => 'rw', isa => 'Num');
+has protons   => (is => 'rw', isa => 'Num',default  => 0);
 
 #Subobjects
-has gpr   => (is => 'rw', isa => 'ArrayRef[Str]');
+has gpr   => (is => 'rw', isa => 'ArrayRef[Str]',default => sub { return ["UNKNOWN"]; });
 has reaction => (
 	is      => 'rw',
     isa     => 'Maybe[ModelSEED::MS::Reaction]',

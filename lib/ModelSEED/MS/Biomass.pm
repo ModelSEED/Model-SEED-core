@@ -49,12 +49,32 @@ sub BUILDARGS {
         map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
         delete $params->{attributes};
     }
-    # Set up relationships
+    return $params;
+}
+
+sub BUILD {
+    my ($self, $params) = @_;
+    my $rels = $params->{relationships};
     if(defined($rels)) {
-        print "biomass relations:".join("|",keys(%{$rels}))."\n";
+		my $subObjects = {
+			compounds => ["biomasscompounds","ModelSEED::MS::BiomassCompound"]
+		};
+        my $order = ["compounds"];
+        foreach my $name (@$order) {
+            if (defined($rels->{$name})) {
+	            my $values = $rels->{$name};
+	            my $function = $subObjects->{$name}->[0];
+	            my $class = $subObjects->{$name}->[1];
+	            my $objects = [];
+            	foreach my $data (@$values) {
+	                $data->{model} = $self->model();
+	                push(@$objects, $class->new($data));
+	            }
+	            $self->$function($objects);
+            }
+		}
+        delete $params->{relationships}
     }
-    delete $params->{relationships};
-	return $params;
 }
 
 sub serializeToDB {
