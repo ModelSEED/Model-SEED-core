@@ -879,7 +879,8 @@ sub getModel {
     my ($self, $args) = @_;
 
     _processArgs($args, 'getModel', {
-	uuid              => {required => 1},
+    id                => {required => 0},
+	uuid              => {required => 0},
 	user              => {required => 1},
 	with_all          => {required => 0},
 	with_biochemistry => {required => 0},
@@ -891,17 +892,21 @@ sub getModel {
     });
 
     # get the model object
+  	my $query = "uuid";
+  	if (defined($args->{id})) {
+  		$query = "id";	
+  	}
     my $sql = "SELECT * FROM models"
-	. " WHERE uuid = ?";
+	. " WHERE ".$query." = ?";
 
-    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{uuid});
+    my $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{$query});
 
     unless (scalar @$rows == 1) {
-	die "Unable to find model with uuid: " . $args->{uuid};
+	die "Unable to find model with ".$query.": " . $args->{$query};
     }
-
+	
     my $model = _processRows($rows, $model_cols, "Model")->[0];
-
+	$args->{uuid} = $model->{attributes}->{uuid};
     my $with = {
 	biochemistry => ['getBiochemistry', {
 	    uuid => $model->{attributes}->{biochemistry_uuid},

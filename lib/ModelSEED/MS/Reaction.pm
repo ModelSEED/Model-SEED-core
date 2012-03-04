@@ -64,9 +64,13 @@ sub BUILDARGS {
     # Set up relationships
     if(defined($rels)) {
         # Set up aliases
-        foreach my $alias (@{$rels->{aliases} || []}) {
-            push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
-        }
+        if (defined($rels->{aliases})) {
+	        foreach my $alias (@{$rels->{aliases}}) {
+	        	if (defined($alias->{attributes}->{type}) && defined($alias->{attributes}->{alias})) {
+	            	push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
+	        	}
+	        }
+    	}
         my ($reagents, $transported) = ([], []);
 		foreach my $reagent (@{$rels->{reagents}}) {
             my $cpd;

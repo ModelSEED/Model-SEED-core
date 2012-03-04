@@ -50,9 +50,13 @@ sub BUILDARGS {
         delete $params->{attributes};
     }
     if(defined($rels)) {
-        foreach my $alias (@{$rels->{aliases} || []}) {
-            push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
-        }
+    	if (defined($rels->{aliases})) {
+	        foreach my $alias (@{$rels->{aliases}}) {
+	        	if (defined($alias->{attributes}->{type}) && defined($alias->{attributes}->{alias})) {
+	            	push(@{$params->{aliases}->{$alias->{attributes}->{type}}},$alias->{attributes}->{alias});
+	        	}
+	        }
+    	}
         foreach my $structure (@{$rels->{compound_structures} || []}) {
             push(@{$params->{structures}->{$structure->{attributes}->{type}}},{
             	structure => $structure->{attributes}->{structure},

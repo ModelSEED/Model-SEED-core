@@ -18,6 +18,7 @@ use ModelSEED::CoreApi;
 use ModelSEED::globals;
 use ModelSEED::MS::ObjectParser;
 use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Model;
 use File::Basename qw(dirname basename);
 
 package ModelSEED::ModelDriverV2;
@@ -55,7 +56,7 @@ sub api {
 }
 =head3 biochemistry
 Definition:
-	Biochemistry = driver->biochemistry();
+	ModelSEED::MS::Biochemistry = driver->biochemistry();
 Description:
 	Returns a Biochemistry object
 =cut
@@ -74,6 +75,21 @@ sub biochemistry {
 	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
 	}
 	return $self->{_biochemistry};
+}
+=head3 getModel
+Definition:
+	ModelSEED::MS::Model = driver->getModel(string:model ID);
+Description:
+	Returns a model object
+=cut
+sub getModel {
+	my ($self,$modelid) = @_;
+	my $modeldata = $self->api()->getModel({
+    	id => $modelid,
+		with_all => 1,
+		user => ModelSEED::Interface::interface::USERNAME()
+    });
+    return ModelSEED::MS::Model->new($modeldata);
 }
 =head3 figmodel
 Definition:
@@ -339,6 +355,26 @@ sub bcload {
 	$self->biochemistry()->save();
 	print "Save time:".$time-time()."\n";
 	return {success => 1,message => "Successfully loaded ".$args->{type}." object from file with id ".$args->{id}."."};
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to print a specified model to a file in the workspace
+=EXAMPLE
+mdlprint Seed83333.1
+=cut
+sub mdlprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"type of the object to be loaded"]
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $model = $self->getModel($args->{model});
+	if (!defined($model)) {
+		ModelSEED::utilities::USEERROR("No model found with id ".$args->{model}."!");	
+	}
+	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
+	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
 }
 
 1;

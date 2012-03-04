@@ -27,13 +27,14 @@ has complexes => ( is => 'rw',
 #    isa => 'ArrayRef | Array[ModelSEED::MS::Role]',
 #    builder => '_buildRole', lazy => 1 );
 
-
 sub BUILDARGS {
     my ($self, $params) = @_;
-    foreach my $attr (keys %{$params->{attributes}}) {
-        $params->{$attr} = $params->{attributes}->{$attr};
+    my $attr = $params->{attributes};
+    my $rels = $params->{relationships};
+    if(defined($attr)) {
+        map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
+        delete $params->{attributes};
     }
-    delete $params->{attributes};
     return $params;
 }
 
@@ -47,10 +48,6 @@ around 'complexes' => sub {
     }
     return $data;
 };
-
-
-         
-
 
 # BULDER FUNCTIONS
 sub _buildUUID { return Data::UUID->new()->create()->to_string(); }
