@@ -359,10 +359,12 @@ sub changeDrains {
 			$drnHash->{$args->{drains}->[$i]}->{min} = -10000;
 		}
 	}
-	my $drainString = "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0";
+	my $drainString = "";
 	foreach my $drn (keys(%{$drnHash})) {
 		$drainString .= ";".$drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max};
 	}
+	
+
 	if ($drainString ne "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0") {
 		ModelSEED::utilities::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
 	}
