@@ -266,6 +266,26 @@ sub buildIndex {
 		push(@{$self->indices->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
 	}
 }
+######################################################################
+#Object algorithms
+######################################################################
+sub priceReconstruction {
+	my ($self,$args) = @_;
+#	Biochemistry
+#	Reaction liklihood calculated from sequence
+#	Compatments
+#	Media
+#	Growth data
+#	 => Call to C++
+#	List reaction IDs
+#	reaction confidence?
+#	transport stoichiometry
+#	reaction GPR
+#	reaction directionality
+#	reaction compartments
+#	annotation
+	#Your code goes here using swig?
+}
 
 sub _printedAttributes { return [ qw( id name version type growth reactions annotations compounds status) ]; }
 sub _buildTypesHash {

@@ -46,10 +46,6 @@ sub BUILDARGS {
         map { $params->{$_} = $attr->{$_} } grep { defined($attr->{$_}) } keys %$attr;
         delete $params->{attributes};
     }
-    # Set up relationships
-    if(defined($rels)) {
-        print "Model compartment relations:".join("|",keys(%{$rels}))."\n";
-    }
     delete $params->{relationships};
 	return $params;
 }

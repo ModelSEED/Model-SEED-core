@@ -91,6 +91,22 @@ sub getModel {
     });
     return ModelSEED::MS::Model->new($modeldata);
 }
+=head3 getMapping
+Definition:
+	ModelSEED::MS::Mapping = driver->getMapping(string:mapping ID);
+Description:
+	Returns a Mapping object
+=cut
+sub getMapping {
+	my ($self,$id) = @_;
+	my $mappingdata = $self->api()->getMapping({
+    	uuid => $id,
+		with_all => 1,
+		user => ModelSEED::Interface::interface::USERNAME()
+    });
+    return ModelSEED::MS::Mapping->new($mappingdata);
+}
+
 =head3 figmodel
 Definition:
 	FIGMODEL = driver->figmodel();
@@ -373,6 +389,24 @@ sub mdlprint {
 	if (!defined($model)) {
 		ModelSEED::utilities::USEERROR("No model found with id ".$args->{model}."!");	
 	}
+	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
+	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to print a specified model to a file in the workspace
+=EXAMPLE
+mdlprint Seed83333.1
+=cut
+sub mdlpricereconstruction {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"type of the object to be loaded"],
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $model = $self->getModel($args->{model});
+	$model->priceReconstruction($args);
 	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
 	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
 }

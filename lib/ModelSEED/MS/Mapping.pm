@@ -21,9 +21,9 @@ has biochemistry_uuid  => (is => 'rw',isa => 'Str',builder => '_buildRole',lazy 
 
 # Subobjects
 has biochemistry  => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry',builder => '_buildBiochemistry',lazy => 1);
-has reactionRules => ( is => 'rw',isa => 'ArrayRef | Array[ModelSEED::MS::ReactionRule]');
+has reactionRules => ( is => 'rw',isa => 'ArrayRef | ArrayRef[ModelSEED::MS::ReactionRule]');
 has complexes => ( is => 'rw',isa => 'ArrayRef | ArrayRef[ModelSEED::MS::Complex]');
-has roles => ( is => 'rw',isa => 'ArrayRef | Array[ModelSEED::MS::Role]');
+has roles => ( is => 'rw',isa => 'ArrayRef | ArrayRef[ModelSEED::MS::Role]');
    
 # Constants
 has dbAttributes => (is => 'ro',isa => 'ArrayRef[Str]',builder => '_buildDbAttributes');
@@ -128,7 +128,25 @@ sub _buildBiochemistry {
         ModelSEED::utilities::ERROR("Cannot retrieve biochemistry without object manager!");
     }
 }
+
+sub _buildTypesHash {
+	return {
+		Biochemistry => "biochemistry",
+		ReactionRule => "reactionRules",
+		Complex => "complexes",
+		Role => "roles"
+    }; 
+}
+
+has uuid => ( is => 'rw', isa => 'Str', builder => '_buildUUID');
+has modDate => ( is => 'rw', isa => 'DateTime', builder => '_buildDate');
+has locked => ( is => 'rw', isa => 'Bool', default => 0);
+has public => ( is => 'rw', isa => 'Bool', default => 0);
+has name   => ( is => 'rw', isa => 'Str', default => '');
+has biochemistry_uuid  => (is => 'rw',isa => 'Str',builder => '_buildRole',lazy => 1);
+
 sub _printedAttributes { return [ qw( uuid name biochemistry_uuid public ) ]; }
+sub _buildDbAttributes { return [ qw( uuid name biochemistry_uuid public modDate locked ) ]; }
 sub _buildUUID { return Data::UUID->new()->create()->to_string(); }
 sub _buildDate { return DateTime->now(); }
 sub _build_relToClass {

@@ -1819,7 +1819,7 @@ sub mdlmakedbmodel {
 	],[@Data],"construct a model with all database reactions");
     my $mdl =  $self->figmodel()->get_model("dbmdl-".$args->{biomass}.".".$self->figmodel()->userObj()->_id());
     if (!defined($mdl)) {
-    	my $mdl = $self->figmodel()->create_model({
+    	$mdl = $self->figmodel()->create_model({
 			genome => "NONE",
 			id => "dbmdl-".$args->{biomass},
 			owner => ModelSEED::Interface::interface::USERNAME(),
