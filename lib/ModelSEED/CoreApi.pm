@@ -20,7 +20,7 @@ my $compound_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'abbreviation',
 		     'cksum', 'unchargedFormula', 'formula', 'mass',
 		     'defaultCharge', 'deltaG', 'deltaGErr'];
 
-my $aliases_cols = ['alias', 'modDate', 'type'];
+my $aliases_cols = ['alias', 'type'];
 
 my $set_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'class', 'type'];
 

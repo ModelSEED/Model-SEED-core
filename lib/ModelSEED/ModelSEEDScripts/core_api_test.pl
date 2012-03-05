@@ -109,10 +109,8 @@ my $annotation = $api->getAnnotation({
 my $model = $api->getModel({
     uuid => $model_uuid,
     user => "master",
-    with_annotation => 1
+    with_all => 1
 });
-
-print Dumper($model);
 
 sub file {
     $biochem->{relationships}->{reactions} = [$biochem->{relationships}->{reactions}->[0]];
