@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::MS::Complex - This is the moose object corresponding to the Role object in the database
+# ModelSEED::MS::ReactionRule - This is the moose object corresponding to the Role object in the database
 # Author: Christopher Henry
 # Author email: chenry@mcs.anl.gov
 # Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
@@ -7,9 +7,11 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-use ModelSEED::MS::Role;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::Compartment;
+use ModelSEED::MS::ReactionRuleTransport;
 use ModelSEED::MS::Mapping;
-package ModelSEED::MS::Complex;
+package ModelSEED::MS::ReactionRule;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
@@ -21,14 +23,16 @@ has mapping => (is => 'rw',isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
 #Attributes
 has 'uuid'     => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
 has 'modDate'  => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
-has 'id'       => (is => 'rw', isa => 'Str', required => 1);
-has 'locked'   => (is => 'rw', isa => 'Int', default  => 0);
-has 'name'     => (is => 'rw',isa => 'Str',default  => "");
-has 'searchname'     => (is => 'rw',isa => 'Str',default  => "");
+has 'locked'       => (is => 'rw', isa => 'Int', default  => 0);
+has 'reaction_uuid'   => (is => 'rw', isa => 'Str', default  => "");
+has 'compartment_uuid'     => (is => 'rw',isa => 'Str',default  => "");
+has 'direction'     => (is => 'rw',isa => 'Str',default  => "=");
+has 'transprotonNature'     => (is => 'rw',isa => 'Str',default  => "");
 
 #Subobjects
-has 'complexRoles' => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::ComplexRole]',default => sub {return [];});
-has 'reactionRules' => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::ReactionRule]',default => sub {return [];});
+has 'reaction' => (is => 'rw', isa => 'ModelSEED::MS::Reaction',lazy => 1, builder => '_buildReaction');
+has 'compartment' => (is => 'rw', isa => 'ModelSEED::MS::Compartment',lazy => 1, builder => '_buildCompartment');
+has 'reactionRuleTransports' => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::ReactionRuleTransport]',default => sub {return [];});
 
 #Constants
 has 'dbAttributes' => ( is => 'ro', isa => 'ArrayRef[Str]', 
@@ -56,9 +60,9 @@ sub BUILD {
     my $rels = $params->{relationships};
     if(defined($rels)) {
 		my $subObjects = {
-			complexRoles => ["complexroles","ModelSEED::MS::ComplexRole"],
+			ruletransports => ["reactionRuleTransports","ModelSEED::MS::ReactionRuleTransport"],
 		};
-        my $order = ["complexRoles"];
+        my $order = ["ruletransports"];
         foreach my $name (@$order) {
             if (defined($rels->{$name})) {
 	            my $values = $rels->{$name};
@@ -72,45 +76,25 @@ sub BUILD {
 		        $self->$function($objects);
             }
 		}
-		if (defined($params->{relationships}->{reactionrules}) && defined($self->mapping())) {
-			foreach my $data (@{$params->{relationships}->{reactionrules}}) {
-				if (defined($data->{attributes}->{reaction_rule_uuid})) {
-					my $rxnrule = $self->mapping()->getReactionRule($data->{attributes}->{reaction_rule_uuid});
-					if (!defined($rxnrule)) {
-						ModelSEED::utilities::ERROR("Reaction rule ".$data->{attributes}->{reaction_rule_uuid}." not found in mapping ".$self->mapping()->uuid()."!");
-					}
-					push(@{$self->reactionRules()},$rxnrule);
-				}
-			}
-		}
         delete $params->{relationships}
     }
 }
 
-sub ruleString {
+sub transportString {
     my ($self) = @_;
-	my $ruleString = "";
-	my $rules = $self->reactionRules();
-	for (my $i=0; $i < @{$rules}; $i++) {
-		if (length($ruleString) > 0) {
-			$ruleString .= "|";	
+	my $transString = "";
+	my $ruleTrans = $self->reactionRuleTransports();
+	for (my $i=0; $i < @{$ruleTrans}; $i++) {
+		if (length($transString) > 0) {
+			$transString .= "|";	
 		}
-		$ruleString .= $rules->[$i]->uuid();
-	}
-	return $ruleString;
-}
-
-sub roleString {
-    my ($self) = @_;
-	my $roleString = "";
-	my $roles = $self->complexRoles();
-	for (my $i=0; $i < @{$roles}; $i++) {
-		if (length($roleString) > 0) {
-			$roleString .= "|";	
+		my $sign = "";
+		if ($ruleTrans->[$i]->isImport() == 1) {
+			$sign = "-";	
 		}
-		$roleString .= $roles->[$i]->role()->id().":".$roles->[$i]->optional().":".$roles->[$i]->type();
+		$transString .= "(".$sign.$ruleTrans->[$i]->transportCoefficient().")".$ruleTrans->[$i]->compound()->id()."[".$ruleTrans->[$i]->compartment()->id().$ruleTrans->[$i]->compartmentIndex()."]"
 	}
-	return $roleString;
+	return $transString;
 }
 
 sub serializeToDB {
@@ -124,8 +108,34 @@ sub serializeToDB {
 	return $data;
 }
 
+sub _buildCompartment {
+    my ($self) = @_;
+	if (defined($self->mapping())) {
+        my $cmp = $self->mapping()->biochemistry()->getCompartment({uuid => $self->compartment_uuid()});
+        if (!defined($cmp)) {
+        	ModelSEED::utilities::ERROR("Compartment ".$self->compartment_uuid." not found in biochemistry!");
+        }
+        return $cmp;
+    } else {
+        ModelSEED::utilities::ERROR("Cannot retrieve compartment without biochemistry!");
+    }
+}
+
+sub _buildReaction {
+    my ($self) = @_;
+	if (defined($self->mapping())) {
+        my $rxn = $self->mapping()->biochemistry()->getReaction({uuid => $self->reaction_uuid()});
+        if (!defined($rxn)) {
+        	ModelSEED::utilities::ERROR("Reaction ".$self->reaction_uuid()." not found in biochemistry!");
+        }
+        return $rxn;
+    } else {
+        ModelSEED::utilities::ERROR("Cannot retrieve reaction without biochemistry!");
+    }
+}
+
 sub _buildDbAttributes {
-    return [qw( uuid id  name searchname feature_uuid modDate locked )];
+    return [qw( uuid modDate locked reaction_uuid compartment_uuid direction transprotonNature )];
 }
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now(); }

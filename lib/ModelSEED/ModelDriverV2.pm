@@ -376,5 +376,25 @@ sub mdlprint {
 	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
 	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
 }
+=head
+=CATEGORY
+Mapping Operations
+=DESCRIPTION
+This function is used to print a specified mapping object
+=EXAMPLE
+mapprint
+=cut
+sub mapprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["mapping",1,undef,"ID of a mapping object"]
+	],[@Data],"Prints the specified mapping object");
+	my $mapping = $self->getMapping($args->{mapping});
+	if (!defined($mapping)) {
+		ModelSEED::utilities::USEERROR("No mapping found with uuid ".$args->{mapping}."!");	
+	}
+	$mapping->printToFile({filename=>$self->ws()->directory().$args->{mapping}.".mapping"});
+	return {success => 1,message => "Successfully printed mapping ".$args->{mapping}." to file ".$self->ws()->directory().$args->{mapping}.".mapping in the workspace."};
+}
 
 1;
