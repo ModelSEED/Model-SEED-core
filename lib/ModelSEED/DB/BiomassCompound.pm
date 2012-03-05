@@ -22,7 +22,7 @@ __PACKAGE__->meta->setup(
             key_columns => { biomass_uuid => 'uuid' },
         },
 
-        compartment => {
+        model_compartment => {
             class       => 'ModelSEED::DB::ModelCompartment',
             key_columns => { model_compartment_uuid => 'uuid' },
         },

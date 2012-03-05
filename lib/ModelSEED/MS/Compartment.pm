@@ -13,7 +13,6 @@ has 'modDate' => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildDate');
 has 'id'      => (is => 'rw', isa => 'Str', required => 1);
 has 'locked'  => (is => 'rw', isa => 'Int', default  => 0);
 has 'name'    => (is => 'rw', isa => 'Str', required => 1);
-has type      => (is => 'rw', isa => 'Str', default  => '');
 has '_type'   => (is => 'ro', isa => 'Str', init_arg => undef, default => 'Compartment');
 
 sub BUILDARGS {
@@ -35,7 +34,6 @@ sub serializeToDB {
             id      => $self->id,
             locked  => $self->locked,
             name    => $self->name,
-            type    => $self->type,
         },
         relationships => {},
         type          => $self->_type,

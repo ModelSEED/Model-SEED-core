@@ -1213,7 +1213,7 @@ Descrition:
 =cut
 sub add_column {
 	my ($self, $arg, $column_name) = @_;
-	if( ref($arg) == 'CODE' ) {
+	if( ref($arg) eq 'CODE' ) {
 		# $arg is a function, apply to all rows
 		my @columnData = [];
 		for( my $i = 0; $i < $self->size(); $i++ ) {
@@ -1221,7 +1221,7 @@ sub add_column {
 			my $entry = &$arg($row);
 			$row->{$column_name} = $entry;
 		}
-	} elsif ( ref($arg) == 'ARRAY' ) {
+	} elsif ( ref($arg) eq 'ARRAY' ) {
 		for( my $i = 0; $i < $self->size(); $i++ ) {
 			if( $i > @{$arg} ) { return; }
 			my $row = $self->get_row($i);

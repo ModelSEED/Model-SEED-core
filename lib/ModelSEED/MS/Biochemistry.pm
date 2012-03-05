@@ -19,6 +19,8 @@ use Carp qw(cluck);
 use namespace::autoclean;
 use DateTime;
 use Data::UUID;
+use Data::Dumper;
+$Data::Dumper::Maxdepth = 2;
 
 
 has om      => (is => 'rw', isa => 'ModelSEED::CoreApi');
@@ -92,10 +94,12 @@ sub BUILD {
             my $values = $rels->{$name};
             $params->{$name} = [];
             my $class = $subObjects->{$name};
+            my $objects = [];
             foreach my $data (@$values) {
                 $data->{biochemistry} = $self;
-                push(@{$self->{$name}}, $class->new($data));
+                push(@$objects, $class->new($data));
             }
+            $self->$name($objects);
 		}
         delete $params->{relationships}
     }
@@ -159,6 +163,26 @@ sub _load_compartments {
     return $compartments;
 }
     
+######################################################################
+#Output Functions
+######################################################################
+sub printTable {
+    my ($self,$object) = @_;
+    my $output;
+	my $type = $self->checkType($object);
+    my $objects = $self->$type();
+    if (!defined($objects->[0])) {
+    	return {headings => [],rows => [[]]};
+    }
+    $output->{headings} = $objects->[0]->dbAttributes();
+    for (my $i=0; $i < @{$objects};$i++) {
+    	for (my $j=0; $j < @{$output->{headings}};$j++) {
+    		my $attribute = $output->{headings}->[$j];
+    		$output->{rows}->[$i]->[$j] = $objects->[$i]->$attribute();
+    	}
+    }
+    return $output;
+}
 
 sub serializeToDB {
     my ($self,$params) = @_;
@@ -169,14 +193,48 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-    my @relations = qw( media compartments compounds reactions compoundsets reactionsets );
-	foreach my $relation (@relations) {
+    my $relations = [qw( media compartments compounds reactions compoundsets reactionsets )];
+	foreach my $relation (@$relations) {
         $data->{relationships}->{$relation} = [];
         foreach my $obj (@{$self->$relation}) {
             push(@{$data->{relationships}->{$relation}}, $obj->serializeToDB());
         }
 	}
 	return $data;
+}
+
+######################################################################
+#Object addition functions
+######################################################################
+sub add {
+    my ($self,$object) = @_;
+    my $type = $self->checkType($object->_type());
+    #Checking if an object matching the input object already exists
+    my $oldObj = $self->getObject({type => $type,query => {uuid => $object->uuid()}});
+    if (!defined($oldObj)) {
+    	$oldObj = $self->getObject({type => $type,query => {id => $object->id()}});
+    } elsif ($oldObj->id() ne $object->id()) {
+    	ModelSEED::utilities::ERROR("Added object has identical uuid to an object in the database, but ids are different!");		
+    }
+    if (defined($oldObj)) {
+    	if ($oldObj->locked() != 1) {
+    		$object->uuid($oldObj->uuid());
+    	}
+    	my $list = $self->$type();
+    	for (my $i=0; $i < @{$list}; $i++) {
+    		if ($list->[$i] eq $oldObj) {
+    			$list->[$i] = $object;
+    		}
+    	}
+    	$self->clearIndex({type=>$type});
+    } else {
+    	push(@{$self->$type()},$object);
+    	if (defined($self->indices()->{$type})) {
+    		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
+    			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
+    		}
+    	}
+    }
 }
 
 ######################################################################
@@ -270,7 +328,7 @@ sub checkType {
         Compartment => "compartments",
     };
     if (!defined($types->{$type})) {
-        die "Invalid Type";
+        ModelSEED::utilities::ERROR("Invalid type: ".$type);
     }
     return $types->{$type};
 }

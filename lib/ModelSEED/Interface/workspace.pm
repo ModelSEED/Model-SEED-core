@@ -16,13 +16,15 @@ sub new {
 	$args = ModelSEED::utilities::ARGS($args,[
 		"owner",
 		"rootDirectory",
-		"binDirectory"
+		"binDirectory",
 	],{
+		biochemistry => undef,
 		id => undef,
 		clear => 0,
 		copy => undef
 	});
 	my $self = {
+		_biochemistry => $args->{biochemistry},
 		_id => $args->{id},
 		_owner => $args->{owner},
 		_rootDirectory => $args->{rootDirectory},
@@ -34,10 +36,8 @@ sub new {
 			File::Path::mkpath($self->rootDirectory().$self->owner()."/");
 		}
 		$self->{_id} = "default";
-		if (-e $self->userWorkspaceIDFilename()) {
-			my $data = ModelSEED::utilities::LOADFILE($self->userWorkspaceIDFilename());
-			$self->{_id} = $data->[0];
-		}
+		$self->{_biochemistry} = "358CFC9A-5E60-11E1-9EC2-C7374BC191FA";
+		$self->loadUserWorkspaceFile();
 	}
 	if($args->{clear} eq 1) {
         $self->clear();
@@ -61,6 +61,19 @@ sub id {
 		$self->{_id} = $id;
 	}
 	return $self->{_id};
+}
+=head3 biochemistry
+Definition:
+	string = ModelSEED::Interface::workspace->biochemistry();
+Description:
+	Returns uuid for selected biochemistry
+=cut
+sub biochemistry { 
+	my ($self,$biochemistry) = @_;
+	if (defined($biochemistry)) {
+		$self->{_biochemistry} = $biochemistry;
+	}
+	return $self->{_biochemistry};
 }
 =head3 directory
 Definition:
@@ -153,10 +166,34 @@ Description:
 sub printWorkspaceEnvFiles {
     my ($self) = @_;
 	ModelSEED::utilities::PRINTFILE($self->binDirectory()."ms-goworkspace",["cd ".$self->directory()]);
-    ModelSEED::utilities::PRINTFILE($self->userWorkspaceIDFilename(),[$self->id()]);
+    ModelSEED::utilities::PRINTFILE($self->userWorkspaceIDFilename(),["ID:".$self->id(),"Biochemistry:".$self->biochemistry()]);
 	chmod 0775, $self->binDirectory()."ms-goworkspace";
 }
-
+=head3 loadUserWorkspaceFile
+Definition:
+	workspace = ModelSEED::Interface::workspace->loadUserWorkspaceFile();
+Description:
+	Loading user workspace file
+=cut
+sub loadUserWorkspaceFile {
+    my ($self) = @_;
+    if (!-e $self->userWorkspaceIDFilename()) {
+    	return;
+    }
+	my $data = ModelSEED::utilities::LOADFILE($self->userWorkspaceIDFilename());
+	if (defined($data->[0])) {
+		if ($data->[0] =~ m/ID:(.+)/) {
+			$self->id($1);	
+		} else {
+			$self->id($data->[0]);
+		}
+	}
+	if (defined($data->[1])) {
+		if ($data->[1] =~ m/Biochemistry:(.+)/) {
+			$self->biochemistry($1);	
+		}
+	}
+}
 =head3 printWorkspace
 Definition:
 	workspace = ModelSEED::Interface::workspace->printWorkspace();
