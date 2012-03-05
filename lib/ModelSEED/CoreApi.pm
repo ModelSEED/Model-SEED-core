@@ -25,13 +25,15 @@ my $compound_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'abbreviation',
 		     'cksum', 'unchargedFormula', 'formula', 'mass',
 		     'defaultCharge', 'deltaG', 'deltaGErr'];
 
-my $aliases_cols = ['alias', 'type'];
+my $reaction_alias_cols = ['reaction_uuid', 'alias', 'type'];
+
+my $compound_alias_cols = ['compound_uuid', 'alias', 'type'];
 
 my $set_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'class', 'type'];
 
 my $media_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'type'];
 
-my $media_compound_cols = ['compound_uuid', 'concentraion', 'minflux', 'maxflux'];
+my $media_compound_cols = ['media_uuid', 'compound_uuid', 'concentraion', 'minflux', 'maxflux'];
 
 my $compartment_cols = ['uuid', 'modDate', 'locked', 'id', 'name'];
 
@@ -42,7 +44,7 @@ my $complex_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname'];
 my $reaction_rule_cols = ['uuid', 'modDate', 'locked', 'reaction_uuid',
 			  'compartment_uuid', 'direction', 'transprotonNature'];
 
-my $complex_role_cols = ['role_uuid', 'optional', 'type'];
+my $complex_role_cols = ['complex_uuid', 'role_uuid', 'optional', 'type'];
 
 my $role_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'searchname', 'feature_uuid'];
 
@@ -74,11 +76,11 @@ my $model_biomass_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', '
 my $modelfba_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'media_uuid',
 		     'options', 'geneko', 'reactionko'];
 
-my $modeless_feature_cols = ['feature_uuid', 'modDate', 'growthFraction', 'essential'];
+my $modeless_feature_cols = ['modelfba_uuid', 'feature_uuid', 'modDate', 'growthFraction', 'essential'];
 
-my $modelfba_reaction_cols = ['reaction_uuid', 'min', 'max', 'class'];
+my $modelfba_reaction_cols = ['modelfba_uuid', 'reaction_uuid', 'min', 'max', 'class'];
 
-my $modelfba_compound_cols = ['compound_uuid', 'min', 'max', 'class'];
+my $modelfba_compound_cols = ['modelfba_uuid', 'compound_uuid', 'min', 'max', 'class'];
 
 sub new {
     my ($class, $args) = @_;
@@ -200,15 +202,15 @@ sub getReactions {
     my $reactions = _processRows($rows, $reaction_cols, "Reaction");
 
     # get the aliases
-    $sql = "SELECT reaction_aliases.* FROM reactions"
+    $sql = "SELECT reactions.uuid, reaction_aliases.* FROM reactions"
 	. " JOIN reaction_aliases on reactions.uuid = reaction_aliases.reaction_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $aliases = _processJoinedRows($rows, $aliases_cols, "ReactionAlias");
+    my $aliases = _processJoinedRows($rows, $reaction_alias_cols, "ReactionAlias");
 
     # get the reagents
-    $sql = "SELECT reagents.* FROM reactions"
+    $sql = "SELECT reactions.uuid, reagents.* FROM reactions"
 	. " JOIN reagents ON reactions.uuid = reagents.reaction_uuid"
 	. " $where";
 
@@ -216,12 +218,12 @@ sub getReactions {
     my $reagents = _processJoinedRows($rows, $reagent_cols, "Reagent");
 
     # get the reactionsets
-    $sql = "SELECT reactionset_reactions.reactionset_uuid FROM reactions"
+    $sql = "SELECT reactions.uuid, reactionset_reactions.* FROM reactions"
 	. " JOIN reactionset_reactions ON reactions.uuid = reactionset_reactions.reaction_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $reactionsets = _processJoinedRows($rows, ['reactionset_uuid'], "ReactionSetReaction");
+    my $reactionsets = _processJoinedRows($rows, ['reactionset_uuid', 'reaction_uuid'], "ReactionSetReaction");
 
     foreach my $reaction (@$reactions) {
 	my $uuid = $reaction->{attributes}->{uuid};
@@ -304,20 +306,20 @@ sub getCompounds {
     my $compounds = _processRows($rows, $compound_cols, "Compound");
 
     # get the aliases
-    $sql = "SELECT compound_aliases.* FROM compounds"
+    $sql = "SELECT compounds.uuid, compound_aliases.* FROM compounds"
 	. " JOIN compound_aliases on compounds.uuid = compound_aliases.compound_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $aliases = _processJoinedRows($rows, $aliases_cols, "CompoundAlias");
+    my $aliases = _processJoinedRows($rows, $compound_alias_cols, "CompoundAlias");
 
     # get the compoundsets
-    $sql = "SELECT compounds.uuid, compoundset_compounds.compoundset_uuid FROM compounds"
+    $sql = "SELECT compounds.uuid, compoundset_compounds.* FROM compounds"
 	. " JOIN compoundset_compounds ON compounds.uuid = compoundset_compounds.compound_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $compoundsets = _processJoinedRows($rows, ['compoundset_uuid'], "CompoundSetCompound");
+    my $compoundsets = _processJoinedRows($rows, ['compoundset_uuid', 'compound_uuid'], "CompoundSetCompound");
 
     foreach my $compound (@$compounds) {
 	my $uuid = $compound->{attributes}->{uuid};
@@ -396,7 +398,7 @@ sub getMedia {
     my $media = _processRows($rows, $media_cols, "Media");
 
     # get the media_compounds
-    $sql = "SELECT media_compounds.* FROM media"
+    $sql = "SELECT media.uuid, media_compounds.* FROM media"
 	. " JOIN media_compounds on media.uuid = media_compounds.media_uuid"
 	. " $where";
 
@@ -454,12 +456,12 @@ sub getReactionSets {
     my $reactionsets = _processRows($rows, $set_cols, "ReactionSet");
 
     # get the reactions
-    $sql = "SELECT reactionset_reactions.* FROM reactionsets"
+    $sql = "SELECT reactionsets.uuid, reactionset_reactions.* FROM reactionsets"
 	. " JOIN reactionset_reactions ON reactionsets.uuid = reactionset_reactions.reactionset_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $reactions = _processJoinedRows($rows, ['reaction_uuid'], "ReactionSetReaction");
+    my $reactions = _processJoinedRows($rows, ['reactionset_uuid', 'reaction_uuid'], "ReactionSetReaction");
 
     foreach my $set (@$reactionsets) {
 	my $uuid = $set->{attributes}->{uuid};
@@ -512,12 +514,12 @@ sub getCompoundSets {
     my $compoundsets = _processRows($rows, $set_cols, "CompoundSet");
 
     # get the compounds
-    $sql = "SELECT compoundset_compounds.* FROM compoundsets"
+    $sql = "SELECT compoundsets.uuid, compoundset_compounds.* FROM compoundsets"
 	. " JOIN compoundset_compounds ON compoundsets.uuid = compoundset_compounds.compoundset_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{biochemistry_uuid});
-    my $compounds = _processJoinedRows($rows, ['compound_uuid'], "CompoundSetCompound");
+    my $compounds = _processJoinedRows($rows, ['compoundset_uuid', 'compound_uuid'], "CompoundSetCompound");
 
     foreach my $set (@$compoundsets) {
 	my $uuid = $set->{attributes}->{uuid};
@@ -657,7 +659,7 @@ sub getComplexes {
     my $reaction_rules = _processJoinedRows($rows, $reaction_rule_cols, "ReactionRule");
 
     # get the complex roles
-    $sql = "SELECT complex_roles.* FROM complexes"
+    $sql = "SELECT complexes.uuid, complex_roles.* FROM complexes"
 	. " JOIN complex_roles ON complexes.uuid = complex_roles.complex_uuid"
 	. " $where";
 
@@ -718,12 +720,12 @@ sub getRoles {
     my $roles = _processRows($rows, $role_cols, "Role");
 
     # get the rolesets
-    $sql = "SELECT roles.uuid, roleset_roles.roleset_uuid, roleset_roles.modDate FROM roles"
+    $sql = "SELECT roles.uuid, roleset_roles.* FROM roles"
 	. " JOIN roleset_roles ON roles.uuid = roleset_roles.role_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
-    my $rolesets = _processJoinedRows($rows, ['uuid', 'modDate'], "RoleSetRole");
+    my $rolesets = _processJoinedRows($rows, ['roleset_uuid', 'role_uuid', 'modDate'], "RoleSetRole");
 
     foreach my $role (@$roles) {
 	my $uuid = $role->{attributes}->{uuid};
@@ -775,12 +777,12 @@ sub getRoleSets {
     my $rolesets = _processRows($rows, $roleset_cols, "RoleSet");
 
     # get the roles
-    $sql = "SELECT roleset_roles.* FROM rolesets"
+    $sql = "SELECT rolesets.uuid, roleset_roles.* FROM rolesets"
 	. " JOIN roleset_roles ON rolesets.uuid = roleset_roles.roleset_uuid"
 	. " $where";
 
     $rows = $self->{dbi}->selectall_arrayref($sql, undef, $args->{mapping_uuid});
-    my $roles = _processJoinedRows($rows, ['uuid', 'modDate'], "RoleSetRole");
+    my $roles = _processJoinedRows($rows, ['roleset_uuid', 'role_uuid', 'modDate'], "RoleSetRole");
 
     foreach my $roleset (@$rolesets) {
 	my $uuid = $roleset->{attributes}->{uuid};
@@ -1045,7 +1047,7 @@ sub getModelBiomass {
     my $biomasses = _processRows($rows, $biomass_cols, "Biomass");
 
     # get the aliases
-    $sql = "SELECT biomass_compounds.* FROM biomasses"
+    $sql = "SELECT biomasses.uuid, biomass_compounds.* FROM biomasses"
 	. " JOIN biomass_compounds on biomasses.uuid = biomass_compounds.biomass_uuid"
 	. " $where";
 
@@ -1053,10 +1055,11 @@ sub getModelBiomass {
     my $biocpds = _processJoinedRows($rows, $biomass_compound_cols, "BiomassCompounds");
 
     foreach my $biomass (@$biomasses) {
-		my $uuid = $biomass->{attributes}->{uuid};
-		if (defined($biocpds->{$uuid})) {
-		    $biomass->{relationships}->{compounds} = $biocpds->{$uuid};
-		}
+	my $uuid = $biomass->{attributes}->{uuid};
+
+	if (defined($biocpds->{$uuid})) {
+	    $biomass->{relationships}->{compounds} = $biocpds->{$uuid};
+	}
     }
 
     return $biomasses;
@@ -1101,7 +1104,7 @@ sub getModelFBAs {
     my $modelfbas = _processRows($rows, $modelfba_cols, "ModelFBA");
 
     # get the modeless features
-    $sql = "SELECT modeless_features.* FROM modelfbas"
+    $sql = "SELECT modelfbas.uuid, modeless_features.* FROM modelfbas"
 	. " JOIN modeless_features ON modelfbas.uuid = modeless_features.modelfba_uuid"
 	. " $where";
 
@@ -1109,7 +1112,7 @@ sub getModelFBAs {
     my $modeless_features = _processJoinedRows($rows, $modeless_feature_cols, "ModelessFeature");
 
     # get the reactions
-    $sql = "SELECT modelfba_reactions.* FROM modelfbas"
+    $sql = "SELECT modelfbas.uuid, modelfba_reactions.* FROM modelfbas"
 	. " JOIN modelfba_reactions ON modelfbas.uuid = modelfba_reactions.modelfba_uuid"
 	. " $where";
 
@@ -1117,7 +1120,7 @@ sub getModelFBAs {
     my $reactions = _processJoinedRows($rows, $modelfba_reaction_cols, "ModelFBAReaction");
 
     # get the compounds
-    $sql = "SELECT modelfba_compounds.* FROM modelfbas"
+    $sql = "SELECT modelfbas.uuid, modelfba_compounds.* FROM modelfbas"
 	. " JOIN modelfba_compounds ON modelfbas.uuid = modelfba_compounds.modelfba_uuid"
 	. " $where";
 
@@ -1184,6 +1187,57 @@ sub _processRows {
     return $objs;
 }
 
+=head3
+    Utility method used to join rows in a many-to-many relationship.
+
+    Expects $row->[0] to be the id to join on.
+
+    Ex.
+
+    Turns:
+    $cols = ['Name', 'Compound', 'Direction']
+
+    $rows = [
+      ['rxn00001', 'reagent 1', 'cpd00001', '=>'],
+      ['rxn00001', 'reagent 2', 'cpd00002', '<='],
+      ['rxn00002', 'reagent 3', 'cpd00003', '=>']
+    ]
+
+    $type = 'Reagent'
+
+    Into:
+    {
+      'rxn00001' => [
+                      {
+                        'type       => 'Reagent',
+                        'attributes => {
+                          'Name'      => 'reagent 1',
+                          'Compound'  => 'cpd00001',
+                          'Direction' => '=>'
+                        }
+                      },
+                      {
+                        'type'       => 'Reagent',
+                        'attributes' => {
+                          'Name'      => 'reagent 2',
+                          'Compound'  => 'cpd00002',
+                          'Direction' => '<='
+                        }
+                      }
+                    ],
+      'rxn00002' => [
+                      {
+                        'type'       => 'Reagent',
+                        'attributes' => {
+                          'Name'      => 'reagent 3',
+                          'Compound'  => 'cpd00003',
+                          'Direction' => '=>'
+                        }
+                      }
+                    ]
+    }
+
+=cut
 sub _processJoinedRows {
     my ($rows, $cols, $type) = @_;
 
@@ -1205,8 +1259,9 @@ sub _processJoinedRows {
 	    type => $type,
 	    attributes => {}
 	};
+
 	for (my $i=0; $i<$num_cols; $i++) {
-	    $data->{attributes}->{$cols->[$i]} = $row->[$i];
+	    $data->{attributes}->{$cols->[$i]} = $row->[$i+1];
 	}
 
 	push(@{$hash->{$id}}, $data);
