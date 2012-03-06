@@ -2087,7 +2087,7 @@ sub balanceReaction {
 	    }
 	    if($ReactantHash{$Reactants[$i]}{"COEFF"} ne "0" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "1" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "-1"){
 		$ReactantHash{$Reactants[$i]} =~ s/^-//;
-		$ReactantString .= "(".$ReactantHash{$Reactants[$i]}{"COEFF"}.") ";
+		$ReactantString .= "(".(0-$ReactantHash{$Reactants[$i]}{"COEFF"}).") ";
 	    }
 	    $ReactantString .= $Reactants[$i];
 	    if($ReactantHash{$Reactants[$i]}{"COMP"} ne "c"){$ReactantString.="[".$ReactantHash{$Reactants[$i]}{"COMP"}."]";}

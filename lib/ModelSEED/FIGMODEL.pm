@@ -3177,6 +3177,7 @@ sub import_model {
 						#using indexes
 						if(!exists($newNames->{search}->{$searchNames->[$k]})){
 						    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+						    $newNames->{search}->{$searchNames->[$k]} = 1;
 						}
 					    }
 				}
