@@ -891,7 +891,7 @@ sub getModel {
     _processArgs($args, 'getModel', {
     id                => {required => 0},
 	uuid              => {required => 0},
-	user              => {required => 1},
+	user              => {required => 0},
 	with_all          => {required => 0},
 	with_biochemistry => {required => 0},
 	with_mapping      => {required => 0},
