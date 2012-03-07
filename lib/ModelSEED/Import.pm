@@ -22,6 +22,9 @@ with 'MooseX::Log::Log4perl';
 
 # Configurable
 has database     => ( is => 'rw', isa => 'Str', required => 1 );
+has host         => ( is => 'rw', isa => 'Str' );
+has username     => ( is => 'rw', isa => 'Str' );
+has password     => ( is => 'rw', isa => 'Str' );
 has driver       => ( is => 'rw', isa => 'Str', required => 1 );
 has berkeleydb   => ( is => 'rw', isa => 'Str', required => 1 );
 has clearOnStart => ( is => 'rw', isa => 'Int', default  => 0 );
@@ -127,11 +130,20 @@ sub _makeCache {
 
 sub _makeObjectManager {
     my ($self) = @_;
-    return ModelSEED::ObjectManager->new(
-        {   database => $self->database,
-            driver   => $self->driver,
-        }
-    );
+    if($self->driver =~ /sqlite/) {
+        return ModelSEED::ObjectManager->new(
+            {   database => $self->database,
+                driver   => $self->driver,
+        });
+    } else {
+        return ModelSEED::ObjectManager->new(
+            {   database => $self->database,
+                driver   => $self->driver,
+                host     => $self->host,
+                username => $self->username,
+                password => $self->password,
+        });
+    }
 }
 
 
@@ -304,17 +316,18 @@ sub _makeTypesToHashFns {
                 . ($_[0]->exemplar || ''));
     };
     $f->{compound} = sub {
+        my $aliases = $_[0]->compound_aliases;
+        $aliases = [] unless(defined $aliases);
         return md5_hex(
                   $_[0]->id 
                 . ($_[0]->name || '') 
                 . ($_[0]->formula || '')
                 . join(',',
-                sort map { $f->{compound_alias}->($_) }
-                    ($_[0]->compound_aliases || ()))
+                sort map { $f->{compound_alias}->($_) } @$aliases)
         );
     };
     $f->{compound_alias} = sub {
-        return $_[0]->alias . $_[0]->type;
+            return $_[0]->alias . $_[0]->type;
     };
     $f->{reaction} = sub {
         confess "got here!" unless defined $_[0];
@@ -437,6 +450,7 @@ sub _makeTypesToHashFns {
             $_[0]->id . join(',', sort map { $_->id } $_[0]->parents));
     };
     $f->{model_compartment} = sub {
+        confess "model_compartment" unless(defined($_[0]));
         return md5_hex($_[0]->compartment_uuid
                 . $_[0]->compartmentIndex
                 . $f->{model}->($_[0]->model));
@@ -761,6 +775,7 @@ sub _makeConversionFns {
     $f->{model_reaction} = sub {
         my ($self, $row, $ctx) = @_;
         my $reaction = $self->uuidCache("reaction", $row->{REACTION}->[0]);
+        return undef unless(defined $reaction);
         my $codes = {directionality => ''};
         foreach my $key (keys %$codes) {
             my ($forward, $reverse) = (0, 0);
@@ -788,7 +803,7 @@ sub _makeConversionFns {
         my ($self, $row, $ctx) = @_;
         my $rxn = $self->uuidCache("reaction", $row->{reaction}->[0]);
         my $cpd = $self->uuidCache("compound", $row->{compound}->[0]);
-        my $cmp = $self->uuidCache("model_compartment",
+        my $cmp = $self->idCache("model_compartment",
             $row->{model_compartment}->[0]);
         unless (defined($rxn) && defined($cmp) && defined($cpd)) {
             my $str
@@ -810,10 +825,8 @@ sub _makeConversionFns {
     $f->{biomass_compound} = sub {
         my ($self, $row) = @_;
         my $compound = $self->uuidCache("compound", $row->{compound}->[0]);
-        my $compartment
-            = $self->uuidCache("model_compartment", $row->{model_compartment}->[0]);
         return {
-            model_compartment_uuid => $compartment,
+            model_compartment_uuid => $row->{model_compartment_uuid}->[0], 
             compound_uuid          => $compound,
             coefficient            => $row->{coefficient}->[0],
         };
@@ -1152,8 +1165,6 @@ sub importAnnotationFromDir {
     # Try to get from file-hash
     my $existingAnno = $self->fileCache("annotation", [$file]);
     if ($existingAnno) {
-        $existingAnno->add_mapping_aliases(
-            {username => $username, id => $id});
         $existingAnno->save();
         $self->checker->check("Imported Annotation $username/$id [filehash] ",
             elapsed(), $missed);
@@ -1225,7 +1236,7 @@ sub importModelFromDir {
     my $RDB_model
         = $self->om->create_object("model", {id => $id, name => $id});
     my ($RDB_annotation, $RDB_biochemistry, $RDB_mapping);
-    my $isNotImported = ($id =~ /Seed/) ? 1 : ($id =~ /Opt/) ? 1 : 0;
+    my $isNotImported = 1; #($id =~ /Seed/) ? 1 : ($id =~ /Opt/) ? 1 : 0;
     
     # Import or add biochemistry
     if($isNotImported) {
@@ -1235,7 +1246,7 @@ sub importModelFromDir {
         $RDB_biochemistry
             = $self->importBiochemistryFromDir("$dir/biochemistry", $username,
             $biochemId);
-    }
+    } 
     if (!defined($RDB_biochemistry)) {
         push(@{$missed->{biochemistry}}, "No biochemistry - $id");
         $self->checker->check("Failed to model $username/$id [] ",
@@ -1287,7 +1298,6 @@ sub importModelFromDir {
         filename      => $file,
     };
     if (!-f $file) {    # generate rxn-mdl data from database
-        die "could not find file $file!\n";    #FIXME
         my $objs = $self->fm->database->get_objects('rxnmdl', {MODEL => $id});
         $tbl = $self->fm->database->ppo_rows_to_table($config, $objs);
     } else {                                   # or load it from the file
@@ -1297,15 +1307,9 @@ sub importModelFromDir {
     my $biomassIds = [];
     for (my $i = 0; $i < $size; $i++) {
         my $row = $tbl->get_row($i);
-
         # do model-compartments
         my $compartmentId = $row->{compartment}->[0];
-        my $mdl_cmp = $self->idCache("model_compartment", $compartmentId);
-        if (!defined($mdl_cmp)) {
-            $mdl_cmp = $self->makeModelCompartment($compartmentId,
-                $RDB_biochemistry, $RDB_model);
-        }
-
+        my $mdl_cmp = $self->getModelCompartment($compartmentId, $RDB_biochemistry, $RDB_model);
         # don't add biomass functions to reaction_model. Instead handle them separately.
         if (defined($row->{REACTION}->[0])
             && $row->{REACTION}->[0] =~ m/bio\d+/)
@@ -1316,21 +1320,19 @@ sub importModelFromDir {
         }
         $row->{compartment}->[0] = $mdl_cmp;
         my $hash = $self->convert("model_reaction", $row);
+        unless(defined($hash)) {
+            push(@{$missed->{model_reaction}}, $row->{REACTION}->[0]);
+            next;
+        }
         $hash->{model} = $RDB_model;
         my $RDB_model_reaction
             = $self->getOrCreateObject("model_reaction", $hash);
-
         # do model transported reagent
         my $dtrs
             = $RDB_model_reaction->reaction->default_transported_reagents;
         foreach my $dtr (@$dtrs) {
             my $cmp_id = $dtr->defaultCompartment->id;
-            my $mdl_cmp = $self->idCache("model_compartment", $cmp_id);
-            if (!defined($mdl_cmp)) {
-                $mdl_cmp
-                    = $self->makeModelCompartment($cmp_id, $RDB_biochemistry,
-                    $RDB_model);
-            }
+            my $mdl_cmp = $self->getModelCompartment($cmp_id, $RDB_biochemistry, $RDB_model);
             my $hash = {
                 model                => $RDB_model,
                 reaction             => $dtr->reaction,
@@ -1346,7 +1348,7 @@ sub importModelFromDir {
     }
     my $rdb_biomasses = [];
     foreach my $biomassId (@$biomassIds) {
-        my $biomass = $self->getBiomass($biomassId, $RDB_model);
+        my $biomass = $self->getBiomass($biomassId, $RDB_model, $RDB_biochemistry);
         if (defined($biomass)) {
             push(@$rdb_biomasses, $biomass);
         } else {
@@ -1361,6 +1363,13 @@ sub importModelFromDir {
     $self->checker->check("Imported model $username/$id [complete] ",
         elapsed(), $missed);
     return $RDB_model;
+}
+
+sub getModelCompartment {
+    my ($self, $compartmentId, $RDB_biochemistry, $RDB_model) = @_;
+    my $mdl_cmp = $self->idCache("model_compartment", $compartmentId);
+    return $mdl_cmp if defined $mdl_cmp;
+    return $self->makeModelCompartment($compartmentId, $RDB_biochemistry, $RDB_model);
 }
 
 sub makeModelCompartment {
@@ -1464,7 +1473,7 @@ sub getDefaultMedia {
 }
 
 sub getBiomass {
-    my ($self, $biomassId, $RDB_model) = @_;
+    my ($self, $biomassId, $RDB_model, $RDB_biochemistry) = @_;
     my $oldBiomass
         = $self->fm->database->get_object("bof", {id => $biomassId});
     unless (defined($oldBiomass)) {
@@ -1486,10 +1495,12 @@ sub getBiomass {
     };
     my $biomassCompounds = [];
     foreach my $cpdbof (@$oldBiomassCompounds) {
+        my $mdl_cmp_id = $cpdbof->compartment;
+        my $mdl_cmp = $self->getModelCompartment($mdl_cmp_id, $RDB_model, $RDB_biochemistry);
         my $row = {
             compound    => [$cpdbof->COMPOUND],
             coefficient => [$cpdbof->coefficient],
-            model_compartment => [$cpdbof->compartment],
+            model_compartment_uuid => [$mdl_cmp->uuid],
         };
         my $hash = $self->convert("biomass_compound", $row);
         push(@$biomassCompounds, $hash);
@@ -1525,8 +1536,6 @@ sub getDefaultMapping {
         $biochemistry = $self->getDefaultBiochemistry()
     }
     if (defined $alreadyExists) {
-        warn Dumper $alreadyExists;
-        warn "returning the default mapping object\n";
         return $alreadyExists;
     } else {
         # Generate data files and import
@@ -1551,8 +1560,7 @@ sub getOrCreateObject {
     my $obj;
     try {
         $obj = $self->om()->create_object($type, $hash);
-    }
-    catch {
+    } catch {
         warn "Died when trying to create object ($type):\n"
             . Dumper($hash) . "\n"
             . "With error: $_";
