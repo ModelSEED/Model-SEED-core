@@ -265,6 +265,11 @@ sub getCompartment {
     return $self->getObject({ type => "Compartment", query => $query});
 }
 
+sub getMedia {
+    my ($self, $query) = @_;
+    return $self->getObject({ type => "Media", query => $query});
+}
+
 sub getObject {
 	my ($self,$args) = @_;
 	my $objects = $self->getObjects($args);

@@ -14,6 +14,7 @@ use Carp qw(cluck);
 use namespace::autoclean;
 use DateTime;
 use Data::UUID;
+use Data::Dumper;
 
 #Parent object link
 has om => (is => 'rw', isa => 'ModelSEED::CoreApi');
@@ -36,6 +37,10 @@ has current     => (is => 'rw', isa => 'Int', default => 0);
 has aliases     => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
 # Subobjects
+has biochemistry_uuid => ( is => 'rw', isa => 'Str' );
+has mapping_uuid => ( is => 'rw', isa => 'Str' );
+has annotation_uuid => ( is => 'rw', isa => 'Str' );
+
 has biochemistry => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry');
 has mapping => (is => 'rw',isa => 'ModelSEED::MS::Mapping');
 has annotation => (is => 'rw',isa => 'ModelSEED::MS::Annotation');
@@ -43,7 +48,7 @@ has mdlcompartments => (
     is      => 'rw', default => sub { return []; },
     isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]'
 );
-has mdlbiomass => (
+has biomasses => (
     is      => 'rw', default => sub { return []; },
     isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]'
 );
@@ -51,7 +56,7 @@ has mdlbiomass => (
 #    is      => 'rw', default => sub { return []; },
 #    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]'
 #);
-has mdlreactions => (
+has model_reactions => (
     is      => 'rw', default => sub { return []; },
     isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]'
 );
@@ -96,11 +101,11 @@ sub BUILD {
 		    annotation => ["annotation","ModelSEED::MS::Annotation"],
 		    mapping => ["mapping","ModelSEED::MS::Mapping"],
 			compartments => ["mdlcompartments","ModelSEED::MS::ModelCompartment"],
-			biomass => ["mdlbiomass","ModelSEED::MS::Biomass"],
-			reactions => ["mdlreactions","ModelSEED::MS::ModelReaction"],
+			biomasses => ["biomasses","ModelSEED::MS::Biomass"],
+			model_reactions => ["model_reactions","ModelSEED::MS::ModelReaction"],
 			modelfbas => ["modelfbas","ModelSEED::MS::FBAResults"]
 		};
-        my $order = [qw(biochemistry annotation mapping compartments biomass reactions modelfbas)];
+        my $order = [qw(biochemistry annotation mapping compartments biomasses model_reactions modelfbas)];
         foreach my $name (@$order) {
             if (defined($rels->{$name})) {
 	            my $values = $rels->{$name};
@@ -141,15 +146,15 @@ sub printToFile {
 	push(@{$data},"}");
 	push(@{$data},"Biomass{");
 	push(@{$data},"Biomass rxn\tBiomass cpd\tCoefficient\tCompartment");
-	foreach my $biomass (@{$self->mdlbiomass()}) {
-		foreach my $biomassCpd (@{$biomass->biomasscompounds()}) {
+	foreach my $biomass (@{$self->biomasses()}) {
+		foreach my $biomassCpd (@{$biomass->biomass_compounds()}) {
 			push(@{$data},$biomass->id()."\t".$biomassCpd->compound()->id()."\t".$biomassCpd->coefficient()."\t".$biomassCpd->compartment()->id());
 		}
 	}
 	push(@{$data},"}");
 	push(@{$data},"Reactions{");
 	push(@{$data},"Reaction ID\tDirection\tCompartment\tProtons\tGPR\tEquation");
-	foreach my $reaction (@{$self->mdlreactions()}) {
+	foreach my $reaction (@{$self->model_reactions()}) {
 		push(@{$data},$reaction->reaction()->id()."\t".$reaction->direction()."\t".$reaction->compartment()->id()."\t".$reaction->protons()."\t".join("|",@{$reaction->gpr()})."\t".$reaction->equation());
 	}
 	push(@{$data},"}");
@@ -193,7 +198,6 @@ sub getObjects {
     if (!defined($type)) {
     	ModelSEED::utilities::ERROR("Cannot call function without specifying type!");
     }
-    $type = $self->checkType($type);
     if (!defined($query)) {
     	my $newArray;
     	push(@{$newArray},@{$self->$type()});
@@ -292,8 +296,8 @@ sub _buildTypesHash {
 	return {
 		mdlcompartments => "mdlcompartments",
 		ModelCompartment => "mdlcompartments",
-		ModelReaction => "mdlreactions",
-		Biomass => "mdlbiomass",
+		ModelReaction => "model_reactions",
+		Biomass => "biomasses",
 		ModelFBA => "mdlfba"
     }; 
 }

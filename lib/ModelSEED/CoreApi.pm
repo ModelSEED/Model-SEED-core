@@ -901,7 +901,7 @@ sub getModel {
 	with_compartments => {required => 0},
 	with_reactions    => {required => 0},
 	with_modelfbas    => {required => 0},
-	with_biomass      => {required => 0},
+	with_biomasses      => {required => 0},
     });
 
     # get the model object
@@ -934,8 +934,8 @@ sub getModel {
 	    user => $args->{user},
 	    with_all => 1}],
 	compartments => ['getModelCompartments', {model_uuid => $args->{uuid}}],
-	reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
-	biomass      => ['getModelBiomass',    {model_uuid => $args->{uuid}}],
+	model_reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
+	biomasses    => ['getModelBiomass',    {model_uuid => $args->{uuid}}],
 	modelfbas    => ['getModelFBAs',         {model_uuid => $args->{uuid}}]
     };
 

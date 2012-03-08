@@ -26,7 +26,7 @@ has locked    => (is => 'rw', isa => 'Int', default => 0);
 has name   => (is => 'rw', isa => 'Str', default => '');
 
 #Subobjects
-has biomasscompounds => (
+has biomass_compounds => (
     is      => 'rw',
     isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::BiomassCompound]',
     default => sub { [] }
@@ -57,7 +57,7 @@ sub BUILD {
     my $rels = $params->{relationships};
     if(defined($rels)) {
 		my $subObjects = {
-			compounds => ["biomasscompounds","ModelSEED::MS::BiomassCompound"]
+			compounds => ["biomass_compounds","ModelSEED::MS::BiomassCompound"]
 		};
         my $order = ["compounds"];
         foreach my $name (@$order) {
