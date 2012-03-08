@@ -3086,6 +3086,7 @@ sub import_model {
 			id => $id,
 			owner => $args->{owner},
 			genome => $args->{genome},
+			public => $args->{public},
 			gapfilling => 0,
 			runPreliminaryReconstruction => 0,
 			biochemSource => $args->{biochemSource}
@@ -3096,6 +3097,10 @@ sub import_model {
 	if (!defined($mdl)) {
 		 $mdl = $self->get_model($id);
 	}
+
+	#set public access for model
+	$modelObj->public($args->{public});
+
 	$mdl->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
 	});
