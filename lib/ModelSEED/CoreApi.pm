@@ -89,17 +89,19 @@ sub new {
         om => undef,
         database => $args->{database},
         driver => $args->{driver},
+        dsn => $args->{dsn},
+        username => $args->{username},
+        password => $args->{password},
     };
 
     # create the dbi connection
-    my $dsn;
-    if (lc($args->{driver}) eq "sqlite") {
-	$dsn = "dbi:SQLite:" . $args->{database};
-    } else {
-	# TODO: create dsn for mysql
+    my $dsn = $args->{dsn};
+    if (defined($dsn)) {
+        # pass
+    } elsif (lc($args->{driver}) eq "sqlite") {
+        $dsn = "dbi:SQLite:" . $args->{database};
     }
-
-    my $dbi = DBI->connect($dsn);
+    my $dbi = DBI->connect( $dsn, $args->{username}, $args->{password} );
 
     unless ($dbi) {
 	die "Could not create DBI: " . $DBI::errstr;
@@ -126,7 +128,7 @@ sub getBiochemistry {
 
     _processArgs($args, 'getBiochemistry', {
 	uuid              => {required => 1},
-	user              => {required => 1},
+	user              => {required => 0},
 	with_all          => {required => 0},
 	with_reactions    => {required => 0},
 	with_compounds    => {required => 0},
@@ -580,7 +582,7 @@ sub getMapping {
 
     _processArgs($args, 'getMapping', {
 	uuid           => {required => 1},
-	user           => {required => 1},
+	user           => {required => 0},
 	with_all       => {required => 0},
 	with_complexes => {required => 0},
 	with_roles     => {required => 0},
@@ -800,7 +802,7 @@ sub getAnnotation {
 
     _processArgs($args, 'getAnnotation', {
 	uuid           => {required => 1},
-	user           => {required => 1},
+	user           => {required => 0},
 	with_all       => {required => 0},
 	with_features  => {required => 0},
 	with_genome    => {required => 0}
