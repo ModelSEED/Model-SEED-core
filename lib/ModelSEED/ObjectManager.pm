@@ -137,14 +137,15 @@ sub create_object {
 }
 
 sub new_object {
-    my ($self, $type) = shift;
+    my $self = shift @_;
+    my $type = shift @_;
     my $args;
     if(ref($_[0]) eq 'HASH' && @_ == 1) {
         $args = shift @_;
     }
     my $class = $self->objectClass($type);
     return undef unless defined($class);
-    return $class->new(%$args, db => $self->{db});
+    return $class->new(%$args, db => $self->{db}, @_);
 }
     
 
@@ -154,7 +155,7 @@ sub new_object {
 # the returned hash will have 1 for attribute values.
 sub getPrimaryKeys {
     my ($self, $type, $attrs) = @_;
-    my $objectClass = $self->ObjectClass($type);
+    my $objectClass = $self->objectClass($type);
     return undef unless defined($objectClass);
     my $keys = $objectClass->meta->primary_key_column_names;
     my $rtv = { map { $_ => 1 } @$keys };

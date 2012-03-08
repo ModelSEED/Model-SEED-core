@@ -26,7 +26,7 @@ MFAToolkit executable|${software root directory}software/mfatoolkit/bin/mfatoolk
 marvinbeans executable|${software root directory}software/MarvinBeans/bin/cxcalc
 Model driver executable|${software root directory}bin/ModelDriver.sh
 scheduler executable|${software root directory}bin/QueueDriver.sh
-Recursive model driver executable|qsub -l fs_scratch=100 -l arch=lx26-amd64 -b yes -e ${software root directory}logs/QSubError/ -o ${software root directory}logs/QSubOutput/ ${software root directory}bin/ModelDriver.sh
+Recursive model driver executable|qsub -l fs_scratch=100 -l arch=lx26-amd64 -b yes -e ${software root directory}logs/QSubError/ -o ${software root directory}logs/QSubOutput/ ${software root directory}bin/JobDriver.sh
 database message file directory|${software root directory}logs/
 #Parameter arrays
 print to scratch|0

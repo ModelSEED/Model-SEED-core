@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 10;
+use Test::More tests => 9;
 # unit tests for TestingHelpers.pm package, meta-testing ftw
 use ModelSEED::TestingHelpers;
 use Data::Dumper;

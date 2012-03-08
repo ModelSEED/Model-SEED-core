@@ -1,5 +1,5 @@
 
-Model SEED Public License (STPL)
+Model SEED Public License (MSPL)
 
 Copyright (c) 2009-2011 University of Chicago and Fellowship for
 Interpretation of Genomes. All Rights Reserved.

@@ -15,7 +15,7 @@ __PACKAGE__->meta->setup(
         type          => { type => 'character', length => 1 },
     ],
 
-    primary_key_columns => [ 'compound_uuid' ],
+    primary_key_columns => [ 'compound_uuid', 'atom', 'type' ],
 
     foreign_keys => [
         compound => {

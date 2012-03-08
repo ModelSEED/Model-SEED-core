@@ -17,34 +17,54 @@ use ModelSEED::MS::CompoundSet;
 use ModelSEED::MS::Media;
 use Carp qw(cluck);
 use namespace::autoclean;
+use DateTime;
+use Data::UUID;
+use Data::Dumper;
+$Data::Dumper::Maxdepth = 2;
 
-has om => (is => 'ro', isa => 'ModelSEED::CoreApi');
-has uuid => (is => 'ro', isa => 'Str', required => 1);
-has modDate => (is => 'ro', isa => 'Str');
-has locked => (is => 'ro', isa => 'Int', default => 0);
-has public => (is => 'ro', isa => 'Int', default => 1);
-has name => (is => 'ro', isa => 'Str');
+
+has om      => (is => 'rw', isa => 'ModelSEED::CoreApi');
+has uuid    => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildUUID');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildModDate');
+has locked  => (is => 'rw', isa => 'Int', default => 0);
+has public  => (is => 'rw', isa => 'Int', default => 1);
+has name    => (is => 'rw', isa => 'Str', default => '');
 
 # Subobjects
-has reactions => (is => 'rw', default => sub { return []; },
-    isa =>'ArrayRef[ModelSEED::MS::Reaction]');
-has compounds => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compound]');
-has media => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Media]');
-has reactionset => ( is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Reactionset]');
-has compoundset => (is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compoundset]');
-has compartments => ( is => 'rw', default => sub { return []; },
-    isa => 'ArrayRef[ModelSEED::MS::Compartment]');
-# Constants
-has dbAttributes => ( is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
-has indicies => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildIndicies');
+has reactions => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]'
+);
+has compounds => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]'
+);
+has media => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]'
+);
+has reactionsets => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]'
+);
+has compoundsets => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]'
+);
+has compartments => (
+    is      => 'rw', default => sub { return []; },
+    isa     => 'ArrayRef|ArrayRef[ModelSEED::MS::Compartment]'
+);
 
-has dbType => (is => 'ro', isa => 'Str',default => "Compound");
+# Constants
+has dbAttributes =>
+    (is => 'ro', isa => 'ArrayRef[Str]', builder => '_buildDbAttributes');
+has indices =>
+    (is => 'rw', isa => 'HashRef', lazy => 1, builder => '_buildindices');
+has _type => (is => 'ro', isa => 'Str', default => "Biochemistry");
+
 #Internally maintained variables
-has changed => (is => 'rw', isa => 'Bool',default => 0);
+has changed => (is => 'rw', isa => 'Bool', default => 0);
 
 sub BUILDARGS {
     my ($self, $params) = @_;
@@ -66,18 +86,20 @@ sub BUILD {
             compartments => "ModelSEED::MS::Compartment",
 			reactions => "ModelSEED::MS::Reaction",
 			media => "ModelSEED::MS::Media",
-			reactionset => "ModelSEED::MS::Reactionset",
-			compoundset => "ModelSEED::MS::Compoundset",
+			reactionsets => "ModelSEED::MS::Reactionset",
+			compoundsets => "ModelSEED::MS::Compoundset",
 		};
-        my $order = [qw(compounds compartments reactions media reactionset compoundset)];
+        my $order = [qw(compounds compartments reactions media reactionsets compoundsets)];
         foreach my $name (@$order) {
             my $values = $rels->{$name};
             $params->{$name} = [];
             my $class = $subObjects->{$name};
+            my $objects = [];
             foreach my $data (@$values) {
                 $data->{biochemistry} = $self;
-                push(@{$self->{$name}}, $class->new($data));
+                push(@$objects, $class->new($data));
             }
+            $self->$name($objects);
 		}
         delete $params->{relationships}
     }
@@ -86,17 +108,11 @@ sub BUILD {
 
 sub save {
     my ($self, $om) = @_;
-    $om = $self->om unless(defined($om));
+    $om = $self->om unless (defined($om));
     if (!defined($om)) {
-    	ModelSEED::utilities::ERROR("No ObjectManager");
+        ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    
-    
-    
-    
-    
-    
-    return $om->save($self->type, $self->serializeToDB());
+    return $om->save($self->_type, $self->serializeToDB());
 }
 
 sub _load_reactions {
@@ -147,6 +163,26 @@ sub _load_compartments {
     return $compartments;
 }
     
+######################################################################
+#Output Functions
+######################################################################
+sub printTable {
+    my ($self,$object) = @_;
+    my $output;
+	my $type = $self->checkType($object);
+    my $objects = $self->$type();
+    if (!defined($objects->[0])) {
+    	return {headings => [],rows => [[]]};
+    }
+    $output->{headings} = $objects->[0]->dbAttributes();
+    for (my $i=0; $i < @{$objects};$i++) {
+    	for (my $j=0; $j < @{$output->{headings}};$j++) {
+    		my $attribute = $output->{headings}->[$j];
+    		$output->{rows}->[$i]->[$j] = $objects->[$i]->$attribute();
+    	}
+    }
+    return $output;
+}
 
 sub serializeToDB {
     my ($self,$params) = @_;
@@ -157,14 +193,48 @@ sub serializeToDB {
 		my $function = $attributes->[$i];
 		$data->{attributes}->{$function} = $self->$function();
 	}
-    my @relations = qw( media compartments compounds reactions compoundsets reactionsets );
-	foreach my $relation (@relations) {
+    my $relations = [qw( media compartments compounds reactions compoundsets reactionsets )];
+	foreach my $relation (@$relations) {
         $data->{relationships}->{$relation} = [];
-        foreach my $obj ($self->$relation) {
+        foreach my $obj (@{$self->$relation}) {
             push(@{$data->{relationships}->{$relation}}, $obj->serializeToDB());
         }
 	}
 	return $data;
+}
+
+######################################################################
+#Object addition functions
+######################################################################
+sub add {
+    my ($self,$object) = @_;
+    my $type = $self->checkType($object->_type());
+    #Checking if an object matching the input object already exists
+    my $oldObj = $self->getObject({type => $type,query => {uuid => $object->uuid()}});
+    if (!defined($oldObj)) {
+    	$oldObj = $self->getObject({type => $type,query => {id => $object->id()}});
+    } elsif ($oldObj->id() ne $object->id()) {
+    	ModelSEED::utilities::ERROR("Added object has identical uuid to an object in the database, but ids are different!");		
+    }
+    if (defined($oldObj)) {
+    	if ($oldObj->locked() != 1) {
+    		$object->uuid($oldObj->uuid());
+    	}
+    	my $list = $self->$type();
+    	for (my $i=0; $i < @{$list}; $i++) {
+    		if ($list->[$i] eq $oldObj) {
+    			$list->[$i] = $object;
+    		}
+    	}
+    	$self->clearIndex({type=>$type});
+    } else {
+    	push(@{$self->$type()},$object);
+    	if (defined($self->indices()->{$type})) {
+    		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
+    			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
+    		}
+    	}
+    }
 }
 
 ######################################################################
@@ -195,6 +265,11 @@ sub getCompartment {
     return $self->getObject({ type => "Compartment", query => $query});
 }
 
+sub getMedia {
+    my ($self, $query) = @_;
+    return $self->getObject({ type => "Media", query => $query});
+}
+
 sub getObject {
 	my ($self,$args) = @_;
 	my $objects = $self->getObjects($args);
@@ -213,14 +288,14 @@ sub getObjects {
     }
     # resultSet is a map of $object => $object
     my $resultSet;
-    my $indicies = $self->indicies;
+    my $indices = $self->indices;
     while ( my ($attribute, $value) = each %$query ) {
         # Build the index if it does not already exist
-        unless (defined($indicies->{$type}) &&
-                defined($indicies->{$type}->{$attribute})) {
+        unless (defined($indices->{$type}) &&
+                defined($indices->{$type}->{$attribute})) {
     		$self->buildIndex({type => $type, attribute => $attribute});
     	}
-        my $index = $indicies->{$type};
+        my $index = $indices->{$type};
         my $newHits = $index->{$attribute}->{$value};
         # If any index returns empty, return empty.
         return [] if(!defined($newHits) || @$newHits == 0);
@@ -258,7 +333,7 @@ sub checkType {
         Compartment => "compartments",
     };
     if (!defined($types->{$type})) {
-        die "Invalid Type";
+        ModelSEED::utilities::ERROR("Invalid type: ".$type);
     }
     return $types->{$type};
 }
@@ -270,13 +345,13 @@ sub clearIndex {
 		attribute => undef
 	});
 	if (!defined($args->{type})) {
-		$self->indicies({});
+		$self->indices({});
 	} else {
 		$self->checkType($args->{type});
 		if (!defined($args->{attribute})) {
-			$self->indicies->{$args->{type}} = {};	
+			$self->indices->{$args->{type}} = {};	
 		} else {
-			$self->indicies->{$args->{type}}->{$args->{attribute}} = {};
+			$self->indices->{$args->{type}}->{$args->{attribute}} = {};
 		}
 	}
 }
@@ -288,11 +363,12 @@ sub buildIndex {
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};
 	for (my $i=0; $i < @{$objects}; $i++) {
-		push(@{$self->indicies->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
+		push(@{$self->indices->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
 	}
 }
 
-sub _buildIndicies { return {}; }
+sub _buildDbAttributes { return [ qw( uuid modDate name locked public ) ]; }
+sub _buildindices { return {}; }
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 

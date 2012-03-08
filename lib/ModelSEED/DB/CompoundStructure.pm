@@ -11,7 +11,6 @@ __PACKAGE__->meta->setup(
         compound_uuid => { type => 'character', length => 36, not_null => 1 },
         structure     => { type => 'text', not_null => 1 },
         cksum         => { type => 'varchar', length => 255, not_null => 1 },
-        modDate       => { type => 'varchar', length => 45 },
         type          => { type => 'varchar', length => 32, not_null => 1 },
     ],
 
@@ -24,8 +23,5 @@ __PACKAGE__->meta->setup(
         },
     ],
 );
-
-__PACKAGE__->meta->column('modDate')->add_trigger(
-   on_save => sub { return DateTime->now() });
 
 1;

@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/perl -w
 
 ########################################################################
@@ -26,7 +28,7 @@ Description:
 =cut
 sub new { 
 	my $self = {_finishedfile => "NONE"};
-	ModelSEED::globals::CREATEFIGMODEL();
+	ModelSEED::globals::CREATEFIGMODEL({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()});
 	ModelSEED::Interface::interface::CREATEWORKSPACE({});
     return bless $self;
 }
@@ -338,70 +340,79 @@ sub temptransfermodels {
 		parameters => undef,
 		input => $args->{model}
 	});
+	if ($models->[0] eq "ALL") {
+		$models = [];
+		my $objs = $self->db()->get_objects("model");
+		for (my $i=0; $i < @{$objs}; $i++) {
+			push(@{$models},$objs->[$i]->id());
+		}
+	}
 	for (my $i=0; $i < @{$models}; $i++) {
 		my $obj = $self->db()->get_object("model",{id => $models->[$i]});
-		my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
-		if (!-d $mdldir) {
-			print "Generating provenance for ".$models->[$i]."!\n";
-			File::Path::mkpath $mdldir."biochemistry/";
-			File::Path::mkpath $mdldir."mapping/";
-			File::Path::mkpath $mdldir."annotations/";
-			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
-			system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
-#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
-#				my $genome = $self->figmodel()->get_genome($obj->genome());
-#				if (defined($genome)) {
-#					my $feature_table = $genome->feature_table();
-#					$feature_table->save($mdldir.'annotations/features.txt');
-#				}
-#			}				
-		}
-		my $objs = $self->db()->get_objects("rxnmdl",{MODEL => $models->[$i]});
-		my $numRxn = @{$objs};
-		if ($numRxn == 0) {
-			print "Model ".$models->[$i]." is empty. Populating rxnmdl table!\n";
-			my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",0,undef);
-			if (defined($mdltbl)) {
-				for (my $j=0; $j < $mdltbl->size(); $j++) {
-					my $row = $mdltbl->get_row($j);
-					if (defined($row->{LOAD}->[0])) {
-						if (!defined($row->{DIRECTIONALITY})) {
-							$row->{DIRECTIONALITY}->[0] = "<=>";
-						}
-						if (!defined($row->{COMPARTMENT})) {
-							$row->{COMPARTMENT}->[0] = "c";
-						}
-						if (!defined($row->{REFERENCE})) {
-							$row->{REFERENCE}->[0] = "none";
-						}
-						if (!defined($row->{NOTES})) {
-							$row->{NOTES}->[0] = "none";
-						}
-						if (!defined($row->{CONFIDENCE})) {
-							$row->{CONFIDENCE}->[0] = 5;
-						}
-						if (!defined($row->{"ASSOCIATED PEG"})) {
-							$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
-						}
-						$self->db()->create_object("rxnmdl",{
-							MODEL => $models->[$i],
-							REACTION => $row->{LOAD}->[0],
-							directionality => $row->{DIRECTIONALITY}->[0],
-							compartment => $row->{COMPARTMENT}->[0],
-							pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-							confidence => $row->{CONFIDENCE}->[0],
-							notes => join("|",@{$row->{NOTES}}),
-							reference => join("|",@{$row->{REFERENCE}})
-						});
-					}
-				}
-			} else {
-				print "Model ".$models->[$i]." reaction table not found!\n";
+		if (defined($obj)) {
+			my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
+			if (!-d $mdldir) {
+				print "Generating provenance for ".$models->[$i]."!\n";
+				File::Path::mkpath $mdldir."biochemistry/";
+				File::Path::mkpath $mdldir."mapping/";
+				File::Path::mkpath $mdldir."annotations/";
+				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
+				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
+	#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
+	#				my $genome = $self->figmodel()->get_genome($obj->genome());
+	#				if (defined($genome)) {
+	#					my $feature_table = $genome->feature_table();
+	#					$feature_table->save($mdldir.'annotations/features.txt');
+	#				}
+	#			}				
 			}
-		} elsif ($numRxn > 100) {
-			print "Model ".$models->[$i]." fully populated!\n";
-		} else {
-			print "Model ".$models->[$i]." appears to be too small!\n";	
+			my $objs = $self->db()->get_objects("rxnmdl",{MODEL => $models->[$i]});
+			my $numRxn = @{$objs};
+			if ($numRxn == 0 || ($models->[$i] =~ m/Seed\d+\.\d+/ && $models->[$i] !~ m/Seed\d+\.\d+\.796/)) {
+				print "Populating rxnmdl table!\n";
+				my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",1,undef);
+				if (defined($mdltbl)) {
+					for (my $j=0; $j < $mdltbl->size(); $j++) {
+						my $row = $mdltbl->get_row($j);
+						if (defined($row->{LOAD}->[0])) {
+							if (!defined($row->{DIRECTIONALITY})) {
+								$row->{DIRECTIONALITY}->[0] = "<=>";
+							}
+							if (!defined($row->{COMPARTMENT})) {
+								$row->{COMPARTMENT}->[0] = "c";
+							}
+							if (!defined($row->{REFERENCE})) {
+								$row->{REFERENCE}->[0] = "none";
+							}
+							if (!defined($row->{NOTES})) {
+								$row->{NOTES}->[0] = "none";
+							}
+							if (!defined($row->{CONFIDENCE})) {
+								$row->{CONFIDENCE}->[0] = 5;
+							}
+							if (!defined($row->{"ASSOCIATED PEG"})) {
+								$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
+							}
+							$self->db()->create_object("rxnmdl",{
+								MODEL => $models->[$i],
+								REACTION => $row->{LOAD}->[0],
+								directionality => $row->{DIRECTIONALITY}->[0],
+								compartment => $row->{COMPARTMENT}->[0],
+								pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+								confidence => $row->{CONFIDENCE}->[0],
+								notes => join("|",@{$row->{NOTES}}),
+								reference => join("|",@{$row->{REFERENCE}})
+							});
+						}
+					}
+				} else {
+					print "Model ".$models->[$i]." reaction table not found!\n";
+				}
+			} elsif ($numRxn > 100) {
+				print "Model ".$models->[$i]." fully populated!\n";
+			} else {
+				print "Model ".$models->[$i]." appears to be too small!\n";	
+			}
 		}
 	}
     return "SUCCESS";
@@ -534,7 +545,30 @@ sub msworkspace {
 	})};
 	return join("\n",@{$output->{MESSAGE}})."\n";
 }
-
+=head
+=CATEGORY
+Workspace Operations
+=DESCRIPTION
+Creates a new job in the Model SEED job database
+=EXAMPLE
+./mscreatejob
+=cut
+sub mscreatejob {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["command",1,0,"Command for the job"],
+		["user",0,ModelSEED::Interface::interface::USERNAME(),"Owner for the job"],
+		["queue",1,0,"Queue for the job"],
+	],[@Data],"prints workspace information");
+	$args->{command} =~ s/\:/?/;
+	$self->figmodel()->database()->create_object("job",{
+		USER => $args->{user},
+		QUEUETIME => ModelSEED::utilities::TIMESTAMP(),
+		EXCLUSIVEKEY => $args->{command}."_".$args->{user},
+		COMMAND => $args->{command},
+		QUEUE => $args->{queue}
+	});
+}
 =head
 =CATEGORY
 Workspace Operations
@@ -1785,7 +1819,7 @@ sub mdlmakedbmodel {
 	],[@Data],"construct a model with all database reactions");
     my $mdl =  $self->figmodel()->get_model("dbmdl-".$args->{biomass}.".".$self->figmodel()->userObj()->_id());
     if (!defined($mdl)) {
-    	my $mdl = $self->figmodel()->create_model({
+    	$mdl = $self->figmodel()->create_model({
 			genome => "NONE",
 			id => "dbmdl-".$args->{biomass},
 			owner => ModelSEED::Interface::interface::USERNAME(),
@@ -2324,7 +2358,7 @@ sub mdlparsesbml {
 		["file",1,undef,"The name of the SBML file to be parsed. It is assumed the file is present in the workspace."]
 	],[@Data],"parsing SBML file into compound and reaction tables");
 	my $List = $self->figmodel()->parseSBMLToTable({file => $self->ws()->directory().$args->{file}});
-	foreach my $table(keys %$List){
+	foreach my $table( grep { $_ !~ /SUCCESS/ } keys %$List){
 		$List->{$table}->save();
 	}
 }
@@ -2546,6 +2580,7 @@ Genome Operations
 Classifying the type of respiration of a genome based on the functions present
 =EXAMPLE
 =cut
+
 sub genclassifyrespiration {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -2559,9 +2594,275 @@ sub genclassifyrespiration {
 =CATEGORY
 Genome Operations
 =DESCRIPTION
-Classifying the type of respiration of a genome based on the functions present
+Classifying the type of respiration of a genome based on functional roles w/o considering subsystems
 =EXAMPLE
 =cut
+
+
+sub respiration_gene {
+	
+	
+  	open POUTFILE, ">respiration_by_genename1.txt" or die "COUlnd't open  the file: $!\n";
+	
+	my $sap = SAPserver->new();
+	my $genomes = $sap->all_genomes(-prokaryotic => 1);
+	foreach my $genome_id (keys %$genomes)
+		{
+		my $q_count =0;
+		my $mk_count =0;
+		my $tca_count =0;
+		my $f_count =0;
+    	my $genome_name = $genomes->{$genome_id};
+    	#print "$genome_id\t$genome_name\n";
+    	my $featureHash = $sap->feature_assignments({
+                                -genome => $genome_id,
+                                -type => 'peg',
+                                -hypothetical => 0
+                            });
+    
+    
+    
+    		foreach my $peg (%$featureHash){
+     	
+     			my $pegname = $featureHash->{$peg};
+     	
+     				if ( $pegname eq "Succinate dehydrogenase iron-sulfur protein (EC 1.3.99.1)" || $pegname eq "Citrate synthase (si) (EC 2.3.3.1)" || $pegname eq "2-oxoglutarate dehydrogenase E1 component (EC 1.2.4.2)" || $pegname eq "Fumarate hydratase class I, aerobic (EC 4.2.1.2)" || $pegname eq "Dihydrolipoamide succinyltransferase component (E2) of 2-oxoglutarate dehydrogenase complex (EC 2.3.1.61)" || $pegname eq "Succinyl-CoA ligase [ADP-forming] alpha chain (EC 6.2.1.5)" || $pegname eq "Archaeal succinyl-CoA ligase [ADP-forming] alpha chain (EC 6.2.1.5)"){
+     				
+     					$tca_count++;   # 7
+     				}
+     				
+     			    elsif ( $pegname eq "Menaquinone-specific isochorismate synthase (EC 5.4.4.2)"   || $pegname eq "Naphthoate synthase (EC 4.1.3.36)"   || $pegname eq "O-succinylbenzoate synthase (EC 4.2.1.113)"  || $pegname eq "2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate synthase (EC 4.2.99.20)"){
+     				
+     				 	$mk_count++;  #4
+     			    }
+     			    
+     			    elsif ( $pegname eq "Menaquinone via futalosine step 1" || $pegname eq "Menaquinone via futalosine step 2"  ||  $pegname eq "Menaquinone via futalosine step 3" || $pegname eq "Menaquinone via futalosine step 4"){
+     				
+     				    $mk_count++;  #4
+     					
+     			    }
+     			    
+     			    elsif ( $pegname eq "2-octaprenyl-6-methoxyphenol hydroxylase (EC 1.14.13.-)" || $pegname eq "2-octaprenyl-3-methyl-6-methoxy-1,4-benzoquinol hydroxylase (EC 1.14.13.-)" || $pegname eq "Chorismate--pyruvate lyase (EC 4.1.3.40)"){
+     				
+     					$q_count++;   #3
+     				}
+     			    
+     			    elsif ( $pegname eq "Aerobic respiration control protein arcA" || $pegname eq "Aerobic respiration control sensor protein arcB (EC 2.7.3.-)"){
+     				
+     					$f_count++;
+     				}
+     			    
+     			   else{
+     			   	
+     			   	next;
+     			   } 
+     			    
+     	     } # end of foreach
+    
+    
+    				print "Q - $q_count  MK - $mk_count  TCA - $tca_count  F - $f_count\t"  ;
+    				print POUTFILE "Q - $q_count  MK - $mk_count  TCA - $tca_count  F - $f_count\t"  ;
+    
+    				if ($q_count >= 3 && $mk_count >=3){
+    					
+    					
+    					print "$genome_id\t$genome_name\t facultative\n";
+    					print POUTFILE "$genome_id\t$genome_name\t facultative\n";
+    					
+    					
+    				}
+    				
+    				elsif($f_count >=2){
+    					
+    					print "$genome_id\t$genome_name\t facultative\n";
+    					print POUTFILE "$genome_id\t$genome_name\t facultative\n";
+    				}
+    
+    				elsif (  ($q_count>=2 || $mk_count >= 3) && $tca_count>=5){
+    					
+    					print "$genome_id\t$genome_name\t obligate aerobic\n";
+    					print POUTFILE "$genome_id\t$genome_name\t obligate aerobic\n";
+    					
+    				}
+    
+    				elsif ( ($q_count< 2 || $mk_count < 2) && $tca_count>=5){
+    					
+    					print "$genome_id\t$genome_name\t probable aerobic- using TCA\n";
+    					print POUTFILE "$genome_id\t$genome_name\t probable aerobic- using TCA\n";
+    					
+    				}
+    				
+    				elsif ( ($q_count< 2 || $mk_count < 2) && $tca_count < 5){
+    					
+    					print "$genome_id\t$genome_name\t anaerobe\n";
+    					print POUTFILE "$genome_id\t$genome_name\t anaerobe\n";
+    					
+    				}
+    				
+    				else{
+    					
+    					print "$genome_id\t$genome_name\t no good data to determine\n";
+    					print POUTFILE "$genome_id\t$genome_name\t  no good data to determine\n";
+    					
+    				}
+    		
+		}# end of foreach (every genome)
+
+	
+close POUTFILE;
+	
+} # end respiration_gene	
+	
+=head
+=CATEGORY
+Genome Operations
+=DESCRIPTION
+Classifying the type of respiration of a genome based on the functional roles in the subsytems
+=EXAMPLE
+=cut
+
+sub respiration_etc{
+	
+open SUBOUTPUT, ">resp_data_all.txt" or die "COUlnd't open  the   file: $!\n";
+open SUBOUTPUTM, ">resp_data_good.txt" or die "COUlnd't open  the   file: $!\n";
+
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["genome",1,undef,"SEED ID of the genome to be analyzed"]
+	],[@Data],"classifying the type of respiration of a genome based on the functions present");
+	my $sap = $self->figmodel()->sapSvr($args->{source});
+    
+
+	if ($args->{'genome'} eq "ALL" ) {
+	
+		my $sapGenomes = SAPserver->new();
+		my $genomesALL = $sapGenomes->all_genomes(-prokaryotic => 1);
+
+			foreach my $genome_id (keys %$genomesALL){
+			
+    			my $genome_name = $genomesALL->{$genome_id};
+    			
+				my @subarray = ('Menaquinone and Phylloquinone Biosynthesis','Menaquinone Biosynthesis via Futalosine','Ubiquinone Biosynthesis','TCA Cycle');
+				my $subarraycount = @subarray;
+				my %figs;
+				my $figcount=0;
+				my @figcount;
+				my $figoarrarycount=0;
+
+  				for(my $i=0; $i<$subarraycount; $i++){		
+  		           
+					my $genomes = $genome_id;
+					my $ss      = [$subarray[$i]];
+					my $ssH     = $sap->pegs_in_subsystems(-genomes => $genomes, -subsystems => $ss);
+    				my $funrole=0;
+  
+   					foreach my $s(@$ss){
+	
+       					my $roleH = $ssH->{$s};
+       					my @roles = keys(%$roleH);
+       					my @figonlyarray;
+       					my @figarray; 
+       
+       
+       					foreach my $role (@roles)
+       					{
+           					my $pegs = $roleH->{$role};
+           					push @figarray, $role;
+           					push @figarray, $s;  
+           					$funrole++;
+                             
+           					foreach my $p (@$pegs){
+      					   	push @figarray, $p;
+        					push @figonlyarray, $p;
+            				last;
+           					}
+           					$figs{$role} = [@figarray];
+           					next;
+          
+       					} # end foreach 2
+       				
+       				$figoarrarycount= @figonlyarray;
+       		    	push @figcount, $figoarrarycount;
+				
+					} # end foreach 3
+                   
+   
+  			   } #end for 
+  
+                 
+   if  (     ($figcount[0]	> 5 || $figcount[1] > 7) &&  $figcount[2]>6 && $figcount[3]> 9 )   { 
+   	
+   print "\n$genome_id\t$genome_name  - facultative (E.coli type)";
+   print SUBOUTPUT "\n$genome_id\t$genome_name\tfacultative (E.coli type)";
+   print SUBOUTPUTM "\n$genome_id\t$genome_name\tfacultative (E.coli type)";
+   	
+   }
+   
+   elsif (($figcount[0]	> 5 || $figcount[1] > 7) &&  ($figcount[2]< 6 && $figcount[3]> 9) ){
+   	
+   	
+   	print "\n$genome_id\t$genome_name  - aerobic (B.subtilis type)/facultative (rare)";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\taerobic (B.subtilis type)/facultative (rare)";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\taerobic (B.subtilis type)/facultative (rare)";
+   } 
+   
+   elsif (($figcount[0]	< 5 || $figcount[1] < 7) &&  ($figcount[2]> 6 && $figcount[3]> 9) ){
+   	
+   	
+   	print "\n$genome_id\t$genome_name - obligate aerobe (Gram negative - Acinetobacter type)";
+   	print SUBOUTPUT"\n$genome_id\t$genome_name\tobligate aerobe (Gram negative - Acinetobacter type)";
+   	print SUBOUTPUTM"\n$genome_id\t$genome_name\tobligate aerobe (Gram negative - Acinetobacter type)";
+   } 
+   elsif ($figcount[0]	eq 0 && $figcount[1] eq 0 &&  $figcount[2] eq 0 && $figcount[3] eq 0){
+   	
+   	
+   	print "\n$genome_id\t$genome_name -no genes in subsystems";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tno genes in subsystems";
+   	
+   } 
+   
+   
+   elsif (     ($figcount[0]	< 5 || $figcount[1] < 7 || $figcount[2] < 6 ) && $figcount[3]> 9        ) {
+   	
+   	
+   	
+   	print "\n$genome_id\t$genome_name is probably aerobic ";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tprobable aerobic ";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\tprobable aerobic ";
+   	
+   }
+   elsif ( $figcount[3]< 9 ) {
+   	
+   	
+   	
+   	print "\n$genome_id\t$genome_name is obligate anaerobic (clostridium type)";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tobligate anaerobic (clostridium type)";
+   	print SUBOUTPUTM "\n$genome_id\t$genome_name\tobligate anaerobic (clostridium type)";
+   	
+   } 
+   else{
+   	
+   	print "\n$genome_id\t$genome_name - genes not in the subsystem to determine - unknown";
+   	print SUBOUTPUT "\n$genome_id\t$genome_name\tgenes not in the subsystem to determine - unknown";
+   }
+   
+   
+      
+    print "\t@figcount";
+    print SUBOUTPUT "\t@figcount";
+    
+     
+    }# end of foreach  genomesALL
+	
+			
+ } # end of if genome ALL
+       
+  
+close SUBOUTPUT;
+close SUBOUTPUTM;
+
+} # end of testsub 3;
+
 sub genlistsubsystemgenes {
     my($self,@Data) = @_;
 	my $args = $self->check([
@@ -2569,12 +2870,14 @@ sub genlistsubsystemgenes {
 		["subsystem",1,undef,"Subsystem for which genes should be listed"]
 	],[@Data],"classifying the type of respiration of a genome based on the functions present");
 	my $sap = $self->figmodel()->sapSvr($args->{source});
+
 	my $subsys = $sap->ids_in_subsystems({
 		-subsystems => [$args-> {subsystem}],
 		-genome => $args -> {genome},
 		-roleForm => "full",
 	});
-	print Data::Dumper->Dump([$subsys]);
+	
+ 	print Data::Dumper->Dump([$subsys]);
 }
 
 sub gengetgenehits {

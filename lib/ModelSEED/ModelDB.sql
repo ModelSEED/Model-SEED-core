@@ -159,9 +159,9 @@ CREATE TABLE IF NOT EXISTS `genomes` (
   `locked` TINYINT(1)  NULL,
   `public` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
-  `name` VARCHAR(32) NULL,
-  `source` VARCHAR(32) NULL,
-  `type` VARCHAR(32) NULL,
+  `name` VARCHAR(255) NULL,
+  `source` VARCHAR(255) NULL,
+  `type` VARCHAR(255) NULL,
   `taxonomy` VARCHAR(255) NULL,
   `cksum` VARCHAR(255) NULL,
   `size` INTEGER NULL,
@@ -209,12 +209,11 @@ CREATE TABLE IF NOT EXISTS `roles` (
   `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `id` VARCHAR(32) NULL,
-  `name` VARCHAR(255) NULL,
+  `name` TEXT NULL,
   `searchname` VARCHAR(255) NULL,
   `feature_uuid` CHAR(36) NULL,
   PRIMARY KEY (`uuid`),
   INDEX `roles_id` (`id`),
-  INDEX `roles_name` (`name`),
   INDEX `roles_searchname` (`searchname`),
   INDEX `roles_feature_fk` (`feature_uuid`),
   CONSTRAINT `roles_feature_fk`
@@ -360,34 +359,11 @@ CREATE TABLE IF NOT EXISTS `reaction_rule_transports` (
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `mapping_reaction_rules`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mapping_reaction_rules` (
-  `reaction_rule_uuid` CHAR(36) NOT NULL,
-  `mapping_uuid` CHAR(36) NOT NULL,
-  PRIMARY KEY (`reaction_rule_uuid`, `mapping_uuid`),
-  INDEX `mapping_reaction_rules_mapping_fk` (`mapping_uuid`),
-  INDEX `mapping_reaction_rules_reaction_rule_fk` (`mapping_uuid`),
-  CONSTRAINT `mapping_reaction_rules_reaction_rule_fk`
-    FOREIGN KEY (`reaction_rule_uuid`)
-    REFERENCES `reaction_rules` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `mapping_reaction_rules_mapping_fk`
-    FOREIGN KEY (`mapping_uuid`)
-    REFERENCES `mappings` (`uuid`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION
-)
-ENGINE = InnoDB;
-
--- -----------------------------------------------------
 -- Table `compound_aliases`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `compound_aliases` (
   `compound_uuid` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   INDEX `compound_aliases_type` (`type`),
   INDEX `compound_aliases_compound_fk` (`compound_uuid`),
@@ -405,7 +381,6 @@ CREATE TABLE IF NOT EXISTS `compound_structures` (
   `compound_uuid` CHAR(36) NOT NULL,
   `structure` TEXT NOT NULL,
   `cksum` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`type`, `cksum`, `compound_uuid`),
   INDEX `compound_structures_type` (`type`),
@@ -425,7 +400,6 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `reaction_aliases` (
   `reaction_uuid` CHAR(36) NOT NULL,
   `alias` VARCHAR(255) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
   `type` VARCHAR(32) NOT NULL,
   INDEX `compound_alias_type` (`type`),
   INDEX `reaction_fk` (`reaction_uuid`),
@@ -458,6 +432,27 @@ CREATE TABLE IF NOT EXISTS `mappings` (
 )
 ENGINE = InnoDB;
 
+-- -----------------------------------------------------
+-- Table `mapping_reaction_rules`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mapping_reaction_rules` (
+  `reaction_rule_uuid` CHAR(36) NOT NULL,
+  `mapping_uuid` CHAR(36) NOT NULL,
+  PRIMARY KEY (`reaction_rule_uuid`, `mapping_uuid`),
+  INDEX `mapping_reaction_rules_mapping_fk` (`mapping_uuid`),
+  INDEX `mapping_reaction_rules_reaction_rule_fk` (`mapping_uuid`),
+  CONSTRAINT `mapping_reaction_rules_reaction_rule_fk`
+    FOREIGN KEY (`reaction_rule_uuid`)
+    REFERENCES `reaction_rules` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `mapping_reaction_rules_mapping_fk`
+    FOREIGN KEY (`mapping_uuid`)
+    REFERENCES `mappings` (`uuid`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+)
+ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- Table `mapping_complexes`
@@ -704,7 +699,6 @@ CREATE TABLE IF NOT EXISTS `model_reaction_raw_gprs` (
   INDEX `model_reaction_raw_gprs_reaction_fk` (`reaction_uuid`),
   INDEX `model_reaction_raw_gprs_model_fk` (`model_uuid`),
   INDEX `model_reaction_raw_gprs_modelCompartment_fk` (`model_compartment_uuid`),
-  INDEX `model_reaction_raw_gprs_rawGPR` (`rawGPR`),
   CONSTRAINT `model_reaction_raw_gprs_model_fk`
     FOREIGN KEY (`model_uuid`)
     REFERENCES `models` (`uuid`)
@@ -767,7 +761,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `modelfbas` (
   `uuid` CHAR(36) NOT NULL,
-  `modDate` VARCHAR(45) NULL,
+  `modDate` DATETIME NULL,
   `locked` TINYINT(1)  NULL,
   `model_uuid` CHAR(36) NOT NULL,
   `media_uuid` CHAR(36) NOT NULL,
@@ -989,7 +983,7 @@ CREATE TABLE IF NOT EXISTS `compound_pks` (
   `atom` INTEGER NULL,
   `pk` DOUBLE NULL,
   `type` CHAR(1) NULL,
-  PRIMARY KEY (`compound_uuid`),
+  PRIMARY KEY (`compound_uuid`, `atom`, `type`),
   INDEX `compound_pks_compound_fk` (`compound_uuid`),
   CONSTRAINT `compound_pks_compound_fk`
     FOREIGN KEY (`compound_uuid`)

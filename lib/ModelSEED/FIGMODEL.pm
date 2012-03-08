@@ -124,17 +124,9 @@ sub new {
 	#Authenticating the user
 	if (defined($userObj)) {
 		$self->{_user_acount}->[0] = $userObj;
-	} else {
-		if (!defined($username) &&
-            defined(ModelSEED::Interface::interface::USERNAME()) &&
-            defined(ModelSEED::Interface::interface::PASSWORD())) {
-			$username = ModelSEED::Interface::interface::USERNAME();
-			$password = ModelSEED::Interface::interface::PASSWORD();
-		}
-		if (defined($username) && length($username) > 0 &&
-            defined($password) && length($password) > 0) {
-			$self->authenticate_user($username,$password);
-		}
+	} elsif (defined($username) && length($username) > 0 &&
+    	defined($password) && length($password) > 0) {
+		$self->authenticate_user($username,$password);
 	}
 	return $self;	
 }
