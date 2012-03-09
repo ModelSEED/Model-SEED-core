@@ -89,17 +89,19 @@ sub new {
         om => undef,
         database => $args->{database},
         driver => $args->{driver},
+        dsn => $args->{dsn},
+        username => $args->{username},
+        password => $args->{password},
     };
 
     # create the dbi connection
-    my $dsn;
-    if (lc($args->{driver}) eq "sqlite") {
-	$dsn = "dbi:SQLite:" . $args->{database};
-    } else {
-	# TODO: create dsn for mysql
+    my $dsn = $args->{dsn};
+    if (defined($dsn)) {
+        # pass
+    } elsif (lc($args->{driver}) eq "sqlite") {
+        $dsn = "dbi:SQLite:" . $args->{database};
     }
-
-    my $dbi = DBI->connect($dsn);
+    my $dbi = DBI->connect( $dsn, $args->{username}, $args->{password} );
 
     unless ($dbi) {
 	die "Could not create DBI: " . $DBI::errstr;
@@ -126,7 +128,7 @@ sub getBiochemistry {
 
     _processArgs($args, 'getBiochemistry', {
 	uuid              => {required => 1},
-	user              => {required => 1},
+	user              => {required => 0},
 	with_all          => {required => 0},
 	with_reactions    => {required => 0},
 	with_compounds    => {required => 0},
@@ -580,7 +582,7 @@ sub getMapping {
 
     _processArgs($args, 'getMapping', {
 	uuid           => {required => 1},
-	user           => {required => 1},
+	user           => {required => 0},
 	with_all       => {required => 0},
 	with_complexes => {required => 0},
 	with_roles     => {required => 0},
@@ -800,7 +802,7 @@ sub getAnnotation {
 
     _processArgs($args, 'getAnnotation', {
 	uuid           => {required => 1},
-	user           => {required => 1},
+	user           => {required => 0},
 	with_all       => {required => 0},
 	with_features  => {required => 0},
 	with_genome    => {required => 0}
@@ -891,7 +893,7 @@ sub getModel {
     _processArgs($args, 'getModel', {
     id                => {required => 0},
 	uuid              => {required => 0},
-	user              => {required => 1},
+	user              => {required => 0},
 	with_all          => {required => 0},
 	with_biochemistry => {required => 0},
 	with_mapping      => {required => 0},
@@ -899,7 +901,7 @@ sub getModel {
 	with_compartments => {required => 0},
 	with_reactions    => {required => 0},
 	with_modelfbas    => {required => 0},
-	with_biomass      => {required => 0},
+	with_biomasses      => {required => 0},
     });
 
     # get the model object
@@ -932,8 +934,8 @@ sub getModel {
 	    user => $args->{user},
 	    with_all => 1}],
 	compartments => ['getModelCompartments', {model_uuid => $args->{uuid}}],
-	reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
-	biomass      => ['getModelBiomass',    {model_uuid => $args->{uuid}}],
+	model_reactions    => ['getModelReactions',    {model_uuid => $args->{uuid}}],
+	biomasses    => ['getModelBiomass',    {model_uuid => $args->{uuid}}],
 	modelfbas    => ['getModelFBAs',         {model_uuid => $args->{uuid}}]
     };
 

@@ -2379,7 +2379,8 @@ sub mdlimportmodel {
     	["owner",0,ModelSEED::Interface::interface::USERNAME(),"Name of the user account that will own the imported model."],
     	["path",0,$self->ws()->directory(),"The path where the compound and reaction files containing the model data to be imported are located."],
     	["overwrite",0,0,"Set this FLAG to '1' to overwrite an existing model with the same name."],
-    	["biochemsource",0,undef,"The path to the directory where the biochemistry database that the model should be imported into is located."]
+    	["biochemsource",0,undef,"The path to the directory where the biochemistry database that the model should be imported into is located."],
+    	["public",0,0,"If you want the loaded model to be publicly viewable to all Model SEED users, you MUST set this argument to '1'."]
     ],[@Data],"import a model into the Model SEED environment");
 	if (!-e $args->{path}.$args->{name}."-reactions.tbl") {
 		ModelSEED::utilities::USEERROR("Could not find import file:".$args->{path}.$args->{name}."-reactions.tbl");
@@ -2389,19 +2390,18 @@ sub mdlimportmodel {
 	}
 	$args->{reactionTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-reactions.tbl","\t","|",0,["ID"]);
 	$args->{compoundTable} = ModelSEED::FIGMODEL::FIGMODELTable::load_table($args->{path}.$args->{name}."-compounds.tbl","\t","|",0,["ID"]);
-	my $public = 0;
 	if ($args->{"owner"} eq "master") {
-		$public = 1;
+		$args->{public} = 1;
 	}
-	$self->figmodel()->import_model({
-		baseid => $args->{"name"},
-		compoundTable => $args->{compoundTable},
-		reactionTable => $args->{reactionTable},
-		genome => $args->{"genome"},
-		owner => $args->{"owner"},
-		public => $public,
-		overwrite => $args->{"overwrite"},
-		biochemSource => $args->{"biochemsource"}
+        my $results = $self->figmodel()->import_model({
+	    baseid => $args->{"name"},
+	    compoundTable => $args->{compoundTable},
+	    reactionTable => $args->{reactionTable},
+	    genome => $args->{"genome"},
+	    owner => $args->{"owner"},
+	    public => $args->{public},
+	    overwrite => $args->{"overwrite"},
+	    biochemSource => $args->{"biochemsource"}
 	});
 	return "SUCCESS";
 }

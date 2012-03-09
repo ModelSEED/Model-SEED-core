@@ -2552,7 +2552,7 @@ Description:
 =cut
 sub import_model_file {
 	my ($self,$args) = @_;
-	$args = $self->process_arguments($args,["id","modelfiledata","biomassEquation"],{
+	$args = $self->process_arguments($args,["id","modelfiledata"],{
 		genome => "NONE",
 		biomassID => undef,
 		owner => "master",
@@ -2562,6 +2562,7 @@ sub import_model_file {
 		autoCompleteMedia => "Complete",
 		generateprovenance => 1
 	});
+
 	#Calculating the full ID of the model
 	if ($args->{id} =~ m/(Seed\d+\.\d+.*)\.\d+$/) {
 		$args->{id} = $1;
@@ -2627,7 +2628,7 @@ sub import_model_file {
 		if ($row->{LOAD}->[0] =~ m/(bio\d+)/ && !defined($args->{biomassID})) {
 			$args->{biomassID} = $1;
 		}
-		if ($row->{LOAD}->[0] eq $args->{biomassID}) {
+		if ($args->{biomassID} && $row->{LOAD}->[0] eq $args->{biomassID}) {
 			$found = 1;	
 		}
 		my $rxnObj = $self->database()->get_object("rxnmdl",{
@@ -2667,7 +2668,7 @@ sub import_model_file {
 	    });
 	    $modelObj->biomassReaction($args->{biomassID});
 	}
-	if ($found == 0) {
+	if ($found == 0 && $args->{biomassID}) {
 		$self->database()->create_object("rxnmdl",{
 			REACTION => $args->{biomassID},
 			MODEL => $args->{id},
@@ -3085,6 +3086,7 @@ sub import_model {
 			id => $id,
 			owner => $args->{owner},
 			genome => $args->{genome},
+			public => $args->{public},
 			gapfilling => 0,
 			runPreliminaryReconstruction => 0,
 			biochemSource => $args->{biochemSource}
@@ -3095,6 +3097,10 @@ sub import_model {
 	if (!defined($mdl)) {
 		 $mdl = $self->get_model($id);
 	}
+
+	#set public access for model
+	$modelObj->public($args->{public});
+
 	$mdl->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
 	});
@@ -3155,11 +3161,11 @@ sub import_model {
 				    if (defined($cpdals)) {
 						if (!defined($cpd)) {
 						    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						    print "Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
+						    push(@{$result->{outputFile}},"Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0]);
 						    $how_found=$cpdals->type();
 						}
 				    } else {
-						#prevent use of names that being with cpd, for obvious confusion
+						#prevent use of names that begin with cpd, for obvious confusion
 						#with ModelSEED identifiers
 						next if substr($searchNames->[$k],0,3) eq "cpd";
 						
@@ -3168,33 +3174,40 @@ sub import_model {
 						#using indexes
 						if(!exists($newNames->{search}->{$searchNames->[$k]})){
 						    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+						    $newNames->{search}->{$searchNames->[$k]} = 1;
 						}
-				    }
+					    }
 				}
-				if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
-					my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG%"});
-					if (defined($cpdals)) {
-						$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						print "Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-						$how_found=$cpdals->type();
-					}
-				}
-				if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
-				    if (defined($cpdals)) {
-						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						print "Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-						$how_found=$cpdals->type();
-				    }
-				}
-				if (!defined($cpd) && defined($row->{"BIOCYC"}->[0])) {
-				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
-				    if (defined($cpdals)) {
-						$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						print "Found using ",$cpdals->type()," (",$row->{"BIOCYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0],"\n";
-						$how_found=$cpdals->type();
-				    }
-				}
+			    }
+		}
+		if (!defined($cpd) && defined($row->{"KEGG"}->[0])) {
+			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG"});
+			if (defined($cpdals)) {
+				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				push(@{$result->{outputFile}},"Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+				$how_found=$cpdals->type();
+			}else{
+			    $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGGimport.%"});
+			    if (defined($cpdals)) {
+				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+				push(@{$result->{outputFile}},"Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+				$how_found=$cpdals->type();
+			    }
+			}
+		}
+		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
+		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+		    if (defined($cpdals)) {
+			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			push(@{$result->{outputFile}},"Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+			$how_found=$cpdals->type();
+		    }else{
+			$cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
+			if (defined($cpdals)) {
+			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
+			    push(@{$result->{outputFile}},"Found using ",$cpdals->type()," (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+			    $how_found=$cpdals->type();
+			}
 		    }
 		}
 		#If a matching compound was found, we handle this scenario
@@ -3239,8 +3252,9 @@ sub import_model {
 		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\n";
+		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]."\n";
 		    push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]);
+
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 				$row->{"MASS"}->[0] = 10000000;	
 		    }
@@ -3288,7 +3302,24 @@ sub import_model {
 	close(FOUNDCPD);
 	close(NEWCPD);
 
-	#Loading the reaction table
+	#loading the cues for deltaG
+	open(FH, "< ",$self->config("cues data filename")->[0]);
+	my $header=1;
+	my @temp=();
+	my %Cues_Energy=();
+	my %Cues_EnergyUncertainty=();
+	while(<FH>){
+	    chomp;
+	    if($header){$header--;next;}
+	    @temp=split(/\t/,$_);
+	    my @cues=split(/\|/,$temp[0]);
+	    foreach my $c(@cues){
+		$Cues_Energy{$c}=$temp[2];
+		$Cues_EnergyUncertainty{$c}=$temp[4];
+	    }
+	}
+	close(FH);
+
 	open(NEWRXN, "> ".$self->ws()->directory()."mdl-importmodel_New_Reactions_".$id);
 	open(FOUNDRXN, "> ".$self->ws()->directory()."mdl-importmodel_Found_Reactions_".$id);
 	$tbl = $args->{reactionTable};
@@ -3413,6 +3444,21 @@ sub import_model {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
 			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
 			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code});
+
+			my ($deltaG,$deltaGErr) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
+											   energy=>\%Cues_Energy,
+											   uncertainty=>\%Cues_EnergyUncertainty});
+
+			my $thermoreversibility='';
+			if($deltaG){
+			    $thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
+													    deltaG=>$deltaG},deltaGerr=>$deltaGErr);
+			}else{
+			    $deltaG='10000000';
+			    $deltaGErr='10000000';
+			}
+
+
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -3421,10 +3467,10 @@ sub import_model {
 				code => $codeResults->{code},
 				equation => $codeResults->{fullEquation},
 				definition => $row->{"EQUATION"}->[0],
-				deltaG => 10000000,
-				deltaGErr => 10000000,
+				deltaG => $deltaG,
+				deltaGErr => $deltaGErr,
 				reversibility => $row->{"DIRECTIONALITY"}->[0],
-				thermoReversibility => "<=>",
+				thermoReversibility => $thermoreversibility,
 				owner => $args->{owner},
 				modificationDate => time(),
 				creationDate => time(),

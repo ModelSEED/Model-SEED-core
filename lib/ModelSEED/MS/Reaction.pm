@@ -83,6 +83,7 @@ sub BUILDARGS {
             }
 			if ($reagent->{attributes}->{compartmentIndex} == 0) {
                     my $hash = {
+                        compartmentIndex => $reagent->{attributes}->{compartmentIndex},
 						coefficient => $reagent->{attributes}->{coefficient},
                         compound_uuid => $id,
 						cofactor => $reagent->{attributes}->{cofactor}
@@ -91,6 +92,7 @@ sub BUILDARGS {
                     push(@$reagents, $hash);
 			} else {
                 my $hash = {
+                    comaprtmentIndex => $reagent->{attributes}->{compartmentIndex},
                     compartment => $reagent->{attributes}->{compartmentIndex},
                     coefficient => $reagent->{attributes}->{coefficient},
                     compound_uuid => $id,
@@ -163,9 +165,14 @@ sub serializeToDB {
 	return $data;
 }
 
-sub transportedReactants {
+sub transportedReagents {
     my $self = shift @_;
-    return [ grep { $_->compartmentIndex > 0 } @{$self->reagents} ];
+    return [ grep { $_->{compartmentIndex} > 0 } @{$self->reagents} ];
+}
+
+sub isTransport {
+    my $self = shift @_;
+    return ($self->transportedReagents) ? 1 : 0;
 }
 
 sub _buildDbAttributes {

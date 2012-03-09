@@ -68,7 +68,7 @@ sub printToFile {
 #	push(@{$data},"}");
 #	push(@{$data},"Biomass{");
 #	push(@{$data},"Biomass rxn\tBiomass cpd\tCoefficient\tCompartment");
-#	foreach my $biomass (@{$self->mdlbiomass()}) {
+#	foreach my $biomass (@{$self->biomass()}) {
 #		foreach my $biomassCpd (@{$biomass->biomasscompounds()}) {
 #			push(@{$data},$biomass->id()."\t".$biomassCpd->compound()."\t".$biomassCpd->coefficient()."\t".$biomassCpd->compartment()->id());
 #		}

@@ -1842,59 +1842,21 @@ sub balanceReaction {
     if (!defined($args->{equation})) {
 	$args->{equation} = $self->ppo()->equation();
     }
-    my $OriginalEquation = $args->{equation};
     my $balanced_equation=0;
 
     #Ready to start parsing equation
-    my @Data = split(/\s/,$OriginalEquation);
-    my %ReactantHash;
-    my %ProductHash;
-    my $CurrentReactant = "";
-    my $CurrentCoefficient = 1;
-    my $WorkingOnProducts = 0;
-    my %RepresentedCompartments;
-    for (my $i =0; $i < @Data; $i++) {
-	if ($Data[$i] eq "" || $Data[$i] eq ":"){
-	    #Do nothing
-	} elsif ($Data[$i] eq "+") {
-	    if ($WorkingOnProducts == 0) {
-		$ReactantHash{$CurrentReactant} = -$CurrentCoefficient;
-	    } else {
-		$ProductHash{$CurrentReactant} = $CurrentCoefficient;
-	    }
-	    $CurrentReactant = "";
-	    $CurrentCoefficient = 1;
-	} elsif ($Data[$i] eq "<=>" || $Data[$i] eq "=>" || $Data[$i] eq "<=") {
-	    $WorkingOnProducts = 1;
-	    $ReactantHash{$CurrentReactant} = -$CurrentCoefficient;
-	    $CurrentReactant = "";
-	    $CurrentCoefficient = 1;
-	} elsif ($Data[$i] =~ m/\((.*?)\)/){
-	    #Coefficient
-	    $CurrentCoefficient = $1;
-	} else {
-	    my $CurrentCompartment = "c";
-	    if ($Data[$i] =~ m/(.+)\[(\D)\]$/) {
-		$Data[$i] = $1;
-		$CurrentCompartment = lc($2);
-	    }
-	    $RepresentedCompartments{$CurrentCompartment} = 1;
-	    $CurrentReactant = $Data[$i];
-	}
+    my ($Reactants,$Products) = $self->substrates_from_equation({equation=>$args->{equation}});
+    #build a hash
+    my %ReactantHash=();
+    my %ProductHash=();
+    foreach my $cpd(@$Reactants){
+	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=(0-$cpd->{"COEFFICIENT"}->[0]);
+	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
     }
-    if (length($CurrentReactant) > 0) {
-	$ProductHash{$CurrentReactant} = $CurrentCoefficient;
+    foreach my $cpd(@$Products){
+	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=$cpd->{"COEFFICIENT"}->[0];
+	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
     }
-
-    #Only do this for reactions belonging to one compartment
-    #if(scalar(keys %RepresentedCompartments)>1){
-	#	my $output = {
-	#	    equation => $OriginalEquation,
-	#	    balanced => 0,
-	#	    status => "TR"
-	#	};
-	#	return $output;
-    #}
 
     #$args->{debug}=1;
 
@@ -1904,27 +1866,27 @@ sub balanceReaction {
     foreach my $cpd(keys %ReactantHash){
 		my $cpdObj=$self->figmodel()->get_compound($cpd);
 		my $atomKey=$cpdObj->atoms();
-		print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+		print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
 		foreach my $a(keys %$atomKey){
-		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
-		    $atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		    $atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"};
 		    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
 		}
 		$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-		$charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+		$charge+=$cpdObj->charge()*$ReactantHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
     }
 
     foreach my $cpd(keys %ProductHash){
 		my $cpdObj=$self->figmodel()->get_compound($cpd);
 		my $atomKey=$cpdObj->atoms();
-		print STDERR "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+		print STDERR "P:",$cpd,"\t",$ProductHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
 		foreach my $a(keys %$atomKey){
-		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
-		    $atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+		    print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		    $atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"};
 		    print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
 		}
 		$formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-		$charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+		$charge+=$cpdObj->charge()*$ProductHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
     }
 
     print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
@@ -1958,25 +1920,27 @@ sub balanceReaction {
 		if(length($status)==0 && $balanced_equation){
 		    #if balanced atoms, then balance protons
 		    print STDERR "Proton imbalance for ",$self->id(),"\t",$atoms{'H'},"\n" if $args->{debug};
+		    $Added_Protons=1;
+		    $status="OK|HB:".$atoms{'H'};
 	
 		    #Check to see if protons are present and handle appropriately
 		    if(exists($ReactantHash{'cpd00067'})){
-				$atoms{'H'}-=$ReactantHash{'cpd00067'};
+				$atoms{'H'}-=$ReactantHash{'cpd00067'}{"COEFF"};
 				delete($ReactantHash{'cpd00067'});
 		    }
 		    if(exists($ProductHash{'cpd00067'})){
-				$atoms{'H'}-=$ProductHash{'cpd00067'};
+				$atoms{'H'}-=$ProductHash{'cpd00067'}{"COEFF"};
 				delete($ProductHash{'cpd00067'});
 		    }
 	
 		    #If after removing protons, we still see
 		    if($atoms{'H'} < 0){
-				$ProductHash{'cpd00067'}=-$atoms{'H'};
+				$ProductHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
+				$ProductHash{'cpd00067'}{"COMP"}="c";
 		    }elsif($atoms{'H'} > 0){
-				$ReactantHash{'cpd00067'}=-$atoms{'H'};
+				$ReactantHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
+				$ReactantHash{'cpd00067'}{"COMP"}="c";
 		    }
-		    $Added_Protons=1;
-		    $status="OK|HB:".$atoms{'H'};
 		}else{
 		    if(length($status)!=0){
 				$status.="|";
@@ -1986,75 +1950,76 @@ sub balanceReaction {
     }
 
     if($Added_Protons){
-		undef(%atoms);
-		$charge=0;
-		foreach my $cpd(keys %ReactantHash){
-		    my $cpdObj=$self->figmodel()->get_compound($cpd);
-		    my $atomKey=$cpdObj->atoms();
-		    print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
-		    foreach my $a(keys %$atomKey){
-				print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
-				$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
-				print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};;
-		    }
-		    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-		    $charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
-		}
-		
-		foreach my $cpd(keys %ProductHash){
-		    my $cpdObj=$self->figmodel()->get_compound($cpd);
-		    my $atomKey=$cpdObj->atoms();
-		    print STDERR "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
-		    foreach my $a(keys %$atomKey){
-				print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
-				$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
-				print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
-		    }
-		    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-		    $charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
-		}
+	undef(%atoms);
+	$charge=0;
+	foreach my $cpd(keys %ReactantHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"};
+		print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};;
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ReactantHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
+	}
 	
-		print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
+	foreach my $cpd(keys %ProductHash){
+	    my $cpdObj=$self->figmodel()->get_compound($cpd);
+	    my $atomKey=$cpdObj->atoms();
+	    print STDERR "P:",$cpd,"\t",$ProductHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    foreach my $a(keys %$atomKey){
+		print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"};
+		print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
+	    }
+	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ProductHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
+	}
+	print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
     }
 
     #$args->{debug}=0;
 
     my $Added_Electrons=0;
     if($charge!=0){
-		if(0){
-	#	if((length($status)==0 && $balanced_equation) || $status eq "OK|HB"){
-		    #if balanced atoms, or balanced protins, then balance electrons
-		    print STDERR "Charge imbalance for ",$self->id(),"\t",$charge,"\n" if $args->{debug};
-		    
-		    if($charge < 0){
-			if(exists($ProductHash{'cpd12713'})){
-			    #$ProductHash{'cpd12713'}+=$charge;
-			}else{
-			    #$ProductHash{'cpd12713'}=$charge;
-			}
-		    }elsif($charge > 0){
-			if(exists($ReactantHash{'cpd12713'})){
-			    #$ReactantHash{'cpd12713'}+=$charge;
-			}else{
-			    #$ReactantHash{'cpd12713'}=$charge;
-			}
-		    }
-		    $Added_Electrons=1;
-		    if(length($status)!=0){
-			$status.="|CB:".$charge;
-		    }else{
-			$status="OK|CB:".$charge;
-		    }
-		}else{
-		    if(length($status)!=0){
-			$status.="|";
-		    }else{
-			$status="OK|";
-		    }
-		    $status.="CI:".$charge;
-		}
-    }
+	if(0){
+	#if((length($status)==0 && $balanced_equation) || $status =~ /^OK/){
+	    #if balanced atoms, or balanced protins, then balance electrons
+	    print STDERR "Charge imbalance for ",$self->id(),"\t",$charge,"\n" if $args->{debug};
+	    $Added_Electrons=1;
+	    if($status =~ /^OK/){
+		$status.="|CB".$charge;
+	    }else{
+		$status="OK|CB:".$charge;
+	    }
 
+	    #Check to see if electrons are present and handle appropriately
+	    if(exists($ReactantHash{'cpd12713'})){
+		$charge-=$ReactantHash{'cpd12713'}{"COEFF"};
+		delete($ReactantHash{'cpd12713'});
+	    }
+	    if(exists($ProductHash{'cpd12713'})){
+		$charge-=$ProductHash{'cpd12713'}{"COEFF"};
+		delete($ProductHash{'cpd12713'});
+	    }
+	    
+	    #If after removing protons, we still see
+	    if($charge < 0){
+		$ProductHash{'cpd12713'}{"COEFF"}=-$charge;
+		$ProductHash{'cpd12713'}{"COMP"}="c";
+	    }elsif($charge > 0){
+		$ReactantHash{'cpd12713'}{"COEFF"}=-$charge;
+		$ReactantHash{'cpd12713'}{"COMP"}="c";
+	    }
+	}else{
+	    if(length($status)!=0){
+		$status.="|";
+	    }
+	    $status.="CI:".$charge;
+	}
+    }
 
     if($Added_Electrons){
 	undef(%atoms);
@@ -2062,27 +2027,27 @@ sub balanceReaction {
 	foreach my $cpd(keys %ReactantHash){
 	    my $cpdObj=$self->figmodel()->get_compound($cpd);
 	    my $atomKey=$cpdObj->atoms();
-	    print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
 	    foreach my $a(keys %$atomKey){
-		print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd},"\t",$atomKey->{$a}*$ReactantHash{$cpd},"\n" if $args->{debug};
-		$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd};
+		print STDERR $a,"\t",$atomKey->{$a},"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ReactantHash{$cpd}{"COEFF"};
 		print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};;
 	    }
 	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-	    $charge+=$cpdObj->charge()*$ReactantHash{$cpd} unless !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ReactantHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
 	}
 	
 	foreach my $cpd(keys %ProductHash){
 	    my $cpdObj=$self->figmodel()->get_compound($cpd);
 	    my $atomKey=$cpdObj->atoms();
-	    print STDERR "P:",$cpd,"\t",$ProductHash{$cpd},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
+	    print STDERR "P:",$cpd,"\t",$ProductHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\n" if($args->{debug});
 	    foreach my $a(keys %$atomKey){
-		print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd},"\t",$atomKey->{$a}*$ProductHash{$cpd},"\n" if $args->{debug};
-		$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd};
+		print STDERR $a,"\t",$atomKey->{$a},"\t",$ProductHash{$cpd}{"COEFF"},"\t",$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"},"\n" if $args->{debug};
+		$atoms{$a}+=$atomKey->{$a}*$ProductHash{$cpd}{"COEFF"};
 		print STDERR $a,"\t",$atoms{$a},"\n" if $args->{debug};
 	    }
 	    $formulas{$cpdObj->ppo()->formula()}=1 unless $cpd eq "cpd12713" || !defined($cpdObj->ppo());
-	    $charge+=$cpdObj->charge()*$ProductHash{$cpd} unless !defined($cpdObj->ppo());
+	    $charge+=$cpdObj->charge()*$ProductHash{$cpd}{"COEFF"} unless !defined($cpdObj->ppo());
 	}
 
 	print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
@@ -2090,7 +2055,7 @@ sub balanceReaction {
 
     #Check for duplicates on either side of the reaction
     foreach my $cpd(keys %ReactantHash){
-	if(exists($ProductHash{$cpd})){
+	if(exists($ProductHash{$cpd}) && $ReactantHash{$cpd}{"COMP"} eq $ProductHash{$cpd}{"COMP"}){
 	    if(length($status)!=0){
 		if($status =~ /OK/){
 		    $status =~ s/OK/DUP/;
@@ -2107,7 +2072,7 @@ sub balanceReaction {
     $status="OK" if $status eq '';
 
     my $output = {
-	equation => $OriginalEquation,
+	equation => $args->{equation},
 	balanced => $balanced_equation,
 	status => $status
     };
@@ -2120,11 +2085,12 @@ sub balanceReaction {
 	    if ($i > 0) {
 		$ReactantString .= " + ";
 	    }
-	    if($ReactantHash{$Reactants[$i]} ne "0" && $ReactantHash{$Reactants[$i]} ne "1" && $ReactantHash{$Reactants[$i]} ne "-1"){
+	    if($ReactantHash{$Reactants[$i]}{"COEFF"} ne "0" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "1" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "-1"){
 		$ReactantHash{$Reactants[$i]} =~ s/^-//;
-		$ReactantString .= "(".$ReactantHash{$Reactants[$i]}.") ";
+		$ReactantString .= "(".(0-$ReactantHash{$Reactants[$i]}{"COEFF"}).") ";
 	    }
 	    $ReactantString .= $Reactants[$i];
+	    if($ReactantHash{$Reactants[$i]}{"COMP"} ne "c"){$ReactantString.="[".$ReactantHash{$Reactants[$i]}{"COMP"}."]";}
 	}
 	my @Products = sort(keys(%ProductHash));
 	my $ProductString = "";
@@ -2132,16 +2098,251 @@ sub balanceReaction {
 	    if ($i > 0) {
 		$ProductString .= " + ";
 	    }
-	    if($ProductHash{$Products[$i]} ne "0" && $ProductHash{$Products[$i]} ne "1" && $ProductHash{$Products[$i]} ne "-1"){
+	    if($ProductHash{$Products[$i]}{"COEFF"} ne "0" && $ProductHash{$Products[$i]}{"COEFF"} ne "1" && $ProductHash{$Products[$i]}{"COEFF"} ne "-1"){
 		$ProductHash{$Products[$i]} =~ s/^-//;
-		$ProductString .= "(".$ProductHash{$Products[$i]}.") ";
+		$ProductString .= "(".$ProductHash{$Products[$i]}{"COEFF"}.") ";
 	    }
 	    $ProductString .= $Products[$i];
+	    if($ProductHash{$Products[$i]}{"COMP"} ne "c"){$ProductString.="[".$ProductHash{$Products[$i]}{"COMP"}."]";}
 	}
-
+	
 	$output->{equation}=$ReactantString." <=> ".$ProductString;
-
     }
     return $output;
+}
+
+=head3 calculate_deltaG
+Definition:
+    Output = FIGMODELreaction->calculate_deltaG
+Description:
+    This function calculates the deltaG and deltaGErr for the reaction
+=cut
+
+sub calculate_deltaG {
+    my ($self,$args)=@_;
+    return ('','') if !$args->{energy} || !$args->{uncertainty};
+
+    $args = $self->figmodel()->process_arguments($args,[],{equation => undef,debug=>0});
+    if (!defined($args->{equation})) {
+	ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
+	$args->{equation} = $self->ppo()->equation();
+    }
+
+    my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
+
+    #First cancel out compounds
+    my %compounds=();
+    foreach my $r (@{$substrates[0]}){
+	$compounds{$r->{"DATABASE"}->[0]}-=$r->{"COEFFICIENT"}->[0];
+    }
+    foreach my $p (@{$substrates[1]}){
+	$compounds{$p->{"DATABASE"}->[0]}+=$p->{"COEFFICIENT"}->[0];
+    }
+
+    #Second see if destroyed/created compounds have structural cues
+    my $missing_cues=0;
+    my %cues=();
+    foreach my $c (sort grep { $compounds{$_} != 0 } keys %compounds){
+	my $cDB=$self->figmodel()->database()->get_object('compound',{id=>$c});
+	if(!$cDB || !$cDB->structuralCues() || $cDB->structuralCues() eq "NULL"){
+	    $missing_cues=1;
+	    last;
+	}else{
+	    my @cues=split(/;/,$cDB->structuralCues());
+	    foreach my $cue_stoich(@cues){
+		my ($cue,$stoich)=split(/:/,$cue_stoich);
+		if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
+		    #print "No $cue\n";
+		    $missing_cues=1;
+		    last;
+		}else{
+		    $cues{$cue}+=$compounds{$c}*$stoich;
+		}
+	    }
+	    last if $missing_cues;
+	}
+    }
+
+    #third, up all energy and energy uncertainty
+    if(!$missing_cues){
+	my $energy=0;
+	my $energyuncertainty=0;
+
+	foreach my $cue(sort keys %cues){
+	    #print $cue,"\t",$cues{$cue},"\t",$args->{energy}->{$cue},"\t",$energy,"\n";
+	    $energy+=$args->{energy}->{$cue}*$cues{$cue};
+	    $energyuncertainty+=($args->{uncertainty}->{$cue}*$cues{$cue})**2;
+	}
+	$energyuncertainty=$energyuncertainty**0.5;
+	$energyuncertainty=2.0 if $energyuncertainty == 0;
+
+	$energy=sprintf("%.4f",$energy);
+	$energyuncertainty=sprintf("%.4f",$energyuncertainty);
+	return ($energy,$energyuncertainty);
+    }else{
+	return ('','');
+    }
+}
+
+=head3 find_thermodynamic_reversibility
+Definition:
+    Output = FIGMODELreaction->find_thermodynamic_reversibility
+Description:
+    This function returns the direction which the thermodynamics indicate
+    the reaction can proceed.  It returns an empty string if it cannot determine
+    for whatever reason
+=cut
+
+sub find_thermodynamic_reversibility {
+    my ($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{equation => undef,debug=>0});
+
+    if(!defined($args->{equation})) {
+	ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
+	$args->{equation} = $self->ppo()->equation();
+    }
+
+    my $TEMPERATURE=298.15;
+    my $GAS_CONSTANT=0.0019858775;
+
+    #Calculate MdeltaG
+    my ($max,$min)=(0.02,0.00001);
+    my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
+
+    my $reactantsmin=0.0;
+    my $reactantsmax=0.0;
+    foreach my $r (@{$substrates[0]}){
+	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
+	my ($tmx,$tmn)=($max,$min);
+	if($r->{"COMPARTMENT"}->[0] eq "e"){
+	    ($tmx,$tmn)=(1.0,0.0000001);
+	}
+	$reactantsmin+=((0-$r->{"COEFFICIENT"}->[0])*log($tmn));
+	$reactantsmax+=((0-$r->{"COEFFICIENT"}->[0])*log($tmx));
+    }
+
+    my $productsmin=0.0;
+    my $productsmax=0.0;
+    foreach my $p (@{$substrates[1]}){
+	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
+	my ($tmx,$tmn)=($max,$min);
+	if($p->{"COMPARTMENT"}->[0] eq "e"){
+	    ($tmx,$tmn)=(1.0,0.0000001);
+	}
+	$productsmin+=($p->{"COEFFICIENT"}->[0]*log($tmn));
+	$productsmax+=($p->{"COEFFICIENT"}->[0]*log($tmx));
+    }
+
+    my $CONST=$TEMPERATURE*$GAS_CONSTANT;
+
+    my $storedmax=$args->{deltaG}+($CONST*$productsmax)+($CONST*$reactantsmin)+$args->{deltaGerr};
+    my $storedmin=$args->{deltaG}+($CONST*$productsmin)+($CONST*$reactantsmax)-$args->{deltaGerr};
+
+    if($storedmax<0){
+	return "=>"; #\tMdeltaG\t".$storedmin."_".$storedmax;
+    }
+    if($storedmin>0){
+	return "<="; #\tMdeltaG\t".$storedmin."_".$storedmax;
+    }
+
+    #Do heuristics
+    #1: Calculate mMdeltaG
+    my $conc=0.001;
+    my $prodreacs=0.0;
+    foreach my $r (@{$substrates[0]}){
+	next if($r->{"DATABASE"}->[0] eq "cpd00001" || $r->{"DATABASE"}->[0] eq "cpd00067");
+	my $tconc=$conc;
+	if($r->{"DATABASE"}->[0] eq "cpd00011"){
+	    $tconc=0.0001;
+	}
+	if($r->{"DATABASE"}->[0] eq "cpd00007"){
+	    $tconc=0.000001;
+	}
+	$prodreacs+=((0-$r->{"COEFFICIENT"}->[0])*log($tconc));
+    }
+    foreach my $p (@{$substrates[1]}){
+	next if($p->{"DATABASE"}->[0] eq "cpd00001" || $p->{"DATABASE"}->[0] eq "cpd00067");
+	my $tconc=$conc;
+	if($p->{"DATABASE"}->[0] eq "cpd00011"){
+	    $tconc=0.0001;
+	}
+	if($p->{"DATABASE"}->[0] eq "cpd00007"){
+	    $tconc=0.000001;
+	}
+	$prodreacs+=($p->{"COEFFICIENT"}->[0]*log($tconc));
+    }
+
+    my $mMdeltaG=$args->{deltaG}+($CONST*$prodreacs);
+
+    if($mMdeltaG >= -2 && $mMdeltaG <= 2) {
+	return "<=>"; #\tmMdeltaG\t$mMdeltaG";
+    }
+    
+    #2: Calculate low energy points
+    #2a: Find Phosphate stuff
+    my %PhoHash=();
+    foreach my $r (@{$substrates[0]}){
+	$PhoHash{"ATP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00012");
+    }
+    foreach my $p (@{$substrates[1]}){
+	$PhoHash{"ATP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00012");
+    }
+
+    #2b: Find minimum Phosphate stuff
+    my $Points=0;
+    my $minimum=10000;
+    if(exists($PhoHash{"ATP"}) && exists($PhoHash{"Pi"}) && exists($PhoHash{"ADP"})){
+	foreach my $key ("ATP", "ADP", "Pi"){
+	    if(exists($PhoHash{$key})){
+		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
+	    }
+	}
+	$Points=$minimum if $minimum<10000;
+    }elsif(exists($PhoHash{"ATP"}) && exists($PhoHash{"Ppi"}) && exists($PhoHash{"AMP"})){
+	foreach my $key ("ATP", "AMP", "Ppi"){
+	    if(exists($PhoHash{$key})){
+		$minimum=$PhoHash{$key} if $PhoHash{$key}<=$minimum;
+	    }
+	}
+	$Points=$minimum if $minimum<10000;
+    }
+
+    #2c:Find other low energy compounds
+    #taken from software/mfatoolkit/Parameters/Defaults.txt
+    my %lowE = ("cpd00013"=>0,  #NH3
+		"cpd00011"=>0,  #CO2
+		"cpd11493"=>0,  #ACP
+		"cpd00009"=>0,  #Pi
+		"cpd00012"=>0,  #Ppi
+		"cpd00010"=>0,  #CoA
+		"cpd00449"=>0,  #Dihydrolipoamide
+		"cpd00242"=>0); #HCO3-
+
+    my $lowEsum=0;
+    foreach my $r (@{$substrates[0]}){
+	$lowEsum += (0-$r->{"COEFFICIENT"}->[0]) if exists($lowE{$r->{"DATABASE"}->[0]});
+    }
+    foreach my $p (@{$substrates[1]}){
+	$lowEsum += $p->{"COEFFICIENT"}->[0] if exists($lowE{$p->{"DATABASE"}->[0]});
+    }
+
+    $Points-=$lowEsum;
+
+    #test points
+    if(($Points*$mMdeltaG) > 2 && $mMdeltaG < 0){
+	return "=>"; #\tPoints\t".$Points."_".$mMdeltaG;
+    }elsif(($Points*$mMdeltaG) > 2 && $mMdeltaG > 0){
+	return "<="; #\tPoints\t".$Points."_".$mMdeltaG;
+    }
+
+    return "<=>"; #\tDefault\t".$Points."_".$mMdeltaG;;
 }
 1;
