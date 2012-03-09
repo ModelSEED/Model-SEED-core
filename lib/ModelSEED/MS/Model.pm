@@ -284,7 +284,7 @@ sub priceReconstruction {
 #	reaction directionality
 #	reaction compartments
 #	annotation
-	#Your code goes here using swig?
+#	Your code goes here using swig?
 }
 
 sub _printedAttributes { return [ qw( id name version type growth reactions annotations compounds status) ]; }
