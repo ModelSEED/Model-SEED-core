@@ -2404,7 +2404,7 @@ sub parseMolAnalysisStudy {
 	if (defined($row->{id}->[0])) {
 	    $id = $row->{id}->[0];
 	    for (my $j=0; $j < @{$heading}; $j++) {
-		$results->{$id}->{$heading->[$j]} = $row->{$heading->[$j]}->[0];
+		$results->{$id}->{$heading->[$j]} = join("|",@{$row->{$heading->[$j]}});
 	    }
 	}
     }
