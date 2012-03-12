@@ -2393,6 +2393,9 @@ sub mdlimportmodel {
 	if ($args->{"owner"} eq "master") {
 		$args->{public} = 1;
 	}
+
+    print "Importing ".$args->{name}." as ".$args->{owner}."\n";
+
         my $results = $self->figmodel()->import_model({
 	    baseid => $args->{"name"},
 	    compoundTable => $args->{compoundTable},
@@ -2403,7 +2406,16 @@ sub mdlimportmodel {
 	    overwrite => $args->{"overwrite"},
 	    biochemSource => $args->{"biochemsource"}
 	});
+
+    open(OUT, "> ".$self->ws()->directory()."mdl-importmodel_Output_".$args->{name});
+    print OUT join("\n",@{$results->{outputFile}}),"\n";
+    close(OUT);
+
+    if($results->{SUCCESS}){
 	return "SUCCESS";
+    }else{
+	return "FAILURE";
+    }
 }
 
 =head
