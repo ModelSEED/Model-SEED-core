@@ -543,7 +543,7 @@ sub msworkspace {
 	my $output = {MESSAGE => ModelSEED::Interface::interface::WORKSPACE()->printWorkspace({
 		verbose => $args->{verbose}
 	})};
-	return join("\n",@{$output->{MESSAGE}})."\n";
+	return $output->{MESSAGE}."\n";
 }
 =head
 =CATEGORY
