@@ -1596,9 +1596,19 @@ sub bcprocessmolfile {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["compound",1,undef,"ID of the compound associated with molfile"],
-		["mofile",0,0,"Name of the molfile to be processed"],
+		["molfile",0,0,"Name of the molfile to be processed"],
 		["directory",0,$self->ws()->directory(),"Directory where molfiles are located"],
 	],[@Data],"process input molfiles to calculate thermodynamic parameters, formula, and charge");
+    
+    if(!exists($args->{molfile}) || !$args->{molfile}){
+	my $tmp="";
+	foreach my $id(split(/;/,$args->{compound})){
+	    $tmp.=$id.".mol;";
+	}
+	chop($tmp);
+	$args->{molfile}=$tmp;
+    }
+
     my $input = {
     	ids => ModelSEED::Interface::interface::PROCESSIDLIST({
 			objectType => "compound",
@@ -1612,7 +1622,7 @@ sub bcprocessmolfile {
 			delimiter => ";",
 			column => "filename",
 			parameters => {},
-			input => $args->{mofile}
+			input => $args->{molfile}
 		})
     };
     for (my $i=0; $i < @{$input->{molfiles}}; $i++) {

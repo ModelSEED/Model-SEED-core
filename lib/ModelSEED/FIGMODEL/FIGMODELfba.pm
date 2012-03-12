@@ -2359,6 +2359,8 @@ sub setMolAnalysisStudy {
 	    } elsif ($args->{molfiles}->[$i] =~ m/\n/) {
 		$self->figmodel()->database()->print_array_to_file($self->directory()."/molfiles/".$args->{ids}->[$i].".mol",[split(/\n/,$args->{molfiles}->[$i])]);
 		$filename = $args->{ids}->[$i].".mol";
+	    }else{
+		ModelSEED::utilities::USEWARNING("WARNING: Cannot find ".$args->{molfiles}->[$i]."\n");
 	    }
 	    if (defined($filename) && -e $self->directory()."/molfiles/".$filename) {
 		push(@{$output},$args->{ids}->[$i]."\t".$self->directory()."/molfiles/".$filename);
