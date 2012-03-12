@@ -1598,6 +1598,7 @@ sub bcprocessmolfile {
 		["compound",1,undef,"ID of the compound associated with molfile"],
 		["molfile",0,0,"Name of the molfile to be processed"],
 		["directory",0,$self->ws()->directory(),"Directory where molfiles are located"],
+		["prefix",0,"","Prefix for output file"]
 	],[@Data],"process input molfiles to calculate thermodynamic parameters, formula, and charge");
     
     if(!exists($args->{molfile}) || !$args->{molfile}){
@@ -1641,8 +1642,8 @@ sub bcprocessmolfile {
 	    push(@{$output},$line);
 	}
     }
-    ModelSEED::utilities::PRINTFILE($self->ws()->directory()."MolAnalysis.tbl",$output);
-    return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
+    ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{prefix}."MolAnalysis.tbl",$output);
+    return "Success. Results printed to ".$self->ws()->directory().$args->{prefix}."MolAnalysis.tbl file.";
 }
 =head
 =CATEGORY
