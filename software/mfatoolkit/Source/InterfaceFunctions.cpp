@@ -616,7 +616,7 @@ void ProcessMolfiles() {
 			vector<string>* strings = GetStringsFileline(Input,"\t",false);
 			if (strings->size() >= 2) {
 				Species* NewSpecies = new Species("", NewData, false);
-				NewSpecies->ReadFromMol(FOutputFilepath()+"molfiles/"+(*strings)[1]);
+				NewSpecies->ReadFromMol((*strings)[1]);
 				NewSpecies->PerformAllCalculations(true,true,true,true,true);
 				string cues = NewSpecies->CreateStructuralCueList();
 				findandreplace(cues,"\t","|");

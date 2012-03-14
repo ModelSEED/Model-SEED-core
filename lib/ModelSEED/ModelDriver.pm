@@ -543,7 +543,7 @@ sub msworkspace {
 	my $output = {MESSAGE => ModelSEED::Interface::interface::WORKSPACE()->printWorkspace({
 		verbose => $args->{verbose}
 	})};
-	return join("\n",@{$output->{MESSAGE}})."\n";
+	return $output->{MESSAGE}."\n";
 }
 =head
 =CATEGORY
@@ -1596,9 +1596,20 @@ sub bcprocessmolfile {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["compound",1,undef,"ID of the compound associated with molfile"],
-		["mofile",0,0,"Name of the molfile to be processed"],
+		["molfile",0,0,"Name of the molfile to be processed"],
 		["directory",0,$self->ws()->directory(),"Directory where molfiles are located"],
+		["prefix",0,"","Prefix for output file"]
 	],[@Data],"process input molfiles to calculate thermodynamic parameters, formula, and charge");
+    
+    if(!exists($args->{molfile}) || !$args->{molfile}){
+	my $tmp="";
+	foreach my $id(split(/;/,$args->{compound})){
+	    $tmp.=$id.".mol;";
+	}
+	chop($tmp);
+	$args->{molfile}=$tmp;
+    }
+
     my $input = {
     	ids => ModelSEED::Interface::interface::PROCESSIDLIST({
 			objectType => "compound",
@@ -1612,7 +1623,7 @@ sub bcprocessmolfile {
 			delimiter => ";",
 			column => "filename",
 			parameters => {},
-			input => $args->{mofile}
+			input => $args->{molfile}
 		})
     };
     for (my $i=0; $i < @{$input->{molfiles}}; $i++) {
@@ -1631,8 +1642,8 @@ sub bcprocessmolfile {
 	    push(@{$output},$line);
 	}
     }
-    ModelSEED::utilities::PRINTFILE($self->ws()->directory()."MolAnalysis.tbl",$output);
-    return "Success. Results printed to ".$self->ws()->directory()."MolAnalysis.tbl file.";
+    ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{prefix}."MolAnalysis.tbl",$output);
+    return "Success. Results printed to ".$self->ws()->directory().$args->{prefix}."MolAnalysis.tbl file.";
 }
 =head
 =CATEGORY
@@ -2393,6 +2404,9 @@ sub mdlimportmodel {
 	if ($args->{"owner"} eq "master") {
 		$args->{public} = 1;
 	}
+
+    print "Importing ".$args->{name}." as ".$args->{owner}."\n";
+
         my $results = $self->figmodel()->import_model({
 	    baseid => $args->{"name"},
 	    compoundTable => $args->{compoundTable},
@@ -2403,7 +2417,16 @@ sub mdlimportmodel {
 	    overwrite => $args->{"overwrite"},
 	    biochemSource => $args->{"biochemsource"}
 	});
+
+    open(OUT, "> ".$self->ws()->directory()."mdl-importmodel_Output_".$args->{name});
+    print OUT join("\n",@{$results->{outputFile}}),"\n";
+    close(OUT);
+
+    if($results->{SUCCESS}){
 	return "SUCCESS";
+    }else{
+	return "FAILURE";
+    }
 }
 
 =head

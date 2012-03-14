@@ -118,7 +118,7 @@ sub new {
 	#Ensuring that the MFAToolkit uses the same database directory as the FIGMODEL
 	$self->{"MFAToolkit executable"}->[0] .= ' resetparameter "MFA input directory" '.$self->{"database root directory"}->[0]."ReactionDB/";
 	#Creating FIGMODELdatabase object
-    my $db_config = $self->_get_FIGMODELdatabase_config();
+	my $db_config = $self->_get_FIGMODELdatabase_config();
 	$self->{"_figmodeldatabase"}->[0] = ModelSEED::FIGMODEL::FIGMODELdatabase->new($db_config, $self);
 	$self->{"_figmodelweb"}->[0] = ModelSEED::FIGMODEL::FIGMODELweb->new($self);
 	#Authenticating the user
@@ -128,6 +128,7 @@ sub new {
     	defined($password) && length($password) > 0) {
 		$self->authenticate_user($username,$password);
 	}
+
 	return $self;	
 }
 
@@ -3161,7 +3162,7 @@ sub import_model {
 				    if (defined($cpdals)) {
 						if (!defined($cpd)) {
 						    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						    push(@{$result->{outputFile}},"Found using name (",$row->{"NAMES"}->[$j],"): ",$cpd->id()," for id ",$row->{ID}->[0]);
+						    push(@{$result->{outputFile}},"Found using name (".$row->{"NAMES"}->[$j]."): ".$cpd->id()." for id ".$row->{ID}->[0]);
 						    $how_found=$cpdals->type();
 						}
 				    } else {
@@ -3184,13 +3185,13 @@ sub import_model {
 			my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGG"});
 			if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-				push(@{$result->{outputFile}},"Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+				push(@{$result->{outputFile}},"Found using KEGG (".$row->{"KEGG"}->[0].") ",$cpd->id()." for id ".$row->{ID}->[0]);
 				$how_found=$cpdals->type();
 			}else{
 			    $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"KEGG"}->[0],type => "KEGGimport.%"});
 			    if (defined($cpdals)) {
 				$cpd = 	$mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-				push(@{$result->{outputFile}},"Found using KEGG (",$row->{"KEGG"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+				push(@{$result->{outputFile}},"Found using KEGG (".$row->{"KEGG"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
 				$how_found=$cpdals->type();
 			    }
 			}
@@ -3199,13 +3200,13 @@ sub import_model {
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
 		    if (defined($cpdals)) {
 			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			push(@{$result->{outputFile}},"Found using MetaCyc (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+			push(@{$result->{outputFile}},"Found using MetaCyc (".$row->{"METACYC"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
 			$how_found=$cpdals->type();
 		    }else{
 			$cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
 			if (defined($cpdals)) {
 			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    push(@{$result->{outputFile}},"Found using ",$cpdals->type()," (",$row->{"METACYC"}->[0],") ",$cpd->id()," for id ",$row->{ID}->[0]);
+			    push(@{$result->{outputFile}},"Found using ".$cpdals->type()." (".$row->{"METACYC"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
 			    $how_found=$cpdals->type();
 			}
 		    }
