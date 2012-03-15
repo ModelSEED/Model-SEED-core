@@ -3,12 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T16:44:01
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject
+use ModelSEED::MS::Biochemistry
 use ModelSEED::MS::ReactionAlias
 use ModelSEED::MS::ReactionInstance
 use ModelSEED::MS::Reagent

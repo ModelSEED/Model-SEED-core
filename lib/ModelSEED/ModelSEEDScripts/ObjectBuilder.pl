@@ -26,7 +26,8 @@ foreach my $name (keys(%{$objects})) {
 		"use strict;",
 		"use Moose;",
 		"use namespace::autoclean;",
-		"use ModelSEED::MS::".$baseObject
+		"use ModelSEED::MS::".$baseObject,
+		"use ModelSEED::MS::".$object->{parents}->[0],
 	));
 	foreach my $subobject (@{$object->{subobjects}}) {
 		push(@{$output},"use ModelSEED::MS::".$subobject->{class});
