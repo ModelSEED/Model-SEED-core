@@ -3,14 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T16:44:01
+# Date of module creation: 2012-03-15T17:33:52
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject
 use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::BiochemistryAlias
 use ModelSEED::MS::Compartment
 use ModelSEED::MS::Compound
 use ModelSEED::MS::Reaction
@@ -22,7 +21,7 @@ extends ModelSEED::MS::IndexedObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -34,13 +33,12 @@ has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'T
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(username,id)', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compartment]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]', type => 'child', metaclass => 'Typed');
+has compartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compartment]', type => 'child', metaclass => 'Typed');
+has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'child', metaclass => 'Typed');
+has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]', type => 'child', metaclass => 'Typed');
+has media => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]', type => 'child', metaclass => 'Typed');
+has compoundsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]', type => 'child', metaclass => 'Typed');
+has reactionsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]', type => 'child', metaclass => 'Typed');
 
 
 # BUILDERS:

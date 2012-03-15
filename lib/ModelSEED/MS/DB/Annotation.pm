@@ -3,14 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T16:44:01
+# Date of module creation: 2012-03-15T17:33:52
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject
 use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::AnnotationAlias
 use ModelSEED::MS::Genome
 use ModelSEED::MS::Feature
 use ModelSEED::MS::Mapping
@@ -19,7 +18,7 @@ extends ModelSEED::MS::IndexedObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -27,14 +26,12 @@ has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Type
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has genome_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has mapping_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has mapping_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed' );
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(username,id)', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child', metaclass => 'Typed');
+has genomes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child', metaclass => 'Typed');
+has features => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child', metaclass => 'Typed');
 
 
 # LINKS:

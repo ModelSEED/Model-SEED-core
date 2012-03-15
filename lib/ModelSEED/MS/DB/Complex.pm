@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T16:44:01
+# Date of module creation: 2012-03-15T17:33:52
 ########################################################################
 use strict;
 use Moose;
@@ -17,7 +17,7 @@ extends ModelSEED::MS::BaseObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -30,8 +30,8 @@ has searchname => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'link', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed', metaclass => 'Typed');
+has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'link', metaclass => 'Typed');
+has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed', metaclass => 'Typed');
 
 
 # BUILDERS:

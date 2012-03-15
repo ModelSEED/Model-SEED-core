@@ -3,14 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T16:44:01
+# Date of module creation: 2012-03-15T17:33:52
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject
 use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::MappingAlias
 use ModelSEED::MS::Role
 use ModelSEED::MS::Roleset
 use ModelSEED::MS::ReactionRule
@@ -21,7 +20,7 @@ extends ModelSEED::MS::IndexedObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -34,11 +33,10 @@ has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metac
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(username,id)', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child', metaclass => 'Typed');
+has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child', metaclass => 'Typed');
+has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child', metaclass => 'Typed');
+has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child', metaclass => 'Typed');
+has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child', metaclass => 'Typed');
 
 
 # LINKS:
