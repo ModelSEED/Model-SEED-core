@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -20,13 +20,13 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Model',weak_ref =
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate' );
-has model_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has compound_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has charge => ( is => 'rw', isa => 'Num' );
-has formula => ( is => 'rw', isa => 'Str', default => '' );
-has model_compartment_uuid => ( is => 'rw', isa => 'Str', required => 1 );
+has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
+has model_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has compound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has charge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has formula => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has model_compartment_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 # LINKS:

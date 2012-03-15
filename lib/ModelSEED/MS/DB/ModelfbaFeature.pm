@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -19,13 +19,13 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Modelfba',weak_re
 
 
 # ATTRIBUTES:
-has modelfba_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has feature_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has growthFraction => ( is => 'rw', isa => 'Num' );
-has essential => ( is => 'rw', isa => 'Int' );
-has class => ( is => 'rw', isa => 'Str' );
-has activity => ( is => 'rw', isa => 'Num' );
-has ko => ( is => 'rw', isa => 'Int', default => '0' );
+has modelfba_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has feature_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has growthFraction => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has essential => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
+has class => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has activity => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has ko => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 
 
 # LINKS:

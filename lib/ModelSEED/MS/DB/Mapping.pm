@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -24,20 +24,20 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ObjectManager',we
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', default => '0' );
-has public => ( is => 'rw', isa => 'Int', default => '0' );
-has name => ( is => 'rw', isa => 'Str', default => '' );
-has biochemistry_uuid => ( is => 'rw', isa => 'Str', required => 1 );
+has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
+has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
+has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]');
+has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(username,id)', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child', metaclass => 'Typed');
 
 
 # LINKS:

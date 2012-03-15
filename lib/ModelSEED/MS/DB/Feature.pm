@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -20,18 +20,18 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Annotation',weak_
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', default => '0' );
-has id => ( is => 'rw', isa => 'Str', required => 1 );
-has cksum => ( is => 'rw', isa => 'Str', default => '' );
-has genome_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has start => ( is => 'rw', isa => 'Int' );
-has stop => ( is => 'rw', isa => 'Int' );
+has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
+has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has cksum => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has genome_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has start => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
+has stop => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRoles]');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRoles]', type => 'encompassed', metaclass => 'Typed');
 
 
 # LINKS:

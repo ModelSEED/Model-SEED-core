@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -22,29 +22,29 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Model',weak_ref =
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', default => '0' );
-has name => ( is => 'rw', isa => 'Str', required => 1, default => '' );
-has type => ( is => 'rw', isa => 'Str', required => 1 );
-has description => ( is => 'rw', isa => 'Str', default => '' );
-has model_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has media_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has expressionData_uuid => ( is => 'rw', isa => 'Str' );
-has regmodel_uuid => ( is => 'rw', isa => 'Str' );
-has geneko => ( is => 'rw', isa => 'Str', default => '' );
-has reactionko => ( is => 'rw', isa => 'Str', default => '' );
-has drainRxn => ( is => 'rw', isa => 'Str', default => '' );
-has growthConstraint => ( is => 'rw', isa => 'Str', default => '' );
-has uptakeLimits => ( is => 'rw', isa => 'Str', default => '' );
-has thermodynamicConstraints => ( is => 'rw', isa => 'Str', default => '' );
-has allReversible => ( is => 'rw', isa => 'Int', default => '0' );
+has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
+has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', required => 1, default => '' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has description => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has model_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has media_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has expressionData_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed' );
+has regmodel_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed' );
+has geneko => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has reactionko => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has drainRxn => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has growthConstraint => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has uptakeLimits => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has thermodynamicConstraints => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has allReversible => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 
 
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]', type => 'encompassed', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]', type => 'encompassed', metaclass => 'Typed');
+has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]', type => 'encompassed', metaclass => 'Typed');
 
 
 # LINKS:

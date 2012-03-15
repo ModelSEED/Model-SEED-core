@@ -1,5 +1,5 @@
 use strict;
-use ModelSEED::MS::DB::Definitions;
+use ModelSEED::MS::MetaData::Definitions;
 use ModelSEED::utilities;
 use DateTime;
 
@@ -44,15 +44,13 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("",""));
 	#Printing attributes
 	push(@{$output},("# ATTRIBUTES:"));
+	my $type = ", type => 'attribute', metaclass => 'Typed'";
 	my $uuid = 0;
 	my $modDate = 0;
 	foreach my $attribute (@{$object->{attributes}}) {
 		my $suffix = "";
 		if (defined($attribute->{req}) && $attribute->{req} == 1) {
 			$suffix .= ", required => 1";
-		}
-		if (defined($attribute->{len})) {
-			#$suffix .= "??";
 		}
 		if (defined($attribute->{default})) {
 			$suffix .= ", default => '".$attribute->{default}."'";
@@ -65,22 +63,24 @@ foreach my $name (keys(%{$objects})) {
 			$suffix .= ", lazy => 1, builder => '_buildmodDate'";
 			$modDate = 1;
 		}
-		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$suffix." );");
+		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
 	}
 	push(@{$output},("",""));
 	#Printing subobjects
 	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
 		push(@{$output},("# SUBOBJECTS:"));
 		foreach my $subobject (@{$object->{subobjects}}) {
+			$type = ", type => '".$subobject->{type}."', metaclass => 'Typed'";
 			if ($subobject->{type} =~ m/hasharray/) {
-				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]');");
+				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]'".$type.");");
 			} else {
-				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]');");
+				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.");");
 			}
 		}
 		push(@{$output},("",""));
 	}
 	#Printing object links
+	$type = ", type => 'link', metaclass => 'Typed'";
 	if (defined($object->{links}) && defined($object->{links}->[0])) {
 		push(@{$output},("# LINKS:"));
 		foreach my $subobject (@{$object->{links}}) {

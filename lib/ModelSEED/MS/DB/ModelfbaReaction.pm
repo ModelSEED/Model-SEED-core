@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-14T07:56:20
+# Date of module creation: 2012-03-15T08:11:20
 ########################################################################
 use strict;
 use Moose;
@@ -19,15 +19,15 @@ has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Modelfba',weak_re
 
 
 # ATTRIBUTES:
-has modelfba_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has modelreaction_uuid => ( is => 'rw', isa => 'Str', required => 1 );
-has flux => ( is => 'rw', isa => 'Num' );
-has lowerbound => ( is => 'rw', isa => 'Num', required => 1 );
-has upperbound => ( is => 'rw', isa => 'Num', required => 1 );
-has min => ( is => 'rw', isa => 'Num' );
-has max => ( is => 'rw', isa => 'Num' );
-has class => ( is => 'rw', isa => 'Str' );
-has ko => ( is => 'rw', isa => 'Int', default => '0' );
+has modelfba_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modelreaction_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has flux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has lowerbound => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
+has upperbound => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
+has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has max => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has class => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has ko => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 
 
 # LINKS:

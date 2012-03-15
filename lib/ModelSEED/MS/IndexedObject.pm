@@ -12,9 +12,6 @@ use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 has om      => (is => 'rw',isa => 'ModelSEED::CoreApi');
-has uuid    => (is => 'rw',isa => 'Str',lazy => 1,builder => '_buildUUID');
-has modDate => (is => 'rw',isa => 'Str',lazy => 1,builder => '_buildModDate');
-has locked  => (is => 'rw',isa => 'Int',default => 0);
 has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices');
 
 ######################################################################
@@ -129,11 +126,12 @@ sub buildIndex {
 
 sub save {
     my ($self, $om) = @_;
-    $om = $self->om unless (defined($om));
+	$om = $self->om unless (defined($om));
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    return $om->save($self->_type, $self->serializeToDB());
+    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB());
+    $self->uuid($newuuid);
 }
 
 sub _buildindices { return {}; }

@@ -7,13 +7,30 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-package ModelSEED::MS::BaseObject;
-use Moose;
 use namespace::autoclean;
+use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
 use Data::Dumper;
 $Data::Dumper::Maxdepth = 2;
+
+package ModelSEED::Meta::Attribute::Typed;
+use Moose;
+extends 'Moose::Meta::Attribute';
+
+has type => (
+      is        => 'rw',
+      isa       => 'Str',
+      predicate => 'has_type',
+);
+
+package Moose::Meta::Attribute::Custom::Typed;
+sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
+
+package ModelSEED::MS::BaseObject;
+use Moose;
+
+my $meta = __PACKAGE__->meta;
 
 sub BUILD {
     my ($self,$params) = @_;
@@ -28,7 +45,7 @@ sub BUILD {
 				my $function = $subObjects->{compound_uuid};
 				my $linkedObject = $self->getLinkedObject($subObjects->{parent},$subObjects->{class},$subObjects->{query},$self->$function());
 				push(@{$newData},$linkedObject);
-			} elsif ($subObject->{type} =~ m/hasharray\(.+\)/) {
+			} elsif ($subObject->{type} =~ m/hasharray\((.+)\)/) {
 				my $parameters = [split(/,/,$1)];
 				push(@{$newData->{$data->{$parameters->[0]}}},$data->{$parameters->[1]});
 			} else {
@@ -38,6 +55,36 @@ sub BUILD {
 		}
 		$self->$function($newData);
     }
+}
+
+sub serializeToDB {
+	my ($self) = @_;
+	my $data = {};
+	for my $attr ( $meta->get_all_attributes ) {
+		if ($attr->type() eq "attribute") {
+			my $name = $attr->name();
+			$data->{$name} = $self->$name();
+		} elsif ($attr->type() eq "child" || $attr->type() eq "encompassed") {
+			my $arrayRef = $self->$name();
+			foreach my $subobject (@{$arrayRef}) {
+				push(@{$data->{$name}},$subobject->serializeToDB());
+			}
+		} elsif ($attr->type() eq m/hasharray\(((.+)\)/) {
+			my $parameters = [split(/,/,$1)];
+			my $hashRef = $self->$name();
+			foreach my $key (keys(%{$hashRef})) {
+				my $newdata = {
+					$parameters->[0] => $key,
+					$parameters->[1] => $hashRef->{$key}
+				};
+				if (defined($self->uuid())) {
+					$newdata-> {lc($self->_type())."_uuid"} = $self->uuid()
+				}
+				push(@{$data->{$name}},$newdata);
+				
+			}
+		}
+	}
 }
 
 sub getLinkedObject {
