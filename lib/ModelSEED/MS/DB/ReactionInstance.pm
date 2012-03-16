@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -25,6 +25,10 @@ has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Type
 has reaction_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has equation => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', required => 1 );
 has compartment_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+
+
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
 
 
 # SUBOBJECTS:

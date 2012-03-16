@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -29,10 +29,15 @@ has cksum => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => '
 has genome_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has start => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has stop => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
+has contig => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+
+
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
 
 
 # SUBOBJECTS:
-has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRoles]', type => 'encompassed', metaclass => 'Typed');
+has featureroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRoles]', type => 'encompassed', metaclass => 'Typed');
 
 
 # LINKS:

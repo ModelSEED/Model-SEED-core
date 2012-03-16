@@ -41,7 +41,7 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("package ModelSEED::MS::".$name));
 	#Determining and setting base class
 	push(@{$output},("extends ModelSEED::MS::".$baseObject,"",""));
-	#Printing parents
+	#Printing parent
 	push(@{$output},("# PARENT:"));
 	push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
 	push(@{$output},("",""));
@@ -67,6 +67,12 @@ foreach my $name (keys(%{$objects})) {
 			$modDate = 1;
 		}
 		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
+	}
+	push(@{$output},("",""));
+	#Printing ancestor
+	if ($uuid == 1) {
+		push(@{$output},("# ANCESTOR:"));
+		push(@{$output},"has ancestor_uuid => (is => 'rw',isa => 'uuid');");
 	}
 	push(@{$output},("",""));
 	#Printing subobjects

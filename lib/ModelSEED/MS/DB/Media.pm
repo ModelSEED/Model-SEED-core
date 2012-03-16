@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -26,6 +26,10 @@ has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typ
 has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'unknown' );
+
+
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
 
 
 # SUBOBJECTS:

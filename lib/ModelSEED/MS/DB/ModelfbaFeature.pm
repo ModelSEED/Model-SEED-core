@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -27,6 +27,8 @@ has essential => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => '
 has class => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 has activity => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has ko => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
+
+
 
 
 # LINKS:

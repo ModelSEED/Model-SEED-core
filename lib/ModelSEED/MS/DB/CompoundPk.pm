@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -24,6 +24,8 @@ has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Ty
 has atom => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has pk => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+
+
 
 
 # BUILDERS:

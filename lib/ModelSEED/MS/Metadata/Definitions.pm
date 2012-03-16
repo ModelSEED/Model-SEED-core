@@ -599,9 +599,10 @@ $objectDefinitions->{Feature} = {
 		{name => 'genome_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'start',perm => 'rw',type => 'Int',req => 0},
 		{name => 'stop',perm => 'rw',type => 'Int',req => 0},
+		{name => 'contig',perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
-		{name => "roles",class => "FeatureRoles",type => "encompassed"},
+		{name => "featureroles",class => "FeatureRoles",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -609,14 +610,15 @@ $objectDefinitions->{Feature} = {
 	]
 };
 
-$objectDefinitions->{FeatureRoles} = {
+$objectDefinitions->{FeatureRole} = {
 	parents => ['Feature'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'annotation_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'feature_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'role_uuid',perm => 'rw',type => 'uuid',req => 1},
-		{name => 'complete_string',perm => 'rw',type => 'Str',default => ""},
+		{name => 'compartment',perm => 'rw',type => 'Str',default => "unknown"},
+		{name => 'comment',perm => 'rw',type => 'Str',default => ""},
+		{name => 'delimiter',perm => 'rw',type => 'Str',default => ""},
 	],
 	subobjects => [],
 	primarykeys => [ qw(annotation_uuid feature_uuid role_uuid) ],
@@ -655,7 +657,6 @@ $objectDefinitions->{Role} = {
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'Str',req => 0,default => ""},
 		{name => 'searchname',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'seedfeature',perm => 'rw',type => 'Str',len => 36,req => 0}

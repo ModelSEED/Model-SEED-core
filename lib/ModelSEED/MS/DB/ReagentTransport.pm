@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T17:33:52
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
@@ -19,6 +19,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::',weak_ref => 1);
 
 
 # ATTRIBUTES:
+
+
 
 
 # BUILDERS:
