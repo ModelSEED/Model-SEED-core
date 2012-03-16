@@ -25,7 +25,7 @@ my $types = [ qw( Annotation AnnotationFeature Biochemistry
 has db => ( is => 'rw', isa => 'ModelSEED::DB', builder => '_buildRDB', lazy => 1 );
 has driver   => ( is => 'rw', isa => 'Str');
 has database => ( is => 'rw', isa => 'Str');
-has host     => ( is => 'rw', isa => 'Str');
+has host => ( is => 'rw', isa => 'Str');
 has username => ( is => 'rw', isa => 'Str');
 has server_time_zone => ( is => 'rw', isa => 'Str', default => 'UTC' );
 has types => ( is => 'rw', isa => 'HashRef', default => sub { return {map { $_ => '' } @$types}; });

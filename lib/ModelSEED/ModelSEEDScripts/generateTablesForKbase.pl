@@ -17,15 +17,26 @@ use Cwd qw(abs_path);
 use ModelSEED::ObjectManager;
 use Tie::Hash::Sorted;
 
-my ($mapping, $biochem, $directory, $database, $help, @models);
-GetOptions( "directory|dir|d=s" => \$directory,
-            "biochemistry|b|bio=s" => \$biochem,
-            "model=s" => \@models,
-            "mapping|m|map=s"   => \$mapping,
-            "db|database=s" => \$database,
-            "help|h|?" => \$help ) || pod2usage(2);
+my $driver = "SQLite";
+my (
+    $mapping, $biochem,  $directory, $database, $help,
+    @models,  $hostname, $username,  $password, $sock
+);
+GetOptions(
+    "directory|dir|d=s"    => \$directory,
+    "biochemistry|b|bio=s" => \$biochem,
+    "model=s"              => \@models,
+    "mapping|m|map=s"      => \$mapping,
+    "db|database=s"        => \$database,
+    "driver=s"               => \$driver,
+    "hostname=s"             => \$hostname,
+    "username=s"             => \$username,
+    "password=s"             => \$password,
+    "sock=s"                 => \$sock,
+    "help|h|?"             => \$help
+) || pod2usage(2);
 pod2usage(1) if $help;
-unless(defined($directory) && -d $directory) {
+unless ( defined($directory) && -d $directory ) {
     pod2usage(2);
 }
 
@@ -36,11 +47,18 @@ unless(@models > 0 || (defined($mapping) && defined($biochem))) {
 # Normalize the output directory
 $directory = abs_path($directory);
 $directory =~ s/\/$//;
+
 # Get the biochemistry and mapping objects
-my $om = ModelSEED::ObjectManager->new({
-    database => abs_path($database),
-    driver   => "SQLite",
-});
+my $omConfig = {
+    database => ( $driver eq 'SQLite' ) ? abs_path($database) : $database,
+    driver => $driver
+};
+$omConfig->{host} = $hostname if ( defined($hostname) );
+$omConfig->{username} = $username if ( defined($username) );
+$omConfig->{password} = $password if ( defined($password) );
+$omConfig->{mysql_socket} = $sock     if ( defined($sock) );
+my $om = ModelSEED::ObjectManager->new($omConfig);
+
 if(defined($mapping) && defined($biochem)) {
     my ($Busername, $Bname) = split(/\//, $biochem);
     my ($Musername, $Mname) = split(/\//, $mapping);
@@ -63,7 +81,7 @@ if(defined($mapping) && defined($biochem)) {
 
 if(@models > 0) {
     my $modelObjs = [];
-    foreach my $model_id (@$models) {
+    foreach my $model_id (@models) {
         my ($Musername, $Mname) = split(/\//, $model_id);
         my $modelObj = $om->get_object("model",
              query => [
@@ -544,7 +562,7 @@ sub doModels {
     {
         my $mdls_cmps = [];
         foreach my $mdl (@$modelObjs) {
-            push(@$mdl_cmps, $mdl->model_compartments);
+            push(@$mdls_cmps, $mdl->model_compartments);
         }
         my $a = {
             id => 'uuid',
@@ -564,12 +582,11 @@ sub doModels {
         }
         my $a = {
             id => sub { return $_[0]->model_uuid . $_[0]->reaction_uuid },
-            'compartment-index' => 'compartmentIndex',
             direction => 'direction',
             proton => 'protons',
-            transproton => 'transprotons',
+            transproton => 'transproton',
         };
-        tie my %columns, 'Tie::Hash::Storted', 'Hash' => $a;
+        tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/Requirement.dtx", \%columns, $mdls_rxns);
 
     }
@@ -584,7 +601,7 @@ sub doModels {
             'mod-date' => 'modDate',
             name => 'name',
         };
-        tie my %columns, 'Tie::Hash::Storted', 'Hash' => $a;
+        tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/Biomass.dtx", \%columns, $mdls_bios);
     }
     # BiomassCompound
@@ -601,7 +618,7 @@ sub doModels {
             id => sub { return $_[0]->biomass_uuid . $_[0]->compound_uuid },
             coefficient => 'coefficient',
         };
-        tie my %columns, 'Tie::Hash::Storted', 'Hash' => $a;
+        tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/BiomassCompound.dtx", \%columns, $bios_cpds);
     }
     # IsTargetOfRelationship ( biomass_compound <-> model_compartment )
@@ -618,7 +635,7 @@ sub doModels {
             'from-link' => sub { return $_[0]->model_compartment->uuid },
             'to-link'   => sub { return $_[0]->biomass_uuid . $_[0]->compound_uuid },
         };
-        tie my %columns, 'Tie::Hash::Storted', 'Hash' => $a;
+        tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/IsTargetOfRelationship.dtx", \%columns, $bios_cpds);
     }
     # HasUsage ( compound <-> biomass_compound )
@@ -701,7 +718,7 @@ sub doModels {
     {
         my $mdls_cmps = [];
         foreach my $mdl (@$modelObjs) {
-            push(@$mdls_rxns, $mdl->model_compartments);
+            push(@$mdls_cmps, $mdl->model_compartments);
         }
         my $a = {
             'from-link' => 'model_uuid',
@@ -734,7 +751,7 @@ sub doModels {
             'to-link' => 'uuid',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
-        buildTable("$directory/IsInstantiatedBy.dtx", \%columns, $mdels_cmps);
+        buildTable("$directory/IsInstantiatedBy.dtx", \%columns, $mdls_cmps);
     }
 }
 
