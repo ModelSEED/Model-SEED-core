@@ -14,15 +14,27 @@ my $ind = ModelSEED::FileDB::FileIndex->new({
 
 my $biochem = fromCore();
 
-$ind->add_user('paul');
-
 $ind->save_object({user => 'paul', object => $biochem});
 
 $ind->add_alias({user => 'paul', uuid => $biochem->{uuid}, alias => 'test'});
 
-my $uuids = $ind->get_uuids_for_user('paul');
+#$ind->remove_alias({user => 'paul', uuid => $biochem->{uuid}, alias => 'test'});
 
-print Dumper($uuids);
+$ind->set_permissions({user => 'paul', uuid => $biochem->{uuid}, permissions => {
+    public => 0,
+    users => {
+	paul => { read => 1, admin => 1 },
+	zedd => { read => 1, admin => 0 }
+    }
+}});
+
+$ind->save_object({user => 'zedd', object => $biochem});
+
+$ind->delete_object({user => 'paul', uuid => $biochem->{uuid}});
+
+#my $uuids = $ind->get_uuids_for_user('paul');
+
+#print Dumper($uuids);
 
 sub fromCore {
     my $bio_uuid = "358CFC9A-5E60-11E1-9EC2-C7374BC191FA";
