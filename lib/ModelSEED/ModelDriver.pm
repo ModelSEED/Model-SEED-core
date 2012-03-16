@@ -295,6 +295,83 @@ sub dblistobjects {
 =CATEGORY
 Database Operations
 =DESCRIPTION
+This function prints all subsystems
+=EXAMPLE
+./db-printsubsystems
+=cut
+sub dbprintsubsystems {
+    my ($self, @Data) = @_;
+    my $args = $self->check([],[@Data],"print subsystems");
+    my $subsys = $self->db()->get_objects("subsystem");
+    my $roles = $self->db()->get_objects("role");
+    my $ssroles = $self->db()->get_objects("ssroles");
+    my $output = ["SubsystemID\tSubsystemName\tSubsystemStatus\tClass\tSubclass\tRoleID\tRolename\tSearchname"];
+    my $roleHash;
+    my $ssroleHash;
+    for (my $i=0; $i < @{$roles}; $i++) {
+    	$roleHash->{$roles->[$i]->id()} = $roles->[$i];
+    }
+    for (my $i=0; $i < @{$ssroles}; $i++) {
+    	if (defined($roleHash->{$ssroles->[$i]->ROLE()})) {
+    		push(@{$ssroleHash->{$ssroles->[$i]->SUBSYSTEM()}},$roleHash->{$ssroles->[$i]->ROLE()});
+    	}
+    }
+    for (my $i=0; $i < @{$subsys}; $i++) {
+    	if (defined($ssroleHash->{$subsys->[$i]->id()})) {
+    		my $rolelist = $ssroleHash->{$subsys->[$i]->id()};
+    		for (my $j=0; $j < @{$rolelist}; $j++) {
+		    	my $searchname = lc($rolelist->[$j]->name());
+		    	$searchname =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+				$searchname =~ s/\s//g;
+				$searchname =~ s/#.*//;
+		    	push(@{$output},$subsys->[$i]->id()."\t".$subsys->[$i]->name()."\t".$subsys->[$i]->status()."\t".$subsys->[$i]->classOne().
+		    		"\t".$subsys->[$i]->classTwo()."\t".$rolelist->[$j]->id()."\t".$rolelist->[$j]->name()."\t".$searchname
+		    	);
+    		}
+    	}
+    }
+    ModelSEED::utilities::PRINTFILE($self->ws()->directory()."Subsystems.tbl",$output);
+    return "Successfully printed subsystems to file ".$self->ws()->directory()."Subsystems.tbl";
+}
+
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
+This function renames functional roles in the Model SEED
+=EXAMPLE
+./db-printsubsystems
+=cut
+sub dbrenameroles {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+    	["filename",1,undef,"Name of file containing list of roles to be renamed"],
+    ],[@Data],"rename roles");
+    my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{filename});
+    for (my $i=0; $i < @{$data}; $i++) {
+    	my $array = [split(/\t/,$data->[$i])];
+    	if (defined($array->[1])) {
+    		my $role = $self->db()->get_object("role",{name => $array->[0]});
+    		if (!defined($role)) {
+    			"Role ".$array->[0]." not found!\n";
+    		} else {
+    			$role->name($array->[1]);
+    			my $searchname = lc($array->[1]);
+				$searchname =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+				$searchname =~ s/\s//g;
+				$searchname =~ s/#.*//;
+    			$role->searchname($searchname);
+    			"Role ".$array->[0]." renamed!\n";
+    		}
+    	}
+    }
+    return "Success!";
+}
+
+=head
+=CATEGORY
+Database Operations
+=DESCRIPTION
 This function creates a new object defined in the specified file in the database 
 =EXAMPLE
 ./db-createobject
