@@ -3071,7 +3071,7 @@ sub import_model {
 		overwrite => 0,
 		biochemSource => undef 
 	});
-	my $result = {};
+	my $result = {"output"=>[],"SUCCESS"=>0};
 	#Calculating the full ID of the model
 	my $id = $args->{baseid};
 	if ($args->{owner} ne "master") {
@@ -3123,8 +3123,16 @@ sub import_model {
 	open(FOUNDCPD, "> ".$self->ws()->directory()."mdl-importmodel_Found_Compounds_".$id);
 	for (my $i=0; $i < $tbl->size();$i++) {
 		my $row = $tbl->get_row($i);
-		if (!defined($row->{"NAMES"}) || !defined($row->{"ID"})) {
-			next;
+		if(!defined($row->{"ID"})){
+		    print STDERR "Missing Mandatory ID field\n";
+		    $result->{SUCCESS}=0;
+		    return $result;
+		}
+		if (!defined($row->{"NAMES"}) && !defined($row->{"STRINGCODE"}) && !defined($row->{"KEGG"}) && !defined($row->{"METACYC"})) {
+		    print STDERR "No fields used for matching compounds are present in the compound file\n";
+		    print STDERR "At least one of (NAMES, STRINGCODE, KEGG, METACYC) must be present for a match to be attempted\n";
+		    $result->{SUCCESS}=0;
+		    return $result;
 		}
 		#Finding if existing compound shares search name
 		my $cpd;
@@ -3144,9 +3152,9 @@ sub import_model {
 		}
 
 		my $newNames=();
-		for (my $j=0; $j < @{$row->{"NAMES"}}; $j++) {
-		    if (length($row->{"NAMES"}->[$j]) > 0) {
-				my $searchNames = [$self->get_compound()->convert_to_search_name($row->{"NAMES"}->[$j])];
+		foreach my $name ( @{$row->{"NAMES"}} ) {
+		    if (length($name)>0) {
+			my $searchNames = [$self->get_compound()->convert_to_search_name($name)];
 				for (my $k=0; $k < @{$searchNames}; $k++) {
 				    #Look for searchname in original 'searchname' type
 				    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $searchNames->[$k],type => "searchname"});
@@ -3162,7 +3170,7 @@ sub import_model {
 				    if (defined($cpdals)) {
 						if (!defined($cpd)) {
 						    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-						    push(@{$result->{outputFile}},"Found using name (".$row->{"NAMES"}->[$j]."): ".$cpd->id()." for id ".$row->{ID}->[0]);
+						    push(@{$result->{outputFile}},"Found using name (".$name."): ".$cpd->id()." for id ".$row->{ID}->[0]);
 						    $how_found=$cpdals->type();
 						}
 				    } else {
@@ -3174,7 +3182,7 @@ sub import_model {
 						#this occurs because the database doesn't recognize upper/lower case when
 						#using indexes
 						if(!exists($newNames->{search}->{$searchNames->[$k]})){
-						    $newNames->{name}->{$row->{"NAMES"}->[$j]} = 1;
+						    $newNames->{name}->{$name} = 1;
 						    $newNames->{search}->{$searchNames->[$k]} = 1;
 						}
 					    }
@@ -3196,6 +3204,7 @@ sub import_model {
 			    }
 			}
 		}
+
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
 		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
 		    if (defined($cpdals)) {
@@ -3224,7 +3233,7 @@ sub import_model {
 			    }
 			}
 			if (defined($row->{"MASS"}->[0])){
-			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0]){
+			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0] && $row->{"MASS"}->[0] ne 10000000){
 			    	push(@{$result->{outputFile}},"Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
 			    } 
 			    if (!$cpd->mass() || $cpd->mass() == 10000000){
@@ -3253,8 +3262,13 @@ sub import_model {
 		    }
 		} else {
 		    my $newid = $mdl->figmodel()->get_compound()->get_new_temp_id();
-		    print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]."\n";
-		    push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\t".$row->{"NAMES"}->[0]);
+		    if(defined($row->{"NAMES"})){
+			print NEWCPD $newid."\t".$row->{"ID"}->[0]."\t".join("|",@{$row->{NAMES}})."\n";
+			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\t".join("|",@{$row->{NAMES}})."\n");
+		    }else{
+			print NEWCPD $newid."\t".$row->{"ID"}->[0]."\n";
+			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]."\n");
+		    }
 
 		    if (!defined($row->{"MASS"}->[0]) || $row->{"MASS"}->[0] eq "") {
 				$row->{"MASS"}->[0] = 10000000;	
