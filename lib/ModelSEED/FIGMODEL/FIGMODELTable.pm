@@ -256,7 +256,7 @@ sub get_rows_by_key {
 	if (defined($self->{"hash columns"}->{$HashColumn}->{$Key})) {
 		return @{$self->{"hash columns"}->{$HashColumn}->{$Key}};
 	}elsif($Key =~ m/%/){
-	    $Key =~ s/%/.*?/;
+	    $Key =~ s/%/.*?/g;
 	    my @Results=();
 	    foreach my $tmpkey (keys %{$self->{"hash columns"}->{$HashColumn}}){
 		push(@Results,@{$self->{"hash columns"}->{$HashColumn}->{$tmpkey}}) if $tmpkey =~ /$Key/;
