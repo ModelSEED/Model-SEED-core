@@ -26,10 +26,13 @@ foreach my $name (keys(%{$objects})) {
 		"use strict;",
 		"use Moose;",
 		"use namespace::autoclean;",
-		"use ModelSEED::MS::".$baseObject
+		"use ModelSEED::MS::".$baseObject,
+		"use ModelSEED::MS::".$object->{parents}->[0],
 	));
 	foreach my $subobject (@{$object->{subobjects}}) {
-		push(@{$output},"use ModelSEED::MS::".$subobject->{class});
+		if ($subobject->{type} !~ /hasharray/) {
+			push(@{$output},"use ModelSEED::MS::".$subobject->{class});
+		}
 	}
 	foreach my $subobject (@{$object->{links}}) {
 		push(@{$output},"use ModelSEED::MS::".$subobject->{class});
@@ -38,9 +41,9 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("package ModelSEED::MS::".$name));
 	#Determining and setting base class
 	push(@{$output},("extends ModelSEED::MS::".$baseObject,"",""));
-	#Printing parents
+	#Printing parent
 	push(@{$output},("# PARENT:"));
-	push(@{$output},"has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
+	push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
 	push(@{$output},("",""));
 	#Printing attributes
 	push(@{$output},("# ATTRIBUTES:"));
@@ -66,15 +69,21 @@ foreach my $name (keys(%{$objects})) {
 		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
 	}
 	push(@{$output},("",""));
+	#Printing ancestor
+	if ($uuid == 1) {
+		push(@{$output},("# ANCESTOR:"));
+		push(@{$output},"has ancestor_uuid => (is => 'rw',isa => 'uuid');");
+	}
+	push(@{$output},("",""));
 	#Printing subobjects
 	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
 		push(@{$output},("# SUBOBJECTS:"));
 		foreach my $subobject (@{$object->{subobjects}}) {
 			$type = ", type => '".$subobject->{type}."', metaclass => 'Typed'";
 			if ($subobject->{type} =~ m/hasharray/) {
-				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]'".$type.");");
+				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]'".$type.");");
 			} else {
-				push(@{$output},"has ".$object->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.");");
+				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.");");
 			}
 		}
 		push(@{$output},("",""));

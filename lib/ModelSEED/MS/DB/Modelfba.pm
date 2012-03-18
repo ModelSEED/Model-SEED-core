@@ -3,12 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject
+use ModelSEED::MS::Model
 use ModelSEED::MS::ModelfbaCompound
 use ModelSEED::MS::ModelfbaReaction
 use ModelSEED::MS::ModelfbaFeature
@@ -18,7 +19,7 @@ extends ModelSEED::MS::BaseObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Model',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Model',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -41,10 +42,14 @@ has thermodynamicConstraints => ( is => 'rw', isa => 'varchar', type => 'attribu
 has allReversible => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 
 
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
+
+
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]', type => 'encompassed', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]', type => 'encompassed', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]', type => 'encompassed', metaclass => 'Typed');
+has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]', type => 'encompassed', metaclass => 'Typed');
+has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]', type => 'encompassed', metaclass => 'Typed');
+has genes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]', type => 'encompassed', metaclass => 'Typed');
 
 
 # LINKS:

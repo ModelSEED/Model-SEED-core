@@ -3,19 +3,20 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject
+use ModelSEED::MS::ModelReaction
 use ModelSEED::MS::ModelCompound
 package ModelSEED::MS::ModelReactionTransports
 extends ModelSEED::MS::BaseObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ModelReaction',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -24,6 +25,8 @@ has modelreaction_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', meta
 has modelcompound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has compartmentIndex => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1 );
 has coefficient => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1 );
+
+
 
 
 # LINKS:

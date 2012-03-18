@@ -51,7 +51,6 @@ $objectDefinitions->{Biochemistry} = {
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
 	],
 	subobjects => [
-		{name => "aliases",class => "BiochemistryAlias",type => "hasharray(username,id)"},
 		{name => "compartments",class => "Compartment",type => "child"},
 		{name => "compounds",class => "Compound",type => "child"},
 		{name => "reactions",class => "Reaction",type => "child"},
@@ -312,7 +311,6 @@ $objectDefinitions->{Model} = {
 		{name => 'annotation_uuid',perm => 'rw',type => 'uuid',req => 0},
 	],
 	subobjects => [
-		{name => "aliases",class => "ModelAlias",type => "hasharray(username,id)"},
 		{name => "biomasses",class => "Biomass",type => "child"},
 		{name => "modelcompartments",class => "ModelCompartment",type => "child"},
 		{name => "modelcompounds",class => "ModelCompound",type => "child"},
@@ -555,11 +553,9 @@ $objectDefinitions->{Annotation} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
-		{name => 'genome_uuid',perm => 'rw',type => 'uuid',req => 1},
-		{name => 'mapping_uuid',perm => 'rw',type => 'uuid',req => 1}
+		{name => 'mapping_uuid',perm => 'rw',type => 'uuid'}
 	],
 	subobjects => [
-		{name => "aliases",class => "AnnotationAlias",type => "hasharray(username,id)"},
 		{name => "genomes",class => "Genome",type => "child"},
 		{name => "features",class => "Feature",type => "child"}
 	],
@@ -575,19 +571,16 @@ $objectDefinitions->{Genome} = {
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
-		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'public',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'source',perm => 'rw',type => 'varchar',req => 1},
-		{name => 'type',perm => 'rw',type => 'varchar',req => 0,default => ""},
+		{name => 'class',perm => 'rw',type => 'varchar',req => 0,default => ""},#gramPositive,gramNegative,archaea,eurkaryote
 		{name => 'taxonomy',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'cksum',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'size',perm => 'rw',type => 'Int',req => 0},
 		{name => 'genes',perm => 'rw',type => 'Int',req => 0},
 		{name => 'gc',perm => 'rw',type => 'Num',req => 0},
-		{name => 'gramPositive',perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'aerobic',perm => 'rw',type => 'Str',len => 1,req => 0}
+		{name => 'etcType',perm => 'rw',type => 'varchar',len => 1,req => 0},#aerobe,facultativeAnaerobe,obligateAnaerobe
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
@@ -606,9 +599,10 @@ $objectDefinitions->{Feature} = {
 		{name => 'genome_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'start',perm => 'rw',type => 'Int',req => 0},
 		{name => 'stop',perm => 'rw',type => 'Int',req => 0},
+		{name => 'contig',perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
-		{name => "roles",class => "FeatureRoles",type => "encompassed"},
+		{name => "featureroles",class => "FeatureRoles",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -616,14 +610,15 @@ $objectDefinitions->{Feature} = {
 	]
 };
 
-$objectDefinitions->{FeatureRoles} = {
+$objectDefinitions->{FeatureRole} = {
 	parents => ['Feature'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'annotation_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'feature_uuid',perm => 'rw',type => 'uuid',req => 1},
 		{name => 'role_uuid',perm => 'rw',type => 'uuid',req => 1},
-		{name => 'complete_string',perm => 'rw',type => 'Str',default => ""},
+		{name => 'compartment',perm => 'rw',type => 'Str',default => "unknown"},
+		{name => 'comment',perm => 'rw',type => 'Str',default => ""},
+		{name => 'delimiter',perm => 'rw',type => 'Str',default => ""},
 	],
 	subobjects => [],
 	primarykeys => [ qw(annotation_uuid feature_uuid role_uuid) ],
@@ -644,7 +639,6 @@ $objectDefinitions->{Mapping} = {
 		{name => 'biochemistry_uuid',perm => 'rw',type => 'uuid',req => 1},
 	],
 	subobjects => [
-		{name => "aliases",class => "MappingAlias",type => "hasharray(username,id)"},
 		{name => "roles",class => "Role",type => "child"},
 		{name => "rolesets",class => "Roleset",type => "child"},
 		{name => "reactionrules",class => "ReactionRule",type => "child"},
@@ -663,7 +657,6 @@ $objectDefinitions->{Role} = {
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'Str',req => 0,default => ""},
 		{name => 'searchname',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'seedfeature',perm => 'rw',type => 'Str',len => 36,req => 0}

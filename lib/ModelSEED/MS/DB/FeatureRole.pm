@@ -1,28 +1,32 @@
 ########################################################################
-# ModelSEED::MS::FeatureRoles - This is the moose object corresponding to the FeatureRoles object
+# ModelSEED::MS::FeatureRole - This is the moose object corresponding to the FeatureRole object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject
+use ModelSEED::MS::Feature
 use ModelSEED::MS::Role
-package ModelSEED::MS::FeatureRoles
+package ModelSEED::MS::FeatureRole
 extends ModelSEED::MS::BaseObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Feature',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Feature',weak_ref => 1);
 
 
 # ATTRIBUTES:
-has annotation_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has feature_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has role_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has complete_string => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has compartment => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'unknown' );
+has comment => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has delimiter => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+
+
 
 
 # LINKS:
@@ -37,7 +41,7 @@ sub _buildrole {
 
 
 # CONSTANTS:
-sub _type { return 'FeatureRoles'; }
+sub _type { return 'FeatureRole'; }
 
 
 # FUNCTIONS:

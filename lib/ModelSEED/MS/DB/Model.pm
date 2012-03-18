@@ -3,13 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject
-use ModelSEED::MS::ModelAlias
+use ModelSEED::MS::ObjectManager
 use ModelSEED::MS::Biomass
 use ModelSEED::MS::ModelCompartment
 use ModelSEED::MS::ModelCompound
@@ -22,7 +22,7 @@ extends ModelSEED::MS::IndexedObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -45,12 +45,15 @@ has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metac
 has annotation_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed' );
 
 
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
+
+
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(username,id)', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]', type => 'child', metaclass => 'Typed');
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]', type => 'child', metaclass => 'Typed');
+has biomasses => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]', type => 'child', metaclass => 'Typed');
+has modelcompartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]', type => 'child', metaclass => 'Typed');
+has modelcompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]', type => 'child', metaclass => 'Typed');
+has modelreactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]', type => 'child', metaclass => 'Typed');
 
 
 # LINKS:

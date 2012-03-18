@@ -3,12 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T08:11:20
+# Date of module creation: 2012-03-15T22:32:28
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject
+use ModelSEED::MS::Mapping
 use ModelSEED::MS::ReactionRuleTransport
 use ModelSEED::MS::Reaction
 use ModelSEED::MS::Compartment
@@ -17,7 +18,7 @@ extends ModelSEED::MS::BaseObject
 
 
 # PARENT:
-has parent => (is => 'rw',required => 1,isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -30,8 +31,12 @@ has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => '
 has transprotonNature => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 
 
+# ANCESTOR:
+has ancestor_uuid => (is => 'rw',isa => 'uuid');
+
+
 # SUBOBJECTS:
-has  => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRuleTransport]', type => 'encompassed', metaclass => 'Typed');
+has ReactionRuleTransport => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRuleTransport]', type => 'encompassed', metaclass => 'Typed');
 
 
 # LINKS:
