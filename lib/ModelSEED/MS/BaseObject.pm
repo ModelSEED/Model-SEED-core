@@ -42,15 +42,15 @@ sub BUILD {
 		foreach my $data (@{$dataArray}) {
 			$data->{parent} = $self;
 			if ($subObject->{type} eq "link") {
-				my $function = $subObjects->{compound_uuid};
-				my $linkedObject = $self->getLinkedObject($subObjects->{parent},$subObjects->{class},$subObjects->{query},$self->$function());
+				my $function = $subObject->{compound_uuid};
+				my $linkedObject = $self->getLinkedObject($subObject->{parent},$subObject->{class},$subObject->{query},$self->$function());
 				push(@{$newData},$linkedObject);
 			} elsif ($subObject->{type} =~ m/hasharray\((.+)\)/) {
 				my $parameters = [split(/,/,$1)];
 				push(@{$newData->{$data->{$parameters->[0]}}},$data->{$parameters->[1]});
 			} else {
 				my $class = "ModelSEED::MS::".$subObject->{Class};
-				push(@{$newData},$class->new($data);
+				push(@{$newData},$class->new($data));
 			}
 		}
 		$self->$function($newData);
@@ -65,13 +65,13 @@ sub serializeToDB {
 			my $name = $attr->name();
 			$data->{$name} = $self->$name();
 		} elsif ($attr->type() eq "child" || $attr->type() eq "encompassed") {
-			my $arrayRef = $self->$name();
+			my $arrayRef = $self->$attr();
 			foreach my $subobject (@{$arrayRef}) {
-				push(@{$data->{$name}},$subobject->serializeToDB());
+				push(@{$data->{$attr}},$subobject->serializeToDB());
 			}
-		} elsif ($attr->type() eq m/hasharray\(((.+)\)/) {
+		} elsif ($attr->type() eq m/hasharray\((.+)\)/) {
 			my $parameters = [split(/,/,$1)];
-			my $hashRef = $self->$name();
+			my $hashRef = $self->$attr();
 			foreach my $key (keys(%{$hashRef})) {
 				my $newdata = {
 					$parameters->[0] => $key,
@@ -80,7 +80,7 @@ sub serializeToDB {
 				if (defined($self->uuid())) {
 					$newdata-> {lc($self->_type())."_uuid"} = $self->uuid()
 				}
-				push(@{$data->{$name}},$newdata);
+				push(@{$data->{$attr}},$newdata);
 				
 			}
 		}

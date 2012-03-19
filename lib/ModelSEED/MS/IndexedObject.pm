@@ -130,7 +130,7 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB());
+    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB()});
     $self->uuid($newuuid);
 }
 

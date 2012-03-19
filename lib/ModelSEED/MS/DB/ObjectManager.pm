@@ -5,14 +5,12 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 2012-03-19T19:49:19
 ########################################################################
-use strict;
-use Moose;
-use namespace::autoclean;
-use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::;
-use ModelSEED::MS::User;
 package ModelSEED::MS::DB::ObjectManager;
 extends ModelSEED::MS::IndexedObject;
+use ModelSEED::MS::IndexedObject;
+use ModelSEED::MS::User;
+use Moose;
+use namespace::autoclean;
 
 
 # PARENT:
@@ -31,7 +29,7 @@ has user => (is => 'rw',lazy => 1,builder => '_builduser',isa => 'ModelSEED::MS:
 
 # BUILDERS:
 sub _builduser {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('self','User','uuid',$self->user_uuid());
 }
 
