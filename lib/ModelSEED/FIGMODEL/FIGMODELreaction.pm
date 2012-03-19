@@ -1842,6 +1842,7 @@ sub balanceReaction {
     if (!defined($args->{equation})) {
 	$args->{equation} = $self->ppo()->equation();
     }
+
     my $balanced_equation=0;
 
     #Ready to start parsing equation
@@ -1849,16 +1850,20 @@ sub balanceReaction {
     #build a hash
     my %ReactantHash=();
     my %ProductHash=();
+    my %ProtonComps=("P"=>{},"R"=>{});
     foreach my $cpd(@$Reactants){
 	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=(0-$cpd->{"COEFFICIENT"}->[0]);
 	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
+	$ProtonComps{"R"}{$cpd->{"COMPARTMENT"}->[0]}=1 if $cpd->{"DATABASE"}->[0] eq "cpd00067";
     }
     foreach my $cpd(@$Products){
 	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=$cpd->{"COEFFICIENT"}->[0];
 	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
+	$ProtonComps{"P"}{$cpd->{"COMPARTMENT"}->[0]}=1 if $cpd->{"DATABASE"}->[0] eq "cpd00067";
     }
 
     #$args->{debug}=1;
+    print STDERR $args->{equation},"\n" if $args->{debug};
 
     my %formulas=();
     my %atoms=();
@@ -1917,37 +1922,141 @@ sub balanceReaction {
     #check protons
     my $Added_Protons=0;
     if(exists($atoms{'H'}) && $atoms{'H'} != 0){
-		if(length($status)==0 && $balanced_equation){
-		    #if balanced atoms, then balance protons
-		    print STDERR "Proton imbalance for ",$self->id(),"\t",$atoms{'H'},"\n" if $args->{debug};
-		    $Added_Protons=1;
-		    $status="OK|HB:".$atoms{'H'};
-	
-		    #Check to see if protons are present and handle appropriately
-		    if(exists($ReactantHash{'cpd00067'})){
-				$atoms{'H'}-=$ReactantHash{'cpd00067'}{"COEFF"};
-				delete($ReactantHash{'cpd00067'});
+	if(length($status)==0 && $balanced_equation){
+	    #if balanced atoms, then balance protons
+	    $Added_Protons=1;
+	    $status="OK|HB:".$atoms{'H'};
+	    
+	    #Check to see how protons needs to be adjusted.
+	    if($atoms{'H'} < 0){
+		#Protons must be produced.
+		#Either deducted from reactants and/or added to products
+
+		if(!exists($ReactantHash{'cpd00067'}) && !exists($ProductHash{'cpd00067'})){
+		    #If protons aren't already reactants or products
+		    #Produce via Products
+		    $ProductHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
+		    if(scalar(keys %{$ProtonComps{P}})==1){
+			$ProductHash{'cpd00067'}{"COMP"}=(keys %{$ProtonComps{P}})[0];
+		    }else{
+			$ProductHash{'cpd00067'}{"COMP"}="c";
 		    }
-		    if(exists($ProductHash{'cpd00067'})){
-				$atoms{'H'}-=$ProductHash{'cpd00067'}{"COEFF"};
-				delete($ProductHash{'cpd00067'});
-		    }
-	
-		    #If after removing protons, we still see
-		    if($atoms{'H'} < 0){
-				$ProductHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
+		}elsif(exists($ReactantHash{'cpd00067'}) && !exists($ProductHash{'cpd00067'})){
+		    #If protons are reactants, and not products
+		    #Deduct from reactants
+		    $ReactantHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		    if($ReactantHash{'cpd00067'}{'COEFF'}>=0){
+			#If deducting from reactants goes over
+			#add remainder as products
+			if($ReactantHash{'cpd00067'}{'COEFF'}>0){
+			    $ProductHash{'cpd00067'}{"COEFF"}=$ReactantHash{'cpd00067'}{"COEFF"};
+			    if(scalar(keys %{$ProtonComps{P}})==1){
+				$ProductHash{'cpd00067'}{"COMP"}=(keys %{$ProtonComps{P}})[0];
+			    }else{
 				$ProductHash{'cpd00067'}{"COMP"}="c";
-		    }elsif($atoms{'H'} > 0){
-				$ReactantHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
-				$ReactantHash{'cpd00067'}{"COMP"}="c";
+			    }
+			}
+			#Remove because its unecessary
+			delete($ReactantHash{'cpd00067'});
 		    }
-		}else{
-		    if(length($status)!=0){
-				$status.="|";
+		}elsif(!exists($ReactantHash{'cpd00067'}) && exists($ProductHash{'cpd00067'})){
+		    #If protons are products, and not reactants
+		    #Add to products
+		    $ProductHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		}elsif(exists($ReactantHash{'cpd00067'}) && exists($ProductHash{'cpd00067'})){
+		    #Multi-compartments
+		    #One compartment will always be cytosolic
+		    #Stick to adding cytosolic protons
+
+		    if(scalar(keys %{$ProtonComps{P}})==1 && (keys %{$ProtonComps{P}})[0] eq "c"){
+			#start with adding products
+			$ProductHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		    }elsif(scalar(keys %{$ProtonComps{R}})==1 && (keys %{$ProtonComps{R}})[0] eq "c"){
+			#start with deducting reactants
+			$ReactantHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+			if($ReactantHash{'cpd00067'}{'COEFF'}>=0){
+			    #If deducting from reactants goes over
+			    #add remainder as products
+			    if($ReactantHash{'cpd00067'}{'COEFF'}>0){
+				$ProductHash{'cpd00067'}{"COEFF"}+=$ReactantHash{'cpd00067'}{"COEFF"};
+			    }
+			    #Remove because its unecessary
+			    delete($ReactantHash{'cpd00067'});
+			}
+		    }else{
+			#if all else, just add protons to product
+			$ProductHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
 		    }
-		    $status.="HI:".$atoms{'H'};
 		}
+	    }elsif($atoms{'H'} > 0){
+		#Protons must be consumed
+		#Either added to reactants and/or deducted from products
+		if(!exists($ProductHash{'cpd00067'}) && !exists($ReactantHash{'cpd00067'})){
+		    #If protons aren't already reactants or products
+		    #Produce via Reactants
+		    $ReactantHash{'cpd00067'}{"COEFF"}=-$atoms{'H'};
+		    if(scalar(keys %{$ProtonComps{R}})==1){
+			$ReactantHash{'cpd00067'}{"COMP"}=(keys %{$ProtonComps{R}})[0];
+		    }else{
+			$ReactantHash{'cpd00067'}{"COMP"}="c";
+		    }
+		}elsif(exists($ProductHash{'cpd00067'}) && !exists($ReactantHash{'cpd00067'})){
+		    #If protons are reactants, and not products
+		    #Deduct from reactants
+		    $ProductHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		    if($ProductHash{'cpd00067'}{'COEFF'}<=0){
+			#If deducting from reactants goes over
+			#add remainder as products
+			if($ProductHash{'cpd00067'}{'COEFF'}<0){
+			    $ReactantHash{'cpd00067'}{"COEFF"}=$ProductHash{'cpd00067'}{"COEFF"};
+			    if(scalar(keys %{$ProtonComps{R}})==1){
+				$ReactantHash{'cpd00067'}{"COMP"}=(keys %{$ProtonComps{R}})[0];
+			    }else{
+				$ReactantHash{'cpd00067'}{"COMP"}="c";
+			    }
+			}
+			#Remove because its unecessary
+			delete($ProductHash{'cpd00067'});
+		    }
+		}elsif(!exists($ProductHash{'cpd00067'}) && exists($ReactantHash{'cpd00067'})){
+		    #If protons are products, and not reactants
+		    #Add to products
+		    $ReactantHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		}elsif(exists($ProductHash{'cpd00067'}) && exists($ReactantHash{'cpd00067'})){
+		    #Multi-compartments
+		    #One compartment will always be cytosolic
+		    #Stick to adding cytosolic protons
+
+		    if(scalar(keys %{$ProtonComps{R}})==1 && (keys %{$ProtonComps{R}})[0] eq "c"){
+			#start with adding reactants
+			$ReactantHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		    }elsif(scalar(keys %{$ProtonComps{P}})==1 && (keys %{$ProtonComps{P}})[0] eq "c"){
+			#start with deducting reactants
+			$ProductHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+			if($ProductHash{'cpd00067'}{'COEFF'}<=0){
+			    #If deducting from reactants goes over
+			    #add remainder as products
+			    if($ProductHash{'cpd00067'}{'COEFF'}<0){
+				$ReactantHash{'cpd00067'}{"COEFF"}+=$ProductHash{'cpd00067'}{"COEFF"};
+			    }
+			    #Remove because its unecessary
+			    delete($ProductHash{'cpd00067'});
+			}
+		    }else{
+			#if all else, just add protons to product
+			$ReactantHash{'cpd00067'}{"COEFF"}-=$atoms{'H'};
+		    }
+		}
+	    }
+	}else{
+	    if(length($status)!=0){
+		$status.="|";
+	    }
+	    $status.="HI:".$atoms{'H'};
+	}
     }
+
+    #$args->{debug}=1;
 
     if($Added_Protons){
 	undef(%atoms);
@@ -2105,8 +2214,11 @@ sub balanceReaction {
 	    $ProductString .= $Products[$i];
 	    if($ProductHash{$Products[$i]}{"COMP"} ne "c"){$ProductString.="[".$ProductHash{$Products[$i]}{"COMP"}."]";}
 	}
-	
+
+	$args->{debug}=0;
+	print STDERR $output->{equation},"\n\t" if $args->{debug};
 	$output->{equation}=$ReactantString." <=> ".$ProductString;
+	print STDERR $output->{equation},"\n\t",$output->{status},"\n\n" if $args->{debug};
     }
     return $output;
 }

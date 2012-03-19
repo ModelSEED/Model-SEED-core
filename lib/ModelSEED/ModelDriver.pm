@@ -2484,25 +2484,27 @@ sub mdlimportmodel {
 
     print "Importing ".$args->{name}." as ".$args->{owner}."\n";
 
-        my $results = $self->figmodel()->import_model({
-	    baseid => $args->{"name"},
-	    compoundTable => $args->{compoundTable},
-	    reactionTable => $args->{reactionTable},
-	    genome => $args->{"genome"},
-	    owner => $args->{"owner"},
-	    public => $args->{public},
-	    overwrite => $args->{"overwrite"},
-	    biochemSource => $args->{"biochemsource"}
-	});
+    my $results = $self->figmodel()->import_model({
+	baseid => $args->{"name"},
+	compoundTable => $args->{compoundTable},
+	reactionTable => $args->{reactionTable},
+	genome => $args->{"genome"},
+	owner => $args->{"owner"},
+	public => $args->{public},
+	overwrite => $args->{"overwrite"},
+	biochemSource => $args->{"biochemsource"}
+    });
 
-    open(OUT, "> ".$self->ws()->directory()."mdl-importmodel_Output_".$args->{name});
-    print OUT join("\n",@{$results->{outputFile}}),"\n";
-    close(OUT);
-
-    if($results->{SUCCESS}){
-	return "SUCCESS";
-    }else{
-	return "FAILURE";
+    if(defined($results->{outputFile})){
+	open(OUT, "> ".$self->ws()->directory()."mdl-importmodel_Output_".$args->{name});
+	print OUT join("\n",@{$results->{outputFile}}),"\n";
+	close(OUT);
+	
+	if($results->{SUCCESS}){
+	    return "SUCCESS";
+	}else{
+	    return "FAILURE";
+	}
     }
 }
 
