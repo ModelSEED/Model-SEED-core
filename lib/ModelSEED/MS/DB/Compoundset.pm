@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::Compoundset - This is the moose object corresponding to the Compoundset object
+# ModelSEED::MS::DB::Compoundset - This is the moose object corresponding to the Compoundset object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Biochemistry
-use ModelSEED::MS::Compound
-package ModelSEED::MS::Compoundset
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Compound;
+package ModelSEED::MS::DB::Compoundset;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -45,10 +45,6 @@ sub _buildModDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Compoundset'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

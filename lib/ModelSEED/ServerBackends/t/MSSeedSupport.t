@@ -1,7 +1,8 @@
 use strict;
 use warnings;
+use lib "/home/chenry/Model-SEED-core/config/";
 use ModelSEEDbootstrap;
-use Test::More tests => 5;
+use Test::More tests => 7;
 use Data::Dumper;
 use MSSeedSupport;
 
@@ -32,11 +33,23 @@ my $mss = MSSeedSupport->new();
     	password => "reviewer"
     });
     ok defined($usrdata->{features}->size() > 1000), "Genome not retrieved!";
+    $usrdata = $mss->genomeType({
+    	ids => ["315750.3"],
+    	username => "reviewer",
+    	password => "reviewer"
+    });
+    ok defined($usrdata->{"315750.3"}->{source}), "Genome not retrieved!";
+    $usrdata = $mss->genomeData({
+    	ids => ["315750.3"],
+    	username => "reviewer",
+    	password => "reviewer"
+    });
+    ok defined($usrdata->{"315750.3"}->{features}) && @{$usrdata->{"315750.3"}->{features}} > 1000, "Genome not retrieved!";
+    #print STDERR Data::Dumper->Dump([$usrdata]);
     $usrdata = $mss->users_for_genome({
     	genome => "315750.3",
     	username => "reviewer",
     	password => "reviewer"
     });
-    #print STDERR Data::Dumper->Dump([$usrdata]);
     ok defined($usrdata->{"315750.3"}->{"chenry"}), "Users for genome not retrieved!";
 }

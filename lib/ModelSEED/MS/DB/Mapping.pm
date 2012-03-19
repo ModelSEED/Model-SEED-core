@@ -1,22 +1,22 @@
 ########################################################################
-# ModelSEED::MS::Mapping - This is the moose object corresponding to the Mapping object
+# ModelSEED::MS::DB::Mapping - This is the moose object corresponding to the Mapping object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::IndexedObject
-use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::Role
-use ModelSEED::MS::Roleset
-use ModelSEED::MS::ReactionRule
-use ModelSEED::MS::Complex
-use ModelSEED::MS::Biochemistry
-package ModelSEED::MS::Mapping
-extends ModelSEED::MS::IndexedObject
+use ModelSEED::MS::IndexedObject;
+use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Role;
+use ModelSEED::MS::Roleset;
+use ModelSEED::MS::ReactionRule;
+use ModelSEED::MS::Complex;
+use ModelSEED::MS::Biochemistry;
+package ModelSEED::MS::DB::Mapping;
+extends ModelSEED::MS::IndexedObject;
 
 
 # PARENT:
@@ -29,7 +29,7 @@ has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Ty
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed' );
 
 
 # ANCESTOR:
@@ -58,10 +58,6 @@ sub _buildbiochemistry {
 
 # CONSTANTS:
 sub _type { return 'Mapping'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

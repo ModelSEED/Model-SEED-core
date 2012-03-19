@@ -10,7 +10,7 @@ foreach my $name (keys(%{$objects})) {
 	#Creating header
 	my $output = [
 		"########################################################################",
-		"# ModelSEED::MS::".$name." - This is the moose object corresponding to the ".$name." object",
+		"# ModelSEED::MS::DB::".$name." - This is the moose object corresponding to the ".$name." object",
 		"# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
 		"# Contact email: chenry\@mcs.anl.gov",
 		"# Development location: Mathematics and Computer Science Division, Argonne National Lab",
@@ -26,21 +26,21 @@ foreach my $name (keys(%{$objects})) {
 		"use strict;",
 		"use Moose;",
 		"use namespace::autoclean;",
-		"use ModelSEED::MS::".$baseObject,
-		"use ModelSEED::MS::".$object->{parents}->[0],
+		"use ModelSEED::MS::".$baseObject.";",
+		"use ModelSEED::MS::".$object->{parents}->[0].";",
 	));
 	foreach my $subobject (@{$object->{subobjects}}) {
 		if ($subobject->{type} !~ /hasharray/) {
-			push(@{$output},"use ModelSEED::MS::".$subobject->{class});
+			push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
 		}
 	}
 	foreach my $subobject (@{$object->{links}}) {
-		push(@{$output},"use ModelSEED::MS::".$subobject->{class});
+		push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
 	}
 	#Creating package statement
-	push(@{$output},("package ModelSEED::MS::".$name));
+	push(@{$output},("package ModelSEED::MS::DB::".$name.";"));
 	#Determining and setting base class
-	push(@{$output},("extends ModelSEED::MS::".$baseObject,"",""));
+	push(@{$output},("extends ModelSEED::MS::".$baseObject.";","",""));
 	#Printing parent
 	push(@{$output},("# PARENT:"));
 	push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
@@ -118,10 +118,33 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("# CONSTANTS:"));
 	push(@{$output},"sub _type { return '".$name."'; }");
 	push(@{$output},("",""));
-	#Printing functions
-	push(@{$output},"# FUNCTIONS:");
-	push(@{$output},("#TODO","",""));
 	#Finalizing
 	push(@{$output},("__PACKAGE__->meta->make_immutable;","1;"));
 	ModelSEED::utilities::PRINTFILE("../MS/DB/".$name.".pm",$output);
+	if (!-e "../MS/".$name.".pm") {
+		$output = [
+			"########################################################################",
+			"# ModelSEED::MS::".$name." - This is the moose object corresponding to the ".$name." object",
+			"# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
+			"# Contact email: chenry\@mcs.anl.gov",
+			"# Development location: Mathematics and Computer Science Division, Argonne National Lab",
+			"# Date of module creation: ".DateTime->now()->datetime(),
+			"########################################################################",
+			"use strict;",
+			"use Moose;",
+			"use namespace::autoclean;",
+			"use ModelSEED::MS::DB::".$name.";",
+			"package ModelSEED::MS::".$name.";",
+			"extends ModelSEED::MS::DB::".$name.";",
+			"# CONSTANTS:",
+			"#TODO",
+			"# FUNCTIONS:",
+			"#TODO",
+			"",
+			"",
+			"__PACKAGE__->meta->make_immutable;",
+			"1;"
+		];
+		ModelSEED::utilities::PRINTFILE("../MS/".$name.".pm",$output);
+	}
 }

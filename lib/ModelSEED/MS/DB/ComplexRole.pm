@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::ComplexRole - This is the moose object corresponding to the ComplexRole object
+# ModelSEED::MS::DB::ComplexRole - This is the moose object corresponding to the ComplexRole object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Complex
-use ModelSEED::MS::Role
-package ModelSEED::MS::ComplexRole
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Complex;
+use ModelSEED::MS::Role;
+package ModelSEED::MS::DB::ComplexRole;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -41,10 +41,6 @@ sub _buildrole {
 
 # CONSTANTS:
 sub _type { return 'ComplexRole'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

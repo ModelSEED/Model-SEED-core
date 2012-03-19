@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::ReactionInstance - This is the moose object corresponding to the ReactionInstance object
+# ModelSEED::MS::DB::ReactionInstance - This is the moose object corresponding to the ReactionInstance object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Reaction
-use ModelSEED::MS::DefaultTransports
-use ModelSEED::MS::Compartment
-package ModelSEED::MS::ReactionInstance
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::DefaultTransports;
+use ModelSEED::MS::Compartment;
+package ModelSEED::MS::DB::ReactionInstance;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -32,7 +32,6 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid');
 
 
 # SUBOBJECTS:
-has aliases => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(type,alias)', metaclass => 'Typed');
 has transports => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::DefaultTransports]', type => 'encompassed', metaclass => 'Typed');
 
 
@@ -50,10 +49,6 @@ sub _buildcompartment {
 
 # CONSTANTS:
 sub _type { return 'ReactionInstance'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

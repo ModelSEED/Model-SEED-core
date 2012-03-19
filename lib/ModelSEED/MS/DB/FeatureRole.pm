@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::FeatureRole - This is the moose object corresponding to the FeatureRole object
+# ModelSEED::MS::DB::FeatureRole - This is the moose object corresponding to the FeatureRole object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Feature
-use ModelSEED::MS::Role
-package ModelSEED::MS::FeatureRole
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Feature;
+use ModelSEED::MS::Role;
+package ModelSEED::MS::DB::FeatureRole;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -42,10 +42,6 @@ sub _buildrole {
 
 # CONSTANTS:
 sub _type { return 'FeatureRole'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

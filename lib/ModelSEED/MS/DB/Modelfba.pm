@@ -1,21 +1,21 @@
 ########################################################################
-# ModelSEED::MS::Modelfba - This is the moose object corresponding to the Modelfba object
+# ModelSEED::MS::DB::Modelfba - This is the moose object corresponding to the Modelfba object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Model
-use ModelSEED::MS::ModelfbaCompound
-use ModelSEED::MS::ModelfbaReaction
-use ModelSEED::MS::ModelfbaFeature
-use ModelSEED::MS::Media
-package ModelSEED::MS::Modelfba
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Model;
+use ModelSEED::MS::ModelfbaCompound;
+use ModelSEED::MS::ModelfbaReaction;
+use ModelSEED::MS::ModelfbaFeature;
+use ModelSEED::MS::Media;
+package ModelSEED::MS::DB::Modelfba;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -67,10 +67,6 @@ sub _buildmedia {
 
 # CONSTANTS:
 sub _type { return 'Modelfba'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

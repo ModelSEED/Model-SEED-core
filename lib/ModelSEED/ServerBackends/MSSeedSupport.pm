@@ -100,7 +100,9 @@ sub methods {
 			"pegs_of_function",
 			"getRastGenomeData",
 			"users_for_genome",
-			"build_primers"
+			"build_primers",
+			"genomeData",
+			"genomeType",
         ];
 	}
 	return $self->{_methods};
@@ -458,6 +460,188 @@ sub getRastGenomeData {
 	}
 	return $output;
 }
+=head3 genomeType
+
+=item Definition:
+	
+	Output = MSSeedSupport->genomeType({
+		ids => [string:genome ID]
+	});
+	Output: {
+		string:genome ID => {
+			source => string,
+			jobid => integer,
+			owner => string
+		}
+	}
+	
+=item Description:
+	
+	Returns the source of the specified genomes
+
+=cut
+sub genomeType {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args, ['ids'],{});
+	my $output;
+	for (my $i=0; $i < @{$args->{ids}}; $i++) {
+		my $genome = $args->{ids}->[$i];
+		my $source = "UNKNOWN";
+		if (-d "/vol/public-pseed/FIGdisk/FIG/Data/Organisms/".$genome) {
+			$output->{$genome}->{source} = "TEMPPUBSEED";
+			$output->{$genome}->{rights} = 1;
+		} else {
+			my $job = $self->figmodel()->database()->get_object("rastjob",{genome_id => $genome});
+			if (defined($job)) {
+				$output->{$genome}->{rights} = 0;
+				$output->{$genome}->{source} = "RAST";
+				$output->{$genome}->{jobid} = $job->id();
+				$output->{$genome}->{owner} = ModelSEED::utilities::LOADFILE("/vol/rast-prod/jobs/".$job->id()."/USER","\t")->[0];
+			} else {
+				$job = $self->figmodel()->database()->get_object("rasttestjob",{genome_id => $genome});
+				if (defined($job)) {
+					$output->{$genome}->{rights} = 0;
+					$output->{$genome}->{source} = "TESTRAST";
+					$output->{$genome}->{jobid} = $job->id();
+					$output->{$genome}->{owner} = ModelSEED::utilities::LOADFILE("/vol/rast-test/jobs/".$job->id()."/USER","\t")->[0];
+				}
+			}
+		}
+		if (!defined($output->{$genome}->{source}) && -d $self->figmodel()->config("Metagenome directory")->[0].$genome.".tbl") {	
+			$output->{$genome}->{source} = "MGRAST";
+			$output->{$genome}->{rights} = 0;
+		}
+		if (defined($output->{$genome}->{source}) && $output->{$genome}->{source} =~ /RAST/) {
+			my $haveRight = 0;
+			if (defined($self->figmodel()->config("model administrators")->{$self->figmodel()->user()})) {
+				$haveRight = 1;
+			} elsif (lc($self->figmodel()->user()) ne "public") {
+				my $userScopes = $self->figmodel()->database()->get_objects("userscope",{
+					user => $self->figmodel()->userObj()
+				});
+				for (my $i=0; $i < @{$userScopes}; $i++) {
+					my $right = $self->figmodel()->database()->get_object("right",{
+						data_type => "genome",
+						data_id => $genome,
+						granted => 1,
+						scope => $userScopes->[$i]->scope()
+					});
+					if (defined($right)) {
+						$haveRight = 1;
+						last;
+					}
+				}
+			}
+			$output->{$genome}->{rights} = $haveRight;
+		}
+	}	
+	return $output;
+}
+=head3 genomeAttributes
+
+=item Definition:
+	
+	Output = MSSeedSupport->genomeAttributes({
+		ids => [string:genome ID]
+	});
+	Output: {
+		string:genome ID => {
+			source => string,
+			jobid => integer,
+			owner => string
+		}
+	}
+	
+=item Description:
+	
+	Returns the source of the specified genomes
+
+=cut
+sub genomeData {
+	my ($self,$args) = @_;
+	$args = $self->process_arguments($args, ['ids'],{
+		sources => undef,
+		withSequences => 0
+	});
+	if (!defined($args->{sources})) {
+		$args->{sources} = $self->genomeType($args);
+	}
+	my $output;
+	for (my $i=0; $i < @{$args->{ids}}; $i++) {
+		my $genome = $args->{ids}->[$i];
+		if (defined($args->{sources}->{$genome})) {
+			if ($args->{sources}->{$genome}->{rights} == 0) {
+				$output->{$genome}->{error} = "No rights to specified genome";
+			} else {
+				$output->{$genome} = {
+					name => undef,
+					taxonomy => undef,
+					size => undef,
+					gc => 0.5,
+					features => undef
+				};
+				my $directory;
+				if ($args->{sources}->{$genome}->{source} eq "TEMPPUBSEED") {
+					$directory = "/vol/public-pseed/FIGdisk/FIG/Data/Organisms/".$genome;
+				} elsif ($args->{sources}->{$genome}->{source} eq "RAST") {
+					$directory = "/vol/rast-prod/jobs/".$args->{sources}->{$genome}->{jobid}."/rp/".$genome;
+				} elsif ($args->{sources}->{$genome}->{source} eq "TESTRAST") {
+					$directory = "/vol/rast-test/jobs/".$args->{sources}->{$genome}->{jobid}."/rp/".$genome;
+				}
+				if ($args->{sources}->{$genome}->{source} eq "MGRAST") {
+					my $featureTbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($self->figmodel()->config("Metagenome directory")->[0].$genome.".tbl","\t","|",0,["ID","GENOME","ROLES","SOURCE"]);
+					$output->{$genome}->{taxonomy} = "Metagenome";
+					$output->{$genome}->{size} = undef;
+					if (defined($featureTbl)) {
+						for (my $i=0; $i < $featureTbl->size();$i++) {
+							my $row = $featureTbl->get_row($i);
+							push(@{$output->{$genome}->{features}},{
+								ID => $row->{ID},
+								LOCATION => $row->{LOCATION},
+								FUNCTION => $row->{FUNCTION},
+								TYPE => $row->{TYPE}
+							});
+						}
+					}
+				} elsif (defined($directory)) {
+					require FIGV;
+					my $figv = new FIGV($directory);
+					if (!defined($figv)) {
+						$output->{$genome}->{error} = "Could not create FIGV object for RAST genome:".$genome;
+					} else {
+						my $completetaxonomy = ModelSEED::utilities::LOADFILE($directory."/TAXONOMY")->[0];
+						$completetaxonomy =~ s/;\s/;/g;
+						my $taxArray = [split(/;/,$completetaxonomy)];
+						$output->{$genome}->{name} = pop(@{$taxArray});
+						$output->{$genome}->{taxonomy} = join("|",@{$taxArray});
+						$output->{$genome}->{size} = $figv->genome_szdna($genome);
+						if ($args->{withSequences} == 1) {
+							my @contigs = $figv->all_contigs($genome);
+							for (my $i=0; $i < @contigs; $i++) {
+								my $contigLength = $figv->contig_ln($genome,$contigs[$i]);
+								push(@{$output->{$genome}->{sequence}},$figv->get_dna($genome,$contigs[$i],1,$contigLength));
+							}
+						}
+						my $GenomeData = $figv->all_features_detailed_fast($genome);
+						foreach my $Row (@{$GenomeData}) {
+							my $newFeature = {
+								ID => $Row->[0],
+								LOCATION => $Row->[1],
+								FUNCTION => $Row->[6],
+								ALIASES => $Row->[2]
+							};
+							if ($args->{withSequences} == 1) {
+								$newFeature->{SEQUENCE}->[0] = $figv->get_translation($Row->[0]);
+							}
+							push(@{$output->{$genome}->{features}},$newFeature);
+						}
+					}
+				}
+			}
+		}
+	}
+	return $output;
+}
 =head3 users_for_genome
 
 =item Definition:
@@ -639,7 +823,7 @@ sub build_primers {
     delete $result->{"p2"};
     $result->{"p3c"} = $result->{"p3"};
     
-    delete $result->{"p3"};e
+    delete $result->{"p3"};
     return $result;
 }
 

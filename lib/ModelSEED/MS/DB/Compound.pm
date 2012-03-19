@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::Compound - This is the moose object corresponding to the Compound object
+# ModelSEED::MS::DB::Compound - This is the moose object corresponding to the Compound object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Biochemistry
-use ModelSEED::MS::CompoundStructure
-use ModelSEED::MS::CompoundPk
-package ModelSEED::MS::Compound
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::CompoundStructure;
+use ModelSEED::MS::CompoundPk;
+package ModelSEED::MS::DB::Compound;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -41,7 +41,6 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid');
 
 
 # SUBOBJECTS:
-has aliases => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]', type => 'hasharray(type,alias)', metaclass => 'Typed');
 has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed', metaclass => 'Typed');
 has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed', metaclass => 'Typed');
 
@@ -53,10 +52,6 @@ sub _buildModDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Compound'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

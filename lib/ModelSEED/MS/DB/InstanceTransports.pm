@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::InstanceTransports - This is the moose object corresponding to the InstanceTransports object
+# ModelSEED::MS::DB::InstanceTransports - This is the moose object corresponding to the InstanceTransports object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::ReactionInstance
-use ModelSEED::MS::Compound
-use ModelSEED::MS::Compartment
-package ModelSEED::MS::InstanceTransports
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ReactionInstance;
+use ModelSEED::MS::Compound;
+use ModelSEED::MS::Compartment;
+package ModelSEED::MS::DB::InstanceTransports;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -48,10 +48,6 @@ sub _buildcompartment {
 
 # CONSTANTS:
 sub _type { return 'InstanceTransports'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::ReactionRuleTransport - This is the moose object corresponding to the ReactionRuleTransport object
+# ModelSEED::MS::DB::ReactionRuleTransport - This is the moose object corresponding to the ReactionRuleTransport object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::ReactionRule
-use ModelSEED::MS::Compound
-use ModelSEED::MS::Compartment
-package ModelSEED::MS::ReactionRuleTransport
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ReactionRule;
+use ModelSEED::MS::Compound;
+use ModelSEED::MS::Compartment;
+package ModelSEED::MS::DB::ReactionRuleTransport;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -48,10 +48,6 @@ sub _buildcompartment {
 
 # CONSTANTS:
 sub _type { return 'ReactionRuleTransport'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

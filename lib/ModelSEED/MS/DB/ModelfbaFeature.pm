@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::ModelfbaFeature - This is the moose object corresponding to the ModelfbaFeature object
+# ModelSEED::MS::DB::ModelfbaFeature - This is the moose object corresponding to the ModelfbaFeature object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Modelfba
-use ModelSEED::MS::Feature
-package ModelSEED::MS::ModelfbaFeature
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Modelfba;
+use ModelSEED::MS::Feature;
+package ModelSEED::MS::DB::ModelfbaFeature;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -44,10 +44,6 @@ sub _buildfeature {
 
 # CONSTANTS:
 sub _type { return 'ModelfbaFeature'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

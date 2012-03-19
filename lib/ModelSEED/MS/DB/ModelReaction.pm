@@ -1,21 +1,21 @@
 ########################################################################
-# ModelSEED::MS::ModelReaction - This is the moose object corresponding to the ModelReaction object
+# ModelSEED::MS::DB::ModelReaction - This is the moose object corresponding to the ModelReaction object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Model
-use ModelSEED::MS::ModelReactionRawGPR
-use ModelSEED::MS::ModelReactionTransports
-use ModelSEED::MS::Reaction
-use ModelSEED::MS::ModelCompartment
-package ModelSEED::MS::ModelReaction
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Model;
+use ModelSEED::MS::ModelReactionRawGPR;
+use ModelSEED::MS::ModelReactionTransports;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::ModelCompartment;
+package ModelSEED::MS::DB::ModelReaction;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -61,10 +61,6 @@ sub _buildmodelcompartment {
 
 # CONSTANTS:
 sub _type { return 'ModelReaction'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

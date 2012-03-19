@@ -15,10 +15,8 @@ use lib "../../config/";
 use ModelSEEDbootstrap;
 use ModelSEED::FIGMODEL;
 use ModelSEED::CoreApi;
-use ModelSEED::globals;
-use ModelSEED::MS::ObjectParser;
-use ModelSEED::MS::Biochemistry;
-use ModelSEED::MS::Model;
+use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Environment;
 use File::Basename qw(dirname basename);
 
 package ModelSEED::ModelDriverV2;
@@ -30,10 +28,14 @@ Description:
 	Returns a driver object
 =cut
 sub new { 
-	my $self = {_finishedfile => "NONE"};
-	ModelSEED::globals::CREATEFIGMODEL({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()});
-	ModelSEED::Interface::interface::CREATEWORKSPACE({});
-    return bless $self;
+	my ($self,$args) = @_;
+	ModelSEED::utilities::ARGS($args,["environment"],{
+		finishfile => undef
+	});
+	bless $self;
+	$self->environment($args->{environment});
+	$self->finishfile($args->{finishfile});
+    return $self;
 }
 =head3 api
 Definition:
@@ -47,13 +49,48 @@ sub api {
 		$self->{_api} = $api;
 	}
 	if (!defined($self->{_api})) {
-		$self->{_api} = ModelSEED::CoreApi->new({
-            database => File::Basename::dirname(__FILE__)."/../../data/NewScheme.db",
-            driver => "SQLite",
-        });
+		$self->{_api} = ModelSEED::CoreApi->new();
 	}
 	return $self->{_api};
 }
+=head3 environment
+Definition:
+	ModelSEED::MS::Environment = driver->environment({}:environment data or object);
+Description:
+	Returns an Environment object
+=cut
+sub environment {
+	my ($self,$environment) = @_;
+	if (ref($environment) ne "ModelSEED::MS::Environment") {
+		$environment = ModelSEED::MS::Environment->new($environment);
+	}
+	if (defined($environment)) {
+		$self->{_environment} = $environment;
+	}
+	return $environment;
+}
+=head3 om
+Definition:
+	ModelSEED::MS::ObjectManager = driver->om();
+Description:
+	Returns an ObjectManager object
+=cut
+sub om {
+	my ($self) = @_;
+	if (!defined($self->{_om})) {
+		$self->{_om} = 
+	}
+	return $environment;
+}
+
+
+
+
+
+
+
+
+
 =head3 biochemistry
 Definition:
 	ModelSEED::MS::Biochemistry = driver->biochemistry();
@@ -147,78 +184,7 @@ sub config {
 	my ($self,$key) = @_;
 	return ModelSEED::globals::GETFIGMODEL()->config($key);
 }
-=head3 check
-Definition:
-	FIGMODEL = driver->check([string]:expected data,(string):supplied arguments);
-Description:
-	Check for sufficient arguments
-=cut
-sub check {
-	my ($self,$array,$data) = @_;
-	my @calldata = caller(1);
-	my @temp = split(/:/,$calldata[3]);
-    my $function = pop(@temp);
-	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
-		print $self->usage($function,$array);
-		$self->finish("USAGE PRINTED");
-	}
-	my $args;
-	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
-		$args = $data->[1];
-		delete $data->[1];
-	}
-	if (defined($args->{"usage"}) || defined($args->{"help"}) || defined($args->{"man"})) {
-		print STDERR $self->usage($function,$array);
-	}
-	for (my $i=0; $i < @{$array}; $i++) {
-		if (!defined($args->{$array->[$i]->[0]})) {
-			if ($array->[$i]->[1] == 1 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
-				my $message = "Mandatory argument '".$array->[$i]->[0]."' missing!\n";
-				$message .= $self->usage($function,$array);
-				print STDERR $message;
-				$self->finish($message);
-			} elsif ($array->[$i]->[1] == 0 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
-				$data->[$i+1] = $array->[$i]->[2];
-			}
-			$args->{$array->[$i]->[0]} = $data->[$i+1];
-		}
-	}
-	return $args;
-}
-=head3 usage
-Definition:
-	FIGMODEL = driver->usage(string:function name,[string]:expected data);
-Description:
-	Prints the usage for the specified function
-=cut
-sub usage {
-	my ($self,$function,$array) = @_;
-	if (!defined($array)) {
-		$self->$function();
-		return undef;
-	}
-	my $output;
-	if ($self->isCommandLineFunction($function) == 0) {
-		$output = $function." is not a valid ModelSEED function!\n";
-	} else {
-		$output = $function." function usage:\n./".$function." ";
-	 	for (my $i=0; $i < @{$array}; $i++) {
-			if ($i > 0) {
-				$output .= "?";
-			}
-			$output .= $array->[$i]->[0];
-			if ($array->[$i]->[1] == 0) {
-				if (!defined($array->[$i]->[2])) {
-					$output .= "(undef)";
-				} else {
-					$output .= "(".$array->[$i]->[2].")";
-				}
-	 		}
-	 	}
-	 	$output .= "\n";
-	}
-	return $output;
-}
+
 =head3 finishfile
 Definition:
 	string = driver->finishfile(string:input filename);

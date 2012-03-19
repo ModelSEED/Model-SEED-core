@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::BiomassCompound - This is the moose object corresponding to the BiomassCompound object
+# ModelSEED::MS::DB::BiomassCompound - This is the moose object corresponding to the BiomassCompound object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Biomass
-use ModelSEED::MS::ModelCompound
-package ModelSEED::MS::BiomassCompound
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Biomass;
+use ModelSEED::MS::ModelCompound;
+package ModelSEED::MS::DB::BiomassCompound;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -40,10 +40,6 @@ sub _buildmodelcompound {
 
 # CONSTANTS:
 sub _type { return 'BiomassCompound'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::Feature - This is the moose object corresponding to the Feature object
+# ModelSEED::MS::DB::Feature - This is the moose object corresponding to the Feature object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Annotation
-use ModelSEED::MS::FeatureRoles
-use ModelSEED::MS::Genome
-package ModelSEED::MS::Feature
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Annotation;
+use ModelSEED::MS::FeatureRoles;
+use ModelSEED::MS::Genome;
+package ModelSEED::MS::DB::Feature;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -30,6 +30,9 @@ has genome_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass =
 has start => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has stop => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has contig => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has sequence => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 
 
 # ANCESTOR:
@@ -55,10 +58,6 @@ sub _buildgenome {
 
 # CONSTANTS:
 sub _type { return 'Feature'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

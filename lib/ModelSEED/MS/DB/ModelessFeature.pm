@@ -1,17 +1,17 @@
 ########################################################################
-# ModelSEED::MS::ModelessFeature - This is the moose object corresponding to the ModelessFeature object
+# ModelSEED::MS::DB::ModelessFeature - This is the moose object corresponding to the ModelessFeature object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::
-package ModelSEED::MS::ModelessFeature
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::;
+package ModelSEED::MS::DB::ModelessFeature;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -28,10 +28,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::',weak_ref => 1);
 
 # CONSTANTS:
 sub _type { return 'ModelessFeature'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

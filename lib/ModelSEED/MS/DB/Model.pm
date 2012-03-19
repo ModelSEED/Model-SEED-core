@@ -1,24 +1,24 @@
 ########################################################################
-# ModelSEED::MS::Model - This is the moose object corresponding to the Model object
+# ModelSEED::MS::DB::Model - This is the moose object corresponding to the Model object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::IndexedObject
-use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::Biomass
-use ModelSEED::MS::ModelCompartment
-use ModelSEED::MS::ModelCompound
-use ModelSEED::MS::ModelReaction
-use ModelSEED::MS::Biochemistry
-use ModelSEED::MS::Mapping
-use ModelSEED::MS::Annotation
-package ModelSEED::MS::Model
-extends ModelSEED::MS::IndexedObject
+use ModelSEED::MS::IndexedObject;
+use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Biomass;
+use ModelSEED::MS::ModelCompartment;
+use ModelSEED::MS::ModelCompound;
+use ModelSEED::MS::ModelReaction;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Mapping;
+use ModelSEED::MS::Annotation;
+package ModelSEED::MS::DB::Model;
+extends ModelSEED::MS::IndexedObject;
 
 
 # PARENT:
@@ -81,10 +81,6 @@ sub _buildannotation {
 
 # CONSTANTS:
 sub _type { return 'Model'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

@@ -1,20 +1,20 @@
 ########################################################################
-# ModelSEED::MS::ReactionRule - This is the moose object corresponding to the ReactionRule object
+# ModelSEED::MS::DB::ReactionRule - This is the moose object corresponding to the ReactionRule object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Mapping
-use ModelSEED::MS::ReactionRuleTransport
-use ModelSEED::MS::Reaction
-use ModelSEED::MS::Compartment
-package ModelSEED::MS::ReactionRule
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Mapping;
+use ModelSEED::MS::ReactionRuleTransport;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::Compartment;
+package ModelSEED::MS::DB::ReactionRule;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -59,10 +59,6 @@ sub _buildcompartment {
 
 # CONSTANTS:
 sub _type { return 'ReactionRule'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

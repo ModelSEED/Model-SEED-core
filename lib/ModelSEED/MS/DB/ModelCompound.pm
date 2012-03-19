@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::ModelCompound - This is the moose object corresponding to the ModelCompound object
+# ModelSEED::MS::DB::ModelCompound - This is the moose object corresponding to the ModelCompound object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Model
-use ModelSEED::MS::Compound
-use ModelSEED::MS::ModelCompartment
-package ModelSEED::MS::ModelCompound
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Model;
+use ModelSEED::MS::Compound;
+use ModelSEED::MS::ModelCompartment;
+package ModelSEED::MS::DB::ModelCompound;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -54,10 +54,6 @@ sub _buildmodelcompartment {
 
 # CONSTANTS:
 sub _type { return 'ModelCompound'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

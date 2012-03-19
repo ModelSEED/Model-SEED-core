@@ -1,0 +1,311 @@
+########################################################################
+# ModelSEED::MS::ModelDriver - This moose object handles all command line interface functions
+# Authors: Christopher Henry, Scott Devoid, Paul Frybarger
+# Contact email: chenry@mcs.anl.gov
+# Development location: Mathematics and Computer Science Division, Argonne National Lab
+# Date of module creation: 2012-03-18
+########################################################################
+use strict;
+use Moose;
+use namespace::autoclean;
+use ModelSEED::utilities;
+use ModelSEED::CoreApi;
+use ModelSEED::MS::Environment;
+use ModelSEED::MS::ObjectManager;
+package ModelSEED::MS::ModelDriver;
+
+
+# ATTRIBUTES:
+has environment => ( is => 'rw', isa => 'ModelSEED::MS::Environment',required => 1);
+has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager',lazy => 1, builder => '_buildom' );
+has coreapi => ( is => 'rw', isa => 'ModelSEED::CoreApi',builder => '_buildcoreapi' );
+has finishedfile => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager',lazy => 1, builder => '_buildom' );
+
+# BUILDERS:
+sub _buildom {
+	my ($self) = @_;
+	return ModelSEED::MS::ObjectManager->new({coreapi => $self->coreapi});
+}
+sub _buildcoreapi { return ModelSEED::CoreApi->new();}
+
+# CONSTANTS:
+sub _type { return 'Compound'; }
+
+
+#INTERNAL FUNCTIONS:
+sub BUILD {
+    my ($self,$params) = @_;
+	$params = ModelSEED::utilities::ARGS($params,[],{});
+	#Handling authentication of the current environment against the current coreapi
+	my $result = $self->om()->authenticate({
+		username => $self->environment()->username(),
+		password => $self->environment()->password()
+	});
+	if (!defined($result->{success})) {
+		$self->environment()->logout();
+		ModelSEED::utilities::USEERROR("Authentication failed for user:".$self->environment()->username().". Automatically logging out!");
+	}
+}
+=head3 check
+Definition:
+	string = driver->check([string]:expected data,(string):supplied arguments);
+Description:
+	Check for sufficient arguments
+=cut
+sub check {
+	my ($self,$array,$data) = @_;
+	my @calldata = caller(1);
+	my @temp = split(/:/,$calldata[3]);
+    my $function = pop(@temp);
+	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
+		print $self->usage($function,$array);
+		$self->finish("USAGE PRINTED");
+	}
+	my $args;
+	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
+		$args = $data->[1];
+		delete $data->[1];
+	}
+	if (defined($args->{"usage"}) || defined($args->{"help"}) || defined($args->{"man"})) {
+		print STDERR $self->usage($function,$array);
+	}
+	for (my $i=0; $i < @{$array}; $i++) {
+		if (!defined($args->{$array->[$i]->[0]})) {
+			if ($array->[$i]->[1] == 1 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
+				my $message = "Mandatory argument '".$array->[$i]->[0]."' missing!\n";
+				$message .= $self->usage($function,$array);
+				print STDERR $message;
+				$self->finish($message);
+			} elsif ($array->[$i]->[1] == 0 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
+				$data->[$i+1] = $array->[$i]->[2];
+			}
+			$args->{$array->[$i]->[0]} = $data->[$i+1];
+		}
+	}
+	return $args;
+}
+=head3 usage
+Definition:
+	string = driver->usage(string:function name,[string]:expected data);
+Description:
+	Prints the usage for the specified function
+=cut
+sub usage {
+	my ($self,$function,$array) = @_;
+	if (!defined($array)) {
+		$self->$function();
+		return undef;
+	}
+	my $output;
+	if ($self->isCommandLineFunction($function) == 0) {
+		$output = $function." is not a valid ModelSEED function!\n";
+	} else {
+		$output = $function." function usage:\n./".$function." ";
+	 	for (my $i=0; $i < @{$array}; $i++) {
+			if ($i > 0) {
+				$output .= "?";
+			}
+			$output .= $array->[$i]->[0];
+			if ($array->[$i]->[1] == 0) {
+				if (!defined($array->[$i]->[2])) {
+					$output .= "(undef)";
+				} else {
+					$output .= "(".$array->[$i]->[2].")";
+				}
+	 		}
+	 	}
+	 	$output .= "\n";
+	}
+	return $output;
+}
+=head3 isCommandLineFunction
+Definition:
+	0/1 = driver->isCommandLineFunction(string:input filename);
+Description:
+	Returns "1" if the input function is a ModelSEED interface function. Returns 0 otherwise.
+=cut
+sub isCommandLineFunction {
+	my ($self,$infunction) = @_;
+	if ($self->can($infunction)) {
+		my $excluded = {
+			finish=>1,outputdirectory=>1,makeArgumentHashFromCommand=>1,"new"=>1,finishfile=>1,usage=>1,check=>1,config=>1,db=>1,ws=>1,figmodel=>1
+		};
+		if (defined($excluded->{$infunction})) {
+			return 0;
+		}
+		return 1;
+	}
+	return 0;
+}
+=head3 finish
+Definition:
+	FIGMODEL = driver->finish(string:message);
+Description:
+	Closes out the ModelDriver with the specified message
+=cut
+sub finish {
+	my ($self,$message) = @_;
+	if ($self->finishfile() ne "NONE") {
+	    if ($self->{_finishedfile} =~ m/^\//) {
+	        ModelSEED::utilities::PRINTFILE($self->finishfile(),[$message]);
+	    } else {
+	        ModelSEED::utilities::PRINTFILE($self->figmodel()->config("database message file directory")->[0].$self->finishfile(),[$message]);
+	    }
+	}
+	exit();
+}
+
+
+#INTERFACE FUNCTIONS
+=head
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function lists the types of biochemistry objects
+=EXAMPLE
+bc-listtypes
+=cut
+sub bclisttypes {
+    my($self,@Data) = @_;
+	my $args = $self->check([],[@Data],"lists the types of biochemistry objects");
+    return {success => 1,message => "Biochemistry types:\n".join("\n",@{[
+    	"media",
+    	"reaction",
+    	"compound",
+    	"compoundset",
+    	"reactionset"
+    ]})};
+}
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function prints a table of objects from the biochemistry database
+=EXAMPLE
+bc-list media
+=cut
+sub bclist {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["type",1,undef,"type of the object to be printed"],
+	],[@Data],"prints a table of objects from the biochemistry");
+    $self->biochemistry()->checkType($args->{type});
+    my $tbl = $self->biochemistry()->printTable($args->{type});
+    my $rows;
+    for (my $i=0; $i < @{$tbl->{rows}};$i++) {
+    	push(@{$rows},join("\t",@{$tbl->{rows}->[$i]}));
+    }
+    return {success => 1,message =>
+    	"Biochemistry ".$args->{type}." objects:\n".
+    	join("\t",@{$tbl->{headings}})."\n".
+    	join("\n",@{$rows})
+    };
+}
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function prints a file with object data to the workspace
+=EXAMPLE
+bc-print media "Carbon-D-Glucose"
+=cut
+sub bcprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["type",1,undef,"type of the object to be printed"],
+		["id",1,undef,"id of object to be printed"]
+	],[@Data],"prints a file with object data to the workspace");
+    my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+    if (!defined($obj)) {
+    	ModelSEED::utilities::USEERROR("No object of type ".$args->{type}." and with id ".$args->{id}." found in biochemistry ".$self->biochemistry()->uuid()."!");
+    }
+    $obj->printToFile({filename=>$self->ws()->directory().$args->{id}.".".$args->{type}});
+    return {success => 1,message => "Object successfully printed to file ".$args->{id}.".".$args->{type}." in workspace!"};
+}
+=head
+=CATEGORY
+Biochemistry Operations
+=DESCRIPTION
+This function is used to create or alter a media condition in the Model SEED database given either a list of compounds in the media or a file specifying the media compounds and minimum and maximum uptake rates.
+=EXAMPLE
+bcloadmedia '''-name''' Carbon-D-Glucose '''-filename''' Carbon-D-Glucose.txt
+=cut
+sub bcload {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["type",1,undef,"type of the object to be loaded"],
+		["id",1,undef,"id of the object to be loaded"],
+		["overwrite",0,0,"overwrite the existing object?"]
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+	if (defined($obj) && $args->{overwrite} == 0) {
+		ModelSEED::utilities::USEERROR("Object of type ".$args->{type}." with id ".$args->{id}." already exists in biochemistry ".$self->biochemistry()->uuid().". Must set overwrite flag to load object!");
+	}
+	my $data = ModelSEED::MS::ObjectParser::loadObjectFile({type => $args->{type},id => $args->{id},directory => $self->ws()->directory()});
+	my $newObj = ModelSEED::MS::Media->new({biochemistry => $self->biochemistry(),attributes => $data->{attributes},relationships => $data->{relationships}});
+	$self->biochemistry()->add($newObj);
+	my $time = time();
+	print "Saving!\n";
+	$self->biochemistry()->save();
+	print "Save time:".$time-time()."\n";
+	return {success => 1,message => "Successfully loaded ".$args->{type}." object from file with id ".$args->{id}."."};
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to print a specified model to a file in the workspace
+=EXAMPLE
+mdlprint Seed83333.1
+=cut
+sub mdlprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"type of the object to be loaded"]
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $model = $self->getModel($args->{model});
+	if (!defined($model)) {
+		ModelSEED::utilities::USEERROR("No model found with id ".$args->{model}."!");	
+	}
+	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
+	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function is used to print a specified model to a file in the workspace
+=EXAMPLE
+mdlprint Seed83333.1
+=cut
+sub mdlpricereconstruction {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"type of the object to be loaded"],
+	],[@Data],"Creates (or alters) an object in the Model SEED database");
+	my $model = $self->getModel($args->{model});
+	$model->priceReconstruction($args);
+	$model->printToFile({filename=>$self->ws()->directory().$args->{model}.".model"});
+	return {success => 1,message => "Successfully printed model ".$args->{model}." to file ".$self->ws()->directory().$args->{model}.".model in the workspace."};
+}
+=head
+=CATEGORY
+Mapping Operations
+=DESCRIPTION
+This function is used to print a specified mapping object
+=EXAMPLE
+mapprint
+=cut
+sub mapprint {
+    my($self,@Data) = @_;
+	my $args = $self->check([
+		["mapping",1,undef,"ID of a mapping object"]
+	],[@Data],"Prints the specified mapping object");
+	my $mapping = $self->getMapping($args->{mapping});
+	if (!defined($mapping)) {
+		ModelSEED::utilities::USEERROR("No mapping found with uuid ".$args->{mapping}."!");	
+	}
+	$mapping->printToFile({filename=>$self->ws()->directory().$args->{mapping}.".mapping"});
+	return {success => 1,message => "Successfully printed mapping ".$args->{mapping}." to file ".$self->ws()->directory().$args->{mapping}.".mapping in the workspace."};
+}
+
+__PACKAGE__->meta->make_immutable;
+1;

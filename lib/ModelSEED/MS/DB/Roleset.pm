@@ -1,18 +1,18 @@
 ########################################################################
-# ModelSEED::MS::Roleset - This is the moose object corresponding to the Roleset object
+# ModelSEED::MS::DB::Roleset - This is the moose object corresponding to the Roleset object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-19T08:21:34
 ########################################################################
 use strict;
 use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Mapping
-use ModelSEED::MS::Role
-package ModelSEED::MS::Roleset
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Mapping;
+use ModelSEED::MS::Role;
+package ModelSEED::MS::DB::Roleset;
+extends ModelSEED::MS::BaseObject;
 
 
 # PARENT:
@@ -24,7 +24,6 @@ has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Type
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 has searchname => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 has class => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
@@ -47,10 +46,6 @@ sub _buildModDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Roleset'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;
