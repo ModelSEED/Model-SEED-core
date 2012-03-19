@@ -3100,7 +3100,7 @@ sub import_model {
 	}
 
 	#set public access for model
-	$modelObj->public($args->{public});
+	$mdl->public($args->{public});
 
 	$mdl->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
