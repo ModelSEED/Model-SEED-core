@@ -43,7 +43,7 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("extends ModelSEED::MS::".$baseObject.";","",""));
 	#Printing parent
 	push(@{$output},("# PARENT:"));
-	push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
+	push(@{$output},"#has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."',weak_ref => 1);");
 	push(@{$output},("",""));
 	#Printing attributes
 	push(@{$output},("# ATTRIBUTES:"));

@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T08:21:34
+# Date of module creation: 2012-03-19T19:49:19
 ########################################################################
 use strict;
 use Moose;
@@ -22,7 +22,7 @@ extends ModelSEED::MS::IndexedObject;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+#has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # ATTRIBUTES:
