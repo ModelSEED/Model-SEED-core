@@ -3,21 +3,21 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::Annotation;
-use ModelSEED::MS::FeatureRoles;
+use ModelSEED::MS::FeatureRole;
 use ModelSEED::MS::Genome;
 package ModelSEED::MS::DB::Feature;
-extends ModelSEED::MS::BaseObject;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::Annotation',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Annotation', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -36,22 +36,22 @@ has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has featureroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRoles]', type => 'encompassed', metaclass => 'Typed');
+has featureroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FeatureRole]', type => 'encompassed(FeatureRole)', metaclass => 'Typed');
 
 
 # LINKS:
-has genome => (is => 'rw',lazy => 1,builder => '_buildgenome',isa => 'ModelSEED::MS::Genome',weak_ref => 1);
+has genome => (is => 'rw',lazy => 1,builder => '_buildgenome',isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,Genome,uuid,genome_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 sub _buildgenome {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Annotation','Genome','uuid',$self->genome_uuid());
 }
 

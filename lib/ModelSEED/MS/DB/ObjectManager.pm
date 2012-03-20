@@ -3,20 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::;
 use ModelSEED::MS::User;
 package ModelSEED::MS::DB::ObjectManager;
-extends ModelSEED::MS::IndexedObject;
-
-
-# PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::',weak_ref => 1);
+use Moose;
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # ATTRIBUTES:
@@ -26,12 +21,12 @@ has user_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 
 
 
 # LINKS:
-has user => (is => 'rw',lazy => 1,builder => '_builduser',isa => 'ModelSEED::MS::User',weak_ref => 1);
+has user => (is => 'rw',lazy => 1,builder => '_builduser',isa => 'ModelSEED::MS::User', type => 'link(self,User,uuid,user_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _builduser {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('self','User','uuid',$self->user_uuid());
 }
 

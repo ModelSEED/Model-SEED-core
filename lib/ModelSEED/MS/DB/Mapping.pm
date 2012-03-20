@@ -3,10 +3,9 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::ObjectManager;
@@ -16,11 +15,12 @@ use ModelSEED::MS::ReactionRule;
 use ModelSEED::MS::Complex;
 use ModelSEED::MS::Biochemistry;
 package ModelSEED::MS::DB::Mapping;
-extends ModelSEED::MS::IndexedObject;
+use Moose;
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -33,25 +33,25 @@ has biochemistry_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metac
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child', metaclass => 'Typed');
-has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child', metaclass => 'Typed');
-has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child', metaclass => 'Typed');
-has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child', metaclass => 'Typed');
+has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child(Role)', metaclass => 'Typed');
+has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child(Roleset)', metaclass => 'Typed');
+has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child(ReactionRule)', metaclass => 'Typed');
+has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child(Complex)', metaclass => 'Typed');
 
 
 # LINKS:
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('ObjectManager','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 

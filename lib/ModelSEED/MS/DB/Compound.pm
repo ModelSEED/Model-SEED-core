@@ -3,21 +3,21 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::CompoundStructure;
 use ModelSEED::MS::CompoundPk;
 package ModelSEED::MS::DB::Compound;
-extends ModelSEED::MS::BaseObject;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -37,12 +37,12 @@ has deltaGErr => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => '
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed', metaclass => 'Typed');
-has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed', metaclass => 'Typed');
+has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed(CompoundStructure)', metaclass => 'Typed');
+has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed(CompoundPk)', metaclass => 'Typed');
 
 
 # BUILDERS:

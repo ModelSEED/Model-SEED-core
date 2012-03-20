@@ -34,42 +34,40 @@ my $meta = __PACKAGE__->meta;
 
 sub BUILD {
     my ($self,$params) = @_;
-    my $objectData = ModelSEED::MS::DB::Definitions::objectDefinitions()->{$self->_type()};
-    foreach my $subObject (@{$objectData->{subobjects}}) {
-		my $function = $subObject->{name};
-		my $dataArray = $self->$function();
-		my $newData;
-		foreach my $data (@{$dataArray}) {
-			$data->{parent} = $self;
-			if ($subObject->{type} eq "link") {
-				my $function = $subObjects->{compound_uuid};
-				my $linkedObject = $self->getLinkedObject($subObjects->{parent},$subObjects->{class},$subObjects->{query},$self->$function());
-				push(@{$newData},$linkedObject);
-			} elsif ($subObject->{type} =~ m/hasharray\((.+)\)/) {
-				my $parameters = [split(/,/,$1)];
-				push(@{$newData->{$data->{$parameters->[0]}}},$data->{$parameters->[1]});
-			} else {
-				my $class = "ModelSEED::MS::".$subObject->{Class};
-				push(@{$newData},$class->new($data);
+    for my $attr ( $meta->get_all_attributes ) {
+		if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+    		my $class = $1;
+    		my $function = $attr->name();
+			my $dataArray = $self->$function();
+			my $newData;
+			foreach my $data (@{$dataArray}) {
+				$data->{parent} = $self;
+				if ($attr->type() =~ m/hasharray\((.+),(.+)\)/) {
+					push(@{$newData->{$data->{$1}}},$data->{$2});
+				} else {
+					$class = 'ModelSEED::MS::'.$class;
+					push(@{$newData},$class->new($data));
+				}
 			}
+			$self->$function($newData);
 		}
-		$self->$function($newData);
-    }
+	}
 }
 
 sub serializeToDB {
 	my ($self) = @_;
 	my $data = {};
 	for my $attr ( $meta->get_all_attributes ) {
+		my $name = $attr->name();
 		if ($attr->type() eq "attribute") {
-			my $name = $attr->name();
 			$data->{$name} = $self->$name();
-		} elsif ($attr->type() eq "child" || $attr->type() eq "encompassed") {
+		} elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+			my $class = $1;
 			my $arrayRef = $self->$name();
 			foreach my $subobject (@{$arrayRef}) {
 				push(@{$data->{$name}},$subobject->serializeToDB());
 			}
-		} elsif ($attr->type() eq m/hasharray\(((.+)\)/) {
+		} elsif ($attr->type() eq m/hasharray\((.+)\)/) {
 			my $parameters = [split(/,/,$1)];
 			my $hashRef = $self->$name();
 			foreach my $key (keys(%{$hashRef})) {
@@ -86,6 +84,12 @@ sub serializeToDB {
 		}
 	}
 }
+
+#if ($attr->type() =~ /solink\((.+),(.+),(.+),(.+)\)/) {
+#					my $function = $4;
+#					my $linkedObject = $self->getLinkedObject($1,$2,$3,$self->$function());
+#					push(@{$newData},$linkedObject);
+#				} els
 
 sub getLinkedObject {
 	my ($self,$soureType,$type,$attribute,$value) = @_;
@@ -143,5 +147,5 @@ sub objectmanager {
 	return $parent;
 }
 
-__PACKAGE__->meta->make_immutable;
+#__PACKAGE__->meta->make_immutable;
 1;

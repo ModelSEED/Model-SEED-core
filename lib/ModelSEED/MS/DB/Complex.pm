@@ -3,21 +3,21 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::ReactionRule;
 use ModelSEED::MS::ComplexRole;
 package ModelSEED::MS::DB::Complex;
-extends ModelSEED::MS::BaseObject;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -29,12 +29,12 @@ has searchname => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'link', metaclass => 'Typed');
-has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed', metaclass => 'Typed');
+has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'solink(Mapping,ReactionRule,uuid,reaction_rule_uuid)', metaclass => 'Typed',weak_ref => 1);
+has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
 
 
 # BUILDERS:

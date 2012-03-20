@@ -3,10 +3,9 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::ObjectManager;
@@ -15,11 +14,12 @@ use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 use ModelSEED::MS::Mapping;
 package ModelSEED::MS::DB::User;
-extends ModelSEED::MS::IndexedObject;
+use Moose;
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -32,14 +32,14 @@ has lastname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'T
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has biochemistries => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biochemistry]', type => 'link', metaclass => 'Typed');
-has annotations => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Annotation]', type => 'link', metaclass => 'Typed');
-has models => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Model]', type => 'link', metaclass => 'Typed');
-has mappings => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Mapping]', type => 'link', metaclass => 'Typed');
+has biochemistries => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biochemistry]', type => 'solink(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has annotations => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Annotation]', type => 'solink(ObjectManager,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
+has models => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Model]', type => 'solink(ObjectManager,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mappings => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Mapping]', type => 'solink(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:

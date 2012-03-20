@@ -6,23 +6,20 @@
 # Date of module creation: 2012-03-15T16:44:01
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::utilities;
+use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Utilities::GlobalFunctions;
-
-package ModelSEED::MS::Factories::SEEDFactory
+package ModelSEED::MS::Factories::SEEDFactory;
+use Moose;
 use SAPserver;
 use MSSeedSupportClient;
-
-# PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
-
 
 # ATTRIBUTES:
 has sapsvr => ( is => 'rw', isa => 'SAPserver', lazy => 1, builder => '_buildsapsvr' );
 has msseedsvr => ( is => 'rw', isa => 'MSSeedSupportClient', lazy => 1, builder => '_buildmsseedsvr' );
+has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
 
 
 # BUILDERS:
@@ -48,7 +45,6 @@ sub buildMooseAnnotation {
 	if (!defined($args->{mapping})) {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
-	$annoationObj->mapping_uuid($args->{mapping}->uuid());
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
 	my $genomeObj = ModelSEED::MS::Genome->new({
 		id => $args->{genome_id},
@@ -56,9 +52,10 @@ sub buildMooseAnnotation {
 		source => $args->{source},
 		taxonomy => $genomeData->{taxonomy},
 		size => $genomeData->{size},
-		gc => $genomeData->{gc}
+		gc => $genomeData->{gc},
 	});
 	my $annoationObj = ModelSEED::MS::Annotation->new();
+	$annoationObj->mapping_uuid($args->{mapping}->uuid());
 	$annoationObj->add($genomeObj);
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
@@ -138,7 +135,7 @@ sub getGenomeSource {
 	if ($result->{$self->genome()} eq "1") {
 		return "PUBSEED";
 	}
-	my $result = $self->MSSeedSupportClient()->genomeType({ids => [$self->genome()]});
+	$result = $self->MSSeedSupportClient()->genomeType({ids => [$self->genome()]});
 	return $result->{$self->genome()};
 }
 
@@ -181,15 +178,6 @@ sub getGenomeFeatures {
 					$row->{START}->[0] = ($1);
 					$row->{STOP}->[0] = ($1+$3);
 					$row->{DIRECTION}->[0] = "for";
-				}
-			}
-			if (defined($aliases->{$featureList->[$i]})) {
-				my $types = [keys(%{$aliases->{$featureList->[$i]}})];
-				for (my $j=0; $j < @{$types}; $j++) {
-					for (my $k=0; $k < @{$aliases->{$featureList->[$i]}->{$types->[$j]}}; $k++) {
-						push(@{$row->{ALIASES}},$aliases->{$featureList->[$i]}->{$types->[$j]}->[$k]);
-						push(@{$row->{ALIASETYPES}},$types->[$j]);
-					}
 				}
 			}
 			if (defined($functions->{$featureList->[$i]})) {

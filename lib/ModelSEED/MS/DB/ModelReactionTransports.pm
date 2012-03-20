@@ -3,20 +3,20 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::ModelReaction;
 use ModelSEED::MS::ModelCompound;
 package ModelSEED::MS::DB::ModelReactionTransports;
-extends ModelSEED::MS::BaseObject;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -30,12 +30,12 @@ has coefficient => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass =>
 
 
 # LINKS:
-has modelcompound => (is => 'rw',lazy => 1,builder => '_buildmodelcompound',isa => 'ModelSEED::MS::ModelCompound',weak_ref => 1);
+has modelcompound => (is => 'rw',lazy => 1,builder => '_buildmodelcompound',isa => 'ModelSEED::MS::ModelCompound', type => 'link(Model,ModelCompound,uuid,modelcompound_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildmodelcompound {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Model','ModelCompound','uuid',$self->modelcompound_uuid());
 }
 

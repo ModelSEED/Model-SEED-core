@@ -3,20 +3,20 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-19T19:49:19
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::Complex;
 use ModelSEED::MS::Role;
 package ModelSEED::MS::DB::ComplexRole;
-extends ModelSEED::MS::BaseObject;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-#has parent => (is => 'rw',isa => 'ModelSEED::MS::Complex',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Complex', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -29,12 +29,12 @@ has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed
 
 
 # LINKS:
-has role => (is => 'rw',lazy => 1,builder => '_buildrole',isa => 'ModelSEED::MS::Role',weak_ref => 1);
+has role => (is => 'rw',lazy => 1,builder => '_buildrole',isa => 'ModelSEED::MS::Role', type => 'link(Mapping,Role,uuid,role_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildrole {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Mapping','Role','uuid',$self->role_uuid());
 }
 

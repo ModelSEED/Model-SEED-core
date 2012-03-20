@@ -1,47 +1,9 @@
 use strict;
 package ModelSEED::MS::DB::Definitions;
 
-my $objectDefinitions = {
-	Annotation => {},
-	Biochemistry => {},
-	Biomass => {},
-	BiomassCompound => {},
-	Compartment => {},
-	Complex => {},
-	ComplexReactionRule => {},
-	ComplexRole => {},
-	Compound => {},
-	Compoundset => {},
-	CompoundStructure => {},
-	CompoundPk => {},
-	DefaultTransportedReagent => {},
-	Feature => {},
-	Genome => {},
-	Mapping => {},
-	Media => {},
-	MediaCompound => {},
-	Model => {},
-	ModelCompartment => {},
-	ModelessFeature => {},
-	Modelfba => {},
-	ModelfbaCompound => {},
-	ModelfbaReaction => {},
-	ModelReaction => {},
-	ModelReactionRawGPR => {},
-	ModelTransportedReagent => {},
-	Reaction => {},
-	ReactionRule => {},
-	ReactionRuleTransport => {},
-	ReactionSet => {},
-	Reagent => {},
-	ReagentTransport => {},
-	Role => {},
-	Roleset => {},
-	RolesetRole => {}
-};
-
+my $objectDefinitions = {};
 $objectDefinitions->{ObjectManager} = {
-	parents => [""],
+	parents => [],
 	class => 'parent',
 	attributes => [
 		{name => 'user_uuid',perm => 'rw',type => 'uuid',req => 0}
@@ -218,7 +180,7 @@ $objectDefinitions->{ReactionInstance} = {
 		{name => 'compartment_uuid',perm => 'rw',type => 'uuid',len => 36,req => 1}
 	],
 	subobjects => [
-		{name => "transports",class => "DefaultTransports",type => "encompassed"},
+		{name => "transports",class => "InstanceTransport",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -226,7 +188,7 @@ $objectDefinitions->{ReactionInstance} = {
 	]
 };
 
-$objectDefinitions->{InstanceTransports} = {
+$objectDefinitions->{InstanceTransport} = {
 	parents => ['ReactionInstance'],
 	class => 'encompassed',
 	attributes => [
@@ -636,7 +598,7 @@ $objectDefinitions->{Feature} = {
 		{name => 'type',perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
-		{name => "featureroles",class => "FeatureRoles",type => "encompassed"},
+		{name => "featureroles",class => "FeatureRole",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
