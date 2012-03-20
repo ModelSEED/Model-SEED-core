@@ -1,21 +1,21 @@
 ########################################################################
-# ModelSEED::MS::ModelReactionRawGPR - This is the moose object corresponding to the ModelReactionRawGPR object
+# ModelSEED::MS::DB::ModelReactionRawGPR - This is the moose object corresponding to the ModelReactionRawGPR object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::ModelReaction
-package ModelSEED::MS::ModelReactionRawGPR
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ModelReaction;
+package ModelSEED::MS::DB::ModelReactionRawGPR;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -32,10 +32,6 @@ has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typ
 
 # CONSTANTS:
 sub _type { return 'ModelReactionRawGPR'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

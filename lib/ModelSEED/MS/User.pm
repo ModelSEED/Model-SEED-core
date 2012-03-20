@@ -1,35 +1,18 @@
 ########################################################################
-# ModelSEED::MS::RolesetRole - This is the moose object corresponding to the RolesetRole object
+# ModelSEED::MS::User - This is the moose object corresponding to the User object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::
-package ModelSEED::MS::RolesetRole
-extends ModelSEED::MS::BaseObject
-
-
-# PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::',weak_ref => 1);
-
-
-# ATTRIBUTES:
-
-
-
-
-# BUILDERS:
-
-
+use ModelSEED::MS::DB::User;
+package ModelSEED::MS::User;
+use Moose;
+extends 'ModelSEED::MS::DB::User';
 # CONSTANTS:
-sub _type { return 'RolesetRole'; }
-
-
+#TODO
 # FUNCTIONS:
 #TODO
 

@@ -1,22 +1,22 @@
 ########################################################################
-# ModelSEED::MS::Media - This is the moose object corresponding to the Media object
+# ModelSEED::MS::DB::Media - This is the moose object corresponding to the Media object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Biochemistry
-use ModelSEED::MS::MediaCompound
-package ModelSEED::MS::Media
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::MediaCompound;
+package ModelSEED::MS::DB::Media;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -29,11 +29,11 @@ has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has mediacompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::MediaCompound]', type => 'encompassed', metaclass => 'Typed');
+has mediacompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::MediaCompound]', type => 'encompassed(MediaCompound)', metaclass => 'Typed');
 
 
 # BUILDERS:
@@ -43,10 +43,6 @@ sub _buildModDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Media'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

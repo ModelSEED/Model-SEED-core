@@ -1,43 +1,39 @@
 use strict;
 package ModelSEED::MS::DB::Definitions;
 
-my $objectDefinitions = {
-	Annotation => {},
-	Biochemistry => {},
-	Biomass => {},
-	BiomassCompound => {},
-	Compartment => {},
-	Complex => {},
-	ComplexReactionRule => {},
-	ComplexRole => {},
-	Compound => {},
-	Compoundset => {},
-	CompoundStructure => {},
-	CompoundPk => {},
-	DefaultTransportedReagent => {},
-	Feature => {},
-	Genome => {},
-	Mapping => {},
-	Media => {},
-	MediaCompound => {},
-	Model => {},
-	ModelCompartment => {},
-	ModelessFeature => {},
-	Modelfba => {},
-	ModelfbaCompound => {},
-	ModelfbaReaction => {},
-	ModelReaction => {},
-	ModelReactionRawGPR => {},
-	ModelTransportedReagent => {},
-	Reaction => {},
-	ReactionRule => {},
-	ReactionRuleTransport => {},
-	ReactionSet => {},
-	Reagent => {},
-	ReagentTransport => {},
-	Role => {},
-	Roleset => {},
-	RolesetRole => {}
+my $objectDefinitions = {};
+$objectDefinitions->{ObjectManager} = {
+	parents => [],
+	class => 'parent',
+	attributes => [
+		{name => 'user_uuid',perm => 'rw',type => 'uuid',req => 0}
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "user",attribute => "user_uuid",parent => "self",class => "User",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{User} = {
+	parents => ["ObjectManager"],
+	class => 'parent',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 0},
+		{name => 'login',perm => 'rw',type => 'Str',req => 1},
+		{name => 'password',perm => 'rw',type => 'Str',req => 1},
+		{name => 'email',perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'firstname',perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'lastname',perm => 'rw',type => 'Str',req => 0,default => ""},
+	],
+	subobjects => [
+		{name => "biochemistries",class => "UserBiochemistry",type => "link",attribute => "biochemistry_uuid",parent => "ObjectManager",class => "Biochemistry",query => "uuid"},
+		{name => "annotations",class => "UserAnnotation",type => "link",attribute => "annotation_uuid",parent => "ObjectManager",class => "Annotation",query => "uuid"},
+		{name => "models",class => "UserModel",type => "link",attribute => "model_uuid",parent => "ObjectManager",class => "Model",query => "uuid"},
+		{name => "mappings",class => "UserMapping",type => "link",attribute => "mapping_uuid",parent => "ObjectManager",class => "Mapping",query => "uuid"}
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
 };
 
 $objectDefinitions->{Biochemistry} = {
@@ -96,7 +92,6 @@ $objectDefinitions->{Compound} = {
 		{name => 'deltaGErr',perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [
-		{name => "aliases",class => "CompoundAlias",type => "hasharray(type,alias)"},
 		{name => "structures",class => "CompoundStructure",type => "encompassed"},
 		{name => "pks",class => "CompoundPk",type => "encompassed"},
 	],
@@ -151,7 +146,6 @@ $objectDefinitions->{Reaction} = {
 		{name => 'defaultProtons',perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [
-		{name => "aliases",class => "ReactionAlias",type => "hasharray(type,alias)"},
 		{name => "instances",class => "ReactionInstance",type => "encompassed"},
 		{name => "reagents",class => "Reagent",type => "encompassed"},
 	],
@@ -186,8 +180,7 @@ $objectDefinitions->{ReactionInstance} = {
 		{name => 'compartment_uuid',perm => 'rw',type => 'uuid',len => 36,req => 1}
 	],
 	subobjects => [
-		{name => "aliases",class => "ReactionInstanceAlias",type => "hasharray(type,alias)"},
-		{name => "transports",class => "DefaultTransports",type => "encompassed"},
+		{name => "transports",class => "InstanceTransport",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -195,7 +188,7 @@ $objectDefinitions->{ReactionInstance} = {
 	]
 };
 
-$objectDefinitions->{InstanceTransports} = {
+$objectDefinitions->{InstanceTransport} = {
 	parents => ['ReactionInstance'],
 	class => 'encompassed',
 	attributes => [
@@ -600,9 +593,12 @@ $objectDefinitions->{Feature} = {
 		{name => 'start',perm => 'rw',type => 'Int',req => 0},
 		{name => 'stop',perm => 'rw',type => 'Int',req => 0},
 		{name => 'contig',perm => 'rw',type => 'Str',req => 0},
+		{name => 'direction',perm => 'rw',type => 'Str',req => 0},
+		{name => 'sequence',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
-		{name => "featureroles",class => "FeatureRoles",type => "encompassed"},
+		{name => "featureroles",class => "FeatureRole",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -636,7 +632,7 @@ $objectDefinitions->{Mapping} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'public',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
-		{name => 'biochemistry_uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'biochemistry_uuid',perm => 'rw',type => 'uuid',req => 0},
 	],
 	subobjects => [
 		{name => "roles",class => "Role",type => "child"},
@@ -674,7 +670,6 @@ $objectDefinitions->{Roleset} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'public',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'searchname',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'varchar',req => 0,default => "unclassified"},
@@ -735,7 +730,6 @@ $objectDefinitions->{Complex} = {
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'varchar',req => 0,default => ""},
 		{name => 'searchname',perm => 'rw',type => 'varchar',req => 0,default => ""}
 	],

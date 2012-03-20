@@ -1,22 +1,22 @@
 ########################################################################
-# ModelSEED::MS::Reagent - This is the moose object corresponding to the Reagent object
+# ModelSEED::MS::DB::Reagent - This is the moose object corresponding to the Reagent object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Reaction
-use ModelSEED::MS::Compound
-package ModelSEED::MS::Reagent
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Reaction;
+use ModelSEED::MS::Compound;
+package ModelSEED::MS::DB::Reagent;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Reaction',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Reaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -30,22 +30,18 @@ has compartmentIndex => ( is => 'rw', isa => 'Int', type => 'attribute', metacla
 
 
 # LINKS:
-has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound',weak_ref => 1);
+has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildcompound {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Biochemistry','Compound','uuid',$self->compound_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'Reagent'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

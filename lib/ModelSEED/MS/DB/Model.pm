@@ -1,28 +1,28 @@
 ########################################################################
-# ModelSEED::MS::Model - This is the moose object corresponding to the Model object
+# ModelSEED::MS::DB::Model - This is the moose object corresponding to the Model object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::IndexedObject
-use ModelSEED::MS::ObjectManager
-use ModelSEED::MS::Biomass
-use ModelSEED::MS::ModelCompartment
-use ModelSEED::MS::ModelCompound
-use ModelSEED::MS::ModelReaction
-use ModelSEED::MS::Biochemistry
-use ModelSEED::MS::Mapping
-use ModelSEED::MS::Annotation
-package ModelSEED::MS::Model
-extends ModelSEED::MS::IndexedObject
+use ModelSEED::MS::IndexedObject;
+use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Biomass;
+use ModelSEED::MS::ModelCompartment;
+use ModelSEED::MS::ModelCompound;
+use ModelSEED::MS::ModelReaction;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Mapping;
+use ModelSEED::MS::Annotation;
+package ModelSEED::MS::DB::Model;
+use Moose;
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -46,45 +46,41 @@ has annotation_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metacla
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has biomasses => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]', type => 'child', metaclass => 'Typed');
-has modelcompartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]', type => 'child', metaclass => 'Typed');
-has modelcompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]', type => 'child', metaclass => 'Typed');
-has modelreactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]', type => 'child', metaclass => 'Typed');
+has biomasses => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]', type => 'child(Biomass)', metaclass => 'Typed');
+has modelcompartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]', type => 'child(ModelCompartment)', metaclass => 'Typed');
+has modelcompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]', type => 'child(ModelCompound)', metaclass => 'Typed');
+has modelreactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]', type => 'child(ModelReaction)', metaclass => 'Typed');
 
 
 # LINKS:
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry',weak_ref => 1);
-has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping',weak_ref => 1);
-has annotation => (is => 'rw',lazy => 1,builder => '_buildannotation',isa => 'ModelSEED::MS::Annotation',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
+has annotation => (is => 'rw',lazy => 1,builder => '_buildannotation',isa => 'ModelSEED::MS::Annotation', type => 'link(ObjectManager,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('ObjectManager','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 sub _buildmapping {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('ObjectManager','Mapping','uuid',$self->mapping_uuid());
 }
 sub _buildannotation {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('ObjectManager','Annotation','uuid',$self->annotation_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'Model'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

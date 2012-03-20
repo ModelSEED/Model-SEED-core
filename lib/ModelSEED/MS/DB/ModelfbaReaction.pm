@@ -1,22 +1,22 @@
 ########################################################################
-# ModelSEED::MS::ModelfbaReaction - This is the moose object corresponding to the ModelfbaReaction object
+# ModelSEED::MS::DB::ModelfbaReaction - This is the moose object corresponding to the ModelfbaReaction object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Modelfba
-use ModelSEED::MS::ModelReaction
-package ModelSEED::MS::ModelfbaReaction
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Modelfba;
+use ModelSEED::MS::ModelReaction;
+package ModelSEED::MS::DB::ModelfbaReaction;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -34,22 +34,18 @@ has ko => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed',
 
 
 # LINKS:
-has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::ModelReaction',weak_ref => 1);
+has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,ModelReaction,uuid,modelreaction_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildreaction {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Model','ModelReaction','uuid',$self->modelreaction_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'ModelfbaReaction'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

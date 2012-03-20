@@ -6,6 +6,9 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
+
+
+#use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;
@@ -19,8 +22,9 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 ######################################################################
 sub add {
     my ($self,$object) = @_;
-    my $type = $self->checkType($object->_type());
+    $object->parent($self);
     #Checking if an object matching the input object already exists
+    my $type = $object->_type();
     my $oldObj = $self->getObject({type => $type,query => {uuid => $object->uuid()}});
     if (!defined($oldObj)) {
     	$oldObj = $self->getObject({type => $type,query => {id => $object->id()}});
@@ -130,7 +134,7 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB());
+    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB()});
     $self->uuid($newuuid);
 }
 

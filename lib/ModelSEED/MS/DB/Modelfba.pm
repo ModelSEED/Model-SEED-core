@@ -1,25 +1,25 @@
 ########################################################################
-# ModelSEED::MS::Modelfba - This is the moose object corresponding to the Modelfba object
+# ModelSEED::MS::DB::Modelfba - This is the moose object corresponding to the Modelfba object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Model
-use ModelSEED::MS::ModelfbaCompound
-use ModelSEED::MS::ModelfbaReaction
-use ModelSEED::MS::ModelfbaFeature
-use ModelSEED::MS::Media
-package ModelSEED::MS::Modelfba
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Model;
+use ModelSEED::MS::ModelfbaCompound;
+use ModelSEED::MS::ModelfbaReaction;
+use ModelSEED::MS::ModelfbaFeature;
+use ModelSEED::MS::Media;
+package ModelSEED::MS::DB::Modelfba;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Model',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Model', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -43,34 +43,30 @@ has allReversible => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass 
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid');
+has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]', type => 'encompassed', metaclass => 'Typed');
-has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]', type => 'encompassed', metaclass => 'Typed');
-has genes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]', type => 'encompassed', metaclass => 'Typed');
+has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaCompound]', type => 'encompassed(ModelfbaCompound)', metaclass => 'Typed');
+has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaReaction]', type => 'encompassed(ModelfbaReaction)', metaclass => 'Typed');
+has genes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelfbaFeature]', type => 'encompassed(ModelfbaFeature)', metaclass => 'Typed');
 
 
 # LINKS:
-has media => (is => 'rw',lazy => 1,builder => '_buildmedia',isa => 'ModelSEED::MS::Media',weak_ref => 1);
+has media => (is => 'rw',lazy => 1,builder => '_buildmedia',isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,Media,uuid,media_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildUUID { return Data::UUID->new()->create_str(); }
 sub _buildModDate { return DateTime->now()->datetime(); }
 sub _buildmedia {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Biochemistry','Media','uuid',$self->media_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'Modelfba'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;

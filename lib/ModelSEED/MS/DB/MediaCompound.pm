@@ -1,22 +1,22 @@
 ########################################################################
-# ModelSEED::MS::MediaCompound - This is the moose object corresponding to the MediaCompound object
+# ModelSEED::MS::DB::MediaCompound - This is the moose object corresponding to the MediaCompound object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T22:32:28
+# Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use Moose;
 use namespace::autoclean;
-use ModelSEED::MS::BaseObject
-use ModelSEED::MS::Media
-use ModelSEED::MS::Compound
-package ModelSEED::MS::MediaCompound
-extends ModelSEED::MS::BaseObject
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::Media;
+use ModelSEED::MS::Compound;
+package ModelSEED::MS::DB::MediaCompound;
+use Moose;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Media',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Media', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -30,22 +30,18 @@ has minFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Ty
 
 
 # LINKS:
-has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound',weak_ref => 1);
+has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildcompound {
-	my ($self) = ;
+	my ($self) = @_;
 	return $self->getLinkedObject('Biochemistry','Compound','uuid',$self->compound_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'MediaCompound'; }
-
-
-# FUNCTIONS:
-#TODO
 
 
 __PACKAGE__->meta->make_immutable;
