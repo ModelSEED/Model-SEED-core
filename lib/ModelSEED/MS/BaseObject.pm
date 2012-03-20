@@ -65,11 +65,11 @@ sub serializeToDB {
 			my $class = $1;
 			my $arrayRef = $self->$name();
 			foreach my $subobject (@{$arrayRef}) {
-				push(@{$data->{$name}},$subobject->serializeToDB());
+				push(@{$data->{$attr}},$subobject->serializeToDB());
 			}
 		} elsif ($attr->type() eq m/hasharray\((.+)\)/) {
 			my $parameters = [split(/,/,$1)];
-			my $hashRef = $self->$name();
+			my $hashRef = $self->$attr();
 			foreach my $key (keys(%{$hashRef})) {
 				my $newdata = {
 					$parameters->[0] => $key,
@@ -78,7 +78,7 @@ sub serializeToDB {
 				if (defined($self->uuid())) {
 					$newdata-> {lc($self->_type())."_uuid"} = $self->uuid()
 				}
-				push(@{$data->{$name}},$newdata);
+				push(@{$data->{$attr}},$newdata);
 				
 			}
 		}
