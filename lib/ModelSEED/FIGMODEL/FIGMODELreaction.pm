@@ -1851,18 +1851,25 @@ sub balanceReaction {
     my %ReactantHash=();
     my %ProductHash=();
     my %ProtonComps=("P"=>{},"R"=>{});
+    my $Float=0;
     foreach my $cpd(@$Reactants){
+	if($cpd->{"COEFFICIENT"}->[0] =~ /\d+\.(\d+)/){
+	    $Float=length($1) if length($1) > $Float;
+	}
 	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=(0-$cpd->{"COEFFICIENT"}->[0]);
 	$ReactantHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
 	$ProtonComps{"R"}{$cpd->{"COMPARTMENT"}->[0]}=1 if $cpd->{"DATABASE"}->[0] eq "cpd00067";
     }
     foreach my $cpd(@$Products){
+	if($cpd->{"COEFFICIENT"}->[0] =~ /\d+\.(\d+)/){
+	    $Float=length($1) if length($1) > $Float;
+	}
 	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COEFF"}=$cpd->{"COEFFICIENT"}->[0];
 	$ProductHash{$cpd->{"DATABASE"}->[0]}{"COMP"}=$cpd->{"COMPARTMENT"}->[0];
 	$ProtonComps{"P"}{$cpd->{"COMPARTMENT"}->[0]}=1 if $cpd->{"DATABASE"}->[0] eq "cpd00067";
     }
 
-    #$args->{debug}=1;
+    $args->{debug}=0;
     print STDERR $args->{equation},"\n" if $args->{debug};
 
     my %formulas=();
@@ -1899,15 +1906,18 @@ sub balanceReaction {
 
     my $status='';
     foreach my $a ( grep { $_ ne "H" && $_ ne "cpd12713" } sort keys %atoms){
-		if($atoms{$a}!=0){
-		    $balanced_equation=0;
-		    if(length($status)==0){
-				$status="MI:";
-		    }else{
-				$status.="/";
-		    }
-		    $status.=$a.$atoms{$a};
-		}
+	if($Float){
+	    $atoms{$a}=sprintf("%.".$Float."f",$atoms{$a});
+	}
+	if($atoms{$a}!=0){
+	    $balanced_equation=0;
+	    if(length($status)==0){
+		$status="MI:";
+	    }else{
+		$status.="/";
+	    }
+	    $status.=$a.$atoms{$a};
+	}
     }
 
     #Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
@@ -1918,6 +1928,9 @@ sub balanceReaction {
 		    last;
 		}
     }
+
+    print STDERR "Status: ",$status,"\n" if $args->{debug};
+    $args->{debug}=0;
 
     #check protons
     my $Added_Protons=0;
@@ -2056,7 +2069,7 @@ sub balanceReaction {
 	}
     }
 
-    #$args->{debug}=1;
+    $args->{debug}=0;
 
     if($Added_Protons){
 	undef(%atoms);
@@ -2196,6 +2209,9 @@ sub balanceReaction {
 	    }
 	    if($ReactantHash{$Reactants[$i]}{"COEFF"} ne "0" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "1" && $ReactantHash{$Reactants[$i]}{"COEFF"} ne "-1"){
 		$ReactantHash{$Reactants[$i]} =~ s/^-//;
+		if($Float){
+		    $ReactantHash{$Reactants[$i]}{"COEFF"}=sprintf("%.".$Float."f",$ReactantHash{$Reactants[$i]}{"COEFF"});
+		}
 		$ReactantString .= "(".(0-$ReactantHash{$Reactants[$i]}{"COEFF"}).") ";
 	    }
 	    $ReactantString .= $Reactants[$i];
@@ -2209,6 +2225,9 @@ sub balanceReaction {
 	    }
 	    if($ProductHash{$Products[$i]}{"COEFF"} ne "0" && $ProductHash{$Products[$i]}{"COEFF"} ne "1" && $ProductHash{$Products[$i]}{"COEFF"} ne "-1"){
 		$ProductHash{$Products[$i]} =~ s/^-//;
+		if($Float){
+		    $ProductHash{$Products[$i]}{"COEFF"}=sprintf("%.".$Float."f",$ProductHash{$Products[$i]}{"COEFF"});
+		}
 		$ProductString .= "(".$ProductHash{$Products[$i]}{"COEFF"}.") ";
 	    }
 	    $ProductString .= $Products[$i];
@@ -2220,6 +2239,7 @@ sub balanceReaction {
 	$output->{equation}=$ReactantString." <=> ".$ProductString;
 	print STDERR $output->{equation},"\n\t",$output->{status},"\n\n" if $args->{debug};
     }
+
     return $output;
 }
 
@@ -2232,8 +2252,6 @@ Description:
 
 sub calculate_deltaG {
     my ($self,$args)=@_;
-    return ('','') if !$args->{energy} || !$args->{uncertainty};
-
     $args = $self->figmodel()->process_arguments($args,[],{equation => undef,debug=>0});
     if (!defined($args->{equation})) {
 	ModelSEED::globals::ERROR("Could not find reaction in database") if (!defined($self->ppo()));
@@ -2251,49 +2269,50 @@ sub calculate_deltaG {
 	$compounds{$p->{"DATABASE"}->[0]}+=$p->{"COEFFICIENT"}->[0];
     }
 
-    #Second see if destroyed/created compounds have structural cues
-    my $missing_cues=0;
+    #Second see if destroyed/created compounds have structural cues that don't cancel out
     my %cues=();
     foreach my $c (sort grep { $compounds{$_} != 0 } keys %compounds){
 	my $cDB=$self->figmodel()->database()->get_object('compound',{id=>$c});
-	if(!$cDB || !$cDB->structuralCues() || $cDB->structuralCues() eq "NULL"){
-	    $missing_cues=1;
-	    last;
+	if(!$cDB || !$cDB->structuralCues() || $cDB->structuralCues() eq "NULL" || $cDB->structuralCues() eq "nogroups"){
+	    return ('','','nogroups');
 	}else{
 	    my @cues=split(/;/,$cDB->structuralCues());
 	    foreach my $cue_stoich(@cues){
 		my ($cue,$stoich)=split(/:/,$cue_stoich);
-		if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
-		    #print "No $cue\n";
-		    $missing_cues=1;
-		    last;
-		}else{
-		    $cues{$cue}+=$compounds{$c}*$stoich;
-		}
+		$cues{$cue}+=$compounds{$c}*$stoich;
 	    }
-	    last if $missing_cues;
 	}
     }
 
-    #third, up all energy and energy uncertainty
-    if(!$missing_cues){
-	my $energy=0;
-	my $energyuncertainty=0;
-
-	foreach my $cue(sort keys %cues){
-	    #print $cue,"\t",$cues{$cue},"\t",$args->{energy}->{$cue},"\t",$energy,"\n";
-	    $energy+=$args->{energy}->{$cue}*$cues{$cue};
-	    $energyuncertainty+=($args->{uncertainty}->{$cue}*$cues{$cue})**2;
-	}
-	$energyuncertainty=$energyuncertainty**0.5;
-	$energyuncertainty=2.0 if $energyuncertainty == 0;
-
-	$energy=sprintf("%.4f",$energy);
-	$energyuncertainty=sprintf("%.4f",$energyuncertainty);
-	return ($energy,$energyuncertainty);
-    }else{
-	return ('','');
+    my $cue_string="";
+    foreach my $cue(sort grep { $cues{$_} !=0 } keys %cues){
+	$cue_string.=$cue.":".$cues{$cue}."|";
     }
+    chop($cue_string);
+
+    return ('','',$cue_string) if !$args->{energy} || !$args->{uncertainty};
+
+    #third, add up all energy and energy uncertainty using created/destroyed structural cues
+    my $energy=0;
+    my $energyuncertainty=0;
+
+    foreach my $cue(sort grep { $cues{$_} !=0 } keys %cues){
+	#if cue is not one you can use, return nothing
+	if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
+	    print "No $cue\t",$args->{energy}->{$cue},"\n";
+	    return ('','',$cue_string);
+	}
+	
+#	print $cue,"\t",$cues{$cue},"\t",$args->{energy}->{$cue},"\t",$energy,"\n";
+	$energy+=$args->{energy}->{$cue}*$cues{$cue};
+	$energyuncertainty+=($args->{uncertainty}->{$cue}*$cues{$cue})**2;
+    }
+    $energyuncertainty=$energyuncertainty**0.5;
+    $energyuncertainty=2.0 if $energyuncertainty == 0;
+    
+    $energy=sprintf("%.4f",$energy);
+    $energyuncertainty=sprintf("%.4f",$energyuncertainty);
+    return ($energy,$energyuncertainty,$cue_string);
 }
 
 =head3 find_thermodynamic_reversibility
@@ -2316,7 +2335,9 @@ sub find_thermodynamic_reversibility {
 
     my $TEMPERATURE=298.15;
     my $GAS_CONSTANT=0.0019858775;
-
+    my $RT_CONST=$TEMPERATURE*$GAS_CONSTANT;
+    my $FARADAY = 0.023061; # kcal/vol  gram divided by 1000?
+    
     #Calculate MdeltaG
     my ($max,$min)=(0.02,0.00001);
     my @substrates=$self->substrates_from_equation({equation=>$args->{equation}});
@@ -2345,20 +2366,129 @@ sub find_thermodynamic_reversibility {
 	$productsmax+=($p->{"COEFFICIENT"}->[0]*log($tmx));
     }
 
-    my $CONST=$TEMPERATURE*$GAS_CONSTANT;
+    my $deltadpsiG=0.0;
+    my $deltadconcG=0.0;
 
-    my $storedmax=$args->{deltaG}+($CONST*$productsmax)+($CONST*$reactantsmin)+$args->{deltaGerr};
-    my $storedmin=$args->{deltaG}+($CONST*$productsmin)+($CONST*$reactantsmax)-$args->{deltaGerr};
+    my $internalpH=7.0;
+    my $externalpH=7.5;
+    my $minpH=7.5;
+    my $maxpH=7.5;
+    
+    foreach my $r (@{$substrates[0]}){
+	foreach my $p (@{$substrates[1]}){
+	    if($r->{"DATABASE"}->[0] eq $p->{"DATABASE"}->[0]){
+		if($r->{"COMPARTMENT"}->[0] ne $p->{"COMPARTMENT"}){
+		    #Find number of mols transported
+		    #And direction of transport
+		    my $tempCoeff = 0;
+		    my $tempComp="";
+		    if($r->{"COEFFICIENT"}->[0] < $p->{"COEFFICIENT"}->[0]){
+			$tempCoeff=$p->{"COEFFICIENT"}->[0];
+			$tempComp=$p->{"COMPARTMENT"}->[0];
+		    }else{
+			$tempCoeff=$r->{"COEFFICIENT"}->[0];
+			$tempComp=$r->{"COMPARTMENT"}->[0];
+		    }
+
+		    #find direction of transport based on difference in concentrations
+		    my $conc_diff=0.0;
+		    if($tempComp ne "c"){
+			$conc_diff=$internalpH-$externalpH;
+		    }else{
+			$conc_diff=$externalpH-$internalpH
+		    }
+
+		    my $delta_psi = 33.33 * $conc_diff - 143.33;
+
+		    my $cDB=$self->figmodel()->database()->get_object('compound',{id=>$r->{"DATABASE"}->[0]});
+		    my $net_charge=0.0;
+		    if(!$cDB || $cDB->charge() eq "" || $cDB->charge() eq "10000000"){
+			print STDERR "Transporting ",$r->{"DATABASE"}->[0]," but no charge\n";
+		    }else{
+			$net_charge=$cDB->charge()*$tempCoeff;
+		    }
+
+		    $deltadpsiG += $net_charge * $FARADAY * $delta_psi;
+		    $deltadconcG += -2.3 * $RT_CONST * $conc_diff * $tempCoeff;
+		}
+	    }
+	}
+    }
+
+    #if($r->{"DATABASE"}->[0] eq "cpd00067"){
+    #$extCoeff -= ($DPSI_COEFF-$RT_CONST*1)*$tempCoeff;
+    #$intCoeff += ($DPSI_COEFF-$RT_CONST*1)*$tempCoeff;
+    #}else{
+    #$extCoeff -= $DPSI_COEFF*$charge*$tempCoeff;
+    #$intCoeff += $DPSI_COEFF*$charge*$tempCoeff;
+    #}
+    #Then for the whole reactant
+    #if (HinCoeff < 0) {
+    #    DeltaGMin += -HinCoeff*IntpH + -HextCoeff*MaxExtpH;
+    #    DeltaGMax += -HinCoeff*IntpH + -HextCoeff*MinExtpH;
+    #    mMDeltaG += -HinCoeff*IntpH + -HextCoeff*(IntpH+0.5);
+    #}
+    #else {  
+    #    DeltaGMin += -HinCoeff*IntpH + -HextCoeff*MinExtpH;
+    #    DeltaGMax += -HinCoeff*IntpH + -HextCoeff*MaxExtpH;
+    #    mMDeltaG += -HinCoeff*IntpH + -HextCoeff*(IntpH+0.5);
+    #}
+
+    my $storedmax=$args->{deltaG}+($RT_CONST*$productsmax)+($RT_CONST*$reactantsmin)+$args->{deltaGerr};
+    my $storedmin=$args->{deltaG}+($RT_CONST*$productsmin)+($RT_CONST*$reactantsmax)-$args->{deltaGerr};
+
+    $storedmax=sprintf("%.4f",$storedmax);
+    $storedmin=sprintf("%.4f",$storedmin);
 
     if($storedmax<0){
-	return "=>"; #\tMdeltaG\t".$storedmin."_".$storedmax;
+	return {"direction"=>"=>","status"=>"MdeltaG:".$storedmin."<>".$storedmax};
     }
     if($storedmin>0){
-	return "<="; #\tMdeltaG\t".$storedmin."_".$storedmax;
+	return {"direction"=>"<=","status"=>"MdeltaG:".$storedmin."<>".$storedmax};
     }
 
     #Do heuristics
-    #1: Calculate mMdeltaG
+    #1: ATP hydrolysis transport
+    #1a: Find Phosphate stuff
+    my %PhoHash=();
+    my %Comps=();
+    my $Contains_Protons=0;
+    foreach my $r (@{$substrates[0]}){
+	$Comps{$r->{"COMPARTMENT"}->[0]}=1;
+	$Contains_Protons=1 if($r->{"DATABASE"}->[0] eq "cpd00067" && $r->{"COMPARTMENT"}->[0] ne "c");
+	$PhoHash{"ATP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00012");
+    }
+    foreach my $p (@{$substrates[1]}){
+	$Comps{$p->{"COMPARTMENT"}->[0]}=1;
+	$Contains_Protons=1 if($p->{"DATABASE"}->[0] eq "cpd00067" && $p->{"COMPARTMENT"}->[0] ne "c");
+	$PhoHash{"ATP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00002");
+	$PhoHash{"ADP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00008");
+	$PhoHash{"AMP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00018");
+	$PhoHash{"Pi"}  = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00009");
+	$PhoHash{"Ppi"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00012");
+    }
+
+    #1b: ATP Synthase is reversible
+    if(scalar(keys %Comps)>1 && exists($PhoHash{"ATP"}) && $Contains_Protons){
+	return {"direction"=>"<=>","status"=>"ATPS"};
+    }
+
+    #1b: Find ABC Transporters (but not ATP Synthase)
+    if(scalar(keys %Comps)>1 && exists($PhoHash{"ATP"}) && !$Contains_Protons){
+	my $dir="<=>";
+	if($PhoHash{"ATP"} < 0){
+	    $dir="=>";
+	}elsif($PhoHash{"ATP"}>0){
+	    $dir="<=";
+	}
+	return {"direction"=>$dir,"status"=>"ABCT"};
+    }
+
+    #2: Calculate mMdeltaG
     my $conc=0.001;
     my $prodreacs=0.0;
     foreach my $r (@{$substrates[0]}){
@@ -2384,31 +2514,15 @@ sub find_thermodynamic_reversibility {
 	$prodreacs+=($p->{"COEFFICIENT"}->[0]*log($tconc));
     }
 
-    my $mMdeltaG=$args->{deltaG}+($CONST*$prodreacs);
+    my $mMdeltaG=$args->{deltaG}+($RT_CONST*$prodreacs);
+    $mMdeltaG=sprintf("%.4f",$mMdeltaG);
 
     if($mMdeltaG >= -2 && $mMdeltaG <= 2) {
-	return "<=>"; #\tmMdeltaG\t$mMdeltaG";
+	return {"direction"=>"<=>","status"=>"mMdeltaG:$mMdeltaG"};
     }
     
-    #2: Calculate low energy points
-    #2a: Find Phosphate stuff
-    my %PhoHash=();
-    foreach my $r (@{$substrates[0]}){
-	$PhoHash{"ATP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00002");
-	$PhoHash{"ADP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00008");
-	$PhoHash{"AMP"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00018");
-	$PhoHash{"Pi"}  += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00009");
-	$PhoHash{"Ppi"} += (0-$r->{"COEFFICIENT"}->[0]) if($r->{"DATABASE"}->[0] eq "cpd00012");
-    }
-    foreach my $p (@{$substrates[1]}){
-	$PhoHash{"ATP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00002");
-	$PhoHash{"ADP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00008");
-	$PhoHash{"AMP"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00018");
-	$PhoHash{"Pi"}  = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00009");
-	$PhoHash{"Ppi"} = $p->{"COEFFICIENT"}->[0] if($p->{"DATABASE"}->[0] eq "cpd00012");
-    }
-
-    #2b: Find minimum Phosphate stuff
+    #3: Calculate low energy points
+    #3a: Find minimum Phosphate stuff
     my $Points=0;
     my $minimum=10000;
     if(exists($PhoHash{"ATP"}) && exists($PhoHash{"Pi"}) && exists($PhoHash{"ADP"})){
@@ -2427,7 +2541,7 @@ sub find_thermodynamic_reversibility {
 	$Points=$minimum if $minimum<10000;
     }
 
-    #2c:Find other low energy compounds
+    #3b:Find other low energy compounds
     #taken from software/mfatoolkit/Parameters/Defaults.txt
     my %lowE = ("cpd00013"=>0,  #NH3
 		"cpd00011"=>0,  #CO2
@@ -2450,11 +2564,11 @@ sub find_thermodynamic_reversibility {
 
     #test points
     if(($Points*$mMdeltaG) > 2 && $mMdeltaG < 0){
-	return "=>"; #\tPoints\t".$Points."_".$mMdeltaG;
+	return {"direction"=>"=>","status"=>"Points:$Points:$mMdeltaG"};
     }elsif(($Points*$mMdeltaG) > 2 && $mMdeltaG > 0){
-	return "<="; #\tPoints\t".$Points."_".$mMdeltaG;
+	return {"direction"=>"<=","status"=>"Points:$Points:$mMdeltaG"};
     }
 
-    return "<=>"; #\tDefault\t".$Points."_".$mMdeltaG;;
+    return {"direction"=>"<=>","status"=>"Default:$storedmin<>$storedmax:$mMdeltaG:$Points"};
 }
 1;

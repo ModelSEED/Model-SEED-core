@@ -3082,6 +3082,7 @@ sub import_model {
 	#Checking if the model exists, and if not, creating the model
 	my $mdl;
 	my $modelObj = $self->database()->get_object("model",{id => $id});
+
 	if (!defined($modelObj)) {
 		$mdl = $self->create_model({
 			id => $id,
@@ -3098,6 +3099,8 @@ sub import_model {
 	if (!defined($mdl)) {
 		 $mdl = $self->get_model($id);
 	}
+
+	print $id,"\n";
 
 	#set public access for model
 	$mdl->public($args->{public});
@@ -3116,6 +3119,15 @@ sub import_model {
 			$objs->[$i]->delete();	
 		}
 	}
+
+	#Special update flag for integrating mol file and inchi data
+	my $Update=0;
+	if($args->{owner} eq "seaver" &&
+	   ($id eq "KEGGimport.45632" || $id =~ /Cyc\.45632/ || $id eq "TestBalance.45632")){
+	    $Update=1;
+	}
+
+
 	#Loading the compound table
 	my $translation;
 	my $tbl = $args->{compoundTable};
@@ -3206,20 +3218,14 @@ sub import_model {
 		}
 
 		if (!defined($cpd) && defined($row->{"METACYC"}->[0])) {
-		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "MetaCyc%"});
+		    my $cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
 		    if (defined($cpdals)) {
 			$cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			push(@{$result->{outputFile}},"Found using MetaCyc (".$row->{"METACYC"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
+			push(@{$result->{outputFile}},"Found using ".$cpdals->type()." (".$row->{"METACYC"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
 			$how_found=$cpdals->type();
-		    }else{
-			$cpdals = $mdl->figmodel()->database()->get_object("cpdals",{alias => $row->{"METACYC"}->[0],type => "%Cyc%"});
-			if (defined($cpdals)) {
-			    $cpd = $mdl->figmodel()->database()->get_object("compound",{id => $cpdals->COMPOUND()});
-			    push(@{$result->{outputFile}},"Found using ".$cpdals->type()." (".$row->{"METACYC"}->[0].") ".$cpd->id()." for id ".$row->{ID}->[0]);
-			    $how_found=$cpdals->type();
-			}
 		    }
 		}
+
 		#If a matching compound was found, we handle this scenario
 		if (defined($cpd)) {
 		    print FOUNDCPD $cpd->id(),"\t",$row->{"ID"}->[0],"\t",$how_found,"\n";
@@ -3228,7 +3234,7 @@ sub import_model {
 			    if(defined($cpd->charge()) && $cpd->charge() ne $row->{"CHARGE"}->[0]){
 			    	push(@{$result->{outputFile}},"Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]);
 			    } 
-			    if (!$cpd->charge() || $cpd->charge() == 10000000){
+			    if (!$cpd->charge() || $cpd->charge() == 10000000 || $Update==1){
 					$cpd->charge($row->{"CHARGE"}->[0]);
 			    }
 			}
@@ -3236,7 +3242,7 @@ sub import_model {
 			    if(defined($cpd->mass()) && $cpd->mass() ne $row->{"MASS"}->[0] && $row->{"MASS"}->[0] ne 10000000){
 			    	push(@{$result->{outputFile}},"Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
 			    } 
-			    if (!$cpd->mass() || $cpd->mass() == 10000000){
+			    if (!$cpd->mass() || $cpd->mass() == 10000000 || $Update==1){
 					$cpd->mass($row->{"MASS"}->[0]);
 			    }
 			}
@@ -3244,7 +3250,7 @@ sub import_model {
 			    if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
 					push(@{$result->{outputFile}},"Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
 			    } 
-			    if (!defined($cpd->formula()) || length($cpd->formula()) == 0 || $cpd->formula() eq "noformula") {
+			    if (!defined($cpd->formula()) || length($cpd->formula()) eq "" || $cpd->formula() eq "noformula" || $Update==1) {
 					$cpd->formula($row->{"FORMULA"}->[0]);
 			    }
 			}
@@ -3253,8 +3259,16 @@ sub import_model {
 			    if(defined($cpd->stringcode()) && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
 					$Changes.="Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]."\n";
 			    } 
-			    if (!defined($cpd->stringcode()) || length($cpd->stringcode()) == 0 || $cpd->stringcode() eq "nostringcode") {
+			    if (!defined($cpd->stringcode()) || length($cpd->stringcode()) eq "" || $cpd->stringcode() eq "nostringcode" || $Update==1) {
 					$cpd->stringcode($row->{"STRINGCODE"}->[0]);
+			    }
+			}
+			if (defined($row->{"GROUPS"}->[0])){
+			    if(defined($cpd->structuralCues()) && $cpd->structuralCues() ne join("|",@{$row->{"GROUPS"}})){
+					$Changes.="Groups different for ".$cpd->id()." from ".$cpd->structuralCues()." to ".join("|",@{$row->{"GROUPS"}})."\n";
+			    } 
+			    if (!defined($cpd->structuralCues()) || length($cpd->structuralCues()) eq "" || $cpd->structuralCues() eq "nogroups" || $Update==1) {
+				$cpd->structuralCues(join("|",@{$row->{"GROUPS"}}));
 			    }
 			}
 		    if(length($Changes)>0){
@@ -3285,6 +3299,9 @@ sub import_model {
 		    if (!defined($row->{"STRINGCODE"}->[0]) || $row->{"STRINGCODE"}->[0] eq "") {
 				$row->{"STRINGCODE"}->[0] = "nostringcode";
 		    }
+		    if (!defined($row->{"GROUPS"}->[0]) || $row->{"GROUPS"}->[0] eq "") {
+				$row->{"GROUPS"}->[0] = "nogroups";
+		    }
 		    $cpd = $mdl->figmodel()->database()->create_object("compound",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
@@ -3299,7 +3316,8 @@ sub import_model {
 				modificationDate => time(),
 				creationDate => time(),
 				public => 1,
-				scope => $id
+				scope => $id,
+				structuralCues => join("|",@{$row->{"GROUPS"}})
 			});
 		}
 		foreach my $name ( grep { $_ ne $row->{"ID"}->[0] } keys(%{$newNames->{name}})) {
@@ -3429,12 +3447,33 @@ sub import_model {
 				}
 			}
 		}
+
 		if (defined($rxn)) {
 			print FOUNDRXN $rxn->id(),"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\n";
 			push(@{$result->{outputFile}},"Found:".$rxn->id()." for ".$row->{"ID"}->[0]);
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
+			if($Update==1){
+			    my ($deltaG,$deltaGErr,$sCues) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
+												      energy=>\%Cues_Energy,
+												      uncertainty=>\%Cues_EnergyUncertainty});
+
+			    my $thermoreversibility='';
+			    if($deltaG ne ''){
+				$thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
+														deltaG=>$deltaG},deltaGerr=>$deltaGErr);
+			    }else{
+				$deltaG='10000000';
+				$deltaGErr='10000000';
+			    }
+
+			    $rxn->deltaG($deltaG);
+			    $rxn->deltaGErr($deltaGErr);
+			    $rxn->thermoReversibility($thermoreversibility->{direction});
+			    $rxn->structuralCues($sCues);
+			}
+
 			if (defined($row->{"ENZYMES"}->[0])) {
 				my $enzymeHash;
 				for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
@@ -3460,12 +3499,12 @@ sub import_model {
 			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
 			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code});
 
-			my ($deltaG,$deltaGErr) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
-											   energy=>\%Cues_Energy,
-											   uncertainty=>\%Cues_EnergyUncertainty});
+			my ($deltaG,$deltaGErr,$sCues) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
+												  energy=>\%Cues_Energy,
+												  uncertainty=>\%Cues_EnergyUncertainty});
 
 			my $thermoreversibility='';
-			if($deltaG){
+			if($deltaG ne ''){
 			    $thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
 													    deltaG=>$deltaG},deltaGerr=>$deltaGErr);
 			}else{
@@ -3473,25 +3512,32 @@ sub import_model {
 			    $deltaGErr='10000000';
 			}
 
+			my $enzymeHash;
+			for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
+			    if ($row->{"ENZYMES"}->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+				$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
+			    }
+			}
 
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
 				abbrev => $row->{"ABBREV"}->[0],
-				enzyme => join("|",@{$row->{"ENZYMES"}}),
+				enzyme => join("|",sort keys %$enzymeHash),
 				code => $codeResults->{code},
 				equation => $codeResults->{fullEquation},
 				definition => $row->{"EQUATION"}->[0],
 				deltaG => $deltaG,
 				deltaGErr => $deltaGErr,
 				reversibility => $row->{"DIRECTIONALITY"}->[0],
-				thermoReversibility => $thermoreversibility,
+				thermoReversibility => $thermoreversibility->{direction},
 				owner => $args->{owner},
 				modificationDate => time(),
 				creationDate => time(),
 				public => 1,
 				status => $codeResults->{status},
-				scope => $id
+				scope => $id,
+				structuralCues => $sCues
 			});
 		}
 

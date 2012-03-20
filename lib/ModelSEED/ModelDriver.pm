@@ -894,9 +894,17 @@ sub fbacheckgrowth {
 		}
 		$message .= $args->{model}." grew in ".$args->{media}." media with rate:".$results->{growth}." gm biomass/gm CDW hr.\n"
 	} else {
-		$message .= $args->{model}." failed to grow in ".$args->{media}." media.\n";
+		$message .= $args->{model}." failed to grow in media:\n".$args->{media}."\n";
 		if (defined($results->{noGrowthCompounds}->[0])) {
-			$message .= "Biomass compounds ".join(",",@{$results->{noGrowthCompounds}})." could not be generated!\n";
+			$message .= "The following biomass compounds could not be generated:\n";
+            foreach my $cpdId (@{$results->{noGrowthCompounds}}) {
+                my $cpd = $self->figmodel()->get_compound($cpdId);
+                if(defined($cpd)) {
+                    $message .= join("\t", ($cpd->ppo->id, $cpd->ppo->name)) . "\n";
+                } else {
+                    $message .= $cpdId . "\n"
+                }
+            }
 		}
 	}
 	return $message;
