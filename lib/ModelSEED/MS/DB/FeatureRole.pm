@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -20,8 +20,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Feature', type => 'parent', met
 
 
 # ATTRIBUTES:
-has feature_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has role_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has feature_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has compartment => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'unknown' );
 has comment => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
 has delimiter => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );

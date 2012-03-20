@@ -109,10 +109,10 @@ foreach my $name (keys(%{$objects})) {
 	#Printing builders
 	push(@{$output},("# BUILDERS:"));
 	if ($uuid == 1) {
-		push(@{$output},"sub _buildUUID { return Data::UUID->new()->create_str(); }");
+		push(@{$output},"sub _builduuid { return Data::UUID->new()->create_str(); }");
 	}
 	if ($modDate == 1) {
-		push(@{$output},"sub _buildModDate { return DateTime->now()->datetime(); }");
+		push(@{$output},"sub _buildmodDate { return DateTime->now()->datetime(); }");
 	}
 	foreach my $subobject (@{$object->{links}}) {
 		push(@{$output},(

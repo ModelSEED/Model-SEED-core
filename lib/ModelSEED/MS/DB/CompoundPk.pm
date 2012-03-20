@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -19,7 +19,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Compound', type => 'parent', me
 
 
 # ATTRIBUTES:
-has compound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has atom => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has pk => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
@@ -29,7 +29,7 @@ has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed
 
 
 # BUILDERS:
-sub _buildModDate { return DateTime->now()->datetime(); }
+sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

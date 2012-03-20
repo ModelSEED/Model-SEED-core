@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -20,8 +20,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba', type => 'parent', me
 
 
 # ATTRIBUTES:
-has modelfba_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has modelcompound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modelfba_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has flux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has lowerbound => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
 has upperbound => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );

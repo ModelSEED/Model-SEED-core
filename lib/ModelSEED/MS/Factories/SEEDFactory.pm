@@ -34,13 +34,13 @@ sub _type { return 'SEEDFactory'; }
 # FUNCTIONS:
 sub buildMooseAnnotation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities->ARGS($args,["genome_id"],{
+	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
 		mapping_uuid => undef,
 		mapping => undef,
 		source => undef
 	});
 	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource($args->{genomeid});	
+		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});	
 	}
 	if (!defined($args->{mapping})) {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
@@ -116,45 +116,47 @@ sub getMappingObject {
 	});
 	my $mappingObj;
 	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->parent()->getObject("Mapping",{uuid => $args->{mapping_uuid}});
+		$mappingObj = $self->om()->getObject("Mapping",{uuid => $args->{mapping_uuid}});
 		if (!defined($mappingObj)) {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}
 	} else {
 		$mappingObj = ModelSEED::MS::Mapping->new({
-			parent => $self->parent()
+			name => "Test",
+			parent => $self->om()
 		});
+		$self->om()->add($mappingObj);
 	}
 	return $mappingObj;
 }
 
 sub getGenomeSource {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genomeid"],{});
-	my $result = $self->sapsvr()->exists({-type => 'Genome',-ids => [$self->genome()]});
-	if ($result->{$self->genome()} eq "1") {
+	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{});
+	my $result = $self->sapsvr()->exists({-type => 'Genome',-ids => [$args->{genome_id}]});
+	if ($result->{$args->{genome_id}} eq "1") {
 		return "PUBSEED";
 	}
-	$result = $self->MSSeedSupportClient()->genomeType({ids => [$self->genome()]});
-	return $result->{$self->genome()};
+	$result = $self->MSSeedSupportClient()->genomeType({ids => [$args->{genome_id}]});
+	return $result->{$args->{genome_id}};
 }
 
 sub getGenomeFeatures {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genomeid"],{
+	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
 		source => undef,
 		withSequences => 0 
 	});
 	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genomeid => $args->{genomeid}});
+		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
 	}
 	my $features;
 	if ($args->{source} eq "PUBSEED") {
-		my $featureHash = $self->sapsvr()->all_features({-ids => $args->{genomeid}});
-		if (!defined($featureHash->{$args->{genomeid}})) {
-			ModelSEED::utilities::ERROR("Could not load features for pubseed genome:".$args->{genomeid});
+		my $featureHash = $self->sapsvr()->all_features({-ids => $args->{genome_id}});
+		if (!defined($featureHash->{$args->{genome_id}})) {
+			ModelSEED::utilities::ERROR("Could not load features for pubseed genome:".$args->{genome_id});
 		}
-		my $featureList = $featureHash->{$args->{genomeid}};
+		my $featureList = $featureHash->{$args->{genome_id}};
 		my $functions = $self->sapsvr()->ids_to_functions({-ids => $featureList});
 		my $locations = $self->sapsvr()->fid_locations({-ids => $featureList});
 		#my $aliases = $self->sapsvr()->fids_to_ids({-ids => $featureList,-protein => 1});
@@ -196,9 +198,9 @@ sub getGenomeFeatures {
 		if (!defined($self->parent()) || !defined($self->parent()->user())) {
 			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
 		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genomeid}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
+		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
 		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genomeid});
+			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
 		}
 		for (my $i=0; $i < $output->{features}; $i++) {
 			my $ftr = $output->{features}->[$i];
@@ -237,32 +239,32 @@ sub getGenomeFeatures {
 
 sub getGenomeAttributes {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genomeid"],{
+	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
 		source => undef
 	});
 	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genomeid => $args->{genomeid}});
+		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
 	}
 	my $attributes;
 	if ($args->{source} eq "PUBSEED") {
 		my $genomeHash = $self->sapsvr()->genome_data({
-			-ids => [$args->{genomeid}],
+			-ids => [$args->{genome_id}],
 			-data => ["gc-content", "dna-size","name","taxonomy"]
 		});
-		if (!defined($genomeHash->{$args->{genomeid}})) {
-			ModelSEED::utilities::ERROR("Could not load data for pubseed genome:".$args->{genomeid});
+		if (!defined($genomeHash->{$args->{genome_id}})) {
+			ModelSEED::utilities::ERROR("Could not load data for pubseed genome:".$args->{genome_id});
 		}
-		$attributes->{name} = $genomeHash->{$args->{genomeid}}->[2];
-		$attributes->{taxonomy} = $genomeHash->{$args->{genomeid}}->[3];
-		$attributes->{size} = $genomeHash->{$args->{genomeid}}->[1];
-		$attributes->{gc} = $genomeHash->{$args->{genomeid}}->[0];
+		$attributes->{name} = $genomeHash->{$args->{genome_id}}->[2];
+		$attributes->{taxonomy} = $genomeHash->{$args->{genome_id}}->[3];
+		$attributes->{size} = $genomeHash->{$args->{genome_id}}->[1];
+		$attributes->{gc} = $genomeHash->{$args->{genome_id}}->[0];
 	} else {
 		if (!defined($self->parent()) || !defined($self->parent()->user())) {
 			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
 		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genomeid}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
+		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
 		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genomeid});
+			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
 		}
 		$attributes->{name} = $output->{name};
 		$attributes->{taxonomy} = $output->{taxonomy};

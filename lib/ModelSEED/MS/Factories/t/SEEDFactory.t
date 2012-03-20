@@ -9,6 +9,10 @@ my $testCount = 0;
     my $seedfact = ModelSEED::MS::Factories::SEEDFactory->new({om => $om});
     ok defined($om), "Created object manager!";
     ok defined($seedfact), "Created seedfactory!";
+    my $anno = $seedfact->buildMooseAnnotation({
+    	genome_id => "83333.1"
+    });
+    ok defined($anno), "Created annotation!";
     $testCount += 2;
 }
 done_testing($testCount);
