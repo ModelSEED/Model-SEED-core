@@ -329,7 +329,7 @@ sub resetjob {
 	my $jobs = [split(/;/,$Data[1])];
 	for (my $i=0; $i < @{$jobs}; $i++) {
 		my $object = $self->db()->get_object("job",{_id => $jobs->[$i]});
-		$self->db()->{_dbhandles}->{SchedulerDB} = undef;
+		$self->db()->{_dbhandles}->{SchedulerDB}->DESTROY();
 		if (defined($object)) {
 			$object->STATE(0);
 			print "Resetting job:".$self->printJob($object)."\n";
