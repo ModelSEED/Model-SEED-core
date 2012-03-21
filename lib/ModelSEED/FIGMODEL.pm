@@ -3477,17 +3477,17 @@ sub import_model {
 			if (defined($row->{"ENZYMES"}->[0])) {
 				my $enzymeHash;
 				for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
-					if ($row->{"ENZYMES"}->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
-						$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
-					}
+				    if ($row->{"ENZYMES"}->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
+					$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
+				    }
 				}
 				if (defined($rxn->enzyme()) && length($rxn->enzyme()) > 0) {
-					my $list = [split(i/[\|\s,]+/,$rxn->enzyme())];
-					for (my $j=0; $j < @{$list}; $j++) {
-						if ($list->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
-							$enzymeHash->{$list->[$j]} = 1;
-						}
+				    my $list = [split(/[\|\s,]+/,$rxn->enzyme())];
+				    for (my $j=0; $j < @{$list}; $j++) {
+					if ($list->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
+					    $enzymeHash->{$list->[$j]} = 1;
 					}
+				    }
 				}
 				my $newString = join("|",sort(keys(%{$enzymeHash})));
 				$newString="undetermined" if !$newString;
@@ -3521,7 +3521,6 @@ sub import_model {
 			}
 			my $enzString = join("|",sort(keys(%{$enzymeHash})));
 			$enzString="undetermined" if !$enzString;
-
 
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
