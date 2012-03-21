@@ -328,12 +328,9 @@ sub resetjob {
     }
 	my $jobs = [split(/;/,$Data[1])];
 	for (my $i=0; $i < @{$jobs}; $i++) {
-		my $fm = ModelSEED::FIGMODEL->new();
-		my $object = $fm->database()->get_object("job",{_id => $jobs->[$i]});
+		my $object = $self->db()->get_object("job",{_id => $jobs->[$i]});
 		if (defined($object)) {
-			#print $object->STATE()."\t";
-			#$object->STATE(0);
-			#print $object->STATE()."\n";
+			$object->STATE(0);
 			print "Resetting job:".$self->printJob($object)."\n";
 		} else {
 			print "Job ID ".$jobs->[$i]." not found!\n";
