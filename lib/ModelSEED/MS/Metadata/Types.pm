@@ -8,10 +8,10 @@
 use strict;
 use Moose::Util::TypeConstraints;
 
-subtype 'ModelSEED::uuid',
+subtype 'uuid',
 	as 'Str', where {length($_) == 36},
 	message { "The uuid you provided (".$_.") does not have the right number of characters!" };
 	
-subtype 'ModelSEED::varchar',
+subtype 'varchar',
 	as 'Str', where {length($_) < 256},
 	message { "The string you provided (".$_.") is too long to be a varchar!" };
