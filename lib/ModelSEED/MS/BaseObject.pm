@@ -132,7 +132,7 @@ sub annotation {
 sub mapping {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::Mapping") {
+	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->mapping();
 	}
 	return $parent;

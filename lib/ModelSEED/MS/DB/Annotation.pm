@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:18:07
+# Date of module creation: 2012-03-20T19:33:20
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -53,6 +53,12 @@ sub _buildmapping {
 
 # CONSTANTS:
 sub _type { return 'Annotation'; }
+sub _typeToFunction {
+	return {
+		Genome => 'genomes',
+		Feature => 'features',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;

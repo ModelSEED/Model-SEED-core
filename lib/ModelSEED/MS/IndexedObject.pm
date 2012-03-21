@@ -6,9 +6,6 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
-
-
-#use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;
@@ -25,9 +22,9 @@ sub add {
     $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
-    my $oldObj = $self->getObject({type => $type,query => {uuid => $object->uuid()}});
+    my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
     if (!defined($oldObj)) {
-    	$oldObj = $self->getObject({type => $type,query => {id => $object->id()}});
+    	$oldObj = $self->getObject($type,{id => $object->id()});
     } elsif ($oldObj->id() ne $object->id()) {
     	ModelSEED::utilities::ERROR("Added object has identical uuid to an object in the database, but ids are different!");		
     }
@@ -64,9 +61,6 @@ sub getObject {
 sub getObjects {
     my ($self,$type,$query) = @_;
     if(!defined($type) || !defined($query) || ref($query) ne 'HASH') {
-        # Calling utilities::ARGS takes ~ 10 microseconds
-        # right now we are calling getObjects ~ 200,000 for biochem
-        # initialization, so removing this shaves 2 seconds off start time.
     	ModelSEED::utilities::ERROR("Bad arguments to getObjects.");
     }
     # resultSet is a map of $object => $object
@@ -108,7 +102,6 @@ sub clearIndex {
 	if (!defined($args->{type})) {
 		$self->indices({});
 	} else {
-		$self->checkType($args->{type});
 		if (!defined($args->{attribute})) {
 			$self->indices->{$args->{type}} = {};	
 		} else {
@@ -120,7 +113,8 @@ sub clearIndex {
 sub buildIndex {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["type","attribute"],{});
-	my $function = $self->checkType($args->{type});
+	print $self->_type()."\n";
+	my $function = $self->_typeToFunction()->{$args->{type}};
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};
 	for (my $i=0; $i < @{$objects}; $i++) {

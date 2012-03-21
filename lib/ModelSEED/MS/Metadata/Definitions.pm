@@ -2,18 +2,6 @@ use strict;
 package ModelSEED::MS::DB::Definitions;
 
 my $objectDefinitions = {};
-$objectDefinitions->{ObjectManager} = {
-	parents => [],
-	class => 'parent',
-	attributes => [
-		{name => 'user_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0}
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "user",attribute => "user_uuid",parent => "self",class => "User",query => "uuid"}
-	]
-};
 
 $objectDefinitions->{User} = {
 	parents => ["ObjectManager"],

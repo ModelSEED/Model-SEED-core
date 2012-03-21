@@ -54,7 +54,7 @@ sub buildMooseAnnotation {
 		size => $genomeData->{size},
 		gc => $genomeData->{gc},
 	});
-	my $annoationObj = ModelSEED::MS::Annotation->new();
+	my $annoationObj = $self->om()->create("Annotation");
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
 	$annoationObj->add($genomeObj);
 	if (!defined($genomeData->{features})) {
@@ -116,16 +116,12 @@ sub getMappingObject {
 	});
 	my $mappingObj;
 	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->om()->getObject("Mapping",{uuid => $args->{mapping_uuid}});
+		$mappingObj = $self->om()->get($args->{mapping_uuid});
 		if (!defined($mappingObj)) {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}
 	} else {
-		$mappingObj = ModelSEED::MS::Mapping->new({
-			name => "Test",
-			parent => $self->om()
-		});
-		$self->om()->add($mappingObj);
+		$mappingObj = $self->om()->create("Mapping",{name=>"Test"});
 	}
 	return $mappingObj;
 }
