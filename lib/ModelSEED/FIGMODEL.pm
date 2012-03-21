@@ -3386,7 +3386,7 @@ sub import_model {
 			$row->{"ABBREV"}->[0] = $row->{"ID"}->[0];
 		}
 		if (!defined($row->{"ENZYMES"})) {
-			$row->{"ENZYMES"} = [];
+			$row->{"ENZYMES"} = ["undetermined"];
 		}
 
 		#Checking if there is an equation match
@@ -3477,19 +3477,20 @@ sub import_model {
 			if (defined($row->{"ENZYMES"}->[0])) {
 				my $enzymeHash;
 				for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
-					if ($row->{"ENZYMES"}->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+					if ($row->{"ENZYMES"}->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
 						$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
 					}
 				}
 				if (defined($rxn->enzyme()) && length($rxn->enzyme()) > 0) {
-					my $list = [split(/\|/,$rxn->enzyme())];
+					my $list = [split(i/[\|\s,]+/,$rxn->enzyme())];
 					for (my $j=0; $j < @{$list}; $j++) {
-						if ($list->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+						if ($list->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
 							$enzymeHash->{$list->[$j]} = 1;
 						}
 					}
 				}
 				my $newString = join("|",sort(keys(%{$enzymeHash})));
+				$newString="undetermined" if !$newString;
 				if (!defined($rxn->enzyme()) || $newString ne $rxn->enzyme()) {
 					$rxn->enzyme($newString);
 				}
@@ -3514,16 +3515,19 @@ sub import_model {
 
 			my $enzymeHash;
 			for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
-			    if ($row->{"ENZYMES"}->[$j] =~ m/[^.]+\.[^.]+\.[^.]+\.[^.]+/) {
+			    if ($row->{"ENZYMES"}->[$j] =~ m/^[^.]+\.[^.]+\.[^.]+(\.[^.]+)?$/) {
 				$enzymeHash->{$row->{"ENZYMES"}->[$j]} = 1;
 			    }
 			}
+			my $enzString = join("|",sort(keys(%{$enzymeHash})));
+			$enzString="undetermined" if !$enzString;
+
 
 			$rxn = $mdl->figmodel()->database()->create_object("reaction",{
 				id => $newid,
 				name => $row->{"NAMES"}->[0],
 				abbrev => $row->{"ABBREV"}->[0],
-				enzyme => join("|",sort keys %$enzymeHash),
+				enzyme => $enzString,
 				code => $codeResults->{code},
 				equation => $codeResults->{fullEquation},
 				definition => $row->{"EQUATION"}->[0],
