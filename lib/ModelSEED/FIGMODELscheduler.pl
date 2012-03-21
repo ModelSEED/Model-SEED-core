@@ -330,6 +330,7 @@ sub resetjob {
 	for (my $i=0; $i < @{$jobs}; $i++) {
 		my $fm = ModelSEED::FIGMODEL->new();
 		my $object = $fm->database()->get_object("job",{_id => $jobs->[$i]});
+		sleep(2);
 		if (defined($object)) {
 			$object->STATE(0);
 			print "Resetting job:".$self->printJob($object)."\n";
