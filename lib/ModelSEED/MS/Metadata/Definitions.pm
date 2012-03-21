@@ -41,9 +41,71 @@ $objectDefinitions->{Biochemistry} = {
 		{name => "media",class => "Media",type => "child"},
 		{name => "compoundsets",class => "Compoundset",type => "child"},
 		{name => "reactionsets",class => "Reactionset",type => "child"},
+		{name => "compoundaliassets",class => "CompoundAliasSet",type => "child"},
+		{name => "reactionaliassets",class => "ReactionAliasSet",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
+};
+
+$objectDefinitions->{CompoundAliasSet} = {
+	parents => [''],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "compoundaliases",class => "CompoundAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{CompoundAlias} = {
+       parents => ['CompoundAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'compound_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias compound_uuid) ],
+       links => [
+              {name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
+       ]
+};
+
+$objectDefinitions->{ReactionAliasSet} = {
+	parents => [''],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "reactionaliases",class => "ReactionAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{ReactionAlias} = {
+       parents => ['ReactionAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'reaction_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias reaction_uuid) ],
+       links => [
+              {name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+       ]
 };
 
 $objectDefinitions->{Compartment} = {

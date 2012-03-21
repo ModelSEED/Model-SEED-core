@@ -60,6 +60,9 @@ sub get {
 sub create {
 	my ($self,$type,$args) = @_;
 	my $class = "ModelSEED::MS::".$type;
+	if (!defined($args)) {
+		$args = {};	
+	}
 	my $object = $class->new($args);
 	$object->parent($self);
 	$self->objects()->{$object->uuid()} = $object;

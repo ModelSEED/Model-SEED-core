@@ -88,8 +88,9 @@ foreach my $name (keys(%{$objects})) {
 		foreach my $subobject (@{$object->{subobjects}}) {
 			$typeToFunction->{$subobject->{class}} = $subobject->{name};
 			$type = ", type => '".$subobject->{type}."(".$subobject->{class}.")', metaclass => 'Typed'";
-			if ($subobject->{type} =~ m/hasharray/) {
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]'".$type.");");
+			if ($subobject->{type} =~ m/hasharray\((.+)\)/) {
+				$type = ", type => 'hasharray(".$subobject->{class}.",".$1.")', metaclass => 'Typed'";
+				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]'".$type.");");
 			} elsif ($subobject->{type} =~ m/link/) {				
 				$type = ", type => 'solink(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.",weak_ref => 1);");

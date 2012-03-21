@@ -36,18 +36,25 @@ sub BUILD {
     my ($self,$params) = @_;
     for my $attr ( $meta->get_all_attributes ) {
 		if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-    		my $class = $1;
+    		my $class = 'ModelSEED::MS::'.$1;
     		my $function = $attr->name();
 			my $dataArray = $self->$function();
 			my $newData;
 			foreach my $data (@{$dataArray}) {
 				$data->{parent} = $self;
-				if ($attr->type() =~ m/hasharray\((.+),(.+)\)/) {
-					push(@{$newData->{$data->{$1}}},$data->{$2});
-				} else {
-					$class = 'ModelSEED::MS::'.$class;
-					push(@{$newData},$class->new($data));
-				}
+				push(@{$newData},$class->new($data));
+			}
+			$self->$function($newData);
+		} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
+    		my $parameters = [split(/,/,$1)];
+    		my $class = 'ModelSEED::MS::'.$parameters->[0];
+    		my $attribute = $parameters->[1];
+    		my $function = $attr->name();
+			my $dataArray = $self->$function();
+			my $newData;
+			foreach my $data (@{$dataArray}) {
+				$data->{parent} = $self;
+				push(@{$newData->{$data->{$attribute}}},$class->new($data));
 			}
 			$self->$function($newData);
 		}
@@ -68,18 +75,11 @@ sub serializeToDB {
 				push(@{$data->{$attr}},$subobject->serializeToDB());
 			}
 		} elsif ($attr->type() eq m/hasharray\((.+)\)/) {
-			my $parameters = [split(/,/,$1)];
 			my $hashRef = $self->$attr();
 			foreach my $key (keys(%{$hashRef})) {
-				my $newdata = {
-					$parameters->[0] => $key,
-					$parameters->[1] => $hashRef->{$key}
-				};
-				if (defined($self->uuid())) {
-					$newdata-> {lc($self->_type())."_uuid"} = $self->uuid()
-				}
-				push(@{$data->{$attr}},$newdata);
-				
+				foreach my $obj (@{$hashRef->{$key}}) {
+					push(@{$data->{$attr}},$obj->serializeToDB());
+				}	
 			}
 		}
 	}
@@ -105,28 +105,34 @@ sub getLinkedObject {
 sub biochemistry {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::Biochemistry") {
+	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->biochemistry();
+	} elsif (ref($parent) eq "ModelSEED::MS::Biochemistry") {
+		return $parent;
 	}
-	return $parent;
+	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
 
 sub model {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::Model") {
+	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->model();
+	} elsif (ref($parent) eq "ModelSEED::MS::Model") {
+		return $parent;
 	}
-	return $parent;
+	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
 
 sub annotation {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::Annotation") {
+	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->annotation();
+	} elsif (ref($parent) eq "ModelSEED::MS::Annotation") {
+		return $parent;
 	}
-	return $parent;
+	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
 
 sub mapping {
@@ -134,8 +140,10 @@ sub mapping {
 	my $parent = $self->parent();
 	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->mapping();
+	} elsif (ref($parent) eq "ModelSEED::MS::Mapping") {
+		return $parent;
 	}
-	return $parent;
+	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }
 
 sub objectmanager {

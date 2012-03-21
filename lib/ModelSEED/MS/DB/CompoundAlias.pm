@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::MS::DB::MediaCompound - This is the moose object corresponding to the MediaCompound object
+# ModelSEED::MS::DB::CompoundAlias - This is the moose object corresponding to the CompoundAlias object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -8,23 +8,20 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Media;
+use ModelSEED::MS::CompoundAliasSet;
 use ModelSEED::MS::Compound;
-package ModelSEED::MS::DB::MediaCompound;
+package ModelSEED::MS::DB::CompoundAlias;
 use Moose;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Media', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::CompoundAliasSet', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
-has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has concentration => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.001' );
-has maxFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '100' );
-has minFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '-100' );
+has compound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 
@@ -41,7 +38,7 @@ sub _buildcompound {
 
 
 # CONSTANTS:
-sub _type { return 'MediaCompound'; }
+sub _type { return 'CompoundAlias'; }
 
 
 __PACKAGE__->meta->make_immutable;

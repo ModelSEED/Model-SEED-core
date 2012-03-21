@@ -23,11 +23,6 @@ sub add {
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
     my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
-    if (!defined($oldObj)) {
-    	$oldObj = $self->getObject($type,{id => $object->id()});
-    } elsif ($oldObj->id() ne $object->id()) {
-    	ModelSEED::utilities::ERROR("Added object has identical uuid to an object in the database, but ids are different!");		
-    }
     if (defined($oldObj)) {
     	if ($oldObj->locked() != 1) {
     		$object->uuid($oldObj->uuid());

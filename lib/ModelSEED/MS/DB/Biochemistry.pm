@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:33:20
+# Date of module creation: 2012-03-21T23:36:53
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -15,6 +15,8 @@ use ModelSEED::MS::Reaction;
 use ModelSEED::MS::Media;
 use ModelSEED::MS::Compoundset;
 use ModelSEED::MS::Reactionset;
+use ModelSEED::MS::CompoundAliasSet;
+use ModelSEED::MS::ReactionAliasSet;
 package ModelSEED::MS::DB::Biochemistry;
 use Moose;
 extends 'ModelSEED::MS::IndexedObject';
@@ -43,6 +45,8 @@ has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRe
 has media => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]', type => 'child(Media)', metaclass => 'Typed');
 has compoundsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]', type => 'child(Compoundset)', metaclass => 'Typed');
 has reactionsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]', type => 'child(Reactionset)', metaclass => 'Typed');
+has compoundaliassets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundAliasSet]', type => 'child(CompoundAliasSet)', metaclass => 'Typed');
+has reactionaliassets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionAliasSet]', type => 'child(ReactionAliasSet)', metaclass => 'Typed');
 
 
 # BUILDERS:
@@ -54,12 +58,14 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'Biochemistry'; }
 sub _typeToFunction {
 	return {
-		Reaction => 'reactions',
-		Compound => 'compounds',
-		Compoundset => 'compoundsets',
+		CompoundAliasSet => 'compoundaliassets',
 		Reactionset => 'reactionsets',
-		Compartment => 'compartments',
+		ReactionAliasSet => 'reactionaliassets',
 		Media => 'media',
+		Compound => 'compounds',
+		Reaction => 'reactions',
+		Compoundset => 'compoundsets',
+		Compartment => 'compartments',
 	};
 }
 
