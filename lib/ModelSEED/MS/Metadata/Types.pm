@@ -13,5 +13,5 @@ subtype 'ModelSEED::uuid',
 	message { "The uuid you provided (".$_.") does not have the right number of characters!" };
 	
 subtype 'ModelSEED::varchar',
-	as 'Int', where {length($_) < 256},
+	as 'Str', where {length($_) < 256},
 	message { "The string you provided (".$_.") is too long to be a varchar!" };

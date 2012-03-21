@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -20,11 +20,11 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Model', type => 'parent', metac
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 
 
 # ANCESTOR:
@@ -36,8 +36,8 @@ has biomasscompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|
 
 
 # BUILDERS:
-sub _buildUUID { return Data::UUID->new()->create_str(); }
-sub _buildModDate { return DateTime->now()->datetime(); }
+sub _builduuid { return Data::UUID->new()->create_str(); }
+sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

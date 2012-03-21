@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -20,14 +20,14 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping', type => 'parent', met
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has searchname => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has class => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
-has subclass => ( is => 'rw', isa => 'varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has searchname => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
+has subclass => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
@@ -40,8 +40,8 @@ has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[Mo
 
 
 # BUILDERS:
-sub _buildUUID { return Data::UUID->new()->create_str(); }
-sub _buildModDate { return DateTime->now()->datetime(); }
+sub _builduuid { return Data::UUID->new()->create_str(); }
+sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

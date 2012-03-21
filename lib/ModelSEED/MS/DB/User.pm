@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-20T19:18:07
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -23,7 +23,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
 has login => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has password => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has email => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
@@ -43,7 +43,7 @@ has mappings => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef
 
 
 # BUILDERS:
-sub _buildUUID { return Data::UUID->new()->create_str(); }
+sub _builduuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:

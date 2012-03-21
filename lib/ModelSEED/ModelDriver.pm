@@ -900,9 +900,9 @@ sub fbacheckgrowth {
             foreach my $cpdId (@{$results->{noGrowthCompounds}}) {
                 my $cpd = $self->figmodel()->get_compound($cpdId);
                 if(defined($cpd)) {
-                    print join("\t", ($cpd->id, $cpd->name)) . "\n";
+                    $message .= join("\t", ($cpd->ppo->id, $cpd->ppo->name)) . "\n";
                 } else {
-                    print $cpdId . "\n"
+                    $message .= $cpdId . "\n"
                 }
             }
 		}
