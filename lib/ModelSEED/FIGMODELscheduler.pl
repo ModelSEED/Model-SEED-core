@@ -332,9 +332,9 @@ sub resetjob {
 		my $object = $fm->database()->get_object("job",{_id => $jobs->[$i]});
 		if (defined($object)) {
 			#print $object->STATE()."\t";
-			$object->STATE(0);
+			#$object->STATE(0);
 			#print $object->STATE()."\n";
-			#print "Resetting job:".$self->printJob($object)."\n";
+			print "Resetting job:".$self->printJob($object)."\n";
 		} else {
 			print "Job ID ".$jobs->[$i]." not found!\n";
 		}
