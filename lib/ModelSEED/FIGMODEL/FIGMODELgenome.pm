@@ -176,20 +176,20 @@ sub feature_table {
 		source => undef,
 		owner => undef
 	});
-	print "test1";
+	print "test1:".$args->{source};
 	if (!defined($args->{source}) && defined($self->ppo())) {
 		$args->{source} = $self->ppo()->source();
 	}
 	if (!defined($args->{owner}) && defined($self->ppo())) {
 		$args->{owner} = $self->ppo()->owner();
 	}
-	print "test2";
+	print "test2:".$args->{source};
 	if (!defined($self->{_features})) {
 		if ($args->{source} =~ m/RAST/) {
-			print "test3";
+			print "test3:".$args->{source};
 			my $output = $self->getRastGenomeData();
 		} elsif ($args->{source} =~ m/SEED/) {
-			print "test4";
+			print "test4:".$args->{source};
 			$self->{_features} = ModelSEED::FIGMODEL::FIGMODELTable->new(["ID","GENOME","ESSENTIALITY","ALIASES","TYPE","LOCATION","LENGTH","DIRECTION","MIN LOCATION","MAX LOCATION","ROLES","SOURCE","SEQUENCE"],$self->figmodel()->config("database message file directory")->[0]."Features-".$args->{genome}.".txt",["ID","ALIASES","TYPE","ROLES","GENOME"],"\t","|",undef);
 			$self->{_features}->{_source} = $args->{source};
 			$self->{_features}->{_owner} = $args->{owner};
