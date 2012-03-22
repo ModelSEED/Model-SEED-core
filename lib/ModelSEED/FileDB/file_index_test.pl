@@ -2,23 +2,28 @@ use strict;
 use warnings;
 
 use ModelSEED::FileDB::FileIndex;
+use Data::UUID;
 
 my $uuid = "00000000-0000-0000-0000-000000000000";
 my $file = "test.ind";
 
-unlink $uuid;
 unlink $file;
 
 my $ind = ModelSEED::FileDB::FileIndex->new({
     filename => $file
 });
-
+exit;
 my $obj = { 
-    uuid => $uuid,
+#    uuid => $uuid,
     hello => "world!"
 };
 
-$ind->save_object({user => 'paul', object => $obj});
+for (my $i=0; $i<1000; $i++) {
+    $obj->{uuid} = Data::UUID->new()->create_str();
+    $ind->save_object({user => 'paul', object => $obj});
+}
+
+exit;
 
 $ind->add_alias({user => 'paul', uuid => $obj->{uuid}, alias => 'test'});
 

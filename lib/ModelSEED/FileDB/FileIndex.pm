@@ -4,8 +4,11 @@ use strict;
 use warnings;
 
 use JSON::Any;
-use Archive::Zip;
+use Archive::Zip qw( :ERROR_CODES );
 use File::stat;
+use Fcntl qw( :flock );
+use IO::File;
+use IO::String;
 
 use Moose;
 use Data::UUID;
@@ -16,41 +19,8 @@ my $INDEX_FILENAME = '.index';
 # External attributes (configurable)
 has filename => (is => 'rw', isa => 'Str', required => 1);
 
-
-# Interal attributes (not configurable)
-has archive => (
-    is        => 'rw',
-    isa       => 'Archive::Zip::Archive',
-    init_arg  => undef,
-    builder   => '_initArchive',
-    lazy      => 1,
-);
-has loaded   => (is => 'rw', isa => 'Bool', init_arg => undef);
-has mod_time => (is => 'rw', isa => 'Int',  init_arg => undef);
-has uuid_index => (
-    is       => 'rw',
-    isa      => 'HashRef',
-    init_arg => undef,
-    builder  => '_hashref'
-);
-has user_index => (
-    is       => 'rw',
-    isa      => 'HashRef',
-    init_arg => undef,
-    builder  => '_hashref'
-);
-has alias_index => (
-    is       => 'rw',
-    isa      => 'HashRef',
-    init_arg => undef,
-    builder  => '_hashref'
-);
-
-sub _hashref { return {}; };
-
-
 =head
-    $self->uuid_index = { $uuid => { permissions => perm_obj,
+    uuid_index = { $uuid => { permissions => perm_obj,
                                aliases     => { $user => { $alias => 1 } },
                                md5         => $md5 } }
 
@@ -58,53 +28,106 @@ sub _hashref { return {}; };
                   users => { $user => { read  => 1 or 0,
                                         admin => 1 or 0 } } }
 
-    $user_index = { $user => { aliases => { $alias => $uuid},
+    user_index = { $user => { aliases => { $alias => $uuid},
                                uuids   => { $uuid  => 1} } }
 
-    $self->alias_index => { $user/$alias => $uuid }
+    alias_index = { $user/$alias => $uuid }
 =cut
 
-sub _initArchive {
+sub BUILD {
     my ($self) = @_;
-    my $a;
-    warn $self->filename ."\n";
-    if(-f $self->filename) {
-        # If archive already exists, load it
-        $a = Archive::Zip->new($self->filename);    
-        die "Corrupted database at ".$self->filename unless($a);
-        $self->archive($a);
-        $self->_load_index();
-    } else {
-        # Otherwise create new archive, save it
-        $a = Archive::Zip->new();
-        $a->overwriteAs($self->filename);
-        $self->archive($a);
-        $self->_save_index();
+
+    unless (-f $self->filename) {
+	# create archive
+	my $fh = IO::File->new($self->filename, ">");
+	my $archive = Archive::Zip->new();
+
+	my $indices = {
+	    uuid_index  => {},
+	    user_index  => {},
+	    alias_index => {}
+	};
+
+        $archive->addString(_encode($indices), $INDEX_FILENAME);
+
+	unless ($archive->writeToFileHandle($fh, 1) == AZ_OK) {
+	    die "Could not create database: " . $self->filename;
+	}
+
+	$fh->close;
     }
-    return $a;
+}
+
+sub _do_while_locked {
+    my ($self, $sub, $args) = @_;
+
+    # first get a locked filehandle
+    my $fh = IO::File->new($self->filename, "+<");
+    flock $fh, LOCK_EX;
+
+    # now load the zip archive from the file
+    my $archive = Archive::Zip->new();
+    unless ($archive->readFromFileHandle($fh) == AZ_OK) {
+	die "";
+    }
+
+    # now read the indices
+    my $indices = _decode($archive->contents($INDEX_FILENAME));
+
+    # run the code
+    my ($data, $save) = $sub->($args, $indices, $archive);
+
+    if ($save) {
+	# save the indices
+	$archive->contents($INDEX_FILENAME, _encode($indices));
+
+	# funky work-around, can't write directly to the locked filehandle
+	# ($fh), so write to a string, then write that into the file
+	my $fs = IO::String->new;
+
+	unless ($archive->writeToFileHandle($fs) == AZ_OK) {
+	    die "";
+	}
+
+	$fh->truncate(0);
+	$fh->seek(0, 0);
+	$fs->seek(0, 0);
+	while (<$fs>) {
+	    print $fh $_;
+	}
+    }
+
+    # unlock and close
+    $fh->close();
+
+    return $data;
 }
 
 sub has_object {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_has_object, $args);
+}
 
-    my $uuid = $self->_get_uuid($args);
+sub _has_object {
+    my ($args, $indices, $archive) = @_;
+
+    my $uuid = _get_uuid($args, $indices);
 
     unless(defined($uuid)) {
-        return 0;
+	return 0;
     }
 
     # check permissions
     my $user = $args->{user};
     if (defined($user)) {
-        if ($self->user_index->{$user}->{uuids}->{$uuid}) {
-            return 1;
-        }
+	if ($indices->{user_index}->{$user}->{uuids}->{$uuid}) {
+	    return 1;
+	}
     } else {
-        if ($self->uuid_index->{$uuid}->{permissions}->{public}) {
-            return 1;
-        }
+	if ($indices->{uuid_index}->{$uuid}->{permissions}->{public}) {
+	    return 1;
+	}
     }
 
     return 0;
@@ -114,20 +137,29 @@ sub has_object {
 sub get_object {
     my ($self, $args) = @_;
 
-    unless ($self->has_object($args)) {
-        return;
+    return $self->_do_while_locked(\&_get_object, $args);
+}
+
+sub _get_object {
+    my ($args, $indices, $archive) = @_;
+
+    unless (_has_object($args, $indices, $archive)) {
+	return;
     }
 
-    my $uuid = $self->_get_uuid($args);
+    my $uuid = _get_uuid($args, $indices);
 
-    my $data = _decode($self->archive->contents($uuid));
-    return $data;
+    return _decode($archive->contents($uuid))
 }
 
 sub save_object {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_save_object, $args);
+}
+
+sub _save_object {
+    my ($args, $indices, $archive) = @_;
 
     # args must be: user, object
     foreach my $arg (qw(user object)) {
@@ -138,22 +170,20 @@ sub save_object {
     }
 
     my $user = $args->{user};
-
     my $object = $args->{object};
     my $uuid = $object->{uuid};
 
-    if (defined($uuid) && defined($self->uuid_index->{$uuid})) {
+    if (defined($uuid) && defined($indices->{uuid_index}->{$uuid})) {
 	# object exists, check if this is the same object
 	my $md5 = md5_hex(_encode($object));
 
-	if ($md5 eq $self->uuid_index->{$uuid}->{md5}) {
+	if ($md5 eq $indices->{uuid_index}->{$uuid}->{md5}) {
 	    # same, do nothing
-	    $self->_save_index();
 	    return $uuid;
 	} else {
 	    # different, create new uuid, update own aliases, copy perms
-	    my $perms   = $self->uuid_index->{$uuid}->{permissions};
-	    my $aliases = $self->uuid_index->{$uuid}->{aliases};
+	    my $perms   = $indices->{uuid_index}->{$uuid}->{permissions};
+	    my $aliases = $indices->{uuid_index}->{$uuid}->{aliases};
 
 	    $uuid = Data::UUID->new()->create_str();
 	    $object->{uuid} = $uuid;
@@ -164,9 +194,9 @@ sub save_object {
 	    };
 
 	    foreach my $alias (keys %{$aliases->{$user}}) {
-		$self->new_aliases->{$user}->{$alias} = 1;
-		$self->alias_index->{$user.'/'.$alias} = $uuid;
-		$self->user_index->{$user}->{aliases}->{$alias} = $uuid;
+		$new_aliases->{$user}->{$alias} = 1;
+		$indices->{alias_index}->{$user.'/'.$alias} = $uuid;
+		$indices->{user_index}->{$user}->{aliases}->{$alias} = $uuid;
 	    }
 
 	    # delete old aliases from uuid index
@@ -190,13 +220,13 @@ sub save_object {
 		admin => 1
 	    };
 
-	    $self->uuid_index->{$uuid} = {
+	    $indices->{uuid_index}->{$uuid} = {
 		permissions => $new_perms,
 		aliases => $new_aliases,
 		md5 => md5_hex(_encode($object))
 	    };
 
-	    $self->user_index->{$user}->{uuids}->{$uuid} = 1;
+	    $indices->{user_index}->{$user}->{uuids}->{$uuid} = 1;
 	}
     } else {
 	if (!defined($uuid)) {
@@ -215,26 +245,30 @@ sub save_object {
 	    }
 	};
 
-	$self->uuid_index->{$uuid} = {
+	$indices->{uuid_index}->{$uuid} = {
 	    permissions => $perm,
 	    aliases => {},
 	    md5 => md5_hex(_encode($object))
 	};
 
-	$self->user_index->{$user}->{uuids}->{$uuid} = 1;
+	$indices->{user_index}->{$user}->{uuids}->{$uuid} = 1;
     }
-    $self->archive->addString(_encode($object), $uuid);
-    $self->_save_index();
 
-    return $uuid;
+    $archive->addString(_encode($object), $uuid);
+
+    return ($uuid, 1);
 }
 
 sub get_user_uuids {
     my ($self, $user) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_get_user_uuids, $user);
+}
 
-    my @uuids = keys %{$self->user_index->{$user}->{uuids}};
+sub _get_user_uuids {
+    my ($user, $indices, $archive) = @_;
+
+    my @uuids = keys %{$indices->{user_index}->{$user}->{uuids}};
 
     return \@uuids;
 }
@@ -242,9 +276,13 @@ sub get_user_uuids {
 sub get_user_aliases {
     my ($self, $user) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_get_user_aliases, $user);
+}
 
-    my @aliases = keys %{$self->user_index->{$user}->{aliases}};
+sub _get_user_aliases {
+    my ($user, $indices, $archive) = @_;
+
+    my @aliases = keys %{$indices->{user_index}->{$user}->{aliases}};
 
     return \@aliases;
 }
@@ -252,13 +290,17 @@ sub get_user_aliases {
 sub add_alias {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_add_alias, $args);
+}
+
+sub _add_alias {
+    my ($args, $indices, $archive) = @_;
 
     # args must be: user, uuid, alias
     foreach my $arg (qw(user uuid alias)) {
 	if (!defined($args->{$arg})) {
 	    # TODO: error
-	    return;
+	    return 0;
 	}
     }
 
@@ -267,21 +309,25 @@ sub add_alias {
     my $alias = $args->{alias};
 
     # user must be able to read object
-    if (!$self->user_index->{$user}->{uuids}->{$uuid}) {
-	return;
+    if (!$indices->{user_index}->{$user}->{uuids}->{$uuid}) {
+	return 0;
     }
 
-    $self->alias_index->{$user.'/'.$alias} = $uuid;
-    $self->uuid_index->{$uuid}->{aliases}->{$user}->{$alias} = 1;
-    $self->user_index->{$user}->{aliases}->{$alias} = $uuid;
+    $indices->{alias_index}->{$user.'/'.$alias} = $uuid;
+    $indices->{uuid_index}->{$uuid}->{aliases}->{$user}->{$alias} = 1;
+    $indices->{user_index}->{$user}->{aliases}->{$alias} = $uuid;
 
-    $self->_save_index();
+    return (1, 1);
 }
 
 sub remove_alias {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_remove_alias, $args);
+}
+
+sub _remove_alias {
+    my ($args, $indices, $archive) = @_;
 
     # args must be: user, uuid, alias
     foreach my $arg (qw(user uuid alias)) {
@@ -296,23 +342,27 @@ sub remove_alias {
     my $alias = $args->{alias};
 
     # user must be able to read object
-    if (!$self->user_index->{$user}->{uuids}->{$uuid}) {
-	return;
+    if (!$indices->{user_index}->{$user}->{uuids}->{$uuid}) {
+	return 0;
     }
 
-    delete $self->alias_index->{$user.'/'.$alias};
-    delete $self->uuid_index->{$uuid}->{aliases}->{$user}->{$alias};
-    delete $self->user_index->{$user}->{aliases}->{$alias};
+    delete $indices->{alias_index}->{$user.'/'.$alias};
+    delete $indices->{uuid_index}->{$uuid}->{aliases}->{$user}->{$alias};
+    delete $indices->{user_index}->{$user}->{aliases}->{$alias};
 
-    $self->_save_index();
+    return (1, 1);
 }
 
 sub get_permissions {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_get_permissions, $args);
+}
 
-    my $uuid = $self->_get_uuid($args);
+sub _get_permissions {
+    my ($args, $indices, $archive) = @_;
+
+    my $uuid = _get_uuid($args, $indices);
     my $user = $args->{user};
 
     unless (defined($uuid) && defined($user)) {
@@ -320,7 +370,7 @@ sub get_permissions {
     }
 
     # user must have admin permission
-    my $perms = $self->uuid_index->{$uuid}->{permissions};
+    my $perms = $indices->{uuid_index}->{$uuid}->{permissions};
     if ($perms->{users}->{$user}->{admin}) {
 	return $perms;
     }
@@ -329,29 +379,33 @@ sub get_permissions {
 sub set_permissions {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_set_permissions, $args);
+}
 
-    my $uuid = $self->_get_uuid($args);
+sub _set_permissions {
+    my ($args, $indices, $archive) = @_;
+
+    my $uuid = _get_uuid($args, $indices);
     my $user = $args->{user};
     my $perms = $args->{permissions};
 
     unless (defined($uuid) && defined($user) && defined($perms)) {
-	return;
+	return 0;
     }
 
     # user must have admin permission
-    my $old_perms = $self->uuid_index->{$uuid}->{permissions};
+    my $old_perms = $indices->{uuid_index}->{$uuid}->{permissions};
     unless ($old_perms->{users}->{$user}->{admin}) {
-	return;
+	return 0;
     }
 
     # should make sure new perms have an admin user
 
 
-    $self->uuid_index->{$uuid}->{permissions} = $perms;
+    $indices->{uuid_index}->{$uuid}->{permissions} = $perms;
 
     # need to determine which users have lost and which
-    # have gained permissions, then change indexes accordingly
+    # have gained permissions, then change indices accordingly
     my $old_users = {};
     my $new_users = {};
 
@@ -373,64 +427,81 @@ sub set_permissions {
 
     # add the uuid for the new users
     foreach my $new_user (keys %$new_users) {
-	$self->user_index->{$new_user}->{uuids}->{$uuid} = 1;
+	$indices->{user_index}->{$new_user}->{uuids}->{$uuid} = 1;
     }
 
     foreach my $old_user (keys %$old_users) {
-	$self->delete_object({ user => $old_user, uuid => $uuid });
+	_delete_object({ user => $old_user, uuid => $uuid }, $indices, $archive);
     }
 
-    $self->_save_index();
+    return (1, 1);
 }
 
-# not working
 sub delete_object {
     my ($self, $args) = @_;
 
-    $self->_update_index();
+    return $self->_do_while_locked(\&_delete_object, $args);
+}
 
-    my $uuid = $self->_get_uuid($args);
+sub _delete_object {
+    my ($args, $indices, $archive) = @_;
+
+    my $uuid = _get_uuid($args, $indices);
     my $user = $args->{user};
 
     unless (defined($uuid) && defined($user)) {
-	return;
+	return 0;
     }
 
-    unless($self->user_index->{$user}->{uuids}->{$uuid}) {
-	return;
+    unless($indices->{user_index}->{$user}->{uuids}->{$uuid}) {
+	return 0;
     }
 
     # remove the aliases
-    foreach my $alias (keys %{$self->uuid_index->{$uuid}->{aliases}->{$user}}) {
-	$self->remove_alias({ user => $user, uuid => $uuid, alias => $alias });
+    foreach my $alias (keys %{$indices->{uuid_index}->{$uuid}->{aliases}->{$user}}) {
+	_remove_alias({ user => $user, uuid => $uuid, alias => $alias }, $indices, $archive);
     }
 
     # remove user permissions on object
-    delete $self->uuid_index->{$uuid}->{permissions}->{users}->{$user};
-    delete $self->user_index->{$user}->{uuids}->{$uuid};
+    delete $indices->{uuid_index}->{$uuid}->{permissions}->{users}->{$user};
+    delete $indices->{user_index}->{$user}->{uuids}->{$uuid};
 
     # remove if no users in permissions
-    if (scalar keys %{$self->uuid_index->{$uuid}->{permissions}->{users}} == 0) {
-	unlink $uuid or die "Could not delete file $uuid: $!";
-	delete $self->uuid_index->{$uuid};
+    if (scalar keys %{$indices->{uuid_index}->{$uuid}->{permissions}->{users}} == 0) {
+	# remove from archive
+	delete $indices->{uuid_index}->{$uuid};
     }
 
-    $self->_save_index();
+    return (1, 1);
+}
+
+sub _sleep_test {
+    my ($self, $time) = @_;
+
+    $self->_do_while_locked(sub {
+	my ($time, $indices, $archive) = @_;
+
+	print "Sleeping for $time seconds...\n";
+	my $sleep = sleep $time;
+	print "Slept for $sleep seconds\n";
+    }, $time);
 }
 
 sub _encode {
     my ($data) = @_;
+
     return JSON::Any->encode($data);
 }
 
 sub _decode {
     my ($data) = @_;
+
     return JSON::Any->decode($data);
 }
 
 # returns the uuid, or undef if not found
 sub _get_uuid {
-    my ($self, $args) = @_;
+    my ($args, $indices) = @_;
 
     my $uuid = $args->{uuid};
     my $user_alias = $args->{user_alias};
@@ -439,48 +510,12 @@ sub _get_uuid {
         return $uuid;
     } elsif (defined($user_alias)) {
         # find uuid for alias
-        my $id = $self->alias_index->{$user_alias};
+        my $id = $indices->{alias_index}->{$user_alias};
         if (defined($id)) {
             return $id;
         }
     }
 }
-
-sub _load_index {
-    my ($self) = @_;
-    my $indexes = _decode($self->archive->contents($INDEX_FILENAME));
-    $self->uuid_index($indexes->{uuid_index});
-    $self->user_index($indexes->{user_index});
-    $self->alias_index($indexes->{alias_index});
-    $self->loaded(1);
-}
-
-sub _save_index {
-    my ($self) = @_;
-    my $indexes = {
-        uuid_index  => $self->uuid_index,
-        user_index  => $self->user_index,
-        alias_index => $self->alias_index,
-    };
-    $self->_update_archive_member($INDEX_FILENAME, _encode($indexes));
-}
-
-sub _update_archive_member {
-    my ($self, $name, $data) = @_;
-    # TODO - locking
-    if($self->archive->memberNamed($name)) {
-        $self->archive->contents($name, $data);
-    } else {
-        $self->archive->addString($data, $name);
-    }
-    $self->archive->overwriteAs($self->filename);
-    # TODO - unlocking
-}
-
-sub _update_index {
-    my ($self) = @_;
-}
-
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
