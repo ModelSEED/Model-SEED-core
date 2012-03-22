@@ -15,10 +15,10 @@ my $testCount = 0;
     ok defined $db, "Should get file index when index file not present.";
     # Test getting non-existant objects
     is $db->has_object({ uuid => 'foo'}), 0, "No objects defined";
-    is $db->has_object({ user_alias => 'foo'}), 0, "No objects defined";
+    is $db->has_object({ user_alias => 'foo/bar'}), 0, "No objects defined";
 
     is $db->get_object({ uuid => 'foo'}), undef, "No objects defined";
-    is $db->get_object({ user_alias => 'foo'}), undef, "No objects defined";
+    is $db->get_object({ user_alias => 'foo/bar'}), undef, "No objects defined";
     $testCount += 5;
 }
 
@@ -45,7 +45,7 @@ my $testCount = 0;
     my $o2Copy = $db->get_object({ uuid => $newUUID, user => 'alice'});
     is_deeply $o2, $o2Copy, "Should get back object with the same structure";
     $o1Copy = $db->get_object({ uuid => $uuid, user => 'alice'});
-    is_deeply $o1Copy, $o1, "Should get bhack object with same structure";
+    is_deeply $o1Copy, $o1, "Should get back object with same structure";
 
     $testCount += 7;
 }
@@ -54,8 +54,8 @@ my $testCount = 0;
     # Testing get_user_uuids
     my $dir = tempdir();
     my $db = ModelSEED::FileDB::FileIndex->new({filename => "$dir/index"});
-    my $names = [ qw( alice bob charles dan ) ];
-    my $ids = [ 0..10 ];
+    my $names = [ qw( alice bob charles ) ];
+    my $ids = [ 0..3 ];
     foreach my $name (@$names) {
         foreach my $id (@$ids) {
             my $uuid = Data::UUID->new()->create_str();
@@ -65,10 +65,16 @@ my $testCount = 0;
             $testCount += 1;
         }
         my $ids = $db->get_user_uuids($name);
-        is @$ids, 11, "Should get correct number of object uuids";
+        is @$ids, 4, "Should get correct number of object uuids";
         $testCount += 1;
     }
-    my $db2 = ModelSEED::FileDB::FileIndex->new({filename => "$dir/index"});
 }
+
+# Test aliases, permissions, and deleting
+{
+    my $stuff = "";
+}
+
+# Test concurrency via forking
 
 done_testing($testCount);
