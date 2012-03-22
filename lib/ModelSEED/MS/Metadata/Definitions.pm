@@ -39,10 +39,10 @@ $objectDefinitions->{Biochemistry} = {
 		{name => "compounds",class => "Compound",type => "child"},
 		{name => "reactions",class => "Reaction",type => "child"},
 		{name => "media",class => "Media",type => "child"},
-		{name => "compoundsets",class => "Compoundset",type => "child"},
-		{name => "reactionsets",class => "Reactionset",type => "child"},
-		{name => "compoundaliassets",class => "CompoundAliasSet",type => "child"},
-		{name => "reactionaliassets",class => "ReactionAliasSet",type => "child"},
+		{name => "compoundSets",class => "CompoundSet",type => "child"},
+		{name => "reactionSets",class => "ReactionSet",type => "child"},
+		{name => "compoundAliasSets",class => "CompoundAliasSet",type => "child"},
+		{name => "reactionAliasSets",class => "ReactionAliasSet",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -58,7 +58,7 @@ $objectDefinitions->{CompoundAliasSet} = {
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
 	],
 	subobjects => [
-		{name => "compoundaliases",class => "CompoundAlias",type => "hasharray(alias)"},
+		{name => "compoundAliases",class => "CompoundAlias",type => "hasharray(alias)"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -88,7 +88,7 @@ $objectDefinitions->{ReactionAliasSet} = {
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
 	],
 	subobjects => [
-		{name => "reactionaliases",class => "ReactionAlias",type => "hasharray(alias)"},
+		{name => "reactionAliases",class => "ReactionAlias",type => "hasharray(alias)"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -291,7 +291,7 @@ $objectDefinitions->{MediaCompound} = {
 	]
 };
 
-$objectDefinitions->{Compoundset} = {
+$objectDefinitions->{CompoundSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
@@ -305,13 +305,13 @@ $objectDefinitions->{Compoundset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "compounds",class => "CompoundsetCompound",type => "link",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
+		{name => "compounds",class => "CompoundSetCompound",type => "link",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
 
-$objectDefinitions->{Reactionset} = {
+$objectDefinitions->{ReactionSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
@@ -325,7 +325,7 @@ $objectDefinitions->{Reactionset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "reactions",class => "ReactionsetReaction",type => "link",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+		{name => "reactions",class => "ReactionSetReaction",type => "link",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []

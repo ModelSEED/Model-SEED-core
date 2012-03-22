@@ -30,7 +30,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactionaliases => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]', type => 'hasharray(ReactionAlias,alias)', metaclass => 'Typed');
+has reactionAliases => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]', type => 'hasharray(ReactionAlias,alias)', metaclass => 'Typed');
 
 
 # BUILDERS:
