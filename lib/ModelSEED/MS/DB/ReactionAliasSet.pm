@@ -3,19 +3,19 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-21T23:36:53
+# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
 use strict;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::;
+use ModelSEED::MS::Biochemistry;
 package ModelSEED::MS::DB::ReactionAliasSet;
 use Moose;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:

@@ -49,7 +49,7 @@ $objectDefinitions->{Biochemistry} = {
 };
 
 $objectDefinitions->{CompoundAliasSet} = {
-	parents => [''],
+	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
@@ -79,7 +79,7 @@ $objectDefinitions->{CompoundAlias} = {
 };
 
 $objectDefinitions->{ReactionAliasSet} = {
-	parents => [''],
+	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
