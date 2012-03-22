@@ -56,7 +56,7 @@ sub buildMooseAnnotation {
 	});
 	my $annoationObj = $self->om()->create("Annotation");
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
-	$annoationObj->add($genomeObj);
+	$annoationObj->add("Genome", $genomeObj);
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}
@@ -107,7 +107,7 @@ sub getRoleObject {
 			searchname => $searchName
 		});
 	}
-	$args->{mapping}->add($roleObj);			
+	$args->{mapping}->add("Role", $roleObj);			
 	return $roleObj;
 }
 
