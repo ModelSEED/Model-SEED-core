@@ -176,20 +176,16 @@ sub feature_table {
 		source => undef,
 		owner => undef
 	});
-	print "test1:".$args->{source};
 	if (!defined($args->{source}) && defined($self->ppo())) {
 		$args->{source} = $self->ppo()->source();
 	}
 	if (!defined($args->{owner}) && defined($self->ppo())) {
 		$args->{owner} = $self->ppo()->owner();
 	}
-	print "test2:".$args->{source};
 	if (!defined($self->{_features})) {
 		if ($args->{source} =~ m/RAST/) {
-			print "test3:".$args->{source};
 			my $output = $self->getRastGenomeData();
 		} elsif ($args->{source} =~ m/SEED/) {
-			print "test4:".$args->{source};
 			$self->{_features} = ModelSEED::FIGMODEL::FIGMODELTable->new(["ID","GENOME","ESSENTIALITY","ALIASES","TYPE","LOCATION","LENGTH","DIRECTION","MIN LOCATION","MAX LOCATION","ROLES","SOURCE","SEQUENCE"],$self->figmodel()->config("database message file directory")->[0]."Features-".$args->{genome}.".txt",["ID","ALIASES","TYPE","ROLES","GENOME"],"\t","|",undef);
 			$self->{_features}->{_source} = $args->{source};
 			$self->{_features}->{_owner} = $args->{owner};
@@ -360,9 +356,7 @@ sub update_genome_stats {
 	my $GenomeData;
 	my $sap = $self->figmodel()->sapSvr("PUBSEED");
 	my $result = $sap->exists({-type => 'Genome',-ids => [$self->genome()]});
-	print "test1\n";
 	if ($result->{$self->genome()} eq "0") {
-		print "test2\n";
 		my $output = $self->getRastGenomeData();
 		if (!defined($self->{_features})) {
 			$self->error_message("FIGMODELgenome:genome_stats:Could not find genome ".$self->genome()." in database");
@@ -383,7 +377,6 @@ sub update_genome_stats {
 		}
 		$GenomeData = $self->{_features};
 	} else {
-		print "test2\n";
 		$genomeStats->{source} = "PUBSEED";
 		my $genomeHash = $self->figmodel()->sapSvr("PUBSEED")->genome_data({
 			-ids => [$self->genome()],
