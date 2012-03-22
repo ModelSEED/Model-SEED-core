@@ -899,14 +899,14 @@ sub create_feature_link {
 		$id = $2;
 	}
 	my $genomeObj = $self->figmodel()->get_genome($genome);
-	if (defined($genomeObj) && $genomeObj->source() =~ m/RAST/) {
-		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Annotation&feature='.$feature->{ID}->[0].'" title="'.join("<br>",@{$feature->{ROLES}}).'" target="_blank">'.$id."</a>";
-	}
 	my $roles = "No roles";
 	if (defined($feature->{ROLES})) {
 		$roles = join("<br>",@{$feature->{ROLES}});
 	}
-	return '<a href="http://www.theseed.org/linkin.cgi?id='.$feature->{ID}->[0].'" title="'.$roles.'" target="_blank">'.$id."</a>";
+	if (defined($genomeObj) && $genomeObj->source() =~ m/RAST/) {
+		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Annotation&feature='.$id.'" title="'.$roles.'" target="_blank">'.$id."</a>";
+	}
+	return '<a href="http://www.theseed.org/linkin.cgi?id='.$id.'" title="'.$roles.'" target="_blank">'.$id."</a>";
 }
 
 sub gene_link {
