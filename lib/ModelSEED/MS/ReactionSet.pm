@@ -7,10 +7,10 @@
 ########################################################################
 use strict;
 use namespace::autoclean;
-use ModelSEED::MS::DB::Reactionset;
-package ModelSEED::MS::Reactionset;
+use ModelSEED::MS::DB::ReactionSet;
+package ModelSEED::MS::ReactionSet;
 use Moose;
-extends 'ModelSEED::MS::DB::Reactionset';
+extends 'ModelSEED::MS::DB::ReactionSet';
 # CONSTANTS:
 #TODO
 # FUNCTIONS:

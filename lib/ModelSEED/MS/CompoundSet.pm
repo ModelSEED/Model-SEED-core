@@ -7,10 +7,10 @@
 ########################################################################
 use strict;
 use namespace::autoclean;
-use ModelSEED::MS::DB::Compoundset;
-package ModelSEED::MS::Compoundset;
+use ModelSEED::MS::DB::CompoundSet;
+package ModelSEED::MS::CompoundSet;
 use Moose;
-extends 'ModelSEED::MS::DB::Compoundset';
+extends 'ModelSEED::MS::DB::CompoundSet';
 # CONSTANTS:
 #TODO
 # FUNCTIONS:
