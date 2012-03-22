@@ -1896,6 +1896,24 @@ sub mdlreconstruction {
 	});
     return "Generated model from genome annotations";
 }
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Print the model feature table to the provenance directory
+=EXAMPLE
+./mdlprintfeatureprovenance
+=cut
+sub mdlprintfeatureprovenance {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"SEED ID of the model to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    my $feature_table = $mdl->genomeObj()->feature_table();
+	$feature_table->save($mdl->directory()."annotations/features.txt");
+    return "SUCCESS";
+}
 
 =head
 =CATEGORY
