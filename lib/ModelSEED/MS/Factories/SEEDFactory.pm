@@ -70,16 +70,18 @@ sub buildMooseAnnotation {
 				stop => $row->{STOP}->[0],
 				contig => $row->{CONTIG}->[0]
 			});
+			$annoationObj->add($featureObj);
 			if (defined($row->{ROLES}->[0])) {
 				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
 					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
 					my $ftrRoleObj = ModelSEED::MS::FeatureRole->new({
 						feature_uuid => $featureObj->uuid(),
 						role_uuid => $roleObj->uuid(),
-						compartment => $row->{COMPARTMENT}->[0],
+						compartment => join("|",@{$row->{COMPARTMENT}}),
 						comment => $row->{COMMENT}->[0],
 						delimiter => $row->{DELIMITER}->[0]
 					});
+					push(@{$featureObj->featureroles()},$ftrRoleObj);
 				}
 			}
 		}
@@ -96,7 +98,7 @@ sub buildSerialAnnotation {
 # FUNCTIONS:
 sub getRoleObject {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities->ARGS($args,["roleString","mapping"],{});					
+	$args = ModelSEED::utilities::ARGS($args,["roleString","mapping"],{});					
 	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
 	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
 	if (!defined($roleObj)) {
@@ -161,26 +163,26 @@ sub getGenomeFeatures {
 			$sequences = $self->sapsvr()->ids_to_sequences({-ids => $featureList,-protein => 1});
 		}
 		for (my $i=0; $i < @{$featureList}; $i++) {
-			my $row = {ID => [$featureList->[$i]],TYPE => "peg"};
+			my $row = {ID => [$featureList->[$i]],TYPE => ["peg"]};
 			if ($featureList->[$i] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
 				$row->{TYPE}->[0] = $1;
 			}
-			print $locations->{$featureList->[$i]}->[0]."\n";
-			if (defined($locations->{$featureList->[$i]}->[0]) && $locations->{$featureList->[$i]}->[0] =~ m/(\d+)([\+\-])(\d+)$/) {
-				$row->{CONTIG}->[0] = "?";
-				if ($2 eq "-") {
-					$row->{START}->[0] = ($1-$3);
-					$row->{STOP}->[0] = ($1);
+			if (defined($locations->{$featureList->[$i]}->[0]) && $locations->{$featureList->[$i]}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
+				my $array = [split(/:/,$1)];
+				$row->{CONTIG}->[0] = $array->[1];
+				if ($3 eq "-") {
+					$row->{START}->[0] = ($2-$4);
+					$row->{STOP}->[0] = ($2);
 					$row->{DIRECTION}->[0] = "rev";
 				} else {
-					$row->{START}->[0] = ($1);
-					$row->{STOP}->[0] = ($1+$3);
+					$row->{START}->[0] = ($2);
+					$row->{STOP}->[0] = ($2+$4);
 					$row->{DIRECTION}->[0] = "for";
 				}
 			}
 			if (defined($functions->{$featureList->[$i]})) {
 				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($functions->{$featureList->[$i]});
-				$row->{COMPARTMENT}->[0] = $output->{compartment};
+				$row->{COMPARTMENT} = $output->{compartments};
 				$row->{COMMENT}->[0] = $output->{comment};
 				$row->{DELIMITER}->[0] = $output->{delimiter};
 				$row->{ROLES} = $output->{roles};
@@ -204,22 +206,22 @@ sub getGenomeFeatures {
 			if ($ftr->{ID}->[0] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
 				$row->{TYPE}->[0] = $1;
 			}
-			print $ftr->{LOCATION}->[0]."\n";
-			if (defined($ftr->{LOCATION}->[0]) && $ftr->{LOCATION}->[0] =~ m/(\d+)([\+\-])(\d+)$/) {
-				$row->{CONTIG}->[0] = "?";
-				if ($2 eq "-") {
-					$row->{START}->[0] = ($1-$3);
-					$row->{STOP}->[0] = ($1);
+			if (defined($ftr->{LOCATION}->[0]) && $ftr->{LOCATION}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
+				my $array = [split(/:/,$1)];
+				$row->{CONTIG}->[0] = $array->[1];
+				if ($3 eq "-") {
+					$row->{START}->[0] = ($2-$4);
+					$row->{STOP}->[0] = ($2);
 					$row->{DIRECTION}->[0] = "rev";
 				} else {
-					$row->{START}->[0] = ($1);
-					$row->{STOP}->[0] = ($1+$3);
+					$row->{START}->[0] = ($2);
+					$row->{STOP}->[0] = ($2+$4);
 					$row->{DIRECTION}->[0] = "for";
 				}
 			}
 			if (defined($ftr->{FUNCTION}->[0])) {
 				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($ftr->{FUNCTION}->[0]);
-				$row->{COMPARTMENT}->[0] = $output->{compartment};
+				$row->{COMPARTMENT}->[0] = $output->{compartments};
 				$row->{COMMENT}->[0] = $output->{comment};
 				$row->{DELIMITER}->[0] = $output->{delimiter};
 				$row->{ROLES} = $output->{roles};

@@ -22,12 +22,13 @@ sub add {
     $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
+    my $function = $self->_typeToFunction()->{$type};
     my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
     if (defined($oldObj)) {
     	if ($oldObj->locked() != 1) {
     		$object->uuid($oldObj->uuid());
     	}
-    	my $list = $self->$type();
+    	my $list = $self->$function();
     	for (my $i=0; $i < @{$list}; $i++) {
     		if ($list->[$i] eq $oldObj) {
     			$list->[$i] = $object;
@@ -35,7 +36,7 @@ sub add {
     	}
     	$self->clearIndex({type=>$type});
     } else {
-    	push(@{$self->$type()},$object);
+    	push(@{$self->$function()},$object);
     	if (defined($self->indices()->{$type})) {
     		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
     			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
@@ -108,7 +109,6 @@ sub clearIndex {
 sub buildIndex {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["type","attribute"],{});
-	print $self->_type()."\n";
 	my $function = $self->_typeToFunction()->{$args->{type}};
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};

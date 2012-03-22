@@ -34,62 +34,62 @@ my $meta = __PACKAGE__->meta;
 
 sub BUILD {
     my ($self,$params) = @_;
-    for my $attr ( $meta->get_all_attributes ) {
-		if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-    		my $class = 'ModelSEED::MS::'.$1;
-    		my $function = $attr->name();
-			my $dataArray = $self->$function();
-			my $newData;
-			foreach my $data (@{$dataArray}) {
-				$data->{parent} = $self;
-				push(@{$newData},$class->new($data));
+    my $class = 'ModelSEED::MS::DB::'.$self->_type();
+    for my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
+			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+	    		my $subclass = 'ModelSEED::MS::'.$1;
+	    		my $function = $attr->name();
+				my $dataArray = $self->$function();
+				my $newData = [];
+				foreach my $data (@{$dataArray}) {
+					$data->{parent} = $self;
+					push(@{$newData},$subclass->new($data));
+				}
+				$self->$function($newData);
+			} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
+	    		my $parameters = [split(/,/,$1)];
+	    		my $subclass = 'ModelSEED::MS::'.$parameters->[0];
+	    		my $attribute = $parameters->[1];
+	    		my $function = $attr->name();
+				my $dataArray = $self->$function();
+				my $newData = {};
+				foreach my $data (@{$dataArray}) {
+					$data->{parent} = $self;
+					push(@{$newData->{$data->{$attribute}}},$subclass->new($data));
+				}
+				$self->$function($newData);
 			}
-			$self->$function($newData);
-		} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
-    		my $parameters = [split(/,/,$1)];
-    		my $class = 'ModelSEED::MS::'.$parameters->[0];
-    		my $attribute = $parameters->[1];
-    		my $function = $attr->name();
-			my $dataArray = $self->$function();
-			my $newData;
-			foreach my $data (@{$dataArray}) {
-				$data->{parent} = $self;
-				push(@{$newData->{$data->{$attribute}}},$class->new($data));
-			}
-			$self->$function($newData);
 		}
-	}
+    }
 }
 
 sub serializeToDB {
 	my ($self) = @_;
 	my $data = {};
-	for my $attr ( $meta->get_all_attributes ) {
-		my $name = $attr->name();
-		if ($attr->type() eq "attribute") {
-			$data->{$name} = $self->$name();
-		} elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-			my $class = $1;
-			my $arrayRef = $self->$name();
-			foreach my $subobject (@{$arrayRef}) {
-				push(@{$data->{$attr}},$subobject->serializeToDB());
-			}
-		} elsif ($attr->type() eq m/hasharray\((.+)\)/) {
-			my $hashRef = $self->$attr();
-			foreach my $key (keys(%{$hashRef})) {
-				foreach my $obj (@{$hashRef->{$key}}) {
-					push(@{$data->{$attr}},$obj->serializeToDB());
-				}	
+	my $class = 'ModelSEED::MS::DB::'.$self->_type();
+	for my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
+			my $name = $attr->name();
+			if ($attr->type() eq "attribute") {
+				$data->{$name} = $self->$name();
+			} elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+				my $arrayRef = $self->$name();
+				foreach my $subobject (@{$arrayRef}) {
+					push(@{$data->{$name}},$subobject->serializeToDB());
+				}
+			} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
+				my $hashRef = $self->$attr();
+				foreach my $key (keys(%{$hashRef})) {
+					foreach my $obj (@{$hashRef->{$key}}) {
+						push(@{$data->{$name}},$obj->serializeToDB());
+					}	
+				}
 			}
 		}
 	}
+	return $data;
 }
-
-#if ($attr->type() =~ /solink\((.+),(.+),(.+),(.+)\)/) {
-#					my $function = $4;
-#					my $linkedObject = $self->getLinkedObject($1,$2,$3,$self->$function());
-#					push(@{$newData},$linkedObject);
-#				} els
 
 sub getLinkedObject {
 	my ($self,$soureType,$type,$attribute,$value) = @_;
