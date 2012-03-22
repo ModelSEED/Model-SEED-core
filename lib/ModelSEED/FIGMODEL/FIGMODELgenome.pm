@@ -356,8 +356,8 @@ sub update_genome_stats {
 	my $GenomeData;
 	my $sap = $self->figmodel()->sapSvr("PUBSEED");
 	my $result = $sap->exists({-type => 'Genome',-ids => [$self->genome()]});
-	print $result->{$self->genome()}."\n";
 	if (!defined($result->{$self->genome()}) || $result->{$self->genome()} == 0) {
+		$genomeStats->{source} = "RAST";
 		my $output = $self->getRastGenomeData();
 		if (!defined($self->{_features})) {
 			$self->error_message("FIGMODELgenome:genome_stats:Could not find genome ".$self->genome()." in database");
