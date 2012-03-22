@@ -1912,6 +1912,7 @@ sub mdlprintfeatureprovenance {
     my $mdl =  $self->figmodel()->get_model($args->{"model"});
     my $feature_table = $mdl->genomeObj()->feature_table();
 	print $mdl->directory()."annotations/features.txt\n";
+	print "Size:".$feature_table->size()."\n";
 	$feature_table->save($mdl->directory()."annotations/features.txt");
     return "SUCCESS";
 }
