@@ -3004,6 +3004,27 @@ sub gengetgenehits {
     return $result;
 }
 
+sub genupdatestats {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+    $fig_genome->update_genome_stats();
+    my $stats = $fig_genome->genome_stats();
+    my $attributes = [keys(%{$stats->attributes()})];
+    print join("\t",@{$attributes})."\n";
+    for (my $j=0; $j < @{$attributes}; $j++) {
+    	if ($j > 0) {
+    		print "\t";	
+    	}
+    	my $function = $attributes->[$j];
+    	print $stats->$function();
+    }
+    print "\n";
+    return "SUCCESS";
+}
+
 sub gengettreehits {
 
 }
