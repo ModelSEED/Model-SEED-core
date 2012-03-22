@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use ModelSEED::MS::Factories::SEEDFactory;
+use ModelSEED::MS::Biochemistry;
 use Test::More;
 
 my $testCount = 0;
