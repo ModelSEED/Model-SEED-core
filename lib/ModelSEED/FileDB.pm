@@ -29,7 +29,7 @@ has types => (
 );
 
 sub _buildTypes {
-    return [ qw( model biochemistry mapping annotation ) ];
+    return [ qw( Model Biochemistry Mapping Annotation ) ];
 }
 
 sub _buildIndicies {
