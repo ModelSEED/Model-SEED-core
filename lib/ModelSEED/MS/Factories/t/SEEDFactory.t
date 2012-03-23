@@ -13,11 +13,10 @@ my $testCount = 0;
     my $anno = $seedfact->buildMooseAnnotation({
     	genome_id => "83333.1"
     });
+    my $mapping = $anno->mapping();
+    $anno->save();
+    $mapping->save();
     ok defined($anno), "Created annotation!";
-    #my $data = $anno->serializeToDB();
-    #print STDERR Data::Dumper->Dump([$data]);
-    my $data = $anno->mapping()->serializeToDB();
-    print STDERR Data::Dumper->Dump([$data]);
     $testCount += 2;
 }
 done_testing($testCount);
