@@ -115,7 +115,7 @@ sub getMappingObject {
 	});
 	my $mappingObj;
 	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->om()->get($args->{mapping_uuid});
+		$mappingObj = $self->om()->get("Mapping",$args->{mapping_uuid});
 		if (!defined($mappingObj)) {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}

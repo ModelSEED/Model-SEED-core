@@ -119,11 +119,11 @@ sub buildIndex {
 
 sub save {
     my ($self, $om) = @_;
-	$om = $self->om unless (defined($om));
+	$om = $self->parent() unless (defined($om));
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    my $newuuid = $om->save_object({user => $self->user(),data => $self->serializeToDB()});
+    my $newuuid = $om->save($self);
     $self->uuid($newuuid);
 }
 

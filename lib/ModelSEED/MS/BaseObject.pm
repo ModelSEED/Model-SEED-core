@@ -125,7 +125,7 @@ sub getLinkedObject {
 	my $parent = $self->$soureType();
 	my $object;
 	if (ref($parent) eq "ModelSEED::MS::ObjectManager") {
-		$object = $parent->get($value);
+		$object = $parent->get($type,$value);
 	} else {
 		$object = $parent->getObject($type,{$attribute => $value});
 	}
