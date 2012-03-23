@@ -2299,7 +2299,7 @@ sub calculate_deltaG {
     foreach my $cue(sort grep { $cues{$_} !=0 } keys %cues){
 	#if cue is not one you can use, return nothing
 	if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
-	    print "No $cue\t",$args->{energy}->{$cue},"\n";
+	    print STDERR "No $cue\t",$args->{energy}->{$cue},"\n";
 	    return ('','',$cue_string);
 	}
 	
@@ -2497,7 +2497,7 @@ sub find_thermodynamic_reversibility {
 	if($r->{"DATABASE"}->[0] eq "cpd00011"){
 	    $tconc=0.0001;
 	}
-	if($r->{"DATABASE"}->[0] eq "cpd00007"){
+	if($r->{"DATABASE"}->[0] eq "cpd00007" || $r->{"DATABASE"}->[0] eq "cpd11640"){
 	    $tconc=0.000001;
 	}
 	$prodreacs+=((0-$r->{"COEFFICIENT"}->[0])*log($tconc));
@@ -2508,7 +2508,7 @@ sub find_thermodynamic_reversibility {
 	if($p->{"DATABASE"}->[0] eq "cpd00011"){
 	    $tconc=0.0001;
 	}
-	if($p->{"DATABASE"}->[0] eq "cpd00007"){
+	if($p->{"DATABASE"}->[0] eq "cpd00007" || $p->{"DATABASE"}->[0] eq "cpd11640"){
 	    $tconc=0.000001;
 	}
 	$prodreacs+=($p->{"COEFFICIENT"}->[0]*log($tconc));
