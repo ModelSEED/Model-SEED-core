@@ -2255,7 +2255,7 @@ sub mdlprintspreadsheet {
 		$mdl->publicTable({type => "F"})
 	];
 	my $tableNames = ['Reactions', 'Compounds', 'Features'];
-	$self->figmodel()make_xls({
+	$self->figmodel()->make_xls({
 		filename => $self->figmodel()->ws()->directory().$args->{model}.".xls",
 		sheetnames => $tableNames,
 		sheetdata => $tables 
