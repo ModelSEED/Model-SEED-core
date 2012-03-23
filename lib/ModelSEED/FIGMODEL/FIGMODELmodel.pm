@@ -6404,8 +6404,8 @@ sub generate_reaction_data_table {
 				} elsif ($headings->[$j] eq "REFERENCE") {
 					$newRow->{$headings->[$j]} = $row->{REFERENCE};	
 				} elsif ($headings->[$j] eq "EQUATION") {
-					print $row->{LOAD}->[0]."\n";
 					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ID"});
+					print "Equation:".$newRow->{$headings->[$j]}->[0]."\n";
 				} elsif ($headings->[$j] eq "ABBREVIATION EQ") {
 					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ABBREV"});
 				} elsif ($headings->[$j] eq "NAME EQ") {
