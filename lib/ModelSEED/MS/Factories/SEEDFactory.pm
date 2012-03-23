@@ -46,7 +46,8 @@ sub buildMooseAnnotation {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $genomeObj = ModelSEED::MS::Genome->new({
+	my $annoationObj = $self->om()->create("Annotation");
+	my $genomeObj = $annoationObj->create("Genome",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},
 		source => $args->{source},
@@ -54,34 +55,30 @@ sub buildMooseAnnotation {
 		size => $genomeData->{size},
 		gc => $genomeData->{gc},
 	});
-	my $annoationObj = $self->om()->create("Annotation");
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
-	$annoationObj->add("Genome", $genomeObj);
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}
 	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
 		my $row = $genomeData->{features}->[$i]; 
 		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
-			my $featureObj = ModelSEED::MS::Feature->new({
+			my $featureObj = $annoationObj->create("Feature",{
 				id => $row->{ID}->[0],
 				genome_uuid => $genomeObj->uuid(),
 				start => $row->{START}->[0],
 				stop => $row->{STOP}->[0],
 				contig => $row->{CONTIG}->[0]
 			});
-			$annoationObj->add($featureObj);
 			if (defined($row->{ROLES}->[0])) {
 				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
 					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
-					my $ftrRoleObj = ModelSEED::MS::FeatureRole->new({
+					my $ftrRoleObj =$featureObj->create("FeatureRole",{
 						feature_uuid => $featureObj->uuid(),
 						role_uuid => $roleObj->uuid(),
 						compartment => join("|",@{$row->{COMPARTMENT}}),
 						comment => $row->{COMMENT}->[0],
 						delimiter => $row->{DELIMITER}->[0]
 					});
-					push(@{$featureObj->featureroles()},$ftrRoleObj);
 				}
 			}
 		}
@@ -107,7 +104,7 @@ sub getRoleObject {
 			searchname => $searchName
 		});
 	}
-	$args->{mapping}->add("Role", $roleObj);			
+	$args->{mapping}->add($roleObj);			
 	return $roleObj;
 }
 

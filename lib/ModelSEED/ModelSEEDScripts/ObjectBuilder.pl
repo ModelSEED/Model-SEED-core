@@ -129,7 +129,7 @@ foreach my $name (keys(%{$objects})) {
 	#Printing constants
 	push(@{$output},("# CONSTANTS:"));
 	push(@{$output},"sub _type { return '".$name."'; }");
-	if ($baseObject eq "IndexedObject") {
+	if (defined($typeToFunction)) {
 		push(@{$output},"sub _typeToFunction {");
 		push(@{$output},"\treturn {");
 		foreach my $key (keys(%{$typeToFunction})) {

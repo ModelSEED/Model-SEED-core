@@ -1933,6 +1933,24 @@ sub mdlprocessmodel {
     $mdl->processModel();
     return "SUCCESS";
 }
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Processes model to calculate states and generate needed files.
+=EXAMPLE
+./mdlprocessmodel
+=cut
+sub mdlsetstatus {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"SEED ID of the model to be analyzed"],
+	["message",1,undef,"status message"],
+	["status",1,undef,"status"],
+    ],[@Data],"create gene similarity table");
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    return "SUCCESS";
+}
 
 =head
 =CATEGORY

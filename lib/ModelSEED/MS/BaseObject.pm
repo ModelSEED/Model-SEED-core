@@ -91,11 +91,44 @@ sub serializeToDB {
 	return $data;
 }
 
+######################################################################
+#Object addition functions
+######################################################################
+sub create {
+	my ($self,$type,$data) = @_;
+	if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
+    	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
+    }
+	my $package = "ModelSEED::MS::$type";
+	eval {
+		require $package;
+	};
+	my $object = $package->new($data);
+	$self->add($object);
+	return $object;
+}
+
+sub add {
+    my ($self,$object) = @_;
+    my $type = $object->_type();
+    if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
+    	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
+    }
+    my $function = $self->_typeToFunction()->{$type};
+    $object->parent($self);
+	push(@{$self->$function()},$object);
+}
+
 sub getLinkedObject {
 	my ($self,$soureType,$type,$attribute,$value) = @_;
 	$soureType = lc($soureType);
 	my $parent = $self->$soureType();
-	my $object = $parent->getObject($type,{$attribute => $value});
+	my $object;
+	if (ref($parent) eq "ModelSEED::MS::ObjectManager") {
+		$object = $parent->get($value);
+	} else {
+		$object = $parent->getObject($type,{$attribute => $value});
+	}
 	if (!defined($object)) {
 		ModelSEED::utilities::ERROR($type.' '.$value." not found in ".$soureType."!");
 	}

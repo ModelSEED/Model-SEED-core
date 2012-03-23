@@ -14,10 +14,10 @@ my $testCount = 0;
     	genome_id => "83333.1"
     });
     ok defined($anno), "Created annotation!";
-    my $data = $anno->serializeToDB();
-    print STDERR Data::Dumper->Dump([$data]);
-    #$data = $anno->mapping()->serializeToDB();
+    #my $data = $anno->serializeToDB();
     #print STDERR Data::Dumper->Dump([$data]);
+    my $data = $anno->mapping()->serializeToDB();
+    print STDERR Data::Dumper->Dump([$data]);
     $testCount += 2;
 }
 done_testing($testCount);

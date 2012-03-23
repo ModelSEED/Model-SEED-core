@@ -18,14 +18,7 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 #Object addition functions
 ######################################################################
 sub add {
-    my ($self, $type, $object) = @_;
-    if(ref($object) eq 'HASH') {
-        my $package = "ModelSEED::MS::$type";
-        eval {
-            require $package;
-        };
-        $object = $package->new($object);
-    }
+    my ($self,$object) = @_;
     $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();

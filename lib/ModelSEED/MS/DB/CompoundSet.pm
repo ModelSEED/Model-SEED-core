@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T16:31:06
+# Date of module creation: 2012-03-23T06:50:05
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -45,6 +45,11 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'CompoundSet'; }
+sub _typeToFunction {
+	return {
+		Compound => 'compounds',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;
