@@ -1896,6 +1896,61 @@ sub mdlreconstruction {
 	});
     return "Generated model from genome annotations";
 }
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Print the model feature table to the provenance directory
+=EXAMPLE
+./mdlprintfeatureprovenance
+=cut
+sub mdlprintfeatureprovenance {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"SEED ID of the model to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    my $feature_table = $mdl->genomeObj()->feature_table();
+	print $mdl->directory()."annotations/features.txt\n";
+	print "Size:".$feature_table->size()."\n";
+	$feature_table->save($mdl->directory()."annotations/features.txt");
+    return "SUCCESS";
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Processes model to calculate states and generate needed files.
+=EXAMPLE
+./mdlprocessmodel
+=cut
+sub mdlprocessmodel {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"SEED ID of the model to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    $mdl->processModel();
+    return "SUCCESS";
+}
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+Processes model to calculate states and generate needed files.
+=EXAMPLE
+./mdlprocessmodel
+=cut
+sub mdlsetstatus {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"SEED ID of the model to be analyzed"],
+	["message",1,undef,"status message"],
+	["status",1,undef,"status"],
+    ],[@Data],"create gene similarity table");
+    my $mdl =  $self->figmodel()->get_model($args->{"model"});
+    return "SUCCESS";
+}
 
 =head
 =CATEGORY
@@ -3002,6 +3057,27 @@ sub gengetgenehits {
     my $result = $fig_genome->getGeneSimilarityHitTable();
 
     return $result;
+}
+
+sub genupdatestats {
+	my($self,@Data) = @_;
+    my $args = $self->check([
+	["genome",1,undef,"SEED ID of the genome to be analyzed"]
+    ],[@Data],"create gene similarity table");
+    my $fig_genome = $self->figmodel()->get_genome($args->{genome});
+    $fig_genome->update_genome_stats();
+    my $stats = $fig_genome->genome_stats();
+    my $attributes = [keys(%{$stats->attributes()})];
+    print join("\t",@{$attributes})."\n";
+    for (my $j=0; $j < @{$attributes}; $j++) {
+    	if ($j > 0) {
+    		print "\t";	
+    	}
+    	my $function = $attributes->[$j];
+    	print $stats->$function();
+    }
+    print "\n";
+    return "SUCCESS";
 }
 
 sub gengettreehits {

@@ -41,6 +41,9 @@ sub AUTOLOAD {
     unless(scalar(@_) > 0) {
         return $self->{_obj}->$call();
     } 
+    unless(defined($self->{_attrs}->{$call})) {
+        return $self->{_obj}->$call(@_);
+    }
     my $value = shift @_; 
     my $database = $self->{_figmodel}->database();
     my $rights = $database->get_object_rights($self->{_obj}, $self->{_type});

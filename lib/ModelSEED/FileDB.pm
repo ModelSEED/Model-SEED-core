@@ -1,82 +1,91 @@
 package ModelSEED::FileDB;
 
-use strict;
-use warnings;
-
 use Moose;
+use Moose::Util::TypeConstraints;
+use Cwd qw(abs_path);
 use ModelSEED::FileDB::FileIndex;
 
-my $object_types = ['model', 'biochemistry', 'mapping', 'annotation'];
+subtype 'Directory',
+    as 'Str',
+    where { -d abs_path($_) };
 
-my $indexes = {};
-foreach my $type (@$object_types) {
-    $indexes->{$type} = ModelSEED::FileDB::FileIndex->new({
-	filename => "$type.ind"
-    });
+
+has directory => (
+    is       => 'ro',
+    isa      => 'Directory',
+    required => 1
+);
+has indexes => (
+    is      => 'ro',
+    isa     => 'HashRef',
+    builder => '_buildIndicies',
+    lazy    => 1
+);
+has types => (
+    is      => 'ro',
+    isa     => 'ArrayRef[Str]',
+    builder => '_buildTypes',
+    lazy    => 1
+);
+
+sub _buildTypes {
+    return [ qw( Model Biochemistry Mapping Annotation ) ];
+}
+
+sub _buildIndicies {
+    my $self = shift @_;
+    my $indexes = {};
+    foreach my $type (@{$self->types}) {
+        $indexes->{$type} = ModelSEED::FileDB::FileIndex->new(
+            {filename => $self->directory . "/" . $type . ".zip"});
+    }
+    return $indexes;
 }
 
 sub has_object {
     my ($self, $type, $args) = @_;
 
-    return $indexes->{$type}->has_object($args);
+    return $self->indexes->{$type}->has_object($args);
 }
 
 sub get_object {
     my ($self, $type, $args) = @_;
-
-    return $indexes->{$type}->get_object($args);
+    return $self->indexes->{$type}->get_object($args);
 }
 
 sub save_object {
     my ($self, $type, $args) = @_;
-
-    return $indexes->{$type}->save_object($args);
+    return $self->indexes->{$type}->save_object($args);
 }
 
-sub add_alias {
+sub set_alias {
     my ($self, $type, $args) = @_;
-
-    return $indexes->{$type}->add_alias($args);
+    return $self->indexes->{$type}->set_alias($args);
 }
 
 sub remove_alias {
     my ($self, $type, $args) = @_;
-
-    return $indexes->{$type}->remove_alias($args);
+    return $self->indexes->{$type}->remove_alias($args);
 }
 
-sub change_permissions {
+sub get_permissions {
     my ($self, $type, $args) = @_;
-
-    return $indexes->{$type}->change_permissions($args);
+    return $self->indexes->{$type}->get_permissions($args);
 }
 
-sub get_uuids_for_user {
+sub set_permissions {
+    my ($self, $type, $args) = @_;
+    return $self->indexes->{$type}->set_permissions($args);
+}
+
+sub get_user_uuids {
     my ($self, $type, $user) = @_;
-
-    return $indexes->{$type}->get_uuids_for_user($user);
+    return $self->indexes->{$type}->get_uuids_for_user($user);
 }
 
-sub get_aliases_for_user {
+sub get_user_aliases {
     my ($self, $type, $user) = @_;
-
-    return $indexes->{$type}->get_aliases_for_user($user);
-}
-
-sub add_user {
-    my ($self, $user) = @_;
-
-    foreach my $type (@$object_types) {
-	$indexes->{$type}->add_user($user);
-    }
-}
-
-sub remove_user {
-    my ($self, $user) = @_;
-
-    foreach my $type (@$object_types) {
-	$indexes->{$type}->remove_user($user);
-    }
+    return $self->indexes->{$type}->get_aliases_for_user($user);
 }
 
 no Moose;

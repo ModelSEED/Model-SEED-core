@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:18:07
+# Date of module creation: 2012-03-23T06:50:05
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -13,8 +13,10 @@ use ModelSEED::MS::Compartment;
 use ModelSEED::MS::Compound;
 use ModelSEED::MS::Reaction;
 use ModelSEED::MS::Media;
-use ModelSEED::MS::Compoundset;
-use ModelSEED::MS::Reactionset;
+use ModelSEED::MS::CompoundSet;
+use ModelSEED::MS::ReactionSet;
+use ModelSEED::MS::CompoundAliasSet;
+use ModelSEED::MS::ReactionAliasSet;
 package ModelSEED::MS::DB::Biochemistry;
 use Moose;
 extends 'ModelSEED::MS::IndexedObject';
@@ -41,8 +43,10 @@ has compartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|Arra
 has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'child(Compound)', metaclass => 'Typed');
 has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]', type => 'child(Reaction)', metaclass => 'Typed');
 has media => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]', type => 'child(Media)', metaclass => 'Typed');
-has compoundsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compoundset]', type => 'child(Compoundset)', metaclass => 'Typed');
-has reactionsets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reactionset]', type => 'child(Reactionset)', metaclass => 'Typed');
+has compoundSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundSet]', type => 'child(CompoundSet)', metaclass => 'Typed');
+has reactionSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionSet]', type => 'child(ReactionSet)', metaclass => 'Typed');
+has compoundAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundAliasSet]', type => 'child(CompoundAliasSet)', metaclass => 'Typed');
+has reactionAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionAliasSet]', type => 'child(ReactionAliasSet)', metaclass => 'Typed');
 
 
 # BUILDERS:
@@ -52,6 +56,18 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Biochemistry'; }
+sub _typeToFunction {
+	return {
+		ReactionSet => 'reactionSets',
+		CompoundAliasSet => 'compoundAliasSets',
+		ReactionAliasSet => 'reactionAliasSets',
+		Media => 'media',
+		Compound => 'compounds',
+		Reaction => 'reactions',
+		Compartment => 'compartments',
+		CompoundSet => 'compoundSets',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;

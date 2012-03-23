@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:18:07
+# Date of module creation: 2012-03-23T06:50:05
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -48,6 +48,14 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 
 # CONSTANTS:
 sub _type { return 'User'; }
+sub _typeToFunction {
+	return {
+		Mapping => 'mappings',
+		Annotation => 'annotations',
+		Model => 'models',
+		Biochemistry => 'biochemistries',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;

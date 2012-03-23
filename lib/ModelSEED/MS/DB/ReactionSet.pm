@@ -1,16 +1,16 @@
 ########################################################################
-# ModelSEED::MS::DB::Reactionset - This is the moose object corresponding to the Reactionset object
+# ModelSEED::MS::DB::ReactionSet - This is the moose object corresponding to the ReactionSet object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:18:07
+# Date of module creation: 2012-03-23T06:50:05
 ########################################################################
 use strict;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::Reaction;
-package ModelSEED::MS::DB::Reactionset;
+package ModelSEED::MS::DB::ReactionSet;
 use Moose;
 extends 'ModelSEED::MS::BaseObject';
 
@@ -44,7 +44,12 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:
-sub _type { return 'Reactionset'; }
+sub _type { return 'ReactionSet'; }
+sub _typeToFunction {
+	return {
+		Reaction => 'reactions',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;

@@ -46,7 +46,8 @@ sub buildMooseAnnotation {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $genomeObj = ModelSEED::MS::Genome->new({
+	my $annoationObj = $self->om()->create("Annotation");
+	my $genomeObj = $annoationObj->create("Genome",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},
 		source => $args->{source},
@@ -54,16 +55,14 @@ sub buildMooseAnnotation {
 		size => $genomeData->{size},
 		gc => $genomeData->{gc},
 	});
-	my $annoationObj = ModelSEED::MS::Annotation->new();
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
-	$annoationObj->add($genomeObj);
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}
 	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
 		my $row = $genomeData->{features}->[$i]; 
 		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
-			my $featureObj = ModelSEED::MS::Feature->new({
+			my $featureObj = $annoationObj->create("Feature",{
 				id => $row->{ID}->[0],
 				genome_uuid => $genomeObj->uuid(),
 				start => $row->{START}->[0],
@@ -73,10 +72,10 @@ sub buildMooseAnnotation {
 			if (defined($row->{ROLES}->[0])) {
 				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
 					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
-					my $ftrRoleObj = ModelSEED::MS::FeatureRole->new({
+					my $ftrRoleObj =$featureObj->create("FeatureRole",{
 						feature_uuid => $featureObj->uuid(),
 						role_uuid => $roleObj->uuid(),
-						compartment => $row->{COMPARTMENT}->[0],
+						compartment => join("|",@{$row->{COMPARTMENT}}),
 						comment => $row->{COMMENT}->[0],
 						delimiter => $row->{DELIMITER}->[0]
 					});
@@ -96,7 +95,7 @@ sub buildSerialAnnotation {
 # FUNCTIONS:
 sub getRoleObject {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities->ARGS($args,["roleString","mapping"],{});					
+	$args = ModelSEED::utilities::ARGS($args,["roleString","mapping"],{});					
 	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
 	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
 	if (!defined($roleObj)) {
@@ -116,16 +115,12 @@ sub getMappingObject {
 	});
 	my $mappingObj;
 	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->om()->getObject("Mapping",{uuid => $args->{mapping_uuid}});
+		$mappingObj = $self->om()->get("Mapping",$args->{mapping_uuid});
 		if (!defined($mappingObj)) {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}
 	} else {
-		$mappingObj = ModelSEED::MS::Mapping->new({
-			name => "Test",
-			parent => $self->om()
-		});
-		$self->om()->add($mappingObj);
+		$mappingObj = $self->om()->create("Mapping",{name=>"Test"});
 	}
 	return $mappingObj;
 }
@@ -165,26 +160,26 @@ sub getGenomeFeatures {
 			$sequences = $self->sapsvr()->ids_to_sequences({-ids => $featureList,-protein => 1});
 		}
 		for (my $i=0; $i < @{$featureList}; $i++) {
-			my $row = {ID => [$featureList->[$i]],TYPE => "peg"};
+			my $row = {ID => [$featureList->[$i]],TYPE => ["peg"]};
 			if ($featureList->[$i] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
 				$row->{TYPE}->[0] = $1;
 			}
-			print $locations->{$featureList->[$i]}->[0]."\n";
-			if (defined($locations->{$featureList->[$i]}->[0]) && $locations->{$featureList->[$i]}->[0] =~ m/(\d+)([\+\-])(\d+)$/) {
-				$row->{CONTIG}->[0] = "?";
-				if ($2 eq "-") {
-					$row->{START}->[0] = ($1-$3);
-					$row->{STOP}->[0] = ($1);
+			if (defined($locations->{$featureList->[$i]}->[0]) && $locations->{$featureList->[$i]}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
+				my $array = [split(/:/,$1)];
+				$row->{CONTIG}->[0] = $array->[1];
+				if ($3 eq "-") {
+					$row->{START}->[0] = ($2-$4);
+					$row->{STOP}->[0] = ($2);
 					$row->{DIRECTION}->[0] = "rev";
 				} else {
-					$row->{START}->[0] = ($1);
-					$row->{STOP}->[0] = ($1+$3);
+					$row->{START}->[0] = ($2);
+					$row->{STOP}->[0] = ($2+$4);
 					$row->{DIRECTION}->[0] = "for";
 				}
 			}
 			if (defined($functions->{$featureList->[$i]})) {
 				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($functions->{$featureList->[$i]});
-				$row->{COMPARTMENT}->[0] = $output->{compartment};
+				$row->{COMPARTMENT} = $output->{compartments};
 				$row->{COMMENT}->[0] = $output->{comment};
 				$row->{DELIMITER}->[0] = $output->{delimiter};
 				$row->{ROLES} = $output->{roles};
@@ -208,22 +203,22 @@ sub getGenomeFeatures {
 			if ($ftr->{ID}->[0] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
 				$row->{TYPE}->[0] = $1;
 			}
-			print $ftr->{LOCATION}->[0]."\n";
-			if (defined($ftr->{LOCATION}->[0]) && $ftr->{LOCATION}->[0] =~ m/(\d+)([\+\-])(\d+)$/) {
-				$row->{CONTIG}->[0] = "?";
-				if ($2 eq "-") {
-					$row->{START}->[0] = ($1-$3);
-					$row->{STOP}->[0] = ($1);
+			if (defined($ftr->{LOCATION}->[0]) && $ftr->{LOCATION}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
+				my $array = [split(/:/,$1)];
+				$row->{CONTIG}->[0] = $array->[1];
+				if ($3 eq "-") {
+					$row->{START}->[0] = ($2-$4);
+					$row->{STOP}->[0] = ($2);
 					$row->{DIRECTION}->[0] = "rev";
 				} else {
-					$row->{START}->[0] = ($1);
-					$row->{STOP}->[0] = ($1+$3);
+					$row->{START}->[0] = ($2);
+					$row->{STOP}->[0] = ($2+$4);
 					$row->{DIRECTION}->[0] = "for";
 				}
 			}
 			if (defined($ftr->{FUNCTION}->[0])) {
 				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($ftr->{FUNCTION}->[0]);
-				$row->{COMPARTMENT}->[0] = $output->{compartment};
+				$row->{COMPARTMENT}->[0] = $output->{compartments};
 				$row->{COMMENT}->[0] = $output->{comment};
 				$row->{DELIMITER}->[0] = $output->{delimiter};
 				$row->{ROLES} = $output->{roles};

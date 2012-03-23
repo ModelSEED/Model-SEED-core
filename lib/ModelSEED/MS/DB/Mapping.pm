@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T19:18:07
+# Date of module creation: 2012-03-23T06:50:05
 ########################################################################
 use strict;
 use namespace::autoclean;
@@ -58,6 +58,14 @@ sub _buildbiochemistry {
 
 # CONSTANTS:
 sub _type { return 'Mapping'; }
+sub _typeToFunction {
+	return {
+		Roleset => 'rolesets',
+		Complex => 'complexes',
+		Role => 'roles',
+		ReactionRule => 'reactionrules',
+	};
+}
 
 
 __PACKAGE__->meta->make_immutable;

@@ -192,7 +192,7 @@ sub feature_table {
 			my $sap = $self->figmodel()->sapSvr($args->{source});
 			#TODO: I'd like to see if we could possibly get all of this data with a single call
 			#Getting feature list for genome
-			my $featureHash = $sap->all_features({-ids => $args->{genome}});
+			my $featureHash = $sap->all_features({-ids => [$args->{genome}]});
 			my $featureList = $featureHash->{$args->{genome}};
 			#Getting functions for each feature
 			my $functions = $sap->ids_to_functions({-ids => $featureList});
@@ -356,7 +356,8 @@ sub update_genome_stats {
 	my $GenomeData;
 	my $sap = $self->figmodel()->sapSvr("PUBSEED");
 	my $result = $sap->exists({-type => 'Genome',-ids => [$self->genome()]});
-	if ($result->{$self->genome()} eq "0") {
+	if (!defined($result->{$self->genome()}) || $result->{$self->genome()} == 0) {
+		$genomeStats->{source} = "RAST";
 		my $output = $self->getRastGenomeData();
 		if (!defined($self->{_features})) {
 			$self->error_message("FIGMODELgenome:genome_stats:Could not find genome ".$self->genome()." in database");

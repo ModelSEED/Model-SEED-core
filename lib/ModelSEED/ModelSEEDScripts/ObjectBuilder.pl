@@ -82,12 +82,15 @@ foreach my $name (keys(%{$objects})) {
 	}
 	push(@{$output},("",""));
 	#Printing subobjects
+	my $typeToFunction;
 	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
 		push(@{$output},("# SUBOBJECTS:"));
 		foreach my $subobject (@{$object->{subobjects}}) {
+			$typeToFunction->{$subobject->{class}} = $subobject->{name};
 			$type = ", type => '".$subobject->{type}."(".$subobject->{class}.")', metaclass => 'Typed'";
-			if ($subobject->{type} =~ m/hasharray/) {
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'HashRef[ArrayRef]'".$type.");");
+			if ($subobject->{type} =~ m/hasharray\((.+)\)/) {
+				$type = ", type => 'hasharray(".$subobject->{class}.",".$1.")', metaclass => 'Typed'";
+				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]'".$type.");");
 			} elsif ($subobject->{type} =~ m/link/) {				
 				$type = ", type => 'solink(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.",weak_ref => 1);");
@@ -126,6 +129,15 @@ foreach my $name (keys(%{$objects})) {
 	#Printing constants
 	push(@{$output},("# CONSTANTS:"));
 	push(@{$output},"sub _type { return '".$name."'; }");
+	if (defined($typeToFunction)) {
+		push(@{$output},"sub _typeToFunction {");
+		push(@{$output},"\treturn {");
+		foreach my $key (keys(%{$typeToFunction})) {
+			push(@{$output},"\t\t".$key." => '".$typeToFunction->{$key}."',");
+		}
+		push(@{$output},"\t};");
+		push(@{$output},"}");
+	}
 	push(@{$output},("",""));
 	#Finalizing
 	push(@{$output},("__PACKAGE__->meta->make_immutable;","1;"));

@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::MS::DB::Reagent - This is the moose object corresponding to the Reagent object
+# ModelSEED::MS::DB::CompoundAlias - This is the moose object corresponding to the CompoundAlias object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -8,23 +8,20 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Reaction;
+use ModelSEED::MS::CompoundAliasSet;
 use ModelSEED::MS::Compound;
-package ModelSEED::MS::DB::Reagent;
+package ModelSEED::MS::DB::CompoundAlias;
 use Moose;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Reaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::CompoundAliasSet', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
-has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
-has cofactor => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has compartmentIndex => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '0' );
+has compound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 
@@ -41,7 +38,7 @@ sub _buildcompound {
 
 
 # CONSTANTS:
-sub _type { return 'Reagent'; }
+sub _type { return 'CompoundAlias'; }
 
 
 __PACKAGE__->meta->make_immutable;

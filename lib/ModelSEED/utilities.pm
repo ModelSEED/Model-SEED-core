@@ -163,6 +163,7 @@ sub LOADFILE {
     open (INPUT, "<", $filename) || ModelSEED::utilities::ERROR("Couldn't open $filename: $!");
     while (my $Line = <INPUT>) {
         chomp($Line);
+        $Line =~ s/\r//;
         push(@{$DataArrayRef},$Line);
     }
     close(INPUT);

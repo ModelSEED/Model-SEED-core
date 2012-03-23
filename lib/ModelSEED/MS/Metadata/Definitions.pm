@@ -2,18 +2,6 @@ use strict;
 package ModelSEED::MS::DB::Definitions;
 
 my $objectDefinitions = {};
-$objectDefinitions->{ObjectManager} = {
-	parents => [],
-	class => 'parent',
-	attributes => [
-		{name => 'user_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0}
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "user",attribute => "user_uuid",parent => "self",class => "User",query => "uuid"}
-	]
-};
 
 $objectDefinitions->{User} = {
 	parents => ["ObjectManager"],
@@ -51,11 +39,73 @@ $objectDefinitions->{Biochemistry} = {
 		{name => "compounds",class => "Compound",type => "child"},
 		{name => "reactions",class => "Reaction",type => "child"},
 		{name => "media",class => "Media",type => "child"},
-		{name => "compoundsets",class => "Compoundset",type => "child"},
-		{name => "reactionsets",class => "Reactionset",type => "child"},
+		{name => "compoundSets",class => "CompoundSet",type => "child"},
+		{name => "reactionSets",class => "ReactionSet",type => "child"},
+		{name => "compoundAliasSets",class => "CompoundAliasSet",type => "child"},
+		{name => "reactionAliasSets",class => "ReactionAliasSet",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
+};
+
+$objectDefinitions->{CompoundAliasSet} = {
+	parents => ['Biochemistry'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "compoundAliases",class => "CompoundAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{CompoundAlias} = {
+       parents => ['CompoundAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'compound_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias compound_uuid) ],
+       links => [
+              {name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
+       ]
+};
+
+$objectDefinitions->{ReactionAliasSet} = {
+	parents => ['Biochemistry'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "reactionAliases",class => "ReactionAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{ReactionAlias} = {
+       parents => ['ReactionAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'reaction_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias reaction_uuid) ],
+       links => [
+              {name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+       ]
 };
 
 $objectDefinitions->{Compartment} = {
@@ -241,7 +291,7 @@ $objectDefinitions->{MediaCompound} = {
 	]
 };
 
-$objectDefinitions->{Compoundset} = {
+$objectDefinitions->{CompoundSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
@@ -255,13 +305,13 @@ $objectDefinitions->{Compoundset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "compounds",class => "CompoundsetCompound",type => "link",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
+		{name => "compounds",class => "CompoundSetCompound",type => "link",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
 
-$objectDefinitions->{Reactionset} = {
+$objectDefinitions->{ReactionSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
@@ -275,7 +325,7 @@ $objectDefinitions->{Reactionset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "reactions",class => "ReactionsetReaction",type => "link",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+		{name => "reactions",class => "ReactionSetReaction",type => "link",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
