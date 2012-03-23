@@ -2233,6 +2233,35 @@ sub mdlprintmodel {
 	});
 	return "Successfully printed data for ".$args->{model}." in files:\n".$args->{filename}."\n".$args->{biomassFilename}."\n\n";
 }
+=head
+=CATEGORY
+Metabolic Model Operations
+=DESCRIPTION
+This function prints the model spreadsheet that can also be downloaded from the webpage.
+=EXAMPLE
+./mdlprintspreadsheet -'''model''' "iJR904"
+=cut
+sub mdlprintspreadsheet {
+	my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"The full Model SEED ID of the model to be printed."]
+	],[@Data],"prints a model into a spreadsheet");
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	if (!defined($mdl)) {
+		ModelSEED::utilities::ERROR("Model not valid ".$args->{model});
+	}
+	my $tables = [$mdl->publicTable({type => "R"}),
+		$mdl->publicTable({type => "C"}),
+		$mdl->publicTable({type => "F"})
+	];
+	my $tableNames = ['Reactions', 'Compounds', 'Features'];
+	$self->figmodel()make_xls({
+		filename => $self->figmodel()->ws()->directory().$args->{model}.".xls",
+		sheetnames => $tableNames,
+		sheetdata => $tables 
+	});
+	return "Successfully printed data for ".$args->{model}." in file ".$self->ws()->directory().$args->{model}.".xls";
+}
 
 =head
 =CATEGORY

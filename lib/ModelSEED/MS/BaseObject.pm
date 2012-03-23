@@ -92,6 +92,71 @@ sub serializeToDB {
 }
 
 ######################################################################
+#Output functions
+######################################################################
+sub createReadableFormat {
+	my ($self) = @_;
+	my $output = ["Attributes{"];
+	my $class = 'ModelSEED::MS::DB::'.$self->_type();
+	my $blacklist = {
+		modDate => 1,
+		locked => 1,
+		cksum => 1
+	};
+	my $line = "";
+	foreach my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->type() eq "attribute" && !defined($blacklist->{$attr->name()})) {
+			my $name = $attr->name();
+			if (length($line) == 0) {
+				$line .= "\t";	
+			}
+			$line .= $self->$name();
+		}
+	}
+	foreach my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
+			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+				my $name = $attr->name();
+				push(@{$output},$name."(){");
+				my $objects = $self->$name();
+				foreach my $object ($objects) {
+					push(@{$output},$object->createReadableLine());
+				}	
+				push(@{$output},"}");
+			}
+		}
+	}
+	return $output;
+}
+
+sub createReadableLine {
+	my ($self) = @_;
+	my $output = ["Attributes{"];
+	my $class = 'ModelSEED::MS::DB::'.$self->_type();
+	foreach my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed' && $attr->type() eq "attribute")) {
+			my $name = $attr->name();
+			push(@{$output},$name." = ".$self->$name());
+		}
+	}
+	push(@{$output},"}");
+	foreach my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
+			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
+				my $name = $attr->name();
+				push(@{$output},$name."(){");
+				my $objects = $self->$name();
+				foreach my $object ($objects) {
+					push(@{$output},$object->createReadableLine());
+				}	
+				push(@{$output},"}");
+			}
+		}
+	}
+	return $output;
+}
+
+######################################################################
 #Object addition functions
 ######################################################################
 sub create {
