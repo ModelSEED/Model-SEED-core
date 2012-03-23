@@ -1,4 +1,5 @@
 package ModelSEED::FileDB;
+
 use Moose;
 use Moose::Util::TypeConstraints;
 use Cwd qw(abs_path);
@@ -57,9 +58,9 @@ sub save_object {
     return $self->indexes->{$type}->save_object($args);
 }
 
-sub add_alias {
+sub set_alias {
     my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->add_alias($args);
+    return $self->indexes->{$type}->set_alias($args);
 }
 
 sub remove_alias {
@@ -67,21 +68,25 @@ sub remove_alias {
     return $self->indexes->{$type}->remove_alias($args);
 }
 
-sub change_permissions {
+sub get_permissions {
     my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->change_permissions($args);
+    return $self->indexes->{$type}->get_permissions($args);
 }
 
-sub get_uuids_for_user {
+sub set_permissions {
+    my ($self, $type, $args) = @_;
+    return $self->indexes->{$type}->set_permissions($args);
+}
+
+sub get_user_uuids {
     my ($self, $type, $user) = @_;
     return $self->indexes->{$type}->get_uuids_for_user($user);
 }
 
-sub get_aliases_for_user {
+sub get_user_aliases {
     my ($self, $type, $user) = @_;
     return $self->indexes->{$type}->get_aliases_for_user($user);
 }
 
 no Moose;
 __PACKAGE__->meta->make_immutable;
-1;
