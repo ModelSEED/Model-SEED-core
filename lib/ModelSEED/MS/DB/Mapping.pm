@@ -10,7 +10,7 @@ use namespace::autoclean;
 use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Role;
-use ModelSEED::MS::Roleset;
+use ModelSEED::MS::RoleSet;
 use ModelSEED::MS::ReactionRule;
 use ModelSEED::MS::Complex;
 use ModelSEED::MS::Biochemistry;
