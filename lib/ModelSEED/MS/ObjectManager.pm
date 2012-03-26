@@ -18,19 +18,42 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
-has user => (is => 'rw',isa => 'ModelSEED::MS::User');
-has filedb => (is => 'rw',isa => 'ModelSEED::FileDB',lazy => 1,builder => '_buildfiledb');
-has objects => (is => 'rw',isa => 'HashRef',default => sub{return{};});
+has db => (
+    is       => 'rw',
+    isa      => 'ModelSEED::Database',
+    required => 1
+);
 
+has username => (
+    is  => 'rw',
+    isa => 'Str'
+);
 
-# BUILDERS:
-sub _buildfiledb {
-	return ModelSEED::FileDB->new({directory => "/home/paul/Documents/ModelSEEDCore/data/filedb/"});
+has password => (
+    is       => 'rw',
+    isa      => 'Str',
+    required => 1
+);
+
+has user => (
+    is       => 'rw',
+    isa      => 'ModelSEED::MS::User',
+    required => 1
+);
+
+has objects => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    default => sub { return {}; }
+);
+
+sub BUILD {
+    # authenticate username and password, and get the user object from database
+    
 }
 
 # CONSTANTS:
 sub _type { return 'ObjectManager'; }
-
 
 # FUNCTIONS:
 sub authenticate {

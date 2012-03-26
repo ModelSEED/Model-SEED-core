@@ -17,10 +17,14 @@ use IO::Uncompress::Gunzip qw(gunzip);
 =head
 
 TODO
+  * Change _do_while_locked to _perform_transaction
+      - define types of locks needed for index and data
+      - know ahead of time how data file should be opened (r or r+)
+      - look into partial locks (locking part of a file, could use for saving objects)
   * Put index file back in memory (stored in moose object)
       - test if changed via mod time and size
       - should speed up data access (as long as index hasn't changed)
-
+  * Check for .tmp file in BUILD, if it exists then the previous index was not saved
 =cut
 
 my $INDEX_EXT = 'ind';
@@ -74,14 +78,18 @@ sub BUILD {
     } else {
 	my $index = _initialize_index();
 
+	# use a semaphore to lock the files
+	open LOCK, ">$file.lock" or die "$!";
+	flock LOCK, LOCK_EX or die "";
+
 	open INDEX, ">$file.$INDEX_EXT" or die "";
-	flock INDEX, LOCK_EX or die "";
 	print INDEX _encode($index);
 	close INDEX;
 
 	open DATA, ">$file.$DATA_EXT" or die;
-	flock DATA, LOCK_EX or die "";
 	close DATA;
+
+	close LOCK;
     }
 }
 
@@ -102,11 +110,25 @@ sub _do_while_locked {
     # get locked filehandles for index and data files
     my $file = $self->filename;
 
-    open INDEX, "+<$file.$INDEX_EXT" or die "";
-    flock INDEX, LOCK_EX or die "";
+    # use a semaphore to lock the files
+    open LOCK, ">$file.lock" or die "";
+    flock LOCK, LOCK_EX or die "";
 
+    # check if rebuild died between two rename statements
+    if (-f "$file.$DATA_EXT.tmp") {
+	if (-f "$file.$INDEX_EXT.tmp") {
+	    # both exist, roll back transaction by deleting
+	    unlink "$file.$DATA_EXT.tmp";
+	    unlink "$file.$INDEX_EXT.tmp";
+	} else {
+	    # index tmp has been copied but data has not
+	    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+	}
+    }
+
+    # open files (r/w for data since it might be edited, '+>' clobbers the file)
+    open INDEX, "<$file.$INDEX_EXT" or die "";
     open DATA, "+<$file.$DATA_EXT" or die "";
-    flock DATA, LOCK_EX or die "";
 
     # now read the index
     my $index = _decode(<INDEX>);
@@ -114,55 +136,73 @@ sub _do_while_locked {
     # run the code
     my ($data, $save) = $sub->($args, $index, *DATA);
 
-    if ($save) {
-	# save the index
-	truncate INDEX, 0 or die "";
-	seek INDEX, 0, 0 or die "";
-	print INDEX _encode($index);
-    }
-
-    # close (and unlock) filehandles
+    # close filehandles
     close INDEX;
     close DATA;
+
+    if ($save) {
+	# save the index to temp file, then use rename which is atomic
+	open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "";
+	print INDEX_TEMP _encode($index);
+	close INDEX_TEMP;
+	rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT"; # atomic on Linux/Unix and Windows
+    }
+
+    close LOCK;
 
     return $data;
 }
 
 # removes deleted objects from the data file
 # this locks the database while rebuilding
+# much duplicate logic here for locking, should be fixed
+# with _perform_transaction rewrite
 sub rebuild_data {
     my ($self) = @_;
 
-    return $self->_do_while_locked(\&_rebuild_data, $self->filename);
-}
+    # get locked filehandles for index and data files
+    my $file = $self->filename;
 
-sub _rebuild_data {
-    my ($filename, $index, $data_fh) = @_;
+    # use a semaphore to lock the files
+    open LOCK, ">$file.lock" or die "";
+    flock LOCK, LOCK_EX or die "";
+
+    open INDEX, "<$file.$INDEX_EXT" or die "";
+    my $index = _decode(<INDEX>);
+    close INDEX;
+
+    if ($index->{num_del} == 0) {
+	# no need to rebuild
+	return 1;
+    }
+
+    open DATA, "<$file.$DATA_EXT" or die "";
+
+    # open INDEX_TEMP first
+    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "";
+    open DATA_TEMP, ">$file.$DATA_EXT.tmp" or die "";
 
     my $end = -1;
-    my $uuids = [];
-    my $first = 1;
+    my $uuids = []; # new ordered uuid list
     foreach my $uuid (@{$index->{ordered_uuids}}) {
 	if (defined($index->{uuid_index}->{$uuid})) {
 	    my $uuid_hash = $index->{uuid_index}->{$uuid};
 	    my $length = $uuid_hash->{end} - $uuid_hash->{start} + 1;
 
-	    unless ($first) {
-		my $data;
-		seek $data_fh, $uuid_hash->{start}, 0 or die "";
-		read $data_fh, $data, $length;
+	    # seek and read the object
+	    my $data;
+	    seek DATA, $uuid_hash->{start}, 0 or die "";
+	    read DATA, $data, $length;
 
-		$uuid_hash->{start} = $end + 1;
-		$uuid_hash->{end} = $end + $length;
+	    # set the new start and end positions
+	    $uuid_hash->{start} = $end + 1;
+	    $uuid_hash->{end} = $end + $length;
 
-		seek $data_fh, $uuid_hash->{start}, 0 or die "";
-		print $data_fh $data;
-	    }
+	    # print object to temp file
+	    print DATA_TEMP $data;
 
 	    $end += $length;
 	    push(@$uuids, $uuid);
-	} else {
-	    $first = 0;
 	}
     }
 
@@ -171,9 +211,21 @@ sub _rebuild_data {
     $index->{end_pos} = $end;
     $index->{ordered_uuids} = $uuids;
 
-    truncate $data_fh, $end or die "";
+    close DATA;
+    close DATA_TEMP;
 
-    return (1, 1);
+    print INDEX_TEMP _encode($index);
+    close INDEX_TEMP;
+
+    # only point we could get corrupted is between next two statements
+    # in '_do_while_locked' check if .dat.tmp exists, but not .int.tmp
+    # if it does then indicates we failed here, so rename data
+    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
+    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+
+    close LOCK;
+
+    return 1;
 }
 
 sub _get_ordered_uuids {
@@ -619,6 +671,13 @@ sub _get_uuid {
             return $id;
         }
     }
+}
+
+sub test {
+    return {
+	blah => sub {},
+	blah2 => sub{}
+    };
 }
 
 no Moose;
