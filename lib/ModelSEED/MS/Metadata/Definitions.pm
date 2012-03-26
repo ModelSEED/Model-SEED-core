@@ -696,6 +696,96 @@ $objectDefinitions->{Mapping} = {
 	]
 };
 
+$objectDefinitions->{ComplexAliasSet} = {
+	parents => ['Mapping'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "complexAliases",class => "ComplexAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{ComplexAlias} = {
+       parents => ['ComplexAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'complex_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias complex_uuid) ],
+       links => [
+              {name => "complex",attribute => "complex_uuid",parent => "Mapping",class => "Complex",query => "uuid"},
+       ]
+};
+
+$objectDefinitions->{RoleAliasSet} = {
+	parents => ['Mapping'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "roleAliases",class => "RoleAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{RoleAlias} = {
+       parents => ['RoleAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'role_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias role_uuid) ],
+       links => [
+              {name => "role",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"},
+       ]
+};
+
+$objectDefinitions->{RolesetAliasSet} = {
+	parents => ['Mapping'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "rolesetAliases",class => "RolesetAlias",type => "hasharray(alias)"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{RolesetAlias} = {
+       parents => ['RolesetAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'roleset_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias roleset_uuid) ],
+       links => [
+              {name => "roleset",attribute => "roleset_uuid",parent => "Mapping",class => "Roleset",query => "uuid"},
+       ]
+};
+
 $objectDefinitions->{Role} = {
 	parents => ['Mapping'],
 	class => 'child',
