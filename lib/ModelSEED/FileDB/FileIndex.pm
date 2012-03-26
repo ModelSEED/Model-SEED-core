@@ -115,8 +115,15 @@ sub _do_while_locked {
     flock LOCK, LOCK_EX or die "";
 
     # check if rebuild died between two rename statements
-    if (-f "$file.$DATA_EXT.tmp" && !-f "$file.$INDEX_EXT.tmp") {
-	rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+    if (-f "$file.$DATA_EXT.tmp") {
+	if (-f "$file.$INDEX_EXT.tmp") {
+	    # both exist, roll back transaction by deleting
+	    unlink "$file.$DATA_EXT.tmp";
+	    unlink "$file.$INDEX_EXT.tmp";
+	} else {
+	    # index tmp has been copied but data has not
+	    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+	}
     }
 
     # open files (r/w for data since it might be edited, '+>' clobbers the file)
@@ -217,12 +224,6 @@ sub rebuild_data {
     rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
 
     close LOCK;
-
-    return 1;
-}
-
-sub _rebuild_data {
-    my ($filename, $index, $data_fh) = @_;
 
     return 1;
 }
