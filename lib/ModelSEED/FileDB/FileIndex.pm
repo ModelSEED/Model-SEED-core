@@ -114,6 +114,11 @@ sub _do_while_locked {
     open LOCK, ">$file.lock" or die "";
     flock LOCK, LOCK_EX or die "";
 
+    # check if rebuild died between two rename statements
+    if (-f "$file.$DATA_EXT.tmp" && !-f "$file.$INDEX_EXT.tmp") {
+	rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+    }
+
     # open files (r/w for data since it might be edited, '+>' clobbers the file)
     open INDEX, "<$file.$INDEX_EXT" or die "";
     open DATA, "+<$file.$DATA_EXT" or die "";
@@ -143,21 +148,32 @@ sub _do_while_locked {
 
 # removes deleted objects from the data file
 # this locks the database while rebuilding
+# much duplicate logic here for locking, should be fixed
+# with _perform_transaction rewrite
 sub rebuild_data {
     my ($self) = @_;
 
-    return $self->_do_while_locked(\&_rebuild_data, $self->filename);
-}
+    # get locked filehandles for index and data files
+    my $file = $self->filename;
 
-sub _rebuild_data {
-    my ($filename, $index, $data_fh) = @_;
+    # use a semaphore to lock the files
+    open LOCK, ">$file.lock" or die "";
+    flock LOCK, LOCK_EX or die "";
+
+    open INDEX, "<$file.$INDEX_EXT" or die "";
+    my $index = _decode(<INDEX>);
+    close INDEX;
 
     if ($index->{num_del} == 0) {
 	# no need to rebuild
 	return 1;
     }
 
-    open DATA_TEMP, ">$filename.$DATA_EXT.tmp" or die "";
+    open DATA, "<$file.$DATA_EXT" or die "";
+
+    # open INDEX_TEMP first
+    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "";
+    open DATA_TEMP, ">$file.$DATA_EXT.tmp" or die "";
 
     my $end = -1;
     my $uuids = []; # new ordered uuid list
@@ -168,8 +184,8 @@ sub _rebuild_data {
 
 	    # seek and read the object
 	    my $data;
-	    seek $data_fh, $uuid_hash->{start}, 0 or die "";
-	    read $data_fh, $data, $length;
+	    seek DATA, $uuid_hash->{start}, 0 or die "";
+	    read DATA, $data, $length;
 
 	    # set the new start and end positions
 	    $uuid_hash->{start} = $end + 1;
@@ -188,11 +204,27 @@ sub _rebuild_data {
     $index->{end_pos} = $end;
     $index->{ordered_uuids} = $uuids;
 
-    close $data_fh;
+    close DATA;
     close DATA_TEMP;
-    rename "$filename.$DATA_EXT.tmp", "$filename.$DATA_EXT"; # atomic on Linux/Unix and Windows
 
-    return (1, 1);
+    print INDEX_TEMP _encode($index);
+    close INDEX_TEMP;
+
+    # only point we could get corrupted is between next two statements
+    # in '_do_while_locked' check if .dat.tmp exists, but not .int.tmp
+    # if it does then indicates we failed here, so rename data
+    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
+    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+
+    close LOCK;
+
+    return 1;
+}
+
+sub _rebuild_data {
+    my ($filename, $index, $data_fh) = @_;
+
+    return 1;
 }
 
 sub _get_ordered_uuids {
