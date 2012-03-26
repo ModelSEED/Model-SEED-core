@@ -14,12 +14,7 @@ $objectDefinitions->{User} = {
 		{name => 'firstname',perm => 'rw',type => 'Str',req => 0,default => ""},
 		{name => 'lastname',perm => 'rw',type => 'Str',req => 0,default => ""},
 	],
-	subobjects => [
-		{name => "biochemistries",class => "UserBiochemistry",type => "link",attribute => "biochemistry_uuid",parent => "ObjectManager",class => "Biochemistry",query => "uuid"},
-		{name => "annotations",class => "UserAnnotation",type => "link",attribute => "annotation_uuid",parent => "ObjectManager",class => "Annotation",query => "uuid"},
-		{name => "models",class => "UserModel",type => "link",attribute => "model_uuid",parent => "ObjectManager",class => "Model",query => "uuid"},
-		{name => "mappings",class => "UserMapping",type => "link",attribute => "mapping_uuid",parent => "ObjectManager",class => "Mapping",query => "uuid"}
-	],
+	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };

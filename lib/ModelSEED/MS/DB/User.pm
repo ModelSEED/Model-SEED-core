@@ -3,18 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-03-26T23:22:44
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::ObjectManager;
-use ModelSEED::MS::Biochemistry;
-use ModelSEED::MS::Annotation;
-use ModelSEED::MS::Model;
-use ModelSEED::MS::Mapping;
 package ModelSEED::MS::DB::User;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
 
 
@@ -35,27 +30,12 @@ has lastname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'T
 has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
 
 
-# SUBOBJECTS:
-has biochemistries => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biochemistry]', type => 'solink(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
-has annotations => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Annotation]', type => 'solink(ObjectManager,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
-has models => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Model]', type => 'solink(ObjectManager,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
-has mappings => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Mapping]', type => 'solink(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
-
-
 # BUILDERS:
 sub _builduuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:
 sub _type { return 'User'; }
-sub _typeToFunction {
-	return {
-		Mapping => 'mappings',
-		Annotation => 'annotations',
-		Model => 'models',
-		Biochemistry => 'biochemistries',
-	};
-}
 
 
 __PACKAGE__->meta->make_immutable;

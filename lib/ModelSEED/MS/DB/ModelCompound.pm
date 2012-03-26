@@ -3,16 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-03-26T23:22:44
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Model;
-use ModelSEED::MS::Compound;
-use ModelSEED::MS::ModelCompartment;
 package ModelSEED::MS::DB::ModelCompound;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 

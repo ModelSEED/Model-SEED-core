@@ -6,8 +6,6 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
-use ModelSEED::utilities;
-use namespace::autoclean;
 use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
@@ -16,6 +14,7 @@ $Data::Dumper::Maxdepth = 2;
 
 package ModelSEED::Meta::Attribute::Typed;
 use Moose;
+use namespace::autoclean;
 extends 'Moose::Meta::Attribute';
 
 has type => (
@@ -29,8 +28,7 @@ sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
 
 package ModelSEED::MS::BaseObject;
 use Moose;
-
-my $meta = __PACKAGE__->meta;
+use namespace::autoclean;
 
 sub BUILD {
     my ($self,$params) = @_;
@@ -253,5 +251,5 @@ sub objectmanager {
 	return $parent;
 }
 
-#__PACKAGE__->meta->make_immutable;
+__PACKAGE__->meta->make_immutable;
 1;

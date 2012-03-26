@@ -15,32 +15,30 @@ foreach my $name (keys(%{$objects})) {
 		"# Contact email: chenry\@mcs.anl.gov",
 		"# Development location: Mathematics and Computer Science Division, Argonne National Lab",
 		"# Date of module creation: ".DateTime->now()->datetime(),
-		"########################################################################"
+		"########################################################################",
+		"use strict;"
 	];
 	#Creating perl use statements
 	my $baseObject = "BaseObject";
 	if ($object->{class} eq "parent") {
 		$baseObject = "IndexedObject";	
 	}
-	push(@{$output},(
-		"use strict;",
-		"use namespace::autoclean;",
-		"use ModelSEED::MS::".$baseObject.";"
-	));
-	if (defined($object->{parents}->[0])) {
-		push(@{$output},"use ModelSEED::MS::".$object->{parents}->[0].";");
-	}
+	
+	#if (defined($object->{parents}->[0])) {
+	#	push(@{$output},"use ModelSEED::MS::".$object->{parents}->[0].";");
+	#}
 	foreach my $subobject (@{$object->{subobjects}}) {
 		if ($subobject->{type} !~ /hasharray/) {
 			push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
 		}
 	}
-	foreach my $subobject (@{$object->{links}}) {
-		push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
-	}
+	push(@{$output},("use ModelSEED::MS::".$baseObject.";"));
+	#foreach my $subobject (@{$object->{links}}) {
+	#	push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
+	#}
 	#Creating package statement
 	push(@{$output},"package ModelSEED::MS::DB::".$name.";");
-	push(@{$output},"use Moose;");
+	push(@{$output},"use Moose;","use namespace::autoclean;");
 	#Determining and setting base class
 	push(@{$output},("extends 'ModelSEED::MS::".$baseObject."';","",""));
 	#Printing parent
@@ -152,10 +150,10 @@ foreach my $name (keys(%{$objects})) {
 			"# Date of module creation: ".DateTime->now()->datetime(),
 			"########################################################################",
 			"use strict;",
-			"use namespace::autoclean;",
 			"use ModelSEED::MS::DB::".$name.";",
 			"package ModelSEED::MS::".$name.";",
 			"use Moose;",
+			"use namespace::autoclean;",
 			"extends 'ModelSEED::MS::DB::".$name."';",
 			"# CONSTANTS:",
 			"#TODO",

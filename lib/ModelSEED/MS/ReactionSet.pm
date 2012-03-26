@@ -1,15 +1,15 @@
 ########################################################################
-# ModelSEED::MS::Reactionset - This is the moose object corresponding to the Reactionset object
+# ModelSEED::MS::ReactionSet - This is the moose object corresponding to the ReactionSet object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-20T05:05:02
+# Date of module creation: 2012-03-26T23:22:35
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::DB::ReactionSet;
 package ModelSEED::MS::ReactionSet;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::DB::ReactionSet';
 # CONSTANTS:
 #TODO

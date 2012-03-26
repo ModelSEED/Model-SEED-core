@@ -6,11 +6,16 @@
 # Date of module creation: 2012-03-20T05:05:02
 ########################################################################
 use strict;
-use namespace::autoclean;
+use ModelSEED::utilities;
 use ModelSEED::FileDB;
 use ModelSEED::MS::User;
+use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::Mapping;
+use ModelSEED::MS::Annotation;
+use ModelSEED::MS::Model;
 package ModelSEED::MS::ObjectManager;
 use Moose;
+use namespace::autoclean;
 
 # ATTRIBUTES:
 has user => (is => 'rw',isa => 'ModelSEED::MS::User');

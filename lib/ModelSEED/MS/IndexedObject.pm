@@ -6,6 +6,7 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
+use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;

@@ -3,21 +3,17 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-03-26T23:22:44
 ########################################################################
 use strict;
-use namespace::autoclean;
-use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Biomass;
 use ModelSEED::MS::ModelCompartment;
 use ModelSEED::MS::ModelCompound;
 use ModelSEED::MS::ModelReaction;
-use ModelSEED::MS::Biochemistry;
-use ModelSEED::MS::Mapping;
-use ModelSEED::MS::Annotation;
+use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Model;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
 
 
