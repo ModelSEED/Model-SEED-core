@@ -3,11 +3,18 @@ package ModelSEED::FileDB;
 use Moose;
 use Moose::Util::TypeConstraints;
 use Cwd qw(abs_path);
+use File::Path qw(make_path);
 use ModelSEED::FileDB::FileIndex;
 
 subtype 'Directory',
     as 'Str',
-    where { -d abs_path($_) };
+    where {
+	if (!-d abs_path($_)) {
+	    make_path($_) or return 0;
+	}
+
+	return 1;
+    };
 
 
 has directory => (
@@ -37,7 +44,7 @@ sub _buildIndicies {
     my $indexes = {};
     foreach my $type (@{$self->types}) {
         $indexes->{$type} = ModelSEED::FileDB::FileIndex->new(
-            {filename => $self->directory . "/" . $type . ".zip"});
+            {filename => $self->directory . "/" . $type});
     }
     return $indexes;
 }
@@ -80,12 +87,12 @@ sub set_permissions {
 
 sub get_user_uuids {
     my ($self, $type, $user) = @_;
-    return $self->indexes->{$type}->get_uuids_for_user($user);
+    return $self->indexes->{$type}->get_user_uuids($user);
 }
 
 sub get_user_aliases {
     my ($self, $type, $user) = @_;
-    return $self->indexes->{$type}->get_aliases_for_user($user);
+    return $self->indexes->{$type}->get_user_aliases($user);
 }
 
 no Moose;

@@ -20,7 +20,7 @@ has objects => (is => 'rw',isa => 'HashRef',default => sub{return{};});
 
 # BUILDERS:
 sub _buildfiledb {
-	return ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"});
+	return ModelSEED::FileDB->new({directory => "/home/paul/Documents/ModelSEEDCore/data/filedb/"});
 }
 
 # CONSTANTS:
