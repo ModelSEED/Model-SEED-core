@@ -934,7 +934,7 @@ sub create_sbml_link {
 	if (!defined($name)) {
 		$name = "SBML format";
 	}
-	my $Link = '<a  href="ModelSEEDdownload.cgi?model='.$id.'&file='.$type.'" title="'.$title.'">'.$name.'</a>';
+	my $Link = '<a  href="http://bioseed.mcs.anl.gov/~chenry/FIG/CGI/ModelSEEDdownload.cgi?model='.$id.'&file='.$type.'" title="'.$title.'">'.$name.'</a>';
 	return $Link;
 }
 
