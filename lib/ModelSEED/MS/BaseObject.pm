@@ -167,19 +167,39 @@ sub create {
 		require $package;
 	};
 	my $object = $package->new($data);
-	$self->add($object);
+	$self->add($type, $object);
 	return $object;
 }
 
 sub add {
-    my ($self,$object) = @_;
+    my ($self, $attribute, $object) = @_;
     my $type = $object->_type();
     if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
     	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
     }
-    my $function = $self->_typeToFunction()->{$type};
-    $object->parent($self);
-	push(@{$self->$function()},$object);
+    my $attrMeta;
+    {
+        my $class = 'ModelSEED::MS::DB::' . $self->_type;
+        $attrMeta = $class->find_attribute_by_name($attribute);
+        ModelSEED::utilities::ERROR("Unknown attribute: $attribute!")
+            unless (defined($attrMeta));
+    }
+    if($attrMeta->isa('ModelSEED::Meta::Attribute::Typed')) {
+        # Case of simple array of objects (linked or encompassed)
+        if ($attrMeta->type() =~ m/child\((.+)\)/ || $attrMeta->type() =~ m/encompassed\((.+)\)/ ) {
+            push(@{$self->$attribute}, $object);
+        # Case of hashed array of objects (aliases and the like)
+        } elsif ($attrMeta->type() =~ m/hasharray\((.+)\)/) {
+            my ($subType, $hashOn) = [split(/,/,$1)];
+            my $key = $object->$hashOn;
+            $self->$attribute->{$key} = [] unless(defined($self->$attribute->{$key}));
+            push(@{$self->$attribute->{$key}}, $object);
+        } else {
+            ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type . "!");
+        }
+    } else {
+        ModelSEED::utilities::ERROR("Unable to call add on attribute that is not typed!")
+    }
 }
 
 sub getLinkedObject {
