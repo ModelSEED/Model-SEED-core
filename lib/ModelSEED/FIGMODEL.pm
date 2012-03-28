@@ -935,6 +935,7 @@ sub get_model {
 	# if cache miss:
     my $mdl = undef;
     eval {
+
 	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
 			figmodel => $self,
 			id => $id
@@ -944,7 +945,8 @@ sub get_model {
         }
     };
     if($@) {
-    
+	ModelSEED::utilities::ERROR("Model not valid ".$id."\n".$@."\n");
+	  return undef;
     }
     return $mdl;
 }
@@ -3258,6 +3260,7 @@ sub import_model {
 			} 
 			if (!defined($cpd->charge()) || $cpd->charge() eq "" || $cpd->charge() == 10000000 || 
 			    ($Update==1 && $cpd->charge() != $row->{"CHARGE"}->[0])){
+			    $cpd->charge(10000000) if !defined($cpd->charge());
 			    push(@{$result->{outputFile}},"Updating charge for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."");
 			    $cpd->charge($row->{"CHARGE"}->[0]);
 			}
@@ -3268,6 +3271,7 @@ sub import_model {
 			} 
 			if (!defined($cpd->mass()) || $cpd->mass() eq "" || $cpd->mass() == 10000000 || 
 			    ($Update==1 && $cpd->mass() != $row->{"MASS"}->[0])){
+			    $cpd->mass(10000000) if !defined($cpd->mass());
 			    push(@{$result->{outputFile}},"Updating mass for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
 			    $cpd->mass($row->{"MASS"}->[0]);
 			}
@@ -3278,6 +3282,7 @@ sub import_model {
 			} 
 			if (!defined($cpd->formula()) || $cpd->formula() eq "" || $cpd->formula() eq "noformula" || 
 			    ($Update==1 && $cpd->formula() ne $row->{"FORMULA"}->[0])) {
+			    $cpd->formula("noformula") if !defined($cpd->formula());
 			    push(@{$result->{outputFile}},"Updating formula for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
 			    $cpd->formula($row->{"FORMULA"}->[0]);
 			}
@@ -3288,17 +3293,19 @@ sub import_model {
 			} 
 			if (!defined($cpd->stringcode()) || $cpd->stringcode() eq "" || $cpd->stringcode() eq "nostringcode" || 
 			    ($Update==1 && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0])){
+			    $cpd->stringcode("nostringcode") if !defined($cpd->stringcode());
 			    push(@{$result->{outputFile}},"Updating stringcode for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]);
 			    $cpd->stringcode($row->{"STRINGCODE"}->[0]);
 			}
 		    }
-		    if (defined($row->{"GROUPS"}->[0]) && $row->{"GROUPS"} ne "" && $row->{"GROUPS"} ne "nogroups"){
+		    if (defined($row->{"GROUPS"}->[0]) && $row->{"GROUPS"}->[0] ne "" && $row->{"GROUPS"}->[0] ne "nogroups"){
 			if(defined($cpd->structuralCues()) && $cpd->structuralCues() ne join("|",@{$row->{"GROUPS"}})){
-			    push(@{$result->{outputFile}},"Groups different for ".$cpd->id()." from ".$cpd->structuralCues()." to ".$row->{"GROUPS"}->[0]);
+			    push(@{$result->{outputFile}},"Groups different for ".$cpd->id()." from ".$cpd->structuralCues()." to ".join("|",@{$row->{"GROUPS"}}));
 			} 
 			if (!defined($cpd->structuralCues()) || $cpd->structuralCues() eq "" || $cpd->structuralCues() eq "nogroups" || 
 			    ($Update==1 && $cpd->structuralCues() ne join("|",@{$row->{"GROUPS"}}))) {
-			    push(@{$result->{outputFile}},"Updating groups for ".$cpd->id()." from ".$cpd->structuralCues()." to ".$row->{"GROUPS"}->[0]);
+			    $cpd->structuralCues("nogroups") if !defined($cpd->structuralCues());
+			    push(@{$result->{outputFile}},"Updating groups for ".$cpd->id()." from ".$cpd->structuralCues()." to ".join("|",@{$row->{"GROUPS"}}));
 			    $cpd->structuralCues(join("|",@{$row->{"GROUPS"}}));
 			}
 		    }
@@ -3513,6 +3520,7 @@ sub import_model {
 				}
 				if (!defined($rxn->deltaG()) || $rxn->deltaG() eq "" || $rxn->deltaG() == 10000000 || 
 				    ($Update==1 && $rxn->deltaG() != $deltaG)){
+				    $rxn->deltaG(10000000) if !defined($rxn->deltaG());
 				    push(@{$result->{outputFile}},"Updating deltaG for ".$rxn->id()." from ".$rxn->deltaG()." to ".$deltaG);
 				    $rxn->deltaG($deltaG);				
 				}
@@ -3524,6 +3532,7 @@ sub import_model {
 				}
 				if (!defined($rxn->deltaGErr()) || $rxn->deltaGErr() eq "" || $rxn->deltaGErr() == 10000000 || 
 				    ($Update==1 && $rxn->deltaGErr() != $deltaGErr)){
+				    $rxn->deltaGErr(10000000) if !defined($rxn->deltaGErr());
 				    push(@{$result->{outputFile}},"Updating deltaGErr for ".$rxn->id()." from ".$rxn->deltaGErr()." to ".$deltaGErr);
 				    $rxn->deltaGErr($deltaGErr);				
 				}
@@ -3531,22 +3540,23 @@ sub import_model {
 
 #			    if($thermoreversibility->{direction} ne ""){ #commented out because I want to force default thermoreversibility of ""
 				if(defined($rxn->thermoReversibility()) && $rxn->thermoReversibility() ne $thermoreversibility->{direction}){
-				    push(@{$result->{outputFile}},"deltaGErr different for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
+				    push(@{$result->{outputFile}},"Direction different for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
 				}
 				if (!defined($rxn->thermoReversibility()) || $rxn->thermoReversibility() eq "" || 
 				    ($Update==1 && $rxn->thermoReversibility() ne $thermoreversibility->{direction})){
-				    push(@{$result->{outputFile}},"Updating deltaGErr for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
+				    push(@{$result->{outputFile}},"Updating direction for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
 				    $rxn->thermoReversibility($thermoreversibility->{direction});				
 				}
 #			    }
 
 			    if($sCues ne "" && $sCues ne "nogroups"){ 
 				if(defined($rxn->structuralCues()) && $rxn->structuralCues() ne $sCues){
-				    push(@{$result->{outputFile}},"deltaGErr different for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
+				    push(@{$result->{outputFile}},"Groups different for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
 				}
 				if (!defined($rxn->structuralCues()) || $rxn->structuralCues() eq "" ||
 				    ($Update==1 && $rxn->structuralCues() ne $sCues)){
-				    push(@{$result->{outputFile}},"Updating deltaGErr for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
+				    $rxn->structuralCues("nogroups") if !defined($rxn->structuralCues());
+				    push(@{$result->{outputFile}},"Updating groups for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
 				    $rxn->structuralCues($sCues);
 				}
 			    }
