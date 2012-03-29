@@ -222,7 +222,7 @@ $objectDefinitions->{CompoundAliasSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
@@ -238,7 +238,7 @@ $objectDefinitions->{CompoundAlias} = {
        parents => ['CompoundAliasSet'],
        class => 'encompassed',
        attributes => [
-              {name => 'compound_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
               {name => 'alias',perm => 'rw',type => 'Str',req => 1}
        ],
        subobjects => [],
@@ -252,7 +252,7 @@ $objectDefinitions->{ReactionAliasSet} = {
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
@@ -268,7 +268,7 @@ $objectDefinitions->{ReactionAlias} = {
        parents => ['ReactionAliasSet'],
        class => 'encompassed',
        attributes => [
-              {name => 'reaction_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
               {name => 'alias',perm => 'rw',type => 'Str',req => 1}
        ],
        subobjects => [],
@@ -380,7 +380,7 @@ $objectDefinitions->{Reagent} = {
 		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
 		{name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
 		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
-		{name => 'cofactor',perm => 'rw',type => 'Int',req => 0,default => "0"},
+		{name => 'cofactor',perm => 'rw',type => 'Bool',req => 0,default => "0"},
 		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1,default => "0"},#0 for not transported,>0 for transported
 	],
 	subobjects => [],
@@ -396,7 +396,6 @@ $objectDefinitions->{ReactionInstance} = {
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 0},
 		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
-		{name => 'equation',perm => 'rw',type => 'ModelSEED::varchar',req => 1},
 		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1}
 	],
 	subobjects => [
@@ -850,7 +849,7 @@ $objectDefinitions->{ComplexAliasSet} = {
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
@@ -866,7 +865,7 @@ $objectDefinitions->{ComplexAlias} = {
        parents => ['ComplexAliasSet'],
        class => 'encompassed',
        attributes => [
-              {name => 'complex_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'complex_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
               {name => 'alias',perm => 'rw',type => 'Str',req => 1}
        ],
        subobjects => [],
@@ -880,7 +879,7 @@ $objectDefinitions->{RoleAliasSet} = {
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
@@ -896,7 +895,7 @@ $objectDefinitions->{RoleAlias} = {
        parents => ['RoleAliasSet'],
        class => 'encompassed',
        attributes => [
-              {name => 'role_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'role_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
               {name => 'alias',perm => 'rw',type => 'Str',req => 1}
        ],
        subobjects => [],
@@ -910,7 +909,7 @@ $objectDefinitions->{RolesetAliasSet} = {
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'uuid',req => 1},
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
@@ -926,7 +925,7 @@ $objectDefinitions->{RolesetAlias} = {
        parents => ['RolesetAliasSet'],
        class => 'encompassed',
        attributes => [
-              {name => 'roleset_uuid',perm => 'rw',type => 'uuid',req => 1},
+              {name => 'roleset_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
               {name => 'alias',perm => 'rw',type => 'Str',req => 1}
        ],
        subobjects => [],

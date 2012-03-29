@@ -18,7 +18,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::CompoundAliasSet', type => 'par
 
 
 # ATTRIBUTES:
-has compound_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
