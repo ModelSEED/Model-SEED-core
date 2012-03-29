@@ -18,7 +18,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ReactionAliasSet', type => 'par
 
 
 # ATTRIBUTES:
-has reaction_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
