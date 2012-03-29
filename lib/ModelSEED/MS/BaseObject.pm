@@ -9,8 +9,7 @@ use strict;
 use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
-use Data::Dumper;
-$Data::Dumper::Maxdepth = 2;
+use Module::Load;
 
 package ModelSEED::Meta::Attribute::Typed;
 use Moose;
@@ -50,13 +49,14 @@ sub BUILD {
 	    		my $subclass = 'ModelSEED::MS::'.$parameters->[0];
 	    		my $attribute = $parameters->[1];
 	    		my $function = $attr->name();
-				my $dataArray = $self->$function();
-				my $newData = {};
-				foreach my $data (@{$dataArray}) {
-					$data->{parent} = $self;
-					push(@{$newData->{$data->{$attribute}}},$subclass->new($data));
-				}
-				$self->$function($newData);
+				my $data = $self->$function // {};
+                if(ref($data) eq 'ARRAY') {
+                    foreach my $d (@$data) {
+                        $self->create($subclass, $d);
+                    }
+				} else {
+                    $self->$function($data);
+                }
 			}
 		}
     }
@@ -159,15 +159,14 @@ sub createReadableLine {
 ######################################################################
 sub create {
 	my ($self,$type,$data) = @_;
-	if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
+    my $attribute = $self->_typeToFunction()->{$type};
+	if (!defined($attribute)) {
     	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
     }
 	my $package = "ModelSEED::MS::$type";
-	eval {
-		require $package;
-	};
+    Module::Load::load $package;
 	my $object = $package->new($data);
-	$self->add($type, $object);
+	$self->add($attribute, $object);
 	return $object;
 }
 
@@ -180,7 +179,7 @@ sub add {
     my $attrMeta;
     {
         my $class = 'ModelSEED::MS::DB::' . $self->_type;
-        $attrMeta = $class->find_attribute_by_name($attribute);
+        $attrMeta = $class->meta->find_attribute_by_name($attribute);
         ModelSEED::utilities::ERROR("Unknown attribute: $attribute!")
             unless (defined($attrMeta));
     }
@@ -190,7 +189,10 @@ sub add {
             push(@{$self->$attribute}, $object);
         # Case of hashed array of objects (aliases and the like)
         } elsif ($attrMeta->type() =~ m/hasharray\((.+)\)/) {
-            my ($subType, $hashOn) = [split(/,/,$1)];
+            my ($subType, $hashOn) = split(/,/,$1);
+            unless(defined($subType) && defined($hashOn)) {
+                ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type());
+            }
             my $key = $object->$hashOn;
             $self->$attribute->{$key} = [] unless(defined($self->$attribute->{$key}));
             push(@{$self->$attribute->{$key}}, $object);
@@ -200,6 +202,50 @@ sub add {
     } else {
         ModelSEED::utilities::ERROR("Unable to call add on attribute that is not typed!")
     }
+    return $self;
+}
+
+sub remove {
+    my ($self, $type, $object) = @_;
+    my $attribute = $self->_typeToFunction()->{$type};
+    my $removedCount = 0;
+    my $attrMeta;
+    {
+        my $class = 'ModelSEED::MS::DB::' . $self->_type;
+        $attrMeta = $class->meta->find_attribute_by_name($attribute);
+        ModelSEED::utilities::ERROR("Unknown attribute: $attribute!")
+            unless (defined($attrMeta));
+    }
+    if($attrMeta->isa('ModelSEED::Meta::Attribute::Typed')) {
+        # Case of simple array of objects (linked or encompassed)
+        if ($attrMeta->type() =~ m/child\((.+)\)/ || $attrMeta->type() =~ m/encompassed\((.+)\)/ ) {
+            my $array = $self->$attribute;
+            for(my $i=0; $i<@$array; $i++) {
+                my $obj = $array->[$i];
+                if($object eq $obj) {
+                    splice(@$array, $i, 1); 
+                    $removedCount += 1;
+                }
+            }
+        # Case of hashed array of objects (aliases and the like)
+        } elsif ($attrMeta->type() =~ m/hasharray\((.+)\)/) {
+            foreach my $key (keys %{$self->$attribute}) {
+                my $array = $self->$attribute->{$key};
+                for(my $i=0; $i<@$array; $i++) {
+                    my $obj = $array->[$i];
+                    if($object eq $obj) {
+                        splice(@$array, $i, 1);
+                        $removedCount += 1;
+                    }
+                }
+            }
+        } else {
+            ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type . "!");
+        }
+    } else {
+        ModelSEED::utilities::ERROR("Unable to call add on attribute that is not typed!")
+    }
+    return $removedCount;
 }
 
 sub getLinkedObject {

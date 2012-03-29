@@ -18,8 +18,9 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 ######################################################################
 #Object addition functions
 ######################################################################
-sub add {
-    my ($self,$object) = @_;
+
+override add => sub {
+    my ($self,$attribute, $object) = @_;
     $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
@@ -37,14 +38,9 @@ sub add {
     	}
     	$self->clearIndex({type=>$type});
     } else {
-    	push(@{$self->$function()},$object);
-    	if (defined($self->indices()->{$type})) {
-    		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
-    			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
-    		}
-    	}
+       super();
     }
-}
+};
 
 ######################################################################
 #Query Functions
