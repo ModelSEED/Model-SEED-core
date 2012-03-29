@@ -496,6 +496,25 @@ sub temptransfermodels {
 }
 =head
 =CATEGORY
+Temporary Operations
+=DESCRIPTION
+This function checks for incomplete or problematic models
+=EXAMPLE
+./tempcheckmodels 
+=cut
+sub tempcheckmodels {
+    my($self,@Data) = @_;
+	my $args = $self->check([],[@Data],"checking for incomplete models");
+	my $objs = $self->db()->get_objects("model");
+	for (my $i=0; $i < @{$objs}; $i++) {
+		if ($objs->[$i]->status()) {
+				
+		}
+	}
+    return "SUCCESS";
+}
+=head
+=CATEGORY
 Workspace Operations
 =DESCRIPTION
 Sometimes rather than importing an account from the SEED (which you would do using the ''mslogin'' command), you want to create a stand-alone account in the local Model SEED database only. To do this, use the ''createlocaluser'' binary. Once the local account exists, you can use the ''login'' binary to log into your local Model SEED account. This allows you to access, create, and manipulate private data in your local database. HOWEVER, because this is a local account only, you will not be able to use the account to access any private data in the SEED system. For this reason, we recommend importing a SEED account using the ''login'' binary rather than making local accounts with no SEED equivalent. If you require a SEED account, please go to the registration page: [http://pubseed.theseed.org/seedviewer.cgi?page=Register SEED account registration].
