@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-26T23:22:44
+# Date of module creation: 2012-04-01T09:21:17
 ########################################################################
 use strict;
 use ModelSEED::MS::ModelfbaCompound;

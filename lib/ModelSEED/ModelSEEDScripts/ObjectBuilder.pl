@@ -99,11 +99,16 @@ foreach my $name (keys(%{$objects})) {
 		push(@{$output},("",""));
 	}
 	#Printing object links
-	if (defined($object->{links}) && defined($object->{links}->[0])) {
+	if (defined($object->{links}) || defined($object->{alias})) {
 		push(@{$output},("# LINKS:"));
-		foreach my $subobject (@{$object->{links}}) {
-			$type = ", type => 'link(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
-			push(@{$output},"has ".$subobject->{name}." => (is => 'rw',lazy => 1,builder => '_build".$subobject->{name}."',isa => 'ModelSEED::MS::".$subobject->{class}."'".$type.",weak_ref => 1);");
+		if (defined($object->{links}) && defined($object->{links}->[0])) {
+			foreach my $subobject (@{$object->{links}}) {
+				$type = ", type => 'link(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
+				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',lazy => 1,builder => '_build".$subobject->{name}."',isa => 'ModelSEED::MS::".$subobject->{class}."'".$type.",weak_ref => 1);");
+			}
+		}
+		if (defined($object->{alias})) {
+			push(@{$output},"has id => (is => 'rw',lazy => 1,builder => '_buildid',isa => 'Str', type => 'id', metaclass => 'Typed');");
 		}
 		push(@{$output},("",""));
 	}
@@ -135,6 +140,9 @@ foreach my $name (keys(%{$objects})) {
 		}
 		push(@{$output},"\t};");
 		push(@{$output},"}");
+		if (defined($object->{alias})) {
+			push(@{$output},"sub _aliasowner { return '".$object->{alias}."'; }");
+		}
 	}
 	push(@{$output},("",""));
 	#Finalizing

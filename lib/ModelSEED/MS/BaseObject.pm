@@ -77,7 +77,7 @@ sub serializeToDB {
 					push(@{$data->{$name}},$subobject->serializeToDB());
 				}
 			} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
-				my $hashRef = $self->$attr();
+				my $hashRef = $self->$name();
 				foreach my $key (keys(%{$hashRef})) {
 					foreach my $obj (@{$hashRef->{$key}}) {
 						push(@{$data->{$name}},$obj->serializeToDB());
@@ -87,6 +87,49 @@ sub serializeToDB {
 		}
 	}
 	return $data;
+}
+
+######################################################################
+#Alias functions
+######################################################################
+sub getAlias {
+	my ($self,$set) = @_;
+	my $aliases = $self->getAliases($set);
+	if (defined($aliases->[0])) {
+		return $aliases->[0];
+	}
+	print "No alias of type ".$set."!\n";
+	return $self->uuid();
+}
+
+sub getAliases {
+	my ($self,$aliasSet) = @_;
+	if (!defined($aliasSet)) {
+		ModelSEED::utilities::ERROR("The 'getAliases' function requires a 'set' as input!");
+	}
+	my $aliasowner = $self->_aliasowner();
+	my $owner = $self->$aliasowner();
+	my $aliasSetClass = $self->_type()."AliasSet";
+	my $aliasset = $owner->getOject($aliasSetClass,{type => $aliasSet});
+	if (!defined($aliasset)) {
+		print "Alias set ".$aliasset." not found!\n";
+		return [];
+	}
+	my $aliases = $aliasset->reactionAliases();
+	if (defined($aliases->{$self->uuid()}->[0])) {
+		return [];
+	}
+	return $aliases->{$self->uuid()};
+}
+
+sub _buildid {
+	my ($self) = @_;
+	my $aliasSetClass = $self->_type()."AliasSet";
+	my $set = $self->objectmanager()->getSelectedAliases($aliasSetClass);
+	if (!defined($set)) {
+		return $self->uuid();
+	}
+	return $self->getAlias($set);
 }
 
 ######################################################################

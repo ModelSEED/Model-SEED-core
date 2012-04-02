@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-26T23:22:44
+# Date of module creation: 2012-04-01T09:21:17
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -18,7 +18,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::RolesetAliasSet', type => 'pare
 
 
 # ATTRIBUTES:
-has roleset_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has roleset_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 

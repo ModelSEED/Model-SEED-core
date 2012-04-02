@@ -17,6 +17,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::CoreApi;
 use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Environment;
+use ModelSEED::MS::Factories::Biochemistry;
 use File::Basename qw(dirname basename);
 
 package ModelSEED::ModelDriverV2;
@@ -28,10 +29,12 @@ Description:
 	Returns a driver object
 =cut
 sub new { 
-	my ($self,$args) = @_;
+	my ($class,$args) = @_;
 	ModelSEED::utilities::ARGS($args,["environment"],{
 		finishfile => undef
 	});
+	ModelSEED::globals::CREATEFIGMODEL({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()});
+	my $self = {};
 	bless $self;
 	$self->environment($args->{environment});
 	$self->finishfile($args->{finishfile});
@@ -61,13 +64,13 @@ Description:
 =cut
 sub environment {
 	my ($self,$environment) = @_;
-	if (ref($environment) ne "ModelSEED::MS::Environment") {
-		$environment = ModelSEED::MS::Environment->new($environment);
-	}
 	if (defined($environment)) {
+		if (ref($environment) ne "ModelSEED::MS::Environment") {
+			$environment = ModelSEED::MS::Environment->new($environment);
+		}
 		$self->{_environment} = $environment;
 	}
-	return $environment;
+	return $self->{_environment};
 }
 =head3 om
 Definition:
@@ -76,21 +79,95 @@ Description:
 	Returns an ObjectManager object
 =cut
 sub om {
-	my ($self) = @_;
+	my ($self,$om) = @_;
 	if (!defined($self->{_om})) {
-		$self->{_om} = 
+		$self->{_om} = ModelSEED::MS::ObjectManager->new({
+			db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+			username => $self->environment()->username(),
+			password => $self->environment()->password(),
+			selectedAliases => {
+				ReactionAliasSet => "ModelSEED",
+				CompoundAliasSet => "ModelSEED",
+				ComplexAliasSet => "ModelSEED",
+				RoleAliasSet => "ModelSEED",
+				RolesetAliasSet => "ModelSEED"
+			}
+		});
 	}
-	return $environment;
+	return $self->{_om};
 }
-
-
-
-
-
-
-
-
-
+=head3 check
+Definition:
+	FIGMODEL = driver->check([string]:expected data,(string):supplied arguments);
+Description:
+	Check for sufficient arguments
+=cut
+sub check {
+	my ($self,$array,$data) = @_;
+	my @calldata = caller(1);
+	my @temp = split(/:/,$calldata[3]);
+    my $function = pop(@temp);
+	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
+		print $self->usage($function,$array);
+		$self->finish("USAGE PRINTED");
+	}
+	my $args;
+	if (defined($data->[1]) && ref($data->[1]) eq 'HASH') {
+		$args = $data->[1];
+		delete $data->[1];
+	}
+	if (defined($args->{"usage"}) || defined($args->{"help"}) || defined($args->{"man"})) {
+		print STDERR $self->usage($function,$array);
+	}
+	for (my $i=0; $i < @{$array}; $i++) {
+		if (!defined($args->{$array->[$i]->[0]})) {
+			if ($array->[$i]->[1] == 1 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
+				my $message = "Mandatory argument '".$array->[$i]->[0]."' missing!\n";
+				$message .= $self->usage($function,$array);
+				print STDERR $message;
+				$self->finish($message);
+			} elsif ($array->[$i]->[1] == 0 && (!defined($data->[$i+1]) || length($data->[$i+1]) == 0)) {
+				$data->[$i+1] = $array->[$i]->[2];
+			}
+			$args->{$array->[$i]->[0]} = $data->[$i+1];
+		}
+	}
+	return $args;
+}
+=head3 usage
+Definition:
+	FIGMODEL = driver->usage(string:function name,[string]:expected data);
+Description:
+	Prints the usage for the specified function
+=cut
+sub usage {
+	my ($self,$function,$array) = @_;
+	if (!defined($array)) {
+		$self->$function();
+		return undef;
+	}
+	my $output;
+	if ($self->isCommandLineFunction($function) == 0) {
+		$output = $function." is not a valid ModelSEED function!\n";
+	} else {
+		$output = $function." function usage:\n./".$function." ";
+	 	for (my $i=0; $i < @{$array}; $i++) {
+			if ($i > 0) {
+				$output .= "?";
+			}
+			$output .= $array->[$i]->[0];
+			if ($array->[$i]->[1] == 0) {
+				if (!defined($array->[$i]->[2])) {
+					$output .= "(undef)";
+				} else {
+					$output .= "(".$array->[$i]->[2].")";
+				}
+	 		}
+	 	}
+	 	$output .= "\n";
+	}
+	return $output;
+}
 =head3 biochemistry
 Definition:
 	ModelSEED::MS::Biochemistry = driver->biochemistry();
@@ -246,6 +323,25 @@ Description:
 sub outputdirectory {
 	my ($self) = @_;
 	return $self->{_outputdirectory};
+}
+=head3 bcloader
+Definition:
+	 = driver->bcloader(string:model ID);
+Description:
+	Returns a model object
+=cut
+sub bcloader {
+	my($self,@Data) = @_;
+	#my $args = $self->check([],[@Data],"loads a biochemistry and prints reactions");
+	my $fact = ModelSEED::MS::Factories::Biochemistry->new();
+	my ($bio, $missed) = $fact->newBiochemistryFromPPO({database => $self->db()});
+	$bio->save($self->om());
+	print "Saved with uuid ".$bio->uuid()."\n";
+	#my $reactions = $bio->reactions();
+	#for (my $i=0; $i < @{$reactions}; $i++) {
+	#	print $reactions->[$i]->equation()."\n";
+	#}
+    return;
 }
 =head
 =CATEGORY

@@ -36,7 +36,7 @@ $objectDefinitions->{Strain} = {
 	],
 	subobjects => [
 		{name => "deletions",class => "Deletion",type => "child"},
-		{name => "insertions",class => "Insertion",type => "child"},],
+		{name => "insertions",class => "Insertion",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -294,13 +294,13 @@ $objectDefinitions->{Compartment} = {
 };
 
 $objectDefinitions->{Compound} = {
+	alias => "Biochemistry",
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'abbreviation',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'cksum',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
@@ -349,13 +349,13 @@ $objectDefinitions->{CompoundPk} = {
 };
 
 $objectDefinitions->{Reaction} = {
+	alias => "Biochemistry",
 	parents => ['Biochemistry'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'abbreviation',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'cksum',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
@@ -415,7 +415,7 @@ $objectDefinitions->{InstanceTransport} = {
 		{name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1},
-		{name => 'coefficient',perm => 'rw',type => 'Int',req => 1},
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
 	],
 	subobjects => [],
 	primarykeys => [ qw(compound_uuid reactiondefault_uuid compartmentIndex) ],
@@ -539,13 +539,13 @@ $objectDefinitions->{Model} = {
 };
 
 $objectDefinitions->{Biomass} = {
+	alias => "Model",
 	parents => ['Model'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 	],
 	subobjects => [
@@ -936,6 +936,7 @@ $objectDefinitions->{RolesetAlias} = {
 };
 
 $objectDefinitions->{Role} = {
+	alias => "Mapping",
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
@@ -952,6 +953,7 @@ $objectDefinitions->{Role} = {
 };
 
 $objectDefinitions->{Roleset} = {
+	alias => "Mapping",
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
@@ -1013,6 +1015,7 @@ $objectDefinitions->{ReactionRuleTransport} = {
 };
 
 $objectDefinitions->{Complex} = {
+	alias => "Mapping",
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [

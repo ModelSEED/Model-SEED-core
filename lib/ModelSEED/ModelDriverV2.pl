@@ -18,7 +18,16 @@ $|=1;
 my $driv;
 ModelSEED::Interface::interface::LOADENVIRONMENT();
 try {
-	$driv = ModelSEED::ModelDriverV2->new();
+	$driv = ModelSEED::ModelDriverV2->new({
+		environment => {
+			username => ModelSEED::Interface::interface::USERNAME(),
+			password => ModelSEED::Interface::interface::PASSWORD(),
+			registeredseed => ModelSEED::Interface::interface::REGISTEREDSEED(),
+			seed => ModelSEED::Interface::interface::SEED(),
+			lasterror => ModelSEED::Interface::interface::LASTERROR(),
+			filename => ModelSEED::Interface::interface::ENVIRONMENTFILE(),
+		}
+	});
 } catch {
 	printErrorLog($_);
     exit(1);
@@ -105,9 +114,9 @@ for (my $i=0; $i < @ARGV; $i++) {
 			argList => []	
 		};
 	} else {
-		if ($lastKeyType eq "argHash") {
+		if (defined($lastKeyType) && $lastKeyType eq "argHash") {
 			$currentFunction->{argHash}->{$lastKey} .= " ".$ARGV[$i];
-		}  elsif ($lastKeyType eq "argList") {
+		}  elsif (defined($lastKeyType) && $lastKeyType eq "argList") {
 			$currentFunction->{argList}->[$lastKey] .= " ".$ARGV[$i];
 		} else {
 			push(@{$currentFunction->{argList}},$ARGV[$i]);	

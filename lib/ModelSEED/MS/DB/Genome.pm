@@ -3,18 +3,18 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-26T23:22:44
+# Date of module creation: 2012-04-01T09:21:17
 ########################################################################
 use strict;
-use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Genome;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::BaseObject';
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Annotation', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -27,13 +27,15 @@ has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', met
 has taxonomy => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
 has size => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has genes => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
 has gc => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has etcType => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed' );
 
 
 # ANCESTOR:
 has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+
+
+# LINKS:
 
 
 # BUILDERS:
