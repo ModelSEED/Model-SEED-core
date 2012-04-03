@@ -115,11 +115,12 @@ sub getAliases {
 		print "Alias set ".$aliasset." not found!\n";
 		return [];
 	}
-	my $aliases = $aliasset->reactionAliases();
-	if (defined($aliases->{$self->uuid()}->[0])) {
-		return [];
+	my $aliasObjects = $aliasset->getObjects($self->_type()."Alias",{lc($self->_type())."_uuid" => $self->uuid()});
+	my $aliases = [];
+	for (my $i=0; $i < @{$aliasObjects}; $i++) {
+		push(@{$aliases},$aliasObjects->[$i]->alias());
 	}
-	return $aliases->{$self->uuid()};
+	return $aliases;
 }
 
 sub _buildid {

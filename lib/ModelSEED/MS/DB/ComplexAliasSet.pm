@@ -3,14 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-01T09:21:17
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ComplexAlias;
+use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::ComplexAliasSet;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::BaseObject';
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
@@ -29,7 +30,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has complexAliases => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]', type => 'hasharray(ComplexAlias,alias)', metaclass => 'Typed');
+has complexAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexAlias]', type => 'child(ComplexAlias)', metaclass => 'Typed');
 
 
 # LINKS:

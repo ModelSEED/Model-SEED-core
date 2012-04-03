@@ -3,14 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-01T09:21:17
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::RoleAlias;
+use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::RoleAliasSet;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::BaseObject';
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
@@ -29,7 +30,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has roleAliases => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]', type => 'hasharray(RoleAlias,alias)', metaclass => 'Typed');
+has roleAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleAlias]', type => 'child(RoleAlias)', metaclass => 'Typed');
 
 
 # LINKS:

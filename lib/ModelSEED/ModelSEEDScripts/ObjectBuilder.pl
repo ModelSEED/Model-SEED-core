@@ -20,7 +20,7 @@ foreach my $name (keys(%{$objects})) {
 	];
 	#Creating perl use statements
 	my $baseObject = "BaseObject";
-	if ($object->{class} eq "parent") {
+	if ($object->{class} eq "indexed") {
 		$baseObject = "IndexedObject";	
 	}
 	

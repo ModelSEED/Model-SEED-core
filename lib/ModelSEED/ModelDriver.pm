@@ -447,7 +447,11 @@ sub temptransfermodels {
 			my $numRxn = @{$objs};
 			if ($numRxn == 0 || ($models->[$i] =~ m/Seed\d+\.\d+/ && $models->[$i] !~ m/Seed\d+\.\d+\.796/)) {
 				print "Populating rxnmdl table!\n";
-				my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table("/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt",";","|",1,undef);
+				my $filename = "/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$obj->genome()."/".$models->[$i].".txt";
+				if ($models->[$i] !~ m/Seed\d+\.\d+/) {
+					$filename = "/vol/model-dev/MODEL_DEV_DB/Models/".$obj->owner()."/".$models->[$i]."/".$models->[$i].".txt";
+				}
+				my $mdltbl = ModelSEED::FIGMODEL::FIGMODELTable::load_table($filename,";","|",1,undef);
 				if (defined($mdltbl)) {
 					for (my $j=0; $j < $mdltbl->size(); $j++) {
 						my $row = $mdltbl->get_row($j);

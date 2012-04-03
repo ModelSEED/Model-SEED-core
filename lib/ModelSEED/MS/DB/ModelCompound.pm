@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-01T09:21:17
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -20,7 +20,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Model', type => 'parent', metac
 # ATTRIBUTES:
 has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has model_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has charge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has formula => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );

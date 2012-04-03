@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-01T09:21:17
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -18,7 +18,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Reaction', type => 'parent', me
 
 
 # ATTRIBUTES:
-has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
 has cofactor => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '0' );

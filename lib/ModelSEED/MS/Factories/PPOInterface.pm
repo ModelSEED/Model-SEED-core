@@ -30,27 +30,102 @@ sub _buildfigmodel {
 }
 sub _buildom {
 	my ($self) = @_;
-	return ModelSEED::MS::ObjectManager->new(); 
+	my $om = ModelSEED::MS::ObjectManager->new({
+		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+		username => $self->username(),
+		password => $self->password(),
+		selectedAliases => {
+			ReactionAliasSet => "ModelSEED",
+			CompoundAliasSet => "ModelSEED",
+			ComplexAliasSet => "ModelSEED",
+			RoleAliasSet => "ModelSEED",
+			RolesetAliasSet => "ModelSEED"
+		}
+	});
+	$om->authenticate($self->username(),$self->password());
+	return $om; 
 }
 
-
 # FUNCTIONS:
+sub createBiochemistry {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		name => $self->username()."/primary"
+	});
+	my $biochemistry = $self->om()->create("Biochemistry",{
+		name=>$args->{name},
+		public => 1,
+		locked => 0
+	});
+	my $cpds = $self->figmodel()->database()->get_objects("compound");
+	for (my $i=0; $i < @{$cpds}; $i++) {
+		my $cpd = $biochemistry->create("Compound",{
+			locked => "0",
+			name => $cpds->[$i]->name(),
+			abbreviation => $cpds->[$i]->abbrev(),
+			unchargedFormula => $unchargedFormula,
+			formula => $cpds->[$i]->formula()
+			mass => $cpds->[$i]->mass()
+			defaultCharge => $cpds->[$i]->charge()
+			deltaG => $cpds->[$i]->deltaG()
+			deltaGErr => $cpds->[$i]->deltaGErr()
+		});
+		
+		
+		<scalar label="id" type="CHAR(32)" mandatory="1" />
+		<scalar label="name" type="CHAR(255)" mandatory="1" />
+		<scalar label="abbrev" type="CHAR(255)" mandatory="1" />
+		<scalar label="formula" type="CHAR(125)"/>
+		<scalar label="mass" type="FLOAT"/>
+		<scalar label="charge" type="FLOAT"/>
+		<scalar label="deltaG" type="FLOAT"/>
+		<scalar label="deltaGErr" type="FLOAT"/>
+		<scalar label="structuralCues" type="TEXT"/>
+		<scalar label="stringcode" type="TEXT"/>
+		<scalar label="pKa" type="TEXT"/>
+		<scalar label="pKb" type="TEXT"/>
+		<scalar label="owner" type="CHAR(32)"/>
+		<scalar label="scope" type="TEXT" default="all" />
+		<scalar label="modificationDate" type="INTEGER" mandatory="1" />
+		<scalar label="creationDate" type="INTEGER" mandatory="1" />
+		<scalar label="public" type="INTEGER" default="1" />
+		<scalar label="abstractCompound" type="CHAR(32)" />
+		<unique_index><attribute label="id"/></unique_index>
+		<index><attribute label="name"/></index>
+		<index><attribute label="public"/></index>
+		<index><attribute label="abbrev"/></index>
+		<index><attribute label="formula"/></index>
+		<index><attribute label="mass"/></index>
+		<index><attribute label="owner"/></index>
+		<index><attribute label="abstractCompound"/></index>
+		
+
+		
+		
+		
+	}
+		
+		
+		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($roles->[$i]->name());
+		
+		$mapping->addAlias({
+			objectType => "Role",
+			aliasType => "ModelSEED",
+			alias => $roles->[$i]->id(),
+			uuid => $role->uuid()
+		});
+	}
+
+
+}
+
 sub createMapping {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,[],{});
-	my $mapping = $self->om()->create("Mapping",{name=>$self->username()."/primary"});
-	my $roleAliasSet = $mapping->create("RoleAliasSet",{
-		type => "ModelSEED",
-		source => "ModelSEED"
+	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
+		name => $self->username()."/primary"
 	});
-	my $rsAliasSet = $mapping->create("RolesetAliasSet",{
-		type => "ModelSEED",
-		source => "ModelSEED"
-	});
-	my $cpxAliasSet = $mapping->create("ComplexAliasSet",{
-		type => "ModelSEED",
-		source => "ModelSEED"
-	});
+	my $mapping = $self->om()->create("Mapping",{name=>$args->{name}});
+	$mapping->biochemistry_uuid($args->{biochemistry});
 	my $roles = $self->figmodel()->database()->get_objects("role");
 	for (my $i=0; $i < @{$roles}; $i++) {
 		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($roles->[$i]->name());
@@ -60,279 +135,96 @@ sub createMapping {
 			searchname => $searchName,
 			seedfeature => $roles->[$i]->exemplarmd5()
 		});
-		$roleAliasSet->create("RoleAlias",{
-			role_uuid => $role->uuid(),
-			alias => $roles->[$i]->id()
+		$mapping->addAlias({
+			objectType => "Role",
+			aliasType => "ModelSEED",
+			alias => $roles->[$i]->id(),
+			uuid => $role->uuid()
 		});
 	}
-	my $complexes = $self->figmodel()->database()->get_objects("complex");
-	for (my $i=0; $i < @{$complexes}; $i++) {
+	my $subsystems = $self->figmodel()->database()->get_objects("subsystem");
+	for (my $i=0; $i < @{$subsystems}; $i++) {
 		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($subsystems->[$i]->name());
 		my $ss = $mapping->create("Roleset",{
 			locked => "0",
 			name => $subsystems->[$i]->name(),
 			searchname => $searchName,
 		});
-		$rsAliasSet->create("RolesetAliasSet",{
-			roleset_uuid => $ss->uuid(),
-			alias => $subsystems->[$i]->id()
+		$mapping->addAlias({
+			objectType => "Roleset",
+			aliasType => "ModelSEED",
+			alias => $subsystems->[$i]->id(),
+			uuid => $ss->uuid()
 		});
 	}
-	
-
-	
-	
-
-		
-	
-	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
-	if (!defined($roleObj)) {
-		$roleObj = ModelSEED::MS::Role->new({
-			name => $args->{roleString},
-			searchname => $searchName
+	my $ssroles = $self->figmodel()->database()->get_objects("ssroles");
+	for (my $i=0; $i < @{$ssroles}; $i++) {
+		my $ss = $mapping->getObjectByAlias("Roleset",$ssroles->[$i]->SUBSYSTEM());
+		if (defined($ss)) {
+			my $role = $mapping->getObjectByAlias("Role",$ssroles->[$i]->ROLE());
+			if (defined($role)) {
+				push(@{$ss->role()},$role);
+			}
+		}
+	}
+	my $complexes = $self->figmodel()->database()->get_objects("complex");
+	for (my $i=0; $i < @{$complexes}; $i++) {
+		my $complex = $mapping->create("Complex",{
+			locked => "0",
+			name => "",
+			searchname => "",
+		});
+		$mapping->addAlias({
+			objectType => "Complex",
+			aliasType => "ModelSEED",
+			alias => $complexes->[$i]->id(),
+			uuid => $complex->uuid()
 		});
 	}
-	
-}
-
-
-sub buildMooseAnnotation {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		mapping_uuid => undef,
-		mapping => undef,
-		source => undef
-	});
-	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});	
-	}
-	if (!defined($args->{mapping})) {
-		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
-	}
-	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $annoationObj = $self->om()->create("Annotation");
-	my $genomeObj = $annoationObj->create("Genome",{
-		id => $args->{genome_id},
-		name => $genomeData->{name},
-		source => $args->{source},
-		taxonomy => $genomeData->{taxonomy},
-		size => $genomeData->{size},
-		gc => $genomeData->{gc},
-	});
-	$annoationObj->mapping_uuid($args->{mapping}->uuid());
-	if (!defined($genomeData->{features})) {
-		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
-	}
-	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
-		my $row = $genomeData->{features}->[$i]; 
-		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
-			my $featureObj = $annoationObj->create("Feature",{
-				id => $row->{ID}->[0],
-				genome_uuid => $genomeObj->uuid(),
-				start => $row->{START}->[0],
-				stop => $row->{STOP}->[0],
-				contig => $row->{CONTIG}->[0]
+	my $complexRoles = $self->figmodel()->database()->get_objects("cpxrole");
+	for (my $i=0; $i < @{$complexRoles}; $i++) {
+		my $complex = $mapping->getObjectByAlias("Complex",$complexRoles->[$i]->COMPLEX());
+		if (defined($complex)) {
+			my $role = $mapping->getObjectByAlias("Role",$complexRoles->[$i]->ROLE());
+			my $type = "triggering";
+			if ($complexRoles->type() eq "L") {
+				$type = "involved";	
+			}
+			$complex->create("ComplexRole",{
+				role_uuid => $role->uuid(),
+				optional => "0",
+				type => $type
 			});
-			if (defined($row->{ROLES}->[0])) {
-				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
-					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
-					my $ftrRoleObj =$featureObj->create("FeatureRole",{
-						feature_uuid => $featureObj->uuid(),
-						role_uuid => $roleObj->uuid(),
-						compartment => join("|",@{$row->{COMPARTMENT}}),
-						comment => $row->{COMMENT}->[0],
-						delimiter => $row->{DELIMITER}->[0]
-					});
+		}
+	}
+	my $reactionRules = $self->figmodel()->database()->get_objects("rxncpx");
+	for (my $i=0; $i < @{$reactionRules}; $i++) {
+		if ($reactionRules->[$i]->master() eq "1") {
+			my $complex = $mapping->getObjectByAlias("Complex",$reactionRules->[$i]->COMPLEX());
+			if (defined($complex)) {
+				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("ReactionInstance",$reactionRules->[$i]->REACTION());
+				if (defined($rxnInstance)) {
+					my $rule = $mapping->create("ReactionRule",{
+						locked => "0",
+						reaction_uuid => $rxnInstance->parent()->uuid(),
+						compartment_uuid => $rxnInstance->compartment_uuid(),
+						direction => $rxnInstance->parent()->reversibility(),
+						transprotonNature => "balanced"
+					});					
+					push(@{$complex->reactionrules()},$rule);
+					for (my $j=0; $j < @{$rxnInstance->transports()}; $j++) {
+						$rule->create("ReactionRuleTransport",{
+							compartmentIndex => $rxnInstance->transports()->[$j]->compartmentIndex(),
+							compartment_uuid => $rxnInstance->transports()->[$j]->compartment_uuid(),
+							compound_uuid => $rxnInstance->transports()->[$j]->compound_uuid(),
+							coefficient => $rxnInstance->transports()->[$j]->coefficient()
+						});
+					}
 				}
 			}
 		}
 	}
-	return $annoationObj;
+	return $mapping;	
 }
-
-sub buildSerialAnnotation {
-	my ($self,$args) = @_;
-	my $mooseObj = $self->buildMooseAnnotation();
-	return $mooseObj->serializeToDB();
-}
-				
-# FUNCTIONS:
-sub getRoleObject {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["roleString","mapping"],{});					
-	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
-	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
-	if (!defined($roleObj)) {
-		$roleObj = ModelSEED::MS::Role->new({
-			name => $args->{roleString},
-			searchname => $searchName
-		});
-	}
-	$args->{mapping}->add($roleObj);			
-	return $roleObj;
-}
-
-sub getMappingObject {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,[],{
-		mapping_uuid => undef
-	});
-	my $mappingObj;
-	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->om()->get("Mapping",$args->{mapping_uuid});
-		if (!defined($mappingObj)) {
-			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
-		}
-	} else {
-		$mappingObj = $self->om()->create("Mapping",{name=>"Test"});
-	}
-	return $mappingObj;
-}
-
-sub getGenomeSource {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{});
-	my $result = $self->sapsvr()->exists({-type => 'Genome',-ids => [$args->{genome_id}]});
-	if ($result->{$args->{genome_id}} eq "1") {
-		return "PUBSEED";
-	}
-	$result = $self->MSSeedSupportClient()->genomeType({ids => [$args->{genome_id}]});
-	return $result->{$args->{genome_id}};
-}
-
-sub getGenomeFeatures {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		source => undef,
-		withSequences => 0 
-	});
-	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
-	}
-	my $features;
-	if ($args->{source} eq "PUBSEED") {
-		my $featureHash = $self->sapsvr()->all_features({-ids => $args->{genome_id}});
-		if (!defined($featureHash->{$args->{genome_id}})) {
-			ModelSEED::utilities::ERROR("Could not load features for pubseed genome:".$args->{genome_id});
-		}
-		my $featureList = $featureHash->{$args->{genome_id}};
-		my $functions = $self->sapsvr()->ids_to_functions({-ids => $featureList});
-		my $locations = $self->sapsvr()->fid_locations({-ids => $featureList});
-		#my $aliases = $self->sapsvr()->fids_to_ids({-ids => $featureList,-protein => 1});
-		my $sequences;
-		if ($args->{withSequences} == 1) {
-			$sequences = $self->sapsvr()->ids_to_sequences({-ids => $featureList,-protein => 1});
-		}
-		for (my $i=0; $i < @{$featureList}; $i++) {
-			my $row = {ID => [$featureList->[$i]],TYPE => ["peg"]};
-			if ($featureList->[$i] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
-				$row->{TYPE}->[0] = $1;
-			}
-			if (defined($locations->{$featureList->[$i]}->[0]) && $locations->{$featureList->[$i]}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
-				my $array = [split(/:/,$1)];
-				$row->{CONTIG}->[0] = $array->[1];
-				if ($3 eq "-") {
-					$row->{START}->[0] = ($2-$4);
-					$row->{STOP}->[0] = ($2);
-					$row->{DIRECTION}->[0] = "rev";
-				} else {
-					$row->{START}->[0] = ($2);
-					$row->{STOP}->[0] = ($2+$4);
-					$row->{DIRECTION}->[0] = "for";
-				}
-			}
-			if (defined($functions->{$featureList->[$i]})) {
-				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($functions->{$featureList->[$i]});
-				$row->{COMPARTMENT} = $output->{compartments};
-				$row->{COMMENT}->[0] = $output->{comment};
-				$row->{DELIMITER}->[0] = $output->{delimiter};
-				$row->{ROLES} = $output->{roles};
-			}
-			if (defined($sequences->{$featureList->[$i]})) {
-				$row->{SEQUENCE}->[0] = $sequences->{$featureList->[$i]};
-			}
-			push(@{$features},$row);			
-		}
-	} else {
-		if (!defined($self->parent()) || !defined($self->parent()->user())) {
-			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
-		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
-		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
-		}
-		for (my $i=0; $i < $output->{features}; $i++) {
-			my $ftr = $output->{features}->[$i];
-			my $row = {ID => [$ftr->{ID}->[0]],TYPE => "peg"};
-			if ($ftr->{ID}->[0] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
-				$row->{TYPE}->[0] = $1;
-			}
-			if (defined($ftr->{LOCATION}->[0]) && $ftr->{LOCATION}->[0] =~ m/^(.+)_(\d+)([\+\-])(\d+)$/) {
-				my $array = [split(/:/,$1)];
-				$row->{CONTIG}->[0] = $array->[1];
-				if ($3 eq "-") {
-					$row->{START}->[0] = ($2-$4);
-					$row->{STOP}->[0] = ($2);
-					$row->{DIRECTION}->[0] = "rev";
-				} else {
-					$row->{START}->[0] = ($2);
-					$row->{STOP}->[0] = ($2+$4);
-					$row->{DIRECTION}->[0] = "for";
-				}
-			}
-			if (defined($ftr->{FUNCTION}->[0])) {
-				my $output = ModelSEED::MS::Utilities::GlobalFunctions::functionToRoles($ftr->{FUNCTION}->[0]);
-				$row->{COMPARTMENT}->[0] = $output->{compartments};
-				$row->{COMMENT}->[0] = $output->{comment};
-				$row->{DELIMITER}->[0] = $output->{delimiter};
-				$row->{ROLES} = $output->{roles};
-			}
-			if (defined($ftr->{SEQUENCE}->[0])) {
-				$row->{SEQUENCE}->[0] = $ftr->{SEQUENCE}->[0];
-			}
-			push(@{$features},$row);
-		}
-	}
-	return $features;
-}
-
-sub getGenomeAttributes {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		source => undef
-	});
-	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
-	}
-	my $attributes;
-	if ($args->{source} eq "PUBSEED") {
-		my $genomeHash = $self->sapsvr()->genome_data({
-			-ids => [$args->{genome_id}],
-			-data => ["gc-content", "dna-size","name","taxonomy"]
-		});
-		if (!defined($genomeHash->{$args->{genome_id}})) {
-			ModelSEED::utilities::ERROR("Could not load data for pubseed genome:".$args->{genome_id});
-		}
-		$attributes->{name} = $genomeHash->{$args->{genome_id}}->[2];
-		$attributes->{taxonomy} = $genomeHash->{$args->{genome_id}}->[3];
-		$attributes->{size} = $genomeHash->{$args->{genome_id}}->[1];
-		$attributes->{gc} = $genomeHash->{$args->{genome_id}}->[0];
-	} else {
-		if (!defined($self->parent()) || !defined($self->parent()->user())) {
-			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
-		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
-		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
-		}
-		$attributes->{name} = $output->{name};
-		$attributes->{taxonomy} = $output->{taxonomy};
-		$attributes->{size} = $output->{size};
-		$attributes->{gc} = $output->{gc};
-		$attributes->{features} = $output->{features};
-	}
-	return $attributes;
-}
-
 
 __PACKAGE__->meta->make_immutable;

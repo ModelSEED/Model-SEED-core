@@ -43,6 +43,43 @@ override add => sub {
 };
 
 ######################################################################
+#Alias Functions
+######################################################################
+sub addAlias {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["objectType","aliasType","alias","uuid"],{
+		source => undef
+	});
+	if (!defined($args->{source})) {
+		$args->{source} = $args->{aliasType};
+	}
+	my $aliasSetType = $args->{objectType}."AliasSet";
+	#Checking for alias set
+	my $aliasSet = $self->getObject($aliasSetType,{type => $args->{aliasType}});
+	if (!defined($aliasSet)) {
+		#Creating alias set
+		$aliasSet = $self->create($aliasSetType,{
+			type => $args->{aliasType},
+			source => $args->{source}
+		});
+	}
+	my $aliasAttribute = lc($args->{objectType})."Aliases";
+	if (defined($aliasSet->$aliasAttribute()->{$args->{uuid}})) {
+		my $aliases = $aliasSet->$aliasAttribute()->{$args->{uuid}};
+		for (my $i=0; $i < @{$aliases}; $i++) {
+			if ($aliases->[$i]->alias() eq $args->{alias}) {
+				return;	
+			}
+		}	
+	}
+	$aliasSet->create($args->{objectType}."Alias",{
+		lc($args->{objectType})."_uuid" => $args->{uuid},
+		alias => $args->{alias}
+	});
+	return;
+}
+
+######################################################################
 #Query Functions
 ######################################################################
 sub getObject {
