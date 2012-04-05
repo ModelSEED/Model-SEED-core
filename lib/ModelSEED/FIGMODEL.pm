@@ -3128,12 +3128,15 @@ sub import_model {
 		biochemSource => $args->{biochemSource}
 	});
 	my $importTables = ["reaction","compound","cpdals","rxnals"];
-	my %CompoundAlias=();
 	if (defined($id) && length($id) > 0 && defined($mdl)) {
 		for (my $i=0; $i < @{$importTables}; $i++) {
 			$mdl->figmodel()->database()->freezeFileSyncing($importTables->[$i]);
 		}
 		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $id});
+		for (my $i=0; $i < @{$objs}; $i++) {
+			$objs->[$i]->delete();	
+		}
+		$objs = $mdl->figmodel()->database()->get_objects("rxnals",{type => $id});
 		for (my $i=0; $i < @{$objs}; $i++) {
 			$objs->[$i]->delete();	
 		}
