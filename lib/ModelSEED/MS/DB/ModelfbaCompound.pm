@@ -3,15 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Modelfba;
-use ModelSEED::MS::ModelCompound;
 package ModelSEED::MS::DB::ModelfbaCompound;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
@@ -20,7 +18,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba', type => 'parent', me
 
 
 # ATTRIBUTES:
-has modelfba_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has flux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has lowerbound => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );

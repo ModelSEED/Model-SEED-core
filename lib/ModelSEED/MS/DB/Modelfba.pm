@@ -3,18 +3,16 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Model;
 use ModelSEED::MS::ModelfbaCompound;
 use ModelSEED::MS::ModelfbaReaction;
 use ModelSEED::MS::ModelfbaFeature;
-use ModelSEED::MS::Media;
+use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Modelfba;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
@@ -29,7 +27,6 @@ has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typ
 has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', required => 1, default => '' );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has description => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
-has model_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has expressionData_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
 has regmodel_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );

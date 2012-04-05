@@ -3,15 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Biochemistry;
+use ModelSEED::MS::ReactionAlias;
+use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::ReactionAliasSet;
 use Moose;
-extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
+extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
@@ -19,7 +19,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent'
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1, lazy => 1, builder => '_builduuid' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, lazy => 1, builder => '_builduuid' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0' );
 has source => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0' );
@@ -30,7 +30,10 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactionAliases => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]', type => 'hasharray(ReactionAlias,alias)', metaclass => 'Typed');
+has reactionAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionAlias]', type => 'child(ReactionAlias)', metaclass => 'Typed');
+
+
+# LINKS:
 
 
 # BUILDERS:

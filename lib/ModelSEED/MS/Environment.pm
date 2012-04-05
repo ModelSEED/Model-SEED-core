@@ -6,18 +6,17 @@
 # Date of module creation: 2012-03-18
 ########################################################################
 use strict;
+package ModelSEED::MS::Environment;
 use Moose;
 use namespace::autoclean;
-package ModelSEED::MS::Environment
-
 
 # ATTRIBUTES:
 has username => ( is => 'rw', isa => 'Str');
 has password => ( is => 'rw', isa => 'Str');
 has registeredseed => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
 has seed => ( is => 'rw', isa => 'Str',default => 'local' );
-has lasterror => ( is => 'rw', isa => 'varchar',"NONE");
-has filename => ( is => 'rw', isa => 'varchar',"NONE");
+has lasterror => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
+has filename => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
 
 
 # CONSTANTS:

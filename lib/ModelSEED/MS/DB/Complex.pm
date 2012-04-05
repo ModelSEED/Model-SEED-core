@@ -3,16 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Mapping;
 use ModelSEED::MS::ReactionRule;
 use ModelSEED::MS::ComplexRole;
+use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Complex;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
@@ -37,6 +36,10 @@ has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|Arr
 has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
 
 
+# LINKS:
+has id => (is => 'rw',lazy => 1,builder => '_buildid',isa => 'Str', type => 'id', metaclass => 'Typed');
+
+
 # BUILDERS:
 sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
@@ -50,6 +53,7 @@ sub _typeToFunction {
 		ReactionRule => 'reactionrules',
 	};
 }
+sub _aliasowner { return 'Mapping'; }
 
 
 __PACKAGE__->meta->make_immutable;

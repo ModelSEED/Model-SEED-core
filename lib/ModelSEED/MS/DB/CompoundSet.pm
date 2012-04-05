@@ -3,15 +3,14 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::Compound;
+use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::CompoundSet;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
@@ -36,6 +35,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 # SUBOBJECTS:
 has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'solink(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
+
+
+# LINKS:
 
 
 # BUILDERS:

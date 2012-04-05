@@ -6,6 +6,7 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
+use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;
@@ -17,8 +18,9 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 ######################################################################
 #Object addition functions
 ######################################################################
-sub add {
-    my ($self,$object) = @_;
+
+override add => sub {
+    my ($self,$attribute, $object) = @_;
     $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
@@ -36,13 +38,45 @@ sub add {
     	}
     	$self->clearIndex({type=>$type});
     } else {
-    	push(@{$self->$function()},$object);
-    	if (defined($self->indices()->{$type})) {
-    		foreach my $attribute (keys(%{$self->indices()->{$type}})) {
-    			push(@{$self->indices()->{$type}->{$attribute}->{$object->$attribute()}},$object);
-    		}
-    	}
+       super();
     }
+};
+
+######################################################################
+#Alias Functions
+######################################################################
+sub addAlias {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["objectType","aliasType","alias","uuid"],{
+		source => undef
+	});
+	if (!defined($args->{source})) {
+		$args->{source} = $args->{aliasType};
+	}
+	my $aliasSetType = $args->{objectType}."AliasSet";
+	#Checking for alias set
+	my $aliasSet = $self->getObject($aliasSetType,{type => $args->{aliasType}});
+	if (!defined($aliasSet)) {
+		#Creating alias set
+		$aliasSet = $self->create($aliasSetType,{
+			type => $args->{aliasType},
+			source => $args->{source}
+		});
+	}
+	my $aliasAttribute = lc($args->{objectType})."Aliases";
+	if (defined($aliasSet->$aliasAttribute()->{$args->{uuid}})) {
+		my $aliases = $aliasSet->$aliasAttribute()->{$args->{uuid}};
+		for (my $i=0; $i < @{$aliases}; $i++) {
+			if ($aliases->[$i]->alias() eq $args->{alias}) {
+				return;	
+			}
+		}	
+	}
+	$aliasSet->create($args->{objectType}."Alias",{
+		lc($args->{objectType})."_uuid" => $args->{uuid},
+		alias => $args->{alias}
+	});
+	return;
 }
 
 ######################################################################

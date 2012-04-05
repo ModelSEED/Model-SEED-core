@@ -3,14 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-23T06:50:05
+# Date of module creation: 2012-04-03T07:07:13
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Biochemistry;
 package ModelSEED::MS::DB::Compartment;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
@@ -28,6 +27,9 @@ has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', meta
 
 # ANCESTOR:
 has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+
+
+# LINKS:
 
 
 # BUILDERS:

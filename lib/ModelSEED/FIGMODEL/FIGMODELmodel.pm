@@ -973,20 +973,18 @@ Description:
 =cut
 sub get_reaction_equation {
 	my ($self,$args) = @_;
-	my $rxnData = $self->get_reaction_data($args);
+	if (!defined($args->{-data}) && defined($args->{-id})) {
+		$args->{-data} = $self->get_reaction_data($args);
+	}
+	my $rxnData = $args->{-data};
 	if (!defined($rxnData)) {
 		return undef;
 	}
 	my $obj;
 	if ($rxnData->{LOAD}->[0] =~ m/(rxn\d\d\d\d\d)/) {
 		my $rxnID = $1;
-		my $rxnHash = $self->figmodel()->database()->get_object_hash({type=>"reaction",attribute=>"id",-onlyIfCached=>1});
-		if (defined($rxnHash)) {
-			if (defined($rxnHash->{$rxnID})) {
-				$obj = $rxnHash->{$rxnID}->[0];
-			}
-		} else {
-			$obj = $self->figmodel()->database()->get_object("reaction",{id => $rxnID});
+		if (defined($args->{-rxnhash}->{$rxnID})) {
+			$obj = $args->{-rxnhash}->{$rxnID}->[0];
 		}
 	} elsif ($rxnData->{LOAD}->[0] =~ m/(bio\d\d\d\d\d)/) {
 		$obj = $self->figmodel()->database()->get_object("bof",{id => $1});
@@ -994,7 +992,6 @@ sub get_reaction_equation {
 	if (!defined($obj)) {
 		ModelSEED::utilities::ERROR("can't find reaction ".$rxnData->{LOAD}->[0]." in database!");
 	}
-	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $equation = $obj->equation();
 	my $direction = $rxnData->{DIRECTIONALITY}->[0];
 	#Setting reaction directionality
@@ -1007,12 +1004,12 @@ sub get_reaction_equation {
 			my $origCpd = $reactants[$i];
 			my $cpd = $origCpd;
 			if (defined($args->{-style}) && $args->{-style} eq "NAME") {
-				if (defined($cpdHash->{$origCpd}) && defined($cpdHash->{$origCpd}->[0]->name()) && length($cpdHash->{$origCpd}->[0]->name()) > 0) {
-					$cpd = $cpdHash->{$origCpd}->[0]->name();
+				if (defined($args->{-cpdhash}->{$origCpd}) && defined($args->{-cpdhash}->{$origCpd}->[0]->name()) && length($args->{-cpdhash}->{$origCpd}->[0]->name()) > 0) {
+					$cpd = $args->{-cpdhash}->{$origCpd}->[0]->name();
 				}
 			} elsif (defined($args->{-style}) && $args->{-style} eq "ABBREV") {
-				if (defined($cpdHash->{$origCpd}) && defined($cpdHash->{$origCpd}->[0]->abbrev()) && length($cpdHash->{$origCpd}->[0]->abbrev()) > 0) {
-					$cpd = $cpdHash->{$origCpd}->[0]->abbrev();
+				if (defined($args->{-cpdhash}->{$origCpd}) && defined($args->{-cpdhash}->{$origCpd}->[0]->abbrev()) && length($args->{-cpdhash}->{$origCpd}->[0]->abbrev()) > 0) {
+					$cpd = $args->{-cpdhash}->{$origCpd}->[0]->abbrev();
 				}
 			}
 			if ($rxnData->{COMPARTMENT}->[0] ne "c") {
@@ -6373,6 +6370,7 @@ sub generate_reaction_data_table {
 	my $roleHash = $self->figmodel()->mapping()->get_role_rxn_hash();
 	my $keggHash = $self->figmodel()->database()->get_object_hash({type=>"rxnals",attribute=>"REACTION",parameters=>{type=>"KEGG"},useCache=>1});
 	my $rxnHash = $self->figmodel()->database()->get_object_hash({type=>"reaction",attribute=>"id",useCache=>1});
+	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $rxntbl = $self->reaction_table();
 	my $outputTbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,$self->directory()."ReactionTable-".$self->id().".tbl",undef,"\t","|",undef);	
 	for (my $i=0; $i < $rxntbl->size();$i++) {
@@ -6404,11 +6402,11 @@ sub generate_reaction_data_table {
 				} elsif ($headings->[$j] eq "REFERENCE") {
 					$newRow->{$headings->[$j]} = $row->{REFERENCE};	
 				} elsif ($headings->[$j] eq "EQUATION") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ID"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"ID"});
 				} elsif ($headings->[$j] eq "ABBREVIATION EQ") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ABBREV"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"ABBREV"});
 				} elsif ($headings->[$j] eq "NAME EQ") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"NAME"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"NAME"});
 				} elsif ($headings->[$j] eq "KEGG ID(S)" && defined($keggHash->{$obj->id()})) {
 					for (my $k=0; $k < @{$keggHash->{$obj->id()}}; $k++) {
 						push(@{$newRow->{$headings->[$j]}},$keggHash->{$obj->id()}->[$k]->alias());
