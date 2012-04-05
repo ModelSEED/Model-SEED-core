@@ -317,6 +317,9 @@ void Species::ClearCycles() {
 }
 
 int Species::ParseStructuralCueList(string InList) {
+        if(InList.compare("nogroups")==0){
+	  return SUCCESS;
+        }
 	vector<string>* Strings = StringToStrings(InList,"\t|:");
 	for (int i=0; i < int(Strings->size()); i++) {
 		Species* NewCue = MainData->FindStructuralCue("NAME;DATABASE;ENTRY",(*Strings)[i].data());

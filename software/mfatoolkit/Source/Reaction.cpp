@@ -351,6 +351,9 @@ void Reaction::ClearStructuralCues() {
 };
 
 int Reaction::ParseStructuralCueList(string InList) {
+        if(InList.compare("nogroups")==0){
+	        return SUCCESS
+        }
 	vector<string>* Strings = StringToStrings(InList,"\t|:");
 	for (int i=0; i < int(Strings->size()); i++) {
 		Species* NewCue = MainData->FindStructuralCue("NAME;DATABASE;ENTRY",(*Strings)[i].data());
@@ -1033,6 +1036,7 @@ double Reaction::FEstDeltaGMin(bool Transport) {
 		}
 	}
 
+	//DELTAGTRANSPORT
 	if (Transport) {
 		double HextCoeff = 0;
 		double HinCoeff = 0;
@@ -1096,6 +1100,7 @@ double Reaction::FEstDeltaGMax(bool Transport) {
 		}
 	}
 
+	//DELTAGTRANSPORT
 	if (Transport) {
 		double HextCoeff = 0;
 		double HinCoeff = 0;
@@ -1161,6 +1166,8 @@ double Reaction::FmMDeltaG(bool Transport) {
 		}
 	}
 
+
+	//DELTAGTRANSPORT
 	if (Transport) {
 		double HextCoeff = 0;
 		double HinCoeff = 0;
