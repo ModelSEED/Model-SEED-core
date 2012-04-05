@@ -1,187 +1,412 @@
 package ModelSEED::FileDB;
 
+use strict;
+use warnings;
+
 use Moose;
-use Moose::Util::TypeConstraints;
-use Cwd qw(abs_path);
-use File::Path qw(make_path);
-use ModelSEED::FileDB::FileIndex;
+
+use JSON::Any;
+use Data::Dumper;
+
+use Fcntl qw( :flock );
+use File::stat; # for testing mod time
+use IO::Compress::Gzip qw(gzip);
+use IO::Uncompress::Gunzip qw(gunzip);
 
 with 'ModelSEED::Database';
 
-subtype 'Directory',
-    as 'Str',
-    where {
-	if (!-d abs_path($_)) {
-	    make_path($_) or return 0;
-	}
+=head
 
-	return 1;
-    };
+TODO
+  * Put index file back in memory (stored in moose object)
+      - test if changed via mod time and size
+      - should speed up data access (as long as index hasn't changed)
+      - would this work with the locking?
+  * Check for .tmp file in BUILD, if it exists then the previous index was not saved
+=cut
 
+my $INDEX_EXT = 'ind';
+my $META_EXT  = 'met';
+my $DATA_EXT  = 'dat';
+my $LOCK_EXT  = 'lock';
 
-has directory => (
-    is       => 'ro',
-    isa      => 'Directory',
-    required => 1
-);
+# External attributes (configurable)
+has filename => (is => 'rw', isa => 'Str', required => 1);
 
-has indexes => (
-    is      => 'ro',
-    isa     => 'HashRef',
-    builder => '_buildIndicies',
-    lazy    => 1
-);
+=head
 
-has user_index => (
-    is      => 'ro',
-    isa     => 'ModelSEED::FileDB::FileIndex',
-    builder => '_buildUserIndex'
-);
+Index Structure
+{
+    ids => { $id => [start, end] }
 
-has types => (
-    is      => 'ro',
-    isa     => 'ArrayRef[Str]',
-    builder => '_buildTypes',
-    lazy    => 1
-);
+    end_pos => int
 
-sub _buildTypes {
-    return [ qw( Model Biochemistry Mapping Annotation ) ];
+    num_del => int
+
+    ordered_ids => [id, id, id, ...]
 }
 
-sub _buildIndicies {
-    my $self = shift @_;
-    my $indexes = {};
-    foreach my $type (@{$self->types}) {
-        $indexes->{$type} = ModelSEED::FileDB::FileIndex->new({
-            filename => $self->directory . "/" . $type
-        });
-    }
-    return $indexes;
-}
+=cut
 
-sub _buildUserIndex {
+sub BUILD {
     my ($self) = @_;
-    return ModelSEED::FileDB::FileIndex->new({
-	filename => $self->directory . "/Users"
-    });
+
+    my $file = $self->filename;
+
+    my $ind = -f "$file.$INDEX_EXT";
+    my $met = -f "$file.$META_EXT";
+    my $dat = -f "$file.$DATA_EXT";
+
+    if ($ind && $met && $dat) {
+	# all exist
+    } elsif (!$ind && !$met && !$dat) {
+	# new database
+	my $index = _initialize_index();
+	
+	# use a semaphore to lock the files
+	open LOCK, ">$file.$LOCK_EXT" or die "$!";
+	flock LOCK, LOCK_EX or die "";
+
+	open INDEX, ">$file.$INDEX_EXT" or die "";
+	print INDEX _encode($index);
+	close INDEX;
+
+	open META, ">$file.$META_EXT" or die "";
+	print META _encode({});
+	close META;
+
+	open DATA, ">$file.$DATA_EXT" or die;
+	close DATA;
+
+	close LOCK;
+    } else {
+	die "Corrupted database: $file";
+    }
 }
 
-sub has_object {
-    my ($self, $type, $args) = @_;
-
-    return $self->indexes->{$type}->has_object($args);
+sub _initialize_index {
+    return {
+	end_pos     => 0,
+	num_del     => 0,
+	ids         => {},
+	ordered_ids => []
+    };
 }
 
-sub get_object {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->get_object($args);
-}
+sub _perform_transaction {
+    my ($self, $files, $sub, @args) = @_;
 
-sub save_object {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->save_object($args);
-}
+    # determine which files are required and the mode to open
+    my $index_mode = $files->{index};
+    my $meta_mode  = $files->{meta};
+    my $data_mode  = $files->{data};
 
-sub delete_object {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->delete_object($args);
-}
+    my $file = $self->filename;
 
-sub set_alias {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->set_alias($args);
-}
+    # use a semaphore file for locking
+    open LOCK, ">$file.$LOCK_EXT" or die "Couldn't open file: $!";
 
-sub remove_alias {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->remove_alias($args);
-}
+    # if we're only reading, get a shared lock, otherwise get exclusive
+    if ((!defined($index_mode) || $index_mode eq 'r') &&
+	(!defined($meta_mode)  || $meta_mode eq 'r') &&
+	(!defined($data_mode)  || $data_mode eq 'r')) {
 
-sub get_permissions {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->get_permissions($args);
-}
+	flock LOCK, LOCK_SH or die "Couldn't lock file: $!";
+    } else {
+	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
+    }
 
-sub set_permissions {
-    my ($self, $type, $args) = @_;
-    return $self->indexes->{$type}->set_permissions($args);
-}
+    # check for errors if last transaction died
+    # TODO: implement
 
-sub get_user_uuids {
-    my ($self, $type, $user) = @_;
-    return $self->indexes->{$type}->get_user_uuids($user);
-}
+=head
+    # check if rebuild died between two rename statements
+    if (-f "$file.$DATA_EXT.tmp") {
+	if (-f "$file.$INDEX_EXT.tmp") {
+	    # both exist, roll back transaction by deleting
+	    unlink "$file.$DATA_EXT.tmp";
+	    unlink "$file.$INDEX_EXT.tmp";
+	} else {
+	    # index tmp has been copied but data has not
+	    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+	}
+    }
+=cut
 
-sub get_user_aliases {
-    my ($self, $type, $user) = @_;
-    return $self->indexes->{$type}->get_user_aliases($user);
-}
+    my $sub_data = {};
+    my ($index, $meta, $data);
+    if (defined($index_mode)) {
+	open INDEX, "<$file.$INDEX_EXT" or die "Couldn't open file: $!";
+	$index = _decode(<INDEX>);
+	$sub_data->{index} = $index;
+	close INDEX;
+    }
 
-sub add_user {
-    my ($self, $user_obj) = @_;
+    if (defined($meta_mode)) {
+	open META, "<$file.$META_EXT" or die "Couldn't open file: $!";
+	$meta = _decode(<META>);
+	$sub_data->{meta} = $meta;
+	close META;
+    }
 
-    # args must be at least: login, password
-    foreach my $arg (qw(login password)) {
-	if (!defined($user_obj->{$arg})) {
-	    # TODO: error
-	    return 0;
+    if (defined($data_mode)) {
+	if ($data_mode eq 'r') {
+	    open DATA, "<$file.$DATA_EXT" or die "Couldn't open file: $!";
+	    $data = *DATA;
+	    $sub_data->{data} = $data;
+	} elsif ($data_mode eq 'w') {
+	    # open r/w, '+>' clobbers the file
+	    open DATA, "+<$file.$DATA_EXT" or die "Couldn't open file: $!";
+	    $data = *DATA;
+	    $sub_data->{data} = $data;
 	}
     }
 
-    # make sure user doesn't exist
-    if (defined($self->get_user($user_obj->{login}))) {
-	print STDERR "Error: user already exists\n";
-	return 0;
+    my ($ret, $save) = $sub->(@args, $sub_data);
+
+    if (defined($data_mode)) {
+	close $data;
     }
 
+    # save files atomically by creating temp files and renaming
+    if (defined($save)) {
+	if ($save->{index}) {
+	    if ($index_mode ne 'w') {
+		die "Cannot write to index file, wrong permissions";
+	    }
 
-    # crypt the password
-    my $pass = $user_obj->{password};
-    my $salt = join '', ('.', '/', 0..9, 'A'..'Z', 'a'..'z')[rand 64, rand 64];
+	    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "Couldn't open file: $!";
+	    print INDEX_TEMP _encode($index);
+	    close INDEX_TEMP;
+	    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
+	}
 
-    $user_obj->{password} = crypt($pass, $salt);
+	if ($save->{meta}) {
+	    if ($meta_mode ne 'w') {
+		die "Cannot write to meta file, wrong permissions";
+	    }
 
-    my $uuid = $self->user_index->save_object({
-	user => $user_obj->{login},
-	object => $user_obj
-    });
+	    open META_TEMP, ">$file.$META_EXT.tmp" or die "Couldn't open file: $!";
+	    print META_TEMP _encode($meta);
+	    close META_TEMP;
+	    rename "$file.$META_EXT.tmp", "$file.$META_EXT";
+	}
+    }
 
-    $self->user_index->set_alias({
-	user => $user_obj->{login},
-	uuid => $uuid,
-	alias => 'user'
-    });
+    close LOCK;
+
+    return $ret;
+}
+
+# removes deleted objects from the data file
+# this locks the database while rebuilding
+# much duplicate logic here for locking, should be fixed
+# with _perform_transaction rewrite
+
+=head
+sub rebuild_data {
+    my ($self) = @_;
+
+    # get locked filehandles for index and data files
+    my $file = $self->filename;
+
+    # use a semaphore to lock the files
+    open LOCK, ">$file.$LOCK_EXT" or die "";
+    flock LOCK, LOCK_EX or die "";
+
+    open INDEX, "<$file.$INDEX_EXT" or die "";
+    my $index = _decode(<INDEX>);
+    close INDEX;
+
+    if ($index->{num_del} == 0) {
+	# no need to rebuild
+	return 1;
+    }
+
+    open DATA, "<$file.$DATA_EXT" or die "";
+
+    # open INDEX_TEMP first
+    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "";
+    open DATA_TEMP, ">$file.$DATA_EXT.tmp" or die "";
+
+    my $end = -1;
+    my $uuids = []; # new ordered uuid list
+    foreach my $uuid (@{$index->{ordered_uuids}}) {
+	if (defined($index->{uuid_index}->{$uuid})) {
+	    my $uuid_hash = $index->{uuid_index}->{$uuid};
+	    my $length = $uuid_hash->{end} - $uuid_hash->{start} + 1;
+
+	    # seek and read the object
+	    my $data;
+	    seek DATA, $uuid_hash->{start}, 0 or die "";
+	    read DATA, $data, $length;
+
+	    # set the new start and end positions
+	    $uuid_hash->{start} = $end + 1;
+	    $uuid_hash->{end} = $end + $length;
+
+	    # print object to temp file
+	    print DATA_TEMP $data;
+
+	    $end += $length;
+	    push(@$uuids, $uuid);
+	}
+    }
+
+    $end++;
+    $index->{num_del} = 0;
+    $index->{end_pos} = $end;
+    $index->{ordered_uuids} = $uuids;
+
+    close DATA;
+    close DATA_TEMP;
+
+    print INDEX_TEMP _encode($index);
+    close INDEX_TEMP;
+
+    # only point we could get corrupted is between next two statements
+    # in '_do_while_locked' check if .dat.tmp exists, but not .int.tmp
+    # if it does then indicates we failed here, so rename data
+    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
+    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+
+    close LOCK;
 
     return 1;
 }
 
-sub get_user {
-    my ($self, $user) = @_;
+=cut
 
-    return $self->user_index->get_object({ user => $user, user_alias => $user . '/user' });
+sub has_object {
+    my ($self, $id) = @_;
+
+    return $self->_perform_transaction({ index => 'r' },
+				       \&_has_object, $id);
 }
 
-sub authenticate_user {
-    my ($self, $user, $pass) = @_;
+sub _has_object {
+    my ($id, $data) = @_;
 
-    my $user_obj = $self->user_index->get_object({ user => $user, user_alias => $user . '/user' });
-
-    unless (defined($user_obj)) {
-	return 0;
-    }
-
-    if (crypt($pass, $user_obj->{password}) eq $user_obj->{password}) {
+    if (defined($data->{index}->{ids}->{$id})) {
 	return 1;
     } else {
 	return 0;
     }
 }
 
-sub remove_user {
-    my ($self, $user_obj) = @_;
+sub get_object {
+    my ($self, $id) = @_;
 
-    # TODO: implement
+    return $self->_perform_transaction({ index => 'r', data => 'r' },
+				       \&_get_object, $id);
+}
+
+sub _get_object {
+    my ($id, $data) = @_;
+
+    unless (_has_object($id, $data)) {
+	return;
+    }
+
+    my $start = $data->{index}->{ids}->{$id}->[0];
+    my $end   = $data->{index}->{ids}->{$id}->[1];
+
+    my $data_fh = $data->{data};
+    my ($json_obj, $gzip_obj);
+    seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
+    read $data_fh, $gzip_obj, ($end - $start + 1);
+    gunzip \$gzip_obj => \$json_obj;
+
+    return _decode($json_obj)
+}
+
+sub save_object {
+    my ($self, $id, $object) = @_;
+
+    return $self->_perform_transaction({ index => 'w', data => 'w' },
+				       \&_save_object, $id, $object);
+}
+
+sub _save_object {
+    my ($id, $object, $data) = @_;
+
+    if (_has_object($id, $data)) {
+	return 0;
+    }
+
+    my $json_obj = _encode($object);
+    my $gzip_obj;
+
+    gzip \$json_obj => \$gzip_obj;
+
+    my $data_fh = $data->{data};
+    my $start = $data->{index}->{end_pos};
+    seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
+    print $data_fh $gzip_obj;
+
+    $data->{index}->{ids}->{$id} = [$start, $start + length($gzip_obj) - 1];
+    push(@{$data->{index}->{ordered_ids}}, $id);
+    $data->{index}->{end_pos} = $start + length($gzip_obj);
+
+    return (1, { index => 1 });
+}
+
+sub delete_object {
+    my ($self, $id) = @_;
+
+    return $self->_perform_transaction({ index => 'w' },
+				       \&_delete_object, $id);
+}
+
+sub _delete_object {
+    my ($id, $data) = @_;
+
+    unless (_has_object($id, $data)) {
+	return 0;
+    }
+
+    # should we rebuild the database every once in a while?
+    delete $data->{index}->{ids}->{$id};
+    $data->{index}->{num_del}++;
+
+    return (1, { index => 1 });
+}
+
+sub get_metadata {
+
+}
+
+sub set_metadata {
+
+}
+
+sub remove_metadata {
+
+}
+
+sub find_objects {
+
+}
+
+sub _sleep_test {
+    my ($self, $time) = @_;
+
+    $self->_do_while_locked(sub {
+	my ($time, $index, $data_fh) = @_;
+	my $sleep = sleep $time;
+    }, $time);
+}
+
+sub _encode {
+    my ($data) = @_;
+
+    return JSON::Any->encode($data);
+}
+
+sub _decode {
+    my ($data) = @_;
+
+    return JSON::Any->decode($data);
 }
 
 no Moose;

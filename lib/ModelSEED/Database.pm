@@ -2,32 +2,73 @@ package ModelSEED::Database;
 
 use Moose::Role;
 
+=head has_object
+(exists) = $db->has_object(id);
+=cut
 requires 'has_object';
 
+=head get_object
+(object) = $db->get_object(id);
+=cut
 requires 'get_object';
 
+=head save_object
+(success) = $db->save_object(id, object);
+=cut
 requires 'save_object';
 
+=head delete_object
+(success) = $db->delete_object(id);
+=cut
 requires 'delete_object';
 
-requires 'set_alias';
+=head get_metadata
+(metadata) = $db->get_metadata(id, subset);
 
-requires 'remove_alias';
+subset can be specified to limit the fields returned by the query
+and uses dot notation to select inside sub-objects
 
-requires 'get_permissions';
+ex:
+    $db->get_metadata('0123', {name => 1, 'users.paul' => 1});
+    would return: {name => 'foo', users => {paul => 'bar'}}
+=cut
+requires 'get_metadata';
 
-requires 'set_permissions';
+=head set_metadata
+(success) = $db->set_metadata(id, data, selection);
 
-requires 'get_user_uuids';
+data is the metadata you want to set for the object,
+and selection specifies where to save the data (uses dot notation)
+if selection is undef or the empty string, will set the whole metadata to data
+(in this case data has to be a hash)
 
-requires 'get_user_aliases';
+ex:
+    $db->set_metadata('0123', {paul => 'bar'}, 'users');
+    or
+    $db->set_metadata('0123', 'bar', 'users.paul');
 
-requires 'add_user';
+    difference here is that the first will replace 'users',
+    while the second adds the user named 'paul'
+=cut
+requires 'set_metadata';
 
-requires 'get_user';
+=head remove_metadata
+(success) = $db->remove_metadata(id, selection);
 
-requires 'authenticate_user';
+deletes the data at selection (uses dot notation)
 
-requires 'remove_user';
+ex:
+    $db->remove_metadata('0123', 'users.paul');
+
+=cut
+requires 'remove_metadata';
+
+=head find_objects
+([ids]) = $db->find_objects(query);
+
+allows you to query for objects based on the metadata
+will use query syntax similar to mongodb
+=cut
+requires 'find_objects';
 
 1;
