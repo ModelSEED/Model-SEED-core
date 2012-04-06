@@ -352,7 +352,7 @@ void Reaction::ClearStructuralCues() {
 
 int Reaction::ParseStructuralCueList(string InList) {
         if(InList.compare("nogroups")==0){
-	        return SUCCESS
+	  return SUCCESS;
         }
 	vector<string>* Strings = StringToStrings(InList,"\t|:");
 	for (int i=0; i < int(Strings->size()); i++) {
@@ -2246,6 +2246,16 @@ bool Reaction::BalanceReaction(bool AddH, bool AddE) {
 		return false;
 	}
 
+	//Check first for any problems with TranslateFormulaToAtoms
+	for (i=0; i < FNumReactants(); i++) {
+	  if (GetReactant(i)->FNumAtoms() == 0) {
+	    GetReactant(i)->TranslateFormulaToAtoms();
+	    if (GetReactant(i)->FNumAtoms() == 0) {
+	      return false;  //if translation is still false, then either "noformula" or "*2"
+	    }
+	  }
+	}
+	
 	for (i=0; i < FNumReactants(); i++) {
 		if (GetReactant(i)->FNumAtoms() == 0) {
 			GetReactant(i)->TranslateFormulaToAtoms();
