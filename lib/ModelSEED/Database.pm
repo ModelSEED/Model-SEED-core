@@ -23,29 +23,33 @@ requires 'save_object';
 requires 'delete_object';
 
 =head get_metadata
-(metadata) = $db->get_metadata(id, subset);
+(metadata) = $db->get_metadata(id, selection);
 
-subset can be specified to limit the fields returned by the query
+selection can be specified to return specific metadata
 and uses dot notation to select inside sub-objects
 
 ex:
-    $db->get_metadata('0123', {name => 1, 'users.paul' => 1});
-    would return: {name => 'foo', users => {paul => 'bar'}}
+    meta: {name => 'foo', users => {paul => 'bar', zedd => 'test'}}
+
+    $db->get_metadata('0123', 'users.paul');
+    returns: 'bar'
+
+    $db->get_metadata('0123', 'users');
+    returns: { paul => 'bar', zedd => 'test' }
 =cut
 requires 'get_metadata';
 
 =head set_metadata
-(success) = $db->set_metadata(id, data, selection);
+(success) = $db->set_metadata(id, selection, metadata);
 
-data is the metadata you want to set for the object,
-and selection specifies where to save the data (uses dot notation)
+selection specifies where to save metadata (uses dot notation)
 if selection is undef or the empty string, will set the whole metadata to data
 (in this case data has to be a hash)
 
 ex:
-    $db->set_metadata('0123', {paul => 'bar'}, 'users');
+    $db->set_metadata('0123', 'users', {paul => 'bar'});
     or
-    $db->set_metadata('0123', 'bar', 'users.paul');
+    $db->set_metadata('0123', 'users.paul', 'bar');
 
     difference here is that the first will replace 'users',
     while the second adds the user named 'paul'
