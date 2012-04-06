@@ -3547,7 +3547,9 @@ sub import_model {
 				}
 				if (!defined($rxn->thermoReversibility()) || $rxn->thermoReversibility() eq "" || 
 				    ($Update==1 && $rxn->thermoReversibility() ne $thermoreversibility->{direction})){
-				    push(@{$result->{outputFile}},"Updating direction for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
+				    my $dir=$rxn->thermoReversibility();
+				    $dir="" if !$dir;
+				    push(@{$result->{outputFile}},"Updating direction for ".$rxn->id()." from ".$dir." to ".$thermoreversibility->{direction});
 				    $rxn->thermoReversibility($thermoreversibility->{direction});				
 				}
 #			    }
