@@ -317,6 +317,9 @@ void Species::ClearCycles() {
 }
 
 int Species::ParseStructuralCueList(string InList) {
+        if(InList.compare("nogroups")==0){
+	  return SUCCESS;
+        }
 	vector<string>* Strings = StringToStrings(InList,"\t|:");
 	for (int i=0; i < int(Strings->size()); i++) {
 		Species* NewCue = MainData->FindStructuralCue("NAME;DATABASE;ENTRY",(*Strings)[i].data());
@@ -2665,8 +2668,10 @@ void Species::TranslateFormulaToAtoms() {
 						NumAtoms.push_back(1);
 					}
 				} else {
-					cout << "Alert, unidentified group " << Temp << endl;
-					return;
+				  if(Temp.compare("noformula")==1){
+				    cout << "Alert, unidentified group " << Temp << endl;
+				  }
+				  return;
 				}
 			}
 			else {

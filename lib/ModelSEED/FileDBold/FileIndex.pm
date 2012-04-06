@@ -673,12 +673,5 @@ sub _get_uuid {
     }
 }
 
-sub test {
-    return {
-	blah => sub {},
-	blah2 => sub{}
-    };
-}
-
 no Moose;
 __PACKAGE__->meta->make_immutable;
