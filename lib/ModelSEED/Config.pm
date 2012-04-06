@@ -5,15 +5,10 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 2012-03-18
 ########################################################################
-use ModelSEED::FileDB;
 package ModelSEED::Config;
 use Moose;
-use Config::Tiny;
+use JSON;
 use namespace::autoclean;
-
-with ( 
-    'ModelSEED::Config::Store' => { type => 'file', class => 'ModelSEED::FileDB' }
-);
 
 has filename => (
     is  => 'rw',
@@ -22,22 +17,37 @@ has filename => (
     lazy => 1,
 );
 
-has Config => (
+has config => (
     is => 'rw',
-    isa => 'Config::Tiny',
+    isa => 'HashRef',
     builder => '_buildConfig',
     lazy => 1,
     init_arg => undef,
 );
 
+has JSON => (
+    is       => 'ro',
+    isa      => 'JSON',
+    builder  => '_buildJSON',
+    lazy     => 1,
+    init_arg => undef
+);
+
 sub _buildConfig {
     my ($self) = @_;
     if( -f $self->filename ) {
-        my $config = Config::Tiny->read($self->filename);
-        return $config;
+        local $/;
+        open(my $fh, "<", $self->filename) || die "$!";
+        my $text = <$fh>;
+        close($fh);
+        return $self->JSON->decode($text);
     } else {
-        return Config::Tiny->new;
+        return {};
     }
+}
+
+sub _buildJSON {
+    return JSON->new->utf8(1)->pretty(1);
 }
 
 sub _buildFilename {
@@ -46,48 +56,9 @@ sub _buildFilename {
 
 sub save {
     my ($self) = @_;
-    $self->Config->write($self->filename);
-}
-
-sub getSection {
-    my ($self, $section) = @_;
-    $section ||= '_';
-    my $rtv = undef;
-    foreach my $key (keys %{$self->Config->{$section}}) {
-        $rtv = {} if(!defined($rtv));
-        $rtv->{$key} = $self->get($section, $key); 
-    }
-    return $rtv;
-}
-
-sub get {
-    my ($self, $section, $key) = @_;
-    die unless (defined($section) && defined($key));
-    return $self->Config->{$section}->{$key};
-}
-
-sub setSection {
-    my ($self, $section, $value) = @_;
-    die unless (defined($section));
-    if(!defined($value)) {
-        delete $self->Config->{$section};
-    } else {
-        foreach my $key (keys %$value) {
-            $self->set($section, $key, $value->{$key});
-        }
-    }
-    return $self->getSection($section);
-}
-
-sub set {
-    my ($self, $section, $key, $value) = @_;
-    die unless(defined($section) && defined($key));
-    if(!defined($value)) {
-        delete $self->Config->{$section}->{$key};
-    } else {
-        $self->Config->{$section}->{$key} = $value;
-    }
-    return $self->get($section, $key);
+    open(my $fh, ">", $self->filename);
+    print $fh $self->JSON->encode($self->config);
+    close($fh);
 }
 
 __PACKAGE__->meta->make_immutable;
