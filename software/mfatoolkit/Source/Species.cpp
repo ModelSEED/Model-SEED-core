@@ -2668,8 +2668,10 @@ void Species::TranslateFormulaToAtoms() {
 						NumAtoms.push_back(1);
 					}
 				} else {
-					cout << "Alert, unidentified group " << Temp << endl;
-					return;
+				  if(Temp.compare("noformula")==1){
+				    cout << "Alert, unidentified group " << Temp << endl;
+				  }
+				  return;
 				}
 			}
 			else {
