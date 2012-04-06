@@ -2227,8 +2227,12 @@ sub integrateGapfillingSolution {
 				$output->{gaps}++;
 			}
 		} else {
-			print "Deleting reaction ".$rxnObjs->[$i]->REACTION()."\n";
-			$rxnObjs->[$i]->delete();	
+		    if($rxnObjs->[$i]->pegs() eq "AUTOCOMPLETION"){
+			print "Deleting previously auto-completed reaction: ".$rxnObjs->[$i]->REACTION()."\n";
+		    }else{
+			print "Deleting reaction in database that is not found in model file: ".$rxnObjs->[$i]->REACTION()."\n";
+		    }
+		    $rxnObjs->[$i]->delete();	
 		}
 	}
 	for (my $i=0; $i < $rxns->size(); $i++) {
