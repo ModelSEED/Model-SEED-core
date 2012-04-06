@@ -3,9 +3,10 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
+use ModelSEED::MS::CompoundCue;
 use ModelSEED::MS::CompoundStructure;
 use ModelSEED::MS::CompoundPk;
 use ModelSEED::MS::BaseObject;
@@ -39,6 +40,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
+has compoundCues => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundCue]', type => 'encompassed(CompoundCue)', metaclass => 'Typed');
 has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed(CompoundStructure)', metaclass => 'Typed');
 has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed(CompoundPk)', metaclass => 'Typed');
 
@@ -58,6 +60,7 @@ sub _typeToFunction {
 	return {
 		CompoundPk => 'pks',
 		CompoundStructure => 'structures',
+		CompoundCue => 'compoundCues',
 	};
 }
 sub _aliasowner { return 'Biochemistry'; }

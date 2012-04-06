@@ -3,10 +3,10 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
-use ModelSEED::MS::ReactionRule;
+use ModelSEED::MS::ComplexReactionInstance;
 use ModelSEED::MS::ComplexRole;
 use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Complex;
@@ -32,7 +32,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'solink(Mapping,ReactionRule,uuid,reaction_rule_uuid)', metaclass => 'Typed',weak_ref => 1);
+has complexreactioninstances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexReactionInstance]', type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed');
 has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
 
 
@@ -49,8 +49,8 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'Complex'; }
 sub _typeToFunction {
 	return {
+		ComplexReactionInstance => 'complexreactioninstances',
 		ComplexRole => 'complexroles',
-		ReactionRule => 'reactionrules',
 	};
 }
 sub _aliasowner { return 'Mapping'; }

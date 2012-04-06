@@ -21,25 +21,32 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 
 override add => sub {
     my ($self,$attribute, $object) = @_;
-    $object->parent($self);
     #Checking if an object matching the input object already exists
     my $type = $object->_type();
     my $function = $self->_typeToFunction()->{$type};
-    my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
-    if (defined($oldObj)) {
-    	if ($oldObj->locked() != 1) {
-    		$object->uuid($oldObj->uuid());
-    	}
-    	my $list = $self->$function();
-    	for (my $i=0; $i < @{$list}; $i++) {
-    		if ($list->[$i] eq $oldObj) {
-    			$list->[$i] = $object;
-    		}
-    	}
-    	$self->clearIndex({type=>$type});
-    } else {
-       super();
+    my $class = 'ModelSEED::MS::DB::'.$object->_type;
+    if (defined($class->meta->find_attribute_by_name("uuid"))) {
+	    my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
+	    if (defined($oldObj)) {
+	    	if ($oldObj->locked() != 1) {
+	    		$object->uuid($oldObj->uuid());
+	    	}
+	    	my $list = $self->$function();
+	    	for (my $i=0; $i < @{$list}; $i++) {
+	    		if ($list->[$i] eq $oldObj) {
+	    			$list->[$i] = $object;
+	    		}
+	    	}
+	    	$self->clearIndex({type=>$type});
+	    	return;
+	    }
     }
+	if (defined($self->indices->{$type})) {
+		foreach my $att (keys(%{$self->indices->{$type}})) {
+			push(@{$self->indices->{$type}->{$att}->{$object->$att()}},$object);
+		}
+	}
+	super();
 };
 
 ######################################################################
@@ -63,20 +70,42 @@ sub addAlias {
 			source => $args->{source}
 		});
 	}
-	my $aliasAttribute = lc($args->{objectType})."Aliases";
-	if (defined($aliasSet->$aliasAttribute()->{$args->{uuid}})) {
-		my $aliases = $aliasSet->$aliasAttribute()->{$args->{uuid}};
-		for (my $i=0; $i < @{$aliases}; $i++) {
-			if ($aliases->[$i]->alias() eq $args->{alias}) {
-				return;	
-			}
-		}	
+	my $objects = $aliasSet->getObjects($args->{objectType}."Alias",{lc($args->{objectType})."_uuid" => $args->{uuid}});
+	for (my $i=0; $i < @{$objects}; $i++) {
+		if ($objects->[$i]->alias() eq $args->{alias}) {
+			return;
+		}
 	}
 	$aliasSet->create($args->{objectType}."Alias",{
 		lc($args->{objectType})."_uuid" => $args->{uuid},
 		alias => $args->{alias}
 	});
 	return;
+}
+
+sub getObjectsByAlias {
+	my ($self,$objectType,$alias,$aliasType) = @_;
+	my $aliasSet = $self->getObject($objectType."AliasSet",{type => $aliasType});
+	if (!defined($aliasSet)) {
+		ModelSEED::utilities::USEWARNING("Alias set '".$aliasType."' not found in database!");
+		return undef;
+	}
+	my $objs = $aliasSet->getObjects($objectType."Alias",{alias => $alias});
+	my $result;
+	my $function = lc($objectType);
+	for (my $i=0; $i < @{$objs}; $i++) {
+		push(@{$result},$objs->[$i]->$function());	
+	}
+	return $result;
+}
+
+sub getObjectByAlias {
+	my ($self,$objectType,$alias,$aliasType) = @_;
+	my $objects = $self->getObjectsByAlias($objectType,$alias,$aliasType);
+	if (defined($objects->[0])) {
+		return $objects->[0];
+	}
+	return undef;
 }
 
 ######################################################################
@@ -144,8 +173,12 @@ sub buildIndex {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["type","attribute"],{});
 	my $function = $self->_typeToFunction()->{$args->{type}};
+	if (!defined($function)) {
+		ModelSEED::utilities::ERROR("Could not find type ".$args->{type}." in object ".$self->_type."!");
+	}
 	my $objects = $self->$function();
 	my $attribute = $args->{attribute};
+	$self->indices->{$args->{type}}->{$attribute} = {};
 	for (my $i=0; $i < @{$objects}; $i++) {
 		push(@{$self->indices->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
 	}

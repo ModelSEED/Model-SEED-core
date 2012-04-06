@@ -3,10 +3,11 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
-use ModelSEED::MS::ReactionInstance;
+use ModelSEED::MS::ReactionCue;
+use ModelSEED::MS::ReactionReactionInstance;
 use ModelSEED::MS::Reagent;
 use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Reaction;
@@ -31,6 +32,7 @@ has deltaGErr => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => '
 has reversibility => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '=' );
 has thermoReversibility => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 has defaultProtons => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has status => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 
 
 # ANCESTOR:
@@ -38,7 +40,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has instances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionInstance]', type => 'encompassed(ReactionInstance)', metaclass => 'Typed');
+has reactionCues => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionCue]', type => 'encompassed(ReactionCue)', metaclass => 'Typed');
+has reactionreactioninstances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionReactionInstance]', type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed');
 has reagents => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reagent]', type => 'encompassed(Reagent)', metaclass => 'Typed');
 
 
@@ -55,8 +58,9 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'Reaction'; }
 sub _typeToFunction {
 	return {
-		ReactionInstance => 'instances',
+		ReactionReactionInstance => 'reactionreactioninstances',
 		Reagent => 'reagents',
+		ReactionCue => 'reactionCues',
 	};
 }
 sub _aliasowner { return 'Biochemistry'; }

@@ -3,10 +3,10 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
-use ModelSEED::MS::Role;
+use ModelSEED::MS::RolesetRole;
 use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Roleset;
 use Moose;
@@ -35,7 +35,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'solink(Mapping,Role,uuid,role_uuid)', metaclass => 'Typed',weak_ref => 1);
+has rolesroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RolesetRole]', type => 'encompassed(RolesetRole)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -51,7 +51,7 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'Roleset'; }
 sub _typeToFunction {
 	return {
-		Role => 'roles',
+		RolesetRole => 'rolesroles',
 	};
 }
 sub _aliasowner { return 'Mapping'; }

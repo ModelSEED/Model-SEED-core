@@ -3,13 +3,15 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
 use ModelSEED::MS::Role;
 use ModelSEED::MS::Roleset;
-use ModelSEED::MS::ReactionRule;
 use ModelSEED::MS::Complex;
+use ModelSEED::MS::RolesetAliasSet;
+use ModelSEED::MS::RoleAliasSet;
+use ModelSEED::MS::ComplexAliasSet;
 use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Mapping;
 use Moose;
@@ -37,8 +39,10 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 # SUBOBJECTS:
 has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child(Role)', metaclass => 'Typed');
 has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child(Roleset)', metaclass => 'Typed');
-has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child(ReactionRule)', metaclass => 'Typed');
 has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child(Complex)', metaclass => 'Typed');
+has rolesetAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RolesetAliasSet]', type => 'child(RolesetAliasSet)', metaclass => 'Typed');
+has roleAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleAliasSet]', type => 'child(RoleAliasSet)', metaclass => 'Typed');
+has complexAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexAliasSet]', type => 'child(ComplexAliasSet)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -61,7 +65,9 @@ sub _typeToFunction {
 		Roleset => 'rolesets',
 		Complex => 'complexes',
 		Role => 'roles',
-		ReactionRule => 'reactionrules',
+		RoleAliasSet => 'roleAliasSets',
+		RolesetAliasSet => 'rolesetAliasSets',
+		ComplexAliasSet => 'complexAliasSets',
 	};
 }
 

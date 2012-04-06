@@ -17,7 +17,7 @@ use ModelSEED::FIGMODEL;
 use ModelSEED::CoreApi;
 use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Environment;
-use ModelSEED::MS::Factories::Biochemistry;
+use ModelSEED::MS::Factories::PPOFactory;
 use File::Basename qw(dirname basename);
 
 package ModelSEED::ModelDriverV2;
@@ -333,15 +333,237 @@ Description:
 sub bcloader {
 	my($self,@Data) = @_;
 	#my $args = $self->check([],[@Data],"loads a biochemistry and prints reactions");
-	my $fact = ModelSEED::MS::Factories::Biochemistry->new();
-	my ($bio, $missed) = $fact->newBiochemistryFromPPO({database => $self->db()});
-	$bio->save($self->om());
+	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
+		username => ModelSEED::Interface::interface::USERNAME(),
+		password => ModelSEED::Interface::interface::PASSWORD()	
+	});
+	my $bio = $ppofactory->createBiochemistry();
+	#$bio->save($self->om());
 	print "Saved with uuid ".$bio->uuid()."\n";
 	#my $reactions = $bio->reactions();
 	#for (my $i=0; $i < @{$reactions}; $i++) {
 	#	print $reactions->[$i]->equation()."\n";
 	#}
     return;
+}
+=head3 testobj
+Definition:
+	 = driver->testobj;
+Description:
+	Prints test objects
+=cut
+sub testobj {
+	my($self,@Data) = @_;
+	my $om = ModelSEED::MS::ObjectManager->new({
+		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+		username =>  ModelSEED::Interface::interface::USERNAME(),
+		password => ModelSEED::Interface::interface::PASSWORD(),
+		selectedAliases => {
+			ReactionAliasSet => "ModelSEED",
+			CompoundAliasSet => "ModelSEED",
+			ComplexAliasSet => "ModelSEED",
+			RoleAliasSet => "ModelSEED",
+			RolesetAliasSet => "ModelSEED"
+		}
+	});
+	$om->authenticate(ModelSEED::Interface::interface::USERNAME(),ModelSEED::Interface::interface::PASSWORD());
+	my $biochemistry = $om->create("Biochemistry",{
+		name=>"chenry/TestBiochem",
+		public => 1,
+		locked => 0
+	});
+	my $c = $biochemistry->create("Compartment",{
+		locked => "0",
+		id => "c",
+		name => "c",
+		hierarchy => 0
+	});
+	my $e = $biochemistry->create("Compartment",{
+		locked => "0",
+		id => "e",
+		name => "e",
+		hierarchy => 1
+	});
+	my $cpdA = $biochemistry->create("Compound",{
+		locked => "0",
+		name => "A",
+		abbreviation => "A",
+		unchargedFormula => "C",
+		formula => "C",
+		mass => 12,
+		defaultCharge => 0,
+		deltaG => 0,
+		deltaGErr => 0
+	});
+	my $cpdB = $biochemistry->create("Compound",{
+		locked => "0",
+		name => "B",
+		abbreviation => "B",
+		unchargedFormula => "C",
+		formula => "C",
+		mass => 12,
+		defaultCharge => 0,
+		deltaG => 0,
+		deltaGErr => 0
+	});
+	my $cpdC = $biochemistry->create("Compound",{
+		locked => "0",
+		name => "Biomass",
+		abbreviation => "Biomass",
+		unchargedFormula => "C",
+		formula => "C",
+		mass => 12,
+		defaultCharge => 0,
+		deltaG => 0,
+		deltaGErr => 0
+	});
+	my $rxnA =  $biochemistry->create("Reaction",{
+		locked => "0",
+		name => "rxnA",
+		abbreviation => "rxnA",
+		reversibility => "=",
+		thermoReversibility => "=",
+		defaultProtons => 0,
+		deltaG => 0,
+		deltaGErr => 0,
+		status => "Balanced",
+	});
+	$rxnA->loadFromEquation({
+		equation => "A[e] => A",
+		aliasType => "name"
+	});
+	print "Equation:".$rxnA->definition()."\n";
+	my $rxnB =  $biochemistry->create("Reaction",{
+		locked => "0",
+		name => "rxnB",
+		abbreviation => "rxnB",
+		reversibility => ">",
+		thermoReversibility => ">",
+		defaultProtons => 0,
+		deltaG => 0,
+		deltaGErr => 0,
+		status => "Balanced",
+	});
+	$rxnB->loadFromEquation({
+		equation => "A => B",
+		aliasType => "name"
+	});
+	my $media = $biochemistry->create("Media",{
+		locked => "0",
+		id => "MediaA",
+		name => "MediaA",
+		isDefined => 1,
+		isMinimal => 1,
+		type => "Test"
+	});
+	$media->create("MediaCompound",{
+		compound_uuid => $cpdA->uuid(),
+		concentration => 0.001,
+		maxFlux => 100,
+		minFlux => -100,
+	});
+	my $mapping = $om->create("Mapping",{name=>"chenry/TestMapping"});
+	my $annoation = $om->create("Annotation",{});
+	my $model = $om->create("Model",{
+		locked => 0,
+		public => 1,
+		id => "TestModel",
+		name => "TestModel",
+		version => 1,
+		type => "Singlegenome",
+		status => "Model loaded",
+		reactions => 2,
+		compounds => 3,
+		annotations => 2,
+		growth => 1,
+		current => 1,
+		mapping_uuid => $mapping->uuid(),
+		biochemistry_uuid => $biochemistry->uuid(),
+		annotation_uuid => $annoation->uuid(),
+	});
+	my $mdlcompC = $model->create("ModelCompartment",{
+		locked => 0,
+		compartment_uuid => $c->uuid(),
+		compartmentIndex => 0,
+		label => "c0",
+		pH => 7,
+		potential => 1
+	});
+	my $mdlcompE = $model->create("ModelCompartment",{
+		locked => 0,
+		compartment_uuid => $e->uuid(),
+		compartmentIndex => 0,
+		label => "e0",
+		pH => 7.5,
+		potential => 1
+	});
+	my $mdlcpdAE = $model->create("ModelCompound",{
+		compound_uuid => $cpdA->uuid(),
+		charge => 0,
+		formula => "C",
+		model_compartment_uuid => $mdlcompE->uuid()
+	});
+	my $mdlcpdAC = $model->create("ModelCompound",{
+		compound_uuid => $cpdA->uuid(),
+		charge => 0,
+		formula => "C",
+		model_compartment_uuid => $mdlcompC->uuid()
+	});
+	my $mdlcpdBC = $model->create("ModelCompound",{
+		compound_uuid => $cpdB->uuid(),
+		charge => 0,
+		formula => "C",
+		model_compartment_uuid => $mdlcompC->uuid()
+	});
+	my $mdlcpdCC = $model->create("ModelCompound",{
+		compound_uuid => $cpdC->uuid(),
+		charge => 0,
+		formula => "C",
+		model_compartment_uuid => $mdlcompC->uuid()
+	});
+	my $mdlrxnA = $model->create("ModelReaction",{
+		reaction_uuid => $rxnA->uuid(),
+		direction => "=",
+		protons => 0,
+		model_compartment_uuid => $mdlcompC->uuid()
+	});
+	$mdlrxnA->create("ModelReactionRawGPR",{
+		isCustomGPR => 1,
+		rawGPR => "b0001"
+	});
+	$mdlrxnA->create("ModelReactionTransports",{
+		modelcompound_uuid => $mdlcpdAE->uuid(),
+		compartmentIndex => 1,
+		coefficient => -1
+	});
+	my $mdlrxnB = $model->create("ModelReaction",{
+		reaction_uuid => $rxnB->uuid(),
+		direction => "=",
+		protons => 0,
+		model_compartment_uuid => $mdlcompC->uuid()
+	});
+	$mdlrxnB->create("ModelReactionRawGPR",{
+		isCustomGPR => 1,
+		rawGPR => "b0002"
+	});
+	my $biomass = $model->create("Biomass",{
+		locked => 0,
+		name => "Biomass"
+	});
+	$biomass->create("BiomassCompound",{
+		modelcompound_uuid => $mdlcpdBC->uuid(),
+		coefficient => -1
+	});
+	$biomass->create("BiomassCompound",{
+		modelcompound_uuid => $mdlcpdCC->uuid(),
+		coefficient => 1
+	});
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/MediaA.media.json",[JSON::Any->encode($media->serializeToDB())]);
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/cpdA.compound.json",[JSON::Any->encode($cpdA->serializeToDB())]);
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Test.biochem.json",[JSON::Any->encode($biochemistry->serializeToDB())]);
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/rxnA.reaction.json",[JSON::Any->encode($rxnA->serializeToDB())]);
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/TestModel.model.json",[JSON::Any->encode($model->serializeToDB())]);
+	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Biomass.biomass.json",[JSON::Any->encode($biomass->serializeToDB())]);
 }
 =head
 =CATEGORY

@@ -11,58 +11,115 @@ package ModelSEED::MS::ReactionInstance;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::ReactionInstance';
+#***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
+#***********************************************************************************************************
+has definition => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 has equation => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
+has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 
+#***********************************************************************************************************
 # BUILDERS:
+#***********************************************************************************************************
+sub _builddefinition {
+	my ($self) = @_;
+	return $self->createEquation({format=>"name",hashed=>0});
+}
 sub _buildequation {
 	my ($self) = @_;
-	my $reactants = "";
-	my $products = "";
-	my $cpdhash;
-	my $trans;
-	my $reagents = $self->reagents();
-	for (my $i=0; $i < @{$reagents}; $i++) {
-		if (!defined($cpdhash->{$reagents->[$i]->compound_uuid()})) {
-			$cpdhash->{$reagents->[$i]->compound_uuid()} = 0;
+	return $self->createEquation({format=>"id",hashed=>0});
+}
+sub _buildequationcode {
+	my ($self,$args) = @_;
+	return $self->createEquation({format=>"uuid",hashed=>1});
+}
+
+#***********************************************************************************************************
+# CONSTANTS:
+#***********************************************************************************************************
+
+#***********************************************************************************************************
+# FUNCTIONS:
+#***********************************************************************************************************
+=head3 createEquation
+Definition:
+	string = ModelSEED::MS::ReactionInstance->createEquation({
+		format => string(uuid),
+		hashed => 0/1(0)
+	});
+Description:
+	Creates an equation for the reaction instance with compounds specified according to the input format
+=cut
+sub createEquation {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		format => "uuid",
+		hashed => 0
+	});
+	my $trans = $self->transports();
+	my $rgt = $self->reaction->reagents();
+	my $transHash;
+	my $compHash;
+	for (my $i=0; $i < @{$rgt}; $i++) {
+		my $id = $rgt->[$i]->compound_uuid();
+		if ($args->{format} eq "name" || $args->{format} eq "id") {
+			my $function = $args->{format};
+			$id = $rgt->[$i]->compound()->$function();
+		} elsif ($args->{format} ne "uuid") {
+			$id = $rgt->[$i]->compound()->getAlias($args->{format});
 		}
-		if ($reagents->[$i]->compartmentIndex() == 0) {
-			$cpdhash->{$reagents->[$i]->compound_uuid()} += $reagents->[$i]->coefficient();
-		} else {
-			$cpdhash->{$reagents->[$i]->compound_uuid()} += -1*$reagents->[$i]->coefficient();
-			$trans->{$reagents->[$i]->compound_uuid()}->[$reagents->[$i]->compartmentIndex()] += $reagents->[$i]->coefficient();
+		if ($rgt->[$i]->compartmentIndex() == 0) {
+			if (!defined($transHash->{$id}->{$rgt->[$i]->compartmentIndex()})) {
+				$transHash->{$id}->{$rgt->[$i]->compartmentIndex()}->{coefficient} = 0;
+			}
+			$transHash->{$id}->{$rgt->[$i]->compartmentIndex()}->{coefficient} += $rgt->[$i]->coefficient();
 		}
 	}
-	my $sortedcpd = [sort(keys(%{$cpdhash}))];
-	for (my $i=0; $i < @{$sortedcpd}; $i++) {
-		if ($cpdhash->{$sortedcpd->[$i]} < 0) {
-			if (length($reactants) > 0) {
-				$reactants .= " + ";
-			}
-			$reactants .= "(".-1*$cpdhash->{$sortedcpd->[$i]}.") ".$sortedcpd->[$i];
-		} elsif ($cpdhash->{$sortedcpd->[$i]} > 0) {
-			if (length($products) > 0) {
-				$products .= " + ";
-			}
-			$products .= "(".$cpdhash->{$sortedcpd->[$i]}.") ".$sortedcpd->[$i];
+	for (my $i=0; $i < @{$trans}; $i++) {
+		my $id = $trans->[$i]->compound_uuid();
+		if ($args->{format} eq "name" || $args->{format} eq "id") {
+			my $function = $args->{format};
+			$id = $trans->[$i]->compound()->$function();
+		} elsif ($args->{format} ne "uuid") {
+			$id = $trans->[$i]->compound()->getAlias($args->{format});
 		}
-		if (defined($trans->{$sortedcpd->[$i]})) {
-			for (my $j=0; $j < @{$trans->{$sortedcpd->[$i]}}; $j++) {
-				if (defined($trans->{$sortedcpd->[$i]}->[$j]) && $trans->{$sortedcpd->[$i]}->[$j] < 0) {
-					if (length($reactants) > 0) {
-						$reactants .= " + ";
-					}
-					$reactants .= "(".-1*$trans->{$sortedcpd->[$i]}->[$j].") ".$sortedcpd->[$i]."[".$j."]";
-				} elsif (defined($trans->{$sortedcpd->[$i]}->[$j]) && $trans->{$sortedcpd->[$i]}->[$j] > 0) {
-					if (length($products) > 0) {
-						$products .= " + ";
-					}
-					$products .= "(".$trans->{$sortedcpd->[$i]}->[$j].") ".$sortedcpd->[$i]."[".$j."]";
-				}	
+		if (!defined($transHash->{$id}->{$trans->[$i]->compartmentIndex()})) {
+			$transHash->{$id}->{$trans->[$i]->compartmentIndex()}->{coefficient} = 0;
+			$compHash->{$trans->[$i]->compartmentIndex()} = $trans->[$i]->compartment();
+		}
+		$transHash->{$id}->{$trans->[$i]->compartmentIndex()}->{coefficient} += $trans->[$i]->coefficient();
+		$transHash->{$id}->{0}->{coefficient} += -1*$trans->[$i]->coefficient();
+	}
+	$compHash->{0} = $self->compartment();
+	my $reactcode = "";
+	my $productcode = "";
+	my $sign = "<=>";
+	my $sortedCpd = [sort(keys(%{$transHash}))];
+	for (my $i=0; $i < @{$sortedCpd}; $i++) {
+		my $indecies = [sort(keys(%{$transHash->{$sortedCpd->[$i]}}))];
+		for (my $j=0; $j < @{$indecies}; $j++) {
+			my $compartment = "";
+			if ($compHash->{$indecies->[$j]}->id() ne "c") {
+				$compartment = "[".$compHash->{$indecies->[$j]}->id()."]";
 			}
+			if ($transHash->{$sortedCpd->[$i]}->{$indecies->[$j]}->{coefficient} < 0) {
+				my $coef = -1*$transHash->{$sortedCpd->[$i]}->{$indecies->[$j]}->{coefficient};
+				if (length($reactcode) > 0) {
+					$reactcode .= "+";	
+				}
+				$reactcode .= "(".$coef.")".$sortedCpd->[$i].$compartment;
+			} elsif ($transHash->{$sortedCpd->[$i]}->{$indecies->[$j]}->{coefficient} > 0) {
+				if (length($productcode) > 0) {
+					$productcode .= "+";	
+				}
+				$productcode .= "(".$transHash->{$sortedCpd->[$i]}->{$indecies->[$j]}->{coefficient}.")".$sortedCpd->[$i].$compartment;
+			} 
 		}
 	}
-	return $reactants." <=> ".$products
+	if ($args->{hashed} == 1) {
+		return Digest::MD5::md5_hex($reactcode.$sign.$productcode);
+	}
+	return $reactcode.$sign.$productcode;
 }
 
 # CONSTANTS:

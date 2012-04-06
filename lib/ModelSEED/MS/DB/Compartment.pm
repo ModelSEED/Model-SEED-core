@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -23,6 +23,7 @@ has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Ty
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has hierarchy => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '' );
 
 
 # ANCESTOR:

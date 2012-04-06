@@ -3,10 +3,10 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-03T07:07:13
+# Date of module creation: 2012-04-05T22:41:35
 ########################################################################
 use strict;
-use ModelSEED::MS::Compound;
+use ModelSEED::MS::CompoundSetCompound;
 use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::CompoundSet;
 use Moose;
@@ -34,7 +34,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'solink(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
+has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundSetCompound]', type => 'encompassed(CompoundSetCompound)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -49,7 +49,7 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'CompoundSet'; }
 sub _typeToFunction {
 	return {
-		Compound => 'compounds',
+		CompoundSetCompound => 'compounds',
 	};
 }
 

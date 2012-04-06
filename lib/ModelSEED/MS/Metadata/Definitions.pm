@@ -208,11 +208,14 @@ $objectDefinitions->{Biochemistry} = {
 		{name => "compartments",class => "Compartment",type => "child"},
 		{name => "compounds",class => "Compound",type => "child"},
 		{name => "reactions",class => "Reaction",type => "child"},
+		{name => "reactioninstances",class => "ReactionInstance",type => "child"},
 		{name => "media",class => "Media",type => "child"},
 		{name => "compoundSets",class => "CompoundSet",type => "child"},
 		{name => "reactionSets",class => "ReactionSet",type => "child"},
 		{name => "compoundAliasSets",class => "CompoundAliasSet",type => "child"},
 		{name => "reactionAliasSets",class => "ReactionAliasSet",type => "child"},
+		{name => "reactioninstanceAliasSets",class => "ReactionInstanceAliasSet",type => "child"},
+		{name => "cues",class => "Cue",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -278,6 +281,36 @@ $objectDefinitions->{ReactionAlias} = {
        ]
 };
 
+$objectDefinitions->{ReactionInstanceAliasSet} = {
+	parents => ['Biochemistry'],
+	class => 'indexed',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+	],
+	subobjects => [
+		{name => "reactioninstanceAliases",class => "ReactionInstanceAlias",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{ReactionInstanceAlias} = {
+       parents => ['ReactionInstanceAliasSet'],
+       class => 'encompassed',
+       attributes => [
+              {name => 'reactioninstance_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+              {name => 'alias',perm => 'rw',type => 'Str',req => 1}
+       ],
+       subobjects => [],
+       primarykeys => [ qw(alias reactioninstance_uuid) ],
+       links => [
+              {name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",class => "ReactionInstance",query => "uuid"},
+       ]
+};
+
 $objectDefinitions->{Compartment} = {
 	parents => ['Biochemistry'],
 	class => 'child',
@@ -287,6 +320,7 @@ $objectDefinitions->{Compartment} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 2,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'hierarchy',perm => 'rw',type => 'Int',req => 0,default => ""},
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
@@ -309,9 +343,10 @@ $objectDefinitions->{Cue} = {
 		{name => 'defaultCharge',perm => 'rw',type => 'Num',req => 0},
 		{name => 'deltaG',perm => 'rw',type => 'Num',req => 0},
 		{name => 'deltaGErr',perm => 'rw',type => 'Num',req => 0},
+		{name => 'smallMolecule',perm => 'rw',type => 'Bool',req => 0},
+		{name => 'priority',perm => 'rw',type => 'Int',req => 0},
 	],
 	subobjects => [
-		{name => "compoundCues",class => "CompoundCues",type => "encompassed"},
 		{name => "structures",class => "CompoundStructure",type => "encompassed"},
 		{name => "pks",class => "CompoundPk",type => "encompassed"},
 	],
@@ -338,7 +373,7 @@ $objectDefinitions->{Compound} = {
 		{name => 'deltaGErr',perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [
-		{name => "compoundCues",class => "CompoundCues",type => "encompassed"},
+		{name => "compoundCues",class => "CompoundCue",type => "encompassed"},
 		{name => "structures",class => "CompoundStructure",type => "encompassed"},
 		{name => "pks",class => "CompoundPk",type => "encompassed"},
 	],
@@ -346,11 +381,11 @@ $objectDefinitions->{Compound} = {
 	links => []
 };
 
-$objectDefinitions->{CompoundCues} = {
+$objectDefinitions->{CompoundCue} = {
 	parents => ['Compound'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'cue_uuid',perm => 'rw',type => 'Str',req => 1},
+		{name => 'cue_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'count',perm => 'rw',type => 'Int',req => 0,default => ""},
 	],
 	subobjects => [],
@@ -403,13 +438,42 @@ $objectDefinitions->{Reaction} = {
 		{name => 'reversibility',perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
 		{name => 'thermoReversibility',perm => 'rw',type => 'Str',len => 1,req => 0},
 		{name => 'defaultProtons',perm => 'rw',type => 'Num',req => 0},
+		{name => 'status',perm => 'rw',type => 'Str',req => 0}
 	],
 	subobjects => [
-		{name => "instances",class => "ReactionInstance",type => "encompassed"},
+		{name => "reactionCues",class => "ReactionCue",type => "encompassed"},
+		{name => "reactionreactioninstances",class => "ReactionReactionInstance",type => "encompassed"},
 		{name => "reagents",class => "Reagent",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
+};
+
+$objectDefinitions->{ReactionReactionInstance} = {
+	parents => ['Reaction'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'reactioninstance_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(complex_uuid role_uuid) ],
+	links => [
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",class => "ReactionInstance",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{ReactionCue} = {
+	parents => ['Reaction'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'cue_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'count',perm => 'rw',type => 'Num',req => 0,default => ""},
+	],
+	subobjects => [],
+	primarykeys => [ qw() ],
+	links => [
+		{name => "cue",attribute => "cue_uuid",parent => "Biochemistry",class => "Cue",query => "uuid"}
+	]
 };
 
 $objectDefinitions->{Reagent} = {
@@ -429,18 +493,26 @@ $objectDefinitions->{Reagent} = {
 };
 
 $objectDefinitions->{ReactionInstance} = {
-	parents => ['Reaction'],
-	class => 'encompassed',
+	alias => "Biochemistry",
+	parents => ['Biochemistry'],
+	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 0},
-		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1}
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
+		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'direction',perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
+		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
+		{name => 'sourceEquation',perm => 'rw',type => 'Str',len => 36,req => 1},
+		{name => 'transprotonNature',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
 	],
 	subobjects => [
 		{name => "transports",class => "InstanceTransport",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"}
+		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"},
+		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"}
 	]
 };
 
@@ -511,10 +583,23 @@ $objectDefinitions->{CompoundSet} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "compounds",class => "CompoundSetCompound",type => "link",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
+		{name => "compounds",class => "CompoundSetCompound",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
+};
+
+$objectDefinitions->{CompoundSetCompound} = {
+	parents => ['CompoundSet'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(complex_uuid role_uuid) ],
+	links => [
+		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"}
+	]
 };
 
 $objectDefinitions->{ReactionSet} = {
@@ -531,10 +616,23 @@ $objectDefinitions->{ReactionSet} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
 	subobjects => [
-		{name => "reactions",class => "ReactionSetReaction",type => "link",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+		{name => "reactions",class => "ReactionSetReaction",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
+};
+
+$objectDefinitions->{ReactionSetReaction} = {
+	parents => ['ReactionSet'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(complex_uuid role_uuid) ],
+	links => [
+		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"}
+	]
 };
 
 $objectDefinitions->{Model} = {
@@ -858,8 +956,10 @@ $objectDefinitions->{Mapping} = {
 	subobjects => [
 		{name => "roles",class => "Role",type => "child"},
 		{name => "rolesets",class => "Roleset",type => "child"},
-		{name => "reactionrules",class => "ReactionRule",type => "child"},
 		{name => "complexes",class => "Complex",type => "child"},
+		{name => "rolesetAliasSets",class => "RolesetAliasSet",type => "child"},
+		{name => "roleAliasSets",class => "RoleAliasSet",type => "child"},
+		{name => "complexAliasSets",class => "ComplexAliasSet",type => "child"}
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -990,48 +1090,22 @@ $objectDefinitions->{Roleset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1}
 	],
 	subobjects => [
-		{name => "roles",class => "RolesetRole",type => "link",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"}
+		{name => "rolesroles",class => "RolesetRole",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
 
-$objectDefinitions->{ReactionRule} = {
-	parents => ['Mapping'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
-		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'direction',perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
-		{name => 'transprotonNature',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
-	],
-	subobjects => [
-		{name => "ReactionRuleTransport",class => "ReactionRuleTransport",type => "encompassed"}
-	],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
-		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"}
-	]
-};
-
-$objectDefinitions->{ReactionRuleTransport} = {
-	parents => ['ReactionRule'],
+$objectDefinitions->{RolesetRole} = {
+	parents => ['Roleset'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1},
-		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'coefficient',perm => 'rw',type => 'Int',req => 1}
+		{name => 'role_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 	],
 	subobjects => [],
-	primarykeys => [ qw(reaction_rule_uuid compartmentIndex) ],
+	primarykeys => [ qw(complex_uuid role_uuid) ],
 	links => [
-		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
-		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"}
+		{name => "role",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"}
 	]
 };
 
@@ -1047,7 +1121,7 @@ $objectDefinitions->{Complex} = {
 		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
 	],
 	subobjects => [
-		{name => "reactionrules",class => "ComplexReactionRule",type => "link",attribute => "reaction_rule_uuid",parent => "Mapping",class => "ReactionRule",query => "uuid"},
+		{name => "complexreactioninstances",class => "ComplexReactionInstance",type => "encompassed"},
 		{name => "complexroles",class => "ComplexRole",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
@@ -1066,6 +1140,19 @@ $objectDefinitions->{ComplexRole} = {
 	primarykeys => [ qw(complex_uuid role_uuid) ],
 	links => [
 		{name => "role",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{ComplexReactionInstance} = {
+	parents => ['Complex'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'reactioninstance_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(complex_uuid role_uuid) ],
+	links => [
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",class => "ReactionInstance",query => "uuid"}
 	]
 };
 

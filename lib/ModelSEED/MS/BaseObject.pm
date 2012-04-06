@@ -9,6 +9,7 @@ use strict;
 use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
+use Digest::MD5 qw(md5_hex);
 use Module::Load;
 
 package ModelSEED::Meta::Attribute::Typed;
@@ -107,10 +108,10 @@ sub getAliases {
 	if (!defined($aliasSet)) {
 		ModelSEED::utilities::ERROR("The 'getAliases' function requires a 'set' as input!");
 	}
-	my $aliasowner = $self->_aliasowner();
+	my $aliasowner = lc($self->_aliasowner());
 	my $owner = $self->$aliasowner();
 	my $aliasSetClass = $self->_type()."AliasSet";
-	my $aliasset = $owner->getOject($aliasSetClass,{type => $aliasSet});
+	my $aliasset = $owner->getObject($aliasSetClass,{type => $aliasSet});
 	if (!defined($aliasset)) {
 		print "Alias set ".$aliasset." not found!\n";
 		return [];
@@ -203,7 +204,12 @@ sub createReadableLine {
 ######################################################################
 sub create {
 	my ($self,$type,$data) = @_;
-    my $attribute = $self->_typeToFunction()->{$type};
+   	foreach my $key (keys(%{$data})) {
+   		if (!defined($data->{$key})) {
+   			delete $data->{$key};
+   		}
+   	}
+	my $attribute = $self->_typeToFunction()->{$type};
 	if (!defined($attribute)) {
     	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
     }
@@ -220,6 +226,7 @@ sub add {
     if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
     	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
     }
+    $attribute = $self->_typeToFunction()->{$type};
     my $attrMeta;
     {
         my $class = 'ModelSEED::MS::DB::' . $self->_type;
@@ -228,6 +235,7 @@ sub add {
             unless (defined($attrMeta));
     }
     if($attrMeta->isa('ModelSEED::Meta::Attribute::Typed')) {
+        $object->parent($self);
         # Case of simple array of objects (linked or encompassed)
         if ($attrMeta->type() =~ m/child\((.+)\)/ || $attrMeta->type() =~ m/encompassed\((.+)\)/ ) {
             push(@{$self->$attribute}, $object);
@@ -311,10 +319,10 @@ sub getLinkedObject {
 sub biochemistry {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->biochemistry();
-	} elsif (ref($parent) eq "ModelSEED::MS::Biochemistry") {
+	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
 		return $parent;
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
+		return $parent->biochemistry();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
@@ -322,10 +330,10 @@ sub biochemistry {
 sub model {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->model();
-	} elsif (ref($parent) eq "ModelSEED::MS::Model") {
+	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
 		return $parent;
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
+		return $parent->model();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
@@ -333,10 +341,10 @@ sub model {
 sub annotation {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->annotation();
-	} elsif (ref($parent) eq "ModelSEED::MS::Annotation") {
+	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
 		return $parent;
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
+		return $parent->annotation();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
@@ -344,10 +352,10 @@ sub annotation {
 sub mapping {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->mapping();
-	} elsif (ref($parent) eq "ModelSEED::MS::Mapping") {
+	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
 		return $parent;
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
+		return $parent->mapping();
 	}
 	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }
@@ -355,7 +363,7 @@ sub mapping {
 sub objectmanager {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (ref($parent) ne "ModelSEED::MS::ObjectManager") {
+	if (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
 		return $parent->objectmanager();
 	}
 	return $parent;
