@@ -2299,7 +2299,7 @@ sub calculate_deltaG {
     foreach my $cue(sort grep { $cues{$_} !=0 } keys %cues){
 	#if cue is not one you can use, return nothing
 	if(!exists($args->{energy}->{$cue}) || $args->{energy}->{$cue} eq "-10000"){
-	    print STDERR "No $cue\t",$args->{energy}->{$cue},"\n";
+	    print STDERR "No $cue\t",$args->{energy}->{$cue},"\n" if !exists($args->{energy}->{$cue});
 	    return ('','',$cue_string);
 	}
 	
