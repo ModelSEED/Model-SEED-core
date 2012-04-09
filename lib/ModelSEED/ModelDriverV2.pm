@@ -13,6 +13,7 @@
 use strict;
 use lib "../../config/";
 use ModelSEEDbootstrap;
+use ModelSEED::utilities;
 use ModelSEED::FIGMODEL;
 use ModelSEED::CoreApi;
 use ModelSEED::MS::ObjectManager;
@@ -33,41 +34,41 @@ sub new {
 	ModelSEED::utilities::ARGS($args,["environment"],{
 		finishfile => undef
 	});
-	ModelSEED::globals::CREATEFIGMODEL({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()});
+	$self->environment(ModelSEED::MS::Environment->new($args->{environment});
+	$self->figmodel(ModelSEED::FIGMODEL->new({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()}));
+	$self->om(ModelSEED::MS::ObjectManager->new({
+		db => ModelSEED::FileDB->new({filename => $self->environment()->filedb()}),
+		username => $self->environment()->username(),
+		password => $self->environment()->password(),
+		selectedAliases => $self->environment()->selectedAliases()
+	}));
 	my $self = {};
 	bless $self;
-	$self->environment($args->{environment});
 	$self->finishfile($args->{finishfile});
     return $self;
 }
-=head3 api
+=head3 figmodel
 Definition:
-	CoreAPI = driver->api();
+	FIGMODEL = ModelDriverV2->figmodel();
 Description:
-	Returns a CoreAPI object
+	Returns a FIGMODEL object
 =cut
-sub api {
-	my ($self,$api) = @_;
-	if (defined($api)) {
-		$self->{_api} = $api;
+sub figmodel {
+	my ($self,$figmodel) = @_;
+	if (defined($figmodel)) {
+		$self->{_figmodel} = $figmodel;
 	}
-	if (!defined($self->{_api})) {
-		$self->{_api} = ModelSEED::CoreApi->new();
-	}
-	return $self->{_api};
+	return $self->{_figmodel};
 }
 =head3 environment
 Definition:
-	ModelSEED::MS::Environment = driver->environment({}:environment data or object);
+	ModelSEED::MS::Environment = ModelDriverV2->environment();
 Description:
 	Returns an Environment object
 =cut
 sub environment {
 	my ($self,$environment) = @_;
 	if (defined($environment)) {
-		if (ref($environment) ne "ModelSEED::MS::Environment") {
-			$environment = ModelSEED::MS::Environment->new($environment);
-		}
 		$self->{_environment} = $environment;
 	}
 	return $self->{_environment};
@@ -80,21 +81,30 @@ Description:
 =cut
 sub om {
 	my ($self,$om) = @_;
-	if (!defined($self->{_om})) {
-		$self->{_om} = ModelSEED::MS::ObjectManager->new({
-			db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
-			username => $self->environment()->username(),
-			password => $self->environment()->password(),
-			selectedAliases => {
-				ReactionAliasSet => "ModelSEED",
-				CompoundAliasSet => "ModelSEED",
-				ComplexAliasSet => "ModelSEED",
-				RoleAliasSet => "ModelSEED",
-				RolesetAliasSet => "ModelSEED"
-			}
-		});
+	if (defined($om)) {
+		$self->{_om} = $om;
 	}
 	return $self->{_om};
+}
+=head3 db
+Definition:
+	FIGMODEL = driver->db();
+Description:
+	Returns a database object
+=cut
+sub db {
+	my ($self) = @_;
+	return $self->figmodel()->database();
+}
+=head3 config
+Definition:
+	{}/[] = driver->config(string);
+Description:
+	Returns a requested configuration object
+=cut
+sub config {
+	my ($self,$key) = @_;
+	return $self->figmodel()->config($key);
 }
 =head3 check
 Definition:
@@ -168,69 +178,6 @@ sub usage {
 	}
 	return $output;
 }
-=head3 biochemistry
-Definition:
-	ModelSEED::MS::Biochemistry = driver->biochemistry();
-Description:
-	Returns a Biochemistry object
-=cut
-sub biochemistry {
-	my ($self,$biochemistry) = @_;
-	if (defined($biochemistry)) {
-		$self->{_biochemistry} = $biochemistry;
-	}
-	if (!defined($self->{_biochemistry})) {
-		my $data = $self->api()->getBiochemistry({
-	    	uuid => $self->ws()->biochemistry(),
-			with_all => 1,
-			user => ModelSEED::Interface::interface::USERNAME()
-	    });
-	    $data->{om} = $self->api();
-	    $self->{_biochemistry} = ModelSEED::MS::Biochemistry->new($data);
-	}
-	return $self->{_biochemistry};
-}
-=head3 getModel
-Definition:
-	ModelSEED::MS::Model = driver->getModel(string:model ID);
-Description:
-	Returns a model object
-=cut
-sub getModel {
-	my ($self,$modelid) = @_;
-	my $modeldata = $self->api()->getModel({
-    	id => $modelid,
-		with_all => 1,
-		user => ModelSEED::Interface::interface::USERNAME()
-    });
-    return ModelSEED::MS::Model->new($modeldata);
-}
-=head3 getMapping
-Definition:
-	ModelSEED::MS::Mapping = driver->getMapping(string:mapping ID);
-Description:
-	Returns a Mapping object
-=cut
-sub getMapping {
-	my ($self,$id) = @_;
-	my $mappingdata = $self->api()->getMapping({
-    	uuid => $id,
-		with_all => 1,
-		user => ModelSEED::Interface::interface::USERNAME()
-    });
-    return ModelSEED::MS::Mapping->new($mappingdata);
-}
-
-=head3 figmodel
-Definition:
-	FIGMODEL = driver->figmodel();
-Description:
-	Returns a FIGMODEL object
-=cut
-sub figmodel {
-	my ($self) = @_;
-	return ModelSEED::globals::GETFIGMODEL();
-}
 =head3 ws
 Definition:
 	FIGMODEL = driver->ws();
@@ -241,26 +188,7 @@ sub ws {
 	my ($self) = @_;
 	return ModelSEED::Interface::interface::WORKSPACE();
 }
-=head3 db
-Definition:
-	FIGMODEL = driver->db();
-Description:
-	Returns a database object
-=cut
-sub db {
-	my ($self) = @_;
-	return$self->figmodel()->database();
-}
-=head3 config
-Definition:
-	{}/[] = driver->config(string);
-Description:
-	Returns a requested configuration object
-=cut
-sub config {
-	my ($self,$key) = @_;
-	return ModelSEED::globals::GETFIGMODEL()->config($key);
-}
+
 
 =head3 finishfile
 Definition:
@@ -324,27 +252,31 @@ sub outputdirectory {
 	my ($self) = @_;
 	return $self->{_outputdirectory};
 }
-=head3 bcloader
+=head3 dbtransfermain
 Definition:
-	 = driver->bcloader(string:model ID);
+	driver->dbtransfermain();
 Description:
-	Returns a model object
+	Transfers the main biochemistry and mapping objects to the new scheme, saves, and sets as the primary biochemistry and mapping.
 =cut
-sub bcloader {
+sub dbtransfermain {
 	my($self,@Data) = @_;
-	#my $args = $self->check([],[@Data],"loads a biochemistry and prints reactions");
+	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
 		username => ModelSEED::Interface::interface::USERNAME(),
 		password => ModelSEED::Interface::interface::PASSWORD()	
 	});
 	my $bio = $ppofactory->createBiochemistry();
-	#$bio->save($self->om());
-	print "Saved with uuid ".$bio->uuid()."\n";
-	#my $reactions = $bio->reactions();
-	#for (my $i=0; $i < @{$reactions}; $i++) {
-	#	print $reactions->[$i]->equation()."\n";
-	#}
-    return;
+	$bio->save($self->om());
+	print "Saved biochemistry with uuid ".$bio->uuid()."\n"
+	$self->environment()->biochemistry($bio->uuid());
+	my $map = $ppofactory->createMapping({
+		biochemistry => $bio,	
+	});
+	$map->save($self->om());
+	print "Saved mapping with uuid ".$map->uuid()."\n"
+	$self->environment()->mapping($bio->uuid());
+	$self->environment()->save();
+    return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
 =head3 testobj
 Definition:
@@ -355,7 +287,7 @@ Description:
 sub testobj {
 	my($self,@Data) = @_;
 	my $om = ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+		db => ModelSEED::FileDB->new({filename => "C:/Code/Model-SEED-core/data/filedb/"}),
 		username =>  ModelSEED::Interface::interface::USERNAME(),
 		password => ModelSEED::Interface::interface::PASSWORD(),
 		selectedAliases => {
@@ -428,10 +360,11 @@ sub testobj {
 		deltaGErr => 0,
 		status => "Balanced",
 	});
-	$rxnA->loadFromEquation({
+	my $inst = $rxnA->loadFromEquation({
 		equation => "A[e] => A",
 		aliasType => "name"
 	});
+	$biochemistry->add("ReactionInstance",$inst);
 	print "Equation:".$rxnA->definition()."\n";
 	my $rxnB =  $biochemistry->create("Reaction",{
 		locked => "0",
@@ -444,10 +377,11 @@ sub testobj {
 		deltaGErr => 0,
 		status => "Balanced",
 	});
-	$rxnB->loadFromEquation({
+	$inst = $rxnB->loadFromEquation({
 		equation => "A => B",
 		aliasType => "name"
 	});
+	$biochemistry->add("ReactionInstance",$inst);
 	my $media = $biochemistry->create("Media",{
 		locked => "0",
 		id => "MediaA",
@@ -564,6 +498,7 @@ sub testobj {
 	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/rxnA.reaction.json",[JSON::Any->encode($rxnA->serializeToDB())]);
 	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/TestModel.model.json",[JSON::Any->encode($model->serializeToDB())]);
 	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Biomass.biomass.json",[JSON::Any->encode($biomass->serializeToDB())]);
+	return {success => 1};
 }
 =head
 =CATEGORY

@@ -1,17 +1,18 @@
-package ModelSEED::FileDB;
-
 use strict;
 use warnings;
-
-use Moose;
-
 use JSON::Any;
 use Data::Dumper;
-
 use Fcntl qw( :flock );
 use File::stat; # for testing mod time
 use IO::Compress::Gzip qw(gzip);
 use IO::Uncompress::Gunzip qw(gunzip);
+
+package ModelSEED::FileDB;
+use Moose;
+use namespace::autoclean;
+
+
+
 
 with 'ModelSEED::Database';
 

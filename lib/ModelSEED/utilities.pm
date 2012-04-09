@@ -238,4 +238,29 @@ sub RUNMODELDRIVER {
 	system($command);
 }
 
+=head3 MODELSEEDCOREDIR
+Definition:
+	string = ModelSEED::utilities::MODELSEEDCOREDIR();
+Description:
+	This function converts the job specifications into a ModelDriver command and runs it
+Example:
+=cut
+sub MODELSEEDCOREDIR {
+	return $ENV{MODEL_SEED_CORE};
+}
+
+=head3 MODELSEEDCORE
+Definition:
+	string = ModelSEED::utilities::MODELSEEDCORE();
+Description:
+	This function converts the job specifications into a ModelDriver command and runs it
+Example:
+=cut
+sub MODELSEEDCORE {
+	return $ENV{MODEL_SEED_CORE};
+}
+
+
+
+
 1;

@@ -48,42 +48,44 @@ sub _buildfigmodel {
 # FUNCTIONS:
 sub createModel {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["name"],{
+	$args = ModelSEED::utilities::ARGS($args,["model"],{
 		biochemistry => undef,
 		mapping => undef,
 		annotation => undef
 	});
 	#Retrieving model data
-	my $mdl = $self->figmodel()->get_model($args->{name});
-	my $id = $self->username()."/".$args->{name};
-	if ($args->{name} =~ m/(.+)\.\d+$/) {
+	my $mdl = $self->figmodel()->get_model($args->{model});
+	my $id = $self->username()."/".$args->{model};
+	if ($args->{model} =~ m/(.+)\.\d+$/) {
 		$id = $self->username()."/".$1;
 	}
 	#Creating provenance objects
 	if (!defined($args->{biochemistry})) {
 		$args->{biochemistry} = $self->createBiochemistry({
-			name => $id."/biochemistry",
+			name => $id.".biochemistry",
 			database => $mdl->db()
 		});
 	}
 	if (!defined($args->{mapping})) {
 		$args->{mapping} = $self->createMapping({
-			name => $id."/mapping",
+			name => $id.".mapping",
+			biochemistry => $args->{biochemistry},
 			database => $mdl->db()
 		});
 	}
 	
 	if (!defined($args->{annotation})) {
 		$args->{annotation} = $self->createAnnotation({
-			name => $id."/annotation",
-			genome => $mdl->ppo()->genome()
+			name => $id.".annotation",
+			genome => $mdl->ppo()->genome(),
+			mapping => $args->{mapping}
 		});
 	}
 	#Creating the model
 	my $model = $self->om()->create("Model",{
 		locked => 0,
 		public => $mdl->ppo()->public(),
-		id => $id,
+		id => $id.".model",
 		name => $mdl->ppo()->name(),
 		version => $mdl->ppo()->version(),
 		type => "Singlegenome",
@@ -203,7 +205,7 @@ sub createModel {
 sub createBiochemistry {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
-		name => $self->username()."/primary",
+		name => $self->username()."/primary.biochemistry",
 		database => $self->figmodel()->database()
 	});
 	#Creating the biochemistry
@@ -542,11 +544,13 @@ sub createBiochemistry {
 sub createMapping {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
-		name => $self->username()."/primary",
+		name => $self->username()."/primary.mapping",
 		database => $self->figmodel()->database()
 	});
-	my $mapping = $self->om()->create("Mapping",{name=>$args->{name}});
-	$mapping->biochemistry_uuid($args->{biochemistry});
+	my $mapping = $self->om()->create("Mapping",{
+		name=>$args->{name},
+		biochemistry_uuid => $args->{biochemistry}->uuid()
+	});
 	my $roles = $args->{database}->get_objects("role");
 	for (my $i=0; $i < @{$roles}; $i++) {
 		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($roles->[$i]->name());
@@ -625,27 +629,31 @@ sub createMapping {
 			if (defined($complex)) {
 				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("ReactionInstance",$reactionRules->[$i]->REACTION());
 				if (defined($rxnInstance)) {
-					my $rule = $mapping->create("ReactionRule",{
-						locked => "0",
-						reaction_uuid => $rxnInstance->parent()->uuid(),
-						compartment_uuid => $rxnInstance->compartment_uuid(),
-						direction => $rxnInstance->parent()->reversibility(),
-						transprotonNature => "balanced"
-					});					
-					push(@{$complex->reactionrules()},$rule);
-					for (my $j=0; $j < @{$rxnInstance->transports()}; $j++) {
-						$rule->create("ReactionRuleTransport",{
-							compartmentIndex => $rxnInstance->transports()->[$j]->compartmentIndex(),
-							compartment_uuid => $rxnInstance->transports()->[$j]->compartment_uuid(),
-							compound_uuid => $rxnInstance->transports()->[$j]->compound_uuid(),
-							coefficient => $rxnInstance->transports()->[$j]->coefficient()
-						});
-					}
+					$complex->create("ComplexReactionInstance",{
+						reactioninstance_uuid => $rxnInstance->uuid()
+					});
 				}
 			}
 		}
 	}
 	return $mapping;	
+}
+
+sub createAnnotation {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["genome","mapping"],{
+		name => undef
+	});
+	if (!defined($args->{name})) {
+		$args->{name} = $self->username()."/".$args->{genome}.".annotation";
+	}
+	my $factory = ModelSEED::MS::Factories::SEEDFactory->new({
+		om => $self->om()
+	});
+	return $factory->buildMooseAnnotation({
+		genome_id => $args->{genome},
+		mapping => $args->{mapping}
+	});
 }
 
 __PACKAGE__->meta->make_immutable;
