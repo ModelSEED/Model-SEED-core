@@ -163,7 +163,7 @@ sub _perform_transaction {
 	}
     }
 
-    my ($ret, $save) = $sub->(@args, $sub_data);
+    my ($ret, $save) = $sub->($sub_data, @args);
 
     if (defined($data_mode)) {
 	close $data;
@@ -286,7 +286,7 @@ sub has_object {
 }
 
 sub _has_object {
-    my ($id, $data) = @_;
+    my ($data, $id) = @_;
 
     if (defined($data->{index}->{ids}->{$id})) {
 	return 1;
@@ -303,9 +303,9 @@ sub get_object {
 }
 
 sub _get_object {
-    my ($id, $data) = @_;
+    my ($data, $id) = @_;
 
-    unless (_has_object($id, $data)) {
+    unless (_has_object($data, $id)) {
 	return;
     }
 
@@ -324,14 +324,14 @@ sub _get_object {
 sub save_object {
     my ($self, $id, $object) = @_;
 
-    return $self->_perform_transaction({ index => 'w', data => 'w' },
+    return $self->_perform_transaction({ index => 'w', data => 'w', meta => 'w' },
 				       \&_save_object, $id, $object);
 }
 
 sub _save_object {
-    my ($id, $object, $data) = @_;
+    my ($data, $id, $object) = @_;
 
-    if (_has_object($id, $data)) {
+    if (_has_object($data, $id)) {
 	return 0;
     }
 
@@ -349,20 +349,22 @@ sub _save_object {
     push(@{$data->{index}->{ordered_ids}}, $id);
     $data->{index}->{end_pos} = $start + length($gzip_obj);
 
-    return (1, { index => 1 });
+    $data->{meta}->{$id} = {};
+
+    return (1, { index => 1, meta => 1 });
 }
 
 sub delete_object {
     my ($self, $id) = @_;
 
-    return $self->_perform_transaction({ index => 'w' },
+    return $self->_perform_transaction({ index => 'w', meta => 'w' },
 				       \&_delete_object, $id);
 }
 
 sub _delete_object {
-    my ($id, $data) = @_;
+    my ($data, $id) = @_;
 
-    unless (_has_object($id, $data)) {
+    unless (_has_object($data, $id)) {
 	return 0;
     }
 
@@ -370,19 +372,134 @@ sub _delete_object {
     delete $data->{index}->{ids}->{$id};
     $data->{index}->{num_del}++;
 
-    return (1, { index => 1 });
+    delete $data->{meta}->{$id};
+
+    return (1, { index => 1, meta => 1 });
 }
 
 sub get_metadata {
+    my ($self, $id, $selection) = @_;
 
+    return $self->_perform_transaction({ meta => 'r' },
+				       \&_get_metadata, $id, $selection);
+}
+
+sub _get_metadata {
+    my ($data, $id, $selection) = @_;
+
+    my $meta = $data->{meta}->{$id};
+    unless (defined($meta)) {
+	# no object with id
+	return;
+    }
+
+    if (!defined($selection) || $selection eq "") {
+	return $meta;
+    }
+
+    my @path = split(/\./, $selection);
+    my $last = pop(@path);
+
+    # search through hash for selection
+    my $inner_hash = $meta;
+    for (my $i=0; $i<scalar @path; $i++) {
+	my $cur = $path[$i];
+	unless (ref($inner_hash->{$cur}) eq 'HASH') {
+	    return;
+	}
+	$inner_hash = $inner_hash->{$cur};
+    }
+
+    unless (exists($inner_hash->{$last})) {
+	return;
+    }
+
+    return $inner_hash->{$last};
 }
 
 sub set_metadata {
+    my ($self, $id, $selection, $metadata) = @_;
 
+    return $self->_perform_transaction({ meta => 'w' },
+				       \&_set_metadata, $id, $selection, $metadata);
+}
+
+sub _set_metadata {
+    my ($data, $id, $selection, $metadata) = @_;
+
+    my $meta = $data->{meta}->{$id};
+    unless (defined($meta)) {
+	# no object with id
+	return 0;
+    }
+
+    if (!defined($selection) || $selection eq "") {
+	if (ref($metadata) eq "HASH") {
+	    $data->{meta}->{$id} = $metadata;
+	    return (1, { meta => 1 });
+	} else {
+	    return 0;
+	}
+    }
+
+    my @path = split(/\./, $selection);
+
+    my $last = pop(@path);
+    my $inner_hash = $meta;
+    for (my $i=0; $i<scalar @path; $i++) {
+	my $cur = $path[$i];
+
+	if (ref($inner_hash->{$cur}) ne 'HASH') {
+	    $inner_hash->{$cur} = {};
+	}
+	$inner_hash = $inner_hash->{$cur};
+    }
+
+    $inner_hash->{$last} = $metadata;
+
+    return (1, { meta => 1 });
 }
 
 sub remove_metadata {
+    my ($self, $id, $selection) = @_;
 
+    return $self->_perform_transaction({ meta => 'w' },
+				       \&_remove_metadata, $id, $selection);
+}
+
+sub _remove_metadata {
+    my ($data, $id, $selection) = @_;
+
+    my $meta = $data->{meta}->{$id};
+    unless (defined($meta)) {
+	# no object with id
+	return 0;
+    }
+
+    if (!defined($selection) || $selection eq "") {
+	$data->{meta}->{$id} = {};
+	return (1, { meta => 1 });
+    }
+
+    my @path = split(/\./, $selection);
+
+    my $last = pop(@path);
+    my $inner_hash = $meta;
+    for (my $i=0; $i<scalar @path; $i++) {
+	my $cur = $path[$i];
+	if (ref($inner_hash->{$cur}) ne 'HASH') {
+	    return 0;
+	}
+	$inner_hash = $inner_hash->{$cur};
+    }
+
+    unless (exists($inner_hash->{$last})) {
+	return 0;
+    }
+
+    delete $inner_hash->{$last};
+
+    return (1, { meta => 1 });
 }
 
 sub find_objects {
