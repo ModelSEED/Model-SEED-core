@@ -7,8 +7,9 @@
 ########################################################################
 package ModelSEED::Config;
 use Moose;
-use JSON;
 use namespace::autoclean;
+use JSON;
+
 
 has filename => (
     is  => 'rw',

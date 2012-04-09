@@ -1,10 +1,9 @@
 # Unit tests for FileDB.pm 
 use strict;
 use warnings;
-
-use ModelSEED::FileDB;
 use Test::More;
 use File::Temp qw(tempfile tempdir);
+use ModelSEED::FileDB;
 
 my $testCount = 0;
 # test initialization

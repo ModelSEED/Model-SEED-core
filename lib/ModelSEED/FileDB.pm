@@ -11,9 +11,6 @@ package ModelSEED::FileDB;
 use Moose;
 use namespace::autoclean;
 
-
-
-
 with 'ModelSEED::Database';
 
 =head
