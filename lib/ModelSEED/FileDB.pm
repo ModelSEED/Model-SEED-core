@@ -2,14 +2,13 @@ use strict;
 use warnings;
 use JSON::Any;
 use Data::Dumper;
-use Fcntl qw( :flock );
 use File::stat; # for testing mod time
-use IO::Compress::Gzip qw(gzip);
-use IO::Uncompress::Gunzip qw(gunzip);
-
 package ModelSEED::FileDB;
 use Moose;
 use namespace::autoclean;
+use Fcntl qw( :flock );
+use IO::Compress::Gzip qw(gzip);
+use IO::Uncompress::Gunzip qw(gunzip);
 
 with 'ModelSEED::Database';
 
@@ -109,7 +108,7 @@ sub _perform_transaction {
 	(!defined($meta_mode)  || $meta_mode eq 'r') &&
 	(!defined($data_mode)  || $data_mode eq 'r')) {
 
-	flock LOCK, LOCK_SH or die "Couldn't lock file: $!";
+	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
     } else {
 	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
     }

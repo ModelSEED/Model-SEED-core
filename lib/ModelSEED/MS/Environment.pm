@@ -89,7 +89,7 @@ sub load {
 	if (!defined($self->filename()) || !-e $self->filename()) {
 		ModelSEED::utilities::ERROR("Cannot load environment filename!");
 	}
-	my $data = ModelSEED::utilities::LOADFILE($self->filename(),$output);
+	my $data = ModelSEED::utilities::LOADFILE($self->filename());
 	my $variables = {
 		username => "s",
 		password => "s",

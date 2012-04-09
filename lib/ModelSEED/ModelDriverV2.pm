@@ -31,10 +31,13 @@ Description:
 =cut
 sub new { 
 	my ($class,$args) = @_;
-	ModelSEED::utilities::ARGS($args,["environment"],{
+	ModelSEED::utilities::ARGS($args,[],{
+		environment => {},
 		finishfile => undef
 	});
-	$self->environment(ModelSEED::MS::Environment->new($args->{environment});
+	my $self = {};
+	bless $self;
+	$self->environment(ModelSEED::MS::Environment->new($args->{environment}));
 	$self->figmodel(ModelSEED::FIGMODEL->new({username => ModelSEED::Interface::interface::USERNAME(),password => ModelSEED::Interface::interface::PASSWORD()}));
 	$self->om(ModelSEED::MS::ObjectManager->new({
 		db => ModelSEED::FileDB->new({filename => $self->environment()->filedb()}),
@@ -42,8 +45,6 @@ sub new {
 		password => $self->environment()->password(),
 		selectedAliases => $self->environment()->selectedAliases()
 	}));
-	my $self = {};
-	bless $self;
 	$self->finishfile($args->{finishfile});
     return $self;
 }
@@ -262,18 +263,19 @@ sub dbtransfermain {
 	my($self,@Data) = @_;
 	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
+		om => $self->om(),
 		username => ModelSEED::Interface::interface::USERNAME(),
 		password => ModelSEED::Interface::interface::PASSWORD()	
 	});
 	my $bio = $ppofactory->createBiochemistry();
-	$bio->save($self->om());
-	print "Saved biochemistry with uuid ".$bio->uuid()."\n"
+	$bio->save();
+	print "Saved biochemistry with uuid ".$bio->uuid()."\n";
 	$self->environment()->biochemistry($bio->uuid());
 	my $map = $ppofactory->createMapping({
 		biochemistry => $bio,	
 	});
-	$map->save($self->om());
-	print "Saved mapping with uuid ".$map->uuid()."\n"
+	$map->save();
+	print "Saved mapping with uuid ".$map->uuid()."\n";
 	$self->environment()->mapping($bio->uuid());
 	$self->environment()->save();
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
