@@ -105,7 +105,7 @@ sub create {
 
 sub save {
 	my ($self,$object) = @_;
-	return $self->db()->save_object($object->_type(),{user => $self->user()->login(),object => $object->serializeToDB()});
+	return $self->db()->save_object($object->uuid(),$object->serializeToDB());
 }
 
 __PACKAGE__->meta->make_immutable;

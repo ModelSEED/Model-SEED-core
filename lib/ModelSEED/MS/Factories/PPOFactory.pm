@@ -553,11 +553,9 @@ sub createMapping {
 	});
 	my $roles = $args->{database}->get_objects("role");
 	for (my $i=0; $i < @{$roles}; $i++) {
-		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($roles->[$i]->name());
 		my $role = $mapping->create("Role",{
 			locked => "0",
 			name => $roles->[$i]->name(),
-			searchname => $searchName,
 			seedfeature => $roles->[$i]->exemplarmd5()
 		});
 		$mapping->addAlias({
@@ -569,11 +567,13 @@ sub createMapping {
 	}
 	my $subsystems = $args->{database}->get_objects("subsystem");
 	for (my $i=0; $i < @{$subsystems}; $i++) {
-		my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($subsystems->[$i]->name());
 		my $ss = $mapping->create("Roleset",{
+			public => "1",
 			locked => "0",
 			name => $subsystems->[$i]->name(),
-			searchname => $searchName,
+			class => $subsystems->[$i]->classOne(),
+			subclass => $subsystems->[$i]->classTwo(),
+			type => "SEED Subsystem"
 		});
 		$mapping->addAlias({
 			objectType => "Roleset",
@@ -584,11 +584,14 @@ sub createMapping {
 	}
 	my $ssroles = $args->{database}->get_objects("ssroles");
 	for (my $i=0; $i < @{$ssroles}; $i++) {
-		my $ss = $mapping->getObjectByAlias("Roleset",$ssroles->[$i]->SUBSYSTEM());
+		my $ss = $mapping->getObjectByAlias("Roleset",$ssroles->[$i]->SUBSYSTEM(),"ModelSEED");
 		if (defined($ss)) {
-			my $role = $mapping->getObjectByAlias("Role",$ssroles->[$i]->ROLE());
+			my $role = $mapping->getObjectByAlias("Role",$ssroles->[$i]->ROLE(),"ModelSEED");
 			if (defined($role)) {
-				push(@{$ss->role()},$role);
+				$ss->create("RolesetRole",{
+					role_uuid => $role->uuid(),
+					role => $role
+				});
 			}
 		}
 	}
@@ -596,8 +599,7 @@ sub createMapping {
 	for (my $i=0; $i < @{$complexes}; $i++) {
 		my $complex = $mapping->create("Complex",{
 			locked => "0",
-			name => "",
-			searchname => "",
+			name => $complexes->[$i]->id(),
 		});
 		$mapping->addAlias({
 			objectType => "Complex",
@@ -608,26 +610,28 @@ sub createMapping {
 	}
 	my $complexRoles = $args->{database}->get_objects("cpxrole");
 	for (my $i=0; $i < @{$complexRoles}; $i++) {
-		my $complex = $mapping->getObjectByAlias("Complex",$complexRoles->[$i]->COMPLEX());
+		my $complex = $mapping->getObjectByAlias("Complex",$complexRoles->[$i]->COMPLEX(),"ModelSEED");
 		if (defined($complex)) {
-			my $role = $mapping->getObjectByAlias("Role",$complexRoles->[$i]->ROLE());
+			my $role = $mapping->getObjectByAlias("Role",$complexRoles->[$i]->ROLE(),"ModelSEED");
 			my $type = "triggering";
-			if ($complexRoles->type() eq "L") {
+			if ($complexRoles->[$i]->type() eq "L") {
 				$type = "involved";	
 			}
-			$complex->create("ComplexRole",{
-				role_uuid => $role->uuid(),
-				optional => "0",
-				type => $type
-			});
+			if (defined($role)) {
+				$complex->create("ComplexRole",{
+					role_uuid => $role->uuid(),
+					optional => "0",
+					type => $type
+				});
+			}
 		}
 	}
 	my $reactionRules = $args->{database}->get_objects("rxncpx");
 	for (my $i=0; $i < @{$reactionRules}; $i++) {
 		if ($reactionRules->[$i]->master() eq "1") {
-			my $complex = $mapping->getObjectByAlias("Complex",$reactionRules->[$i]->COMPLEX());
+			my $complex = $mapping->getObjectByAlias("Complex",$reactionRules->[$i]->COMPLEX(),"ModelSEED");
 			if (defined($complex)) {
-				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("ReactionInstance",$reactionRules->[$i]->REACTION());
+				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("ReactionInstance",$reactionRules->[$i]->REACTION(),"ModelSEED");
 				if (defined($rxnInstance)) {
 					$complex->create("ComplexReactionInstance",{
 						reactioninstance_uuid => $rxnInstance->uuid()

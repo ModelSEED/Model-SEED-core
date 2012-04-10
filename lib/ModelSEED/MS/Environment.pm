@@ -14,11 +14,11 @@ use namespace::autoclean;
 # ATTRIBUTES:
 has username => ( is => 'rw', isa => 'Str');
 has password => ( is => 'rw', isa => 'Str');
-has registeredseed => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
+has registeredSEED => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
 has seed => ( is => 'rw', isa => 'Str',default => 'local' );
 has lasterror => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
 has filename => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
-has filedb => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/");
+has filedb => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/test1");
 has selectedAliases => ( is => 'rw', isa => 'HashRef',default => sub{
 	return {
 		ReactionAliasSet => "ModelSEED",
@@ -62,8 +62,8 @@ sub save {
 		lasterror => "s",
 		mapping => "s",
 		biochemistry => "s",
-		registeredseed => "h",
-		selectedaliases => "h"
+		registeredSEED => "h",
+		selectedAliases => "h"
 	};
 	my $output = ["SETTING\tVALUE"];
 	foreach my $var (keys(%{$variables})) {
@@ -97,8 +97,8 @@ sub load {
 		lasterror => "s",
 		mapping => "s",
 		biochemistry => "s",
-		registeredseed => "h",
-		selectedaliases => "h"
+		registeredSEED => "h",
+		selectedAliases => "h"
 	};
 	$self->registeredseed({});
 	for (my $i=1; $i < @{$data}; $i++) {

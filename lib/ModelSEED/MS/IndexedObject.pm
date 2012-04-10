@@ -190,8 +190,8 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    my $newuuid = $om->save($self);
-    $self->uuid($newuuid);
+    $self->uuid();
+    print "Save output:".$om->save($self)."\n";
 }
 
 sub _buildindices { return {}; }

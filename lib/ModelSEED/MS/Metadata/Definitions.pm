@@ -578,7 +578,6 @@ $objectDefinitions->{CompoundSet} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
@@ -611,7 +610,6 @@ $objectDefinitions->{ReactionSet} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
@@ -1066,7 +1064,6 @@ $objectDefinitions->{Role} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'seedfeature',perm => 'rw',type => 'Str',len => 36,req => 0}
 	],
 	subobjects => [],
@@ -1084,7 +1081,6 @@ $objectDefinitions->{Roleset} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'public',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'subclass',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1}
@@ -1118,7 +1114,6 @@ $objectDefinitions->{Complex} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
 	],
 	subobjects => [
 		{name => "complexreactioninstances",class => "ComplexReactionInstance",type => "encompassed"},
