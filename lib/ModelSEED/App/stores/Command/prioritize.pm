@@ -1,8 +1,8 @@
-package ModelSEED::CLI::stores::Command::prioritize;
-use ModelSEED::Config;
+package ModelSEED::App::stores::Command::prioritize;
+use ModelSEED::Configuration;
 use Data::Dumper;
 use base 'App::Cmd::Command';
-my $MS = ModelSEED::Config->new;
+my $MS = ModelSEED::Configuration->new;
 sub abstract { "Set the storage priority" }
 sub usage_desc { "%c COMMAND [store] [store] ..." }
 sub validate_args {

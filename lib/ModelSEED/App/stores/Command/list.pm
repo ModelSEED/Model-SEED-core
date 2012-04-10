@@ -1,5 +1,5 @@
-package ModelSEED::CLI::stores::Command::list;
-use ModelSEED::Config;
+package ModelSEED::App::stores::Command::list;
+use ModelSEED::Configuration;
 use Data::Dumper;
 use base 'App::Cmd::Command';
 sub abstract { "List current stores in order of priority" }
@@ -8,7 +8,7 @@ sub opt_spec {
 }
 sub execute {
     my ($self, $opt, $args) = @_;
-    my $ms = ModelSEED::Config->new();    
+    my $ms = ModelSEED::Configuration->new();    
     my $stores = $ms->config->{stores};
     if($opt->{verbose}) {
         print map { _detailed($_) . "\n" } @$stores;

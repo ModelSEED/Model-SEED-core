@@ -1,12 +1,17 @@
-package ModelSEED::CLI::stores::Command::rm;
-use ModelSEED::Config;
+package ModelSEED::App::stores::Command::rm;
+use ModelSEED::Configuration;
 use base 'App::Cmd::Command';
 
 
-my $MS = ModelSEED::Config->new();
-
+my $MS = ModelSEED::Configuration->new();
 sub abstract { "Remove a storage interface" }
-sub usage_desc { "%c remove <name>" }
+sub description { return <<HERDOC;
+Remove a storage interface from the list of interfaces available.
+Removing an iterface does not affect data stored with that interface.
+HERDOC
+}
+sub usage_desc { "%c rm <name>" }
+sub command_names { qw(rm remove) }
 
 sub validate_args {
     my ($self, $opt, $args) = @_;
