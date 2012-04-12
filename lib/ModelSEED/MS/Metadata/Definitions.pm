@@ -4,7 +4,7 @@ package ModelSEED::MS::DB::Definitions;
 my $objectDefinitions = {};
 
 $objectDefinitions->{Genome} = {
-	parents => ['ObjectManager'],
+	parents => ['Annotation'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -779,7 +779,7 @@ $objectDefinitions->{ModelReactionTransports} = {
 	attributes => [
 		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1},
-		{name => 'coefficient',perm => 'rw',type => 'Int',req => 1},
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
 	],
 	subobjects => [],
 	primarykeys => [ qw(model_uuid modelreaction_uuid compound_uuid compartmentIndex) ],

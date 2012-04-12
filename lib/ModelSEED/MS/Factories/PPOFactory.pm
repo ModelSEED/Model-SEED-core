@@ -11,6 +11,7 @@ use ModelSEED::utilities;
 use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Utilities::GlobalFunctions;
+use ModelSEED::MS::Factories::SEEDFactory;
 package ModelSEED::MS::Factories::PPOFactory;
 use Moose;
 
@@ -56,7 +57,11 @@ sub createModel {
 	#Retrieving model data
 	my $mdl = $self->figmodel()->get_model($args->{model});
 	my $id = $self->username()."/".$args->{model};
-	if ($args->{model} =~ m/(.+)\.\d+$/) {
+	if ($args->{model} =~ m/^Seed\d+\.\d+/) {
+		if ($args->{model} =~ m/(Seed\d+\.\d+)\.\d+$/) {
+			$id = $self->username()."/".$1;
+		}
+	} elsif ($args->{model} =~ m/(.+)\.\d+$/) {
 		$id = $self->username()."/".$1;
 	}
 	#Creating provenance objects
@@ -92,9 +97,9 @@ sub createModel {
 		status => "Model loaded into new database",
 		reactions => $mdl->ppo()->reactions(),
 		compounds => $mdl->ppo()->compounds(),
-		annotations => $mdl->ppo()->genes(),
+		annotations => $mdl->ppo()->associatedGenes(),
 		growth => $mdl->ppo()->growth(),
-		current => $mdl->ppo()->current(),
+		current => 1,
 		mapping_uuid => $args->{mapping}->uuid(),
 		biochemistry_uuid => $args->{biochemistry}->uuid(),
 		annotation_uuid => $args->{annotation}->uuid(),
@@ -108,10 +113,11 @@ sub createModel {
 			my $bioobj = $model->create("Biomass",{
 				name => "bio0000".$biomassIndex
 			});
-			my $biorxn = $mdl->db()->get_object("biomass",{id => $rxntbl->[$i]->REACTION()});
+			my $biorxn = $mdl->db()->get_object("bof",{id => $rxntbl->[$i]->REACTION()});
 			if (defined($biorxn)) {
 				$bioobj->loadFromEquation({
-					equation => $biorxn->equation()
+					equation => $biorxn->equation(),
+					aliasType => "ModelSEED"
 				});
 			}
 			$biomassIndex++;
@@ -146,23 +152,24 @@ sub createModel {
 			my $mdlrxn = $model->create("ModelReaction",{
 				reaction_uuid => $rxn->reaction_uuid(),
 				direction => $direction,
-				protons => $rxn->defaultProtons(),
+				protons => $rxn->reaction()->defaultProtons(),
 				model_compartment_uuid => $mdlcmp->uuid()
 			});
 			$mdlrxn->create("ModelReactionRawGPR",{
 				isCustomGPR => 1,
 				rawGPR => $rxntbl->[$i]->pegs()
 			});
-			for (my $j=0; $j < @{$rxn->reagents()}; $j++) {
+			my $reagents = $rxn->reaction()->reagents();
+			for (my $j=0; $j < @{$reagents}; $j++) {
 				my $mdlcpd = $model->getObject("ModelCompound",{
-					compound_uuid => $rxn->reagents()->[$j]->compound_uuid(),
+					compound_uuid => $reagents->[$j]->compound_uuid(),
 					model_compartment_uuid => $mdlcmp->uuid()
 				});
 				if (!defined($mdlcpd)) {
 					$mdlcpd = $model->create("ModelCompound",{
-						compound_uuid => $rxn->reagents()->[$j]->compound_uuid(),
-						charge => $rxn->reagents()->[$j]->compound()->charge(),
-						formula => $rxn->reagents()->[$j]->compound()->formula(),
+						compound_uuid => $reagents->[$j]->compound_uuid(),
+						charge => $reagents->[$j]->compound()->defaultCharge(),
+						formula => $reagents->[$j]->compound()->formula(),
 						model_compartment_uuid => $mdlcmp->uuid()
 					});
 				}
@@ -186,7 +193,7 @@ sub createModel {
 				if (!defined($mdlcpd)) {
 					$mdlcpd = $model->create("ModelCompound",{
 						compound_uuid => $rxn->transports()->[$j]->compound_uuid(),
-						charge => $rxn->transports()->[$j]->compound()->charge(),
+						charge => $rxn->transports()->[$j]->compound()->defaultCharge(),
 						formula => $rxn->transports()->[$j]->compound()->formula(),
 						model_compartment_uuid => $mdlcmp->uuid()
 					});

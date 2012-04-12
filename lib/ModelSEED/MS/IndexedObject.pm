@@ -22,6 +22,9 @@ has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices'
 override add => sub {
     my ($self,$attribute, $object) = @_;
     #Checking if an object matching the input object already exists
+    if (!defined($object)) {
+    	ModelSEED::utilities::ERROR("Can't call add without defined object!");	
+    }
     my $type = $object->_type();
     my $function = $self->_typeToFunction()->{$type};
     my $class = 'ModelSEED::MS::DB::'.$object->_type;
@@ -190,8 +193,8 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    $self->uuid();
-    print "Save output:".$om->save($self)."\n";
+    $self->uuid($om->save($self));
+    print "Saved object!\n";
 }
 
 sub _buildindices { return {}; }

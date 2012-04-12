@@ -71,7 +71,9 @@ sub serializeToDB {
 		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
 			my $name = $attr->name();
 			if ($attr->type() eq "attribute") {
-				$data->{$name} = $self->$name();
+				if (defined($self->$name())) {
+					$data->{$name} = $self->$name();
+				}
 			} elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
 				my $arrayRef = $self->$name();
 				foreach my $subobject (@{$arrayRef}) {

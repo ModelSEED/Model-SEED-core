@@ -313,7 +313,8 @@ sub _get_object {
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
     gunzip \$gzip_obj => \$json_obj;
-
+	print "JSON object:".$json_obj."\n";
+	exit(0);
     return _decode($json_obj)
 }
 

@@ -820,7 +820,7 @@ sub authenticate {
 				db => $self->database()
 			});
 			return undef; 
-		}	
+		}
 		my $usrObj = $self->database()->get_object("user",{login => $args->{username}});
 		if (!defined($usrObj)) {
 			ModelSEED::Interface::interface::SWITCHUSER("public","public");
