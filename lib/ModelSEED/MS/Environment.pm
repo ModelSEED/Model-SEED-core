@@ -12,8 +12,8 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
-has username => ( is => 'rw', isa => 'Str');
-has password => ( is => 'rw', isa => 'Str');
+has username => ( is => 'rw', isa => 'Str',default => "public");
+has password => ( is => 'rw', isa => 'Str',default => "public");
 has registeredSEED => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
 has seed => ( is => 'rw', isa => 'Str',default => 'local' );
 has lasterror => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
