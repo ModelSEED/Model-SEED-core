@@ -1,14 +1,14 @@
 ########################################################################
-# ModelSEED::MS::DB::Roleset - This is the moose object corresponding to the Roleset object
+# ModelSEED::MS::DB::RoleSet - This is the moose object corresponding to the RoleSet object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 2012-04-11T07:23:38
 ########################################################################
 use strict;
-use ModelSEED::MS::RolesetRole;
+use ModelSEED::MS::RoleSetRole;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::Roleset;
+package ModelSEED::MS::DB::RoleSet;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
@@ -34,7 +34,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has rolesroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RolesetRole]', type => 'encompassed(RolesetRole)', metaclass => 'Typed');
+has rolesroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSetRole]', type => 'encompassed(RoleSetRole)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -47,10 +47,10 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:
-sub _type { return 'Roleset'; }
+sub _type { return 'RoleSet'; }
 sub _typeToFunction {
 	return {
-		RolesetRole => 'rolesroles',
+		RoleSetRole => 'rolesroles',
 	};
 }
 sub _aliasowner { return 'Mapping'; }

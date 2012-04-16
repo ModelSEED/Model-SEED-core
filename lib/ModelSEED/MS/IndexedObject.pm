@@ -193,7 +193,7 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No ObjectManager");
     }
-    $self->uuid($om->save($self));
+    $om->save($self);
     print "Saved object!\n";
 }
 

@@ -35,7 +35,7 @@ sub _buildom {
 			CompoundAliasSet => "ModelSEED",
 			ComplexAliasSet => "ModelSEED",
 			RoleAliasSet => "ModelSEED",
-			RolesetAliasSet => "ModelSEED"
+			RoleSetAliasSet => "ModelSEED"
 		}
 	});
 	$om->authenticate($self->username(),$self->password());
@@ -574,7 +574,7 @@ sub createMapping {
 	}
 	my $subsystems = $args->{database}->get_objects("subsystem");
 	for (my $i=0; $i < @{$subsystems}; $i++) {
-		my $ss = $mapping->create("Roleset",{
+		my $ss = $mapping->create("RoleSet",{
 			public => "1",
 			locked => "0",
 			name => $subsystems->[$i]->name(),
@@ -583,7 +583,7 @@ sub createMapping {
 			type => "SEED Subsystem"
 		});
 		$mapping->addAlias({
-			objectType => "Roleset",
+			objectType => "RoleSet",
 			aliasType => "ModelSEED",
 			alias => $subsystems->[$i]->id(),
 			uuid => $ss->uuid()
@@ -591,11 +591,11 @@ sub createMapping {
 	}
 	my $ssroles = $args->{database}->get_objects("ssroles");
 	for (my $i=0; $i < @{$ssroles}; $i++) {
-		my $ss = $mapping->getObjectByAlias("Roleset",$ssroles->[$i]->SUBSYSTEM(),"ModelSEED");
+		my $ss = $mapping->getObjectByAlias("RoleSet",$ssroles->[$i]->SUBSYSTEM(),"ModelSEED");
 		if (defined($ss)) {
 			my $role = $mapping->getObjectByAlias("Role",$ssroles->[$i]->ROLE(),"ModelSEED");
 			if (defined($role)) {
-				$ss->create("RolesetRole",{
+				$ss->create("RoleSetRole",{
 					role_uuid => $role->uuid(),
 					role => $role
 				});

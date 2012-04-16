@@ -1,7 +1,7 @@
 # Unit tests for FileIndex.pm 
 use strict;
 use warnings;
-use ModelSEED::FileDB::FileIndex;
+use ModelSEED::FileDBold::FileIndex;
 use Test::More;
 use File::Temp qw(tempfile tempdir);
 use Data::UUID;

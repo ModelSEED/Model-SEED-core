@@ -39,7 +39,8 @@ sub new {
 	$self->environment(ModelSEED::MS::Environment->new($args->{environment}));
 	$self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
 	$self->om(ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
+#		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
+		db => ModelSEED::FileDB->new({filename => $self->environment()->filedb()}),
 		username => $self->environment()->username(),
 		password => $self->environment()->password(),
 		selectedAliases => $self->environment()->selectedAliases()
@@ -427,7 +428,7 @@ sub testobj {
 			CompoundAliasSet => "ModelSEED",
 			ComplexAliasSet => "ModelSEED",
 			RoleAliasSet => "ModelSEED",
-			RolesetAliasSet => "ModelSEED"
+			RoleSetAliasSet => "ModelSEED"
 		}
 	});
 	my $biochemistry = $om->create("Biochemistry",{

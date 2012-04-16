@@ -1,11 +1,10 @@
-use strict;
-use warnings;
-use JSON::Any;
-use Data::Dumper;
-use File::stat; # for testing mod time
 package ModelSEED::FileDB;
+
 use Moose;
 use namespace::autoclean;
+
+use JSON::Any;
+use File::stat; # for testing mod time
 use Fcntl qw( :flock );
 use IO::Compress::Gzip qw(gzip);
 use IO::Uncompress::Gunzip qw(gunzip);
@@ -108,7 +107,7 @@ sub _perform_transaction {
 	(!defined($meta_mode)  || $meta_mode eq 'r') &&
 	(!defined($data_mode)  || $data_mode eq 'r')) {
 
-	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
+	flock LOCK, LOCK_SH or die "Couldn't lock file: $!";
     } else {
 	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
     }
@@ -313,8 +312,8 @@ sub _get_object {
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
     gunzip \$gzip_obj => \$json_obj;
-	print "JSON object:".$json_obj."\n";
-	exit(0);
+#    $json_obj = $gzip_obj;
+
     return _decode($json_obj)
 }
 
@@ -336,6 +335,7 @@ sub _save_object {
     my $gzip_obj;
 
     gzip \$json_obj => \$gzip_obj;
+#    $gzip_obj = $json_obj;
 
     my $data_fh = $data->{data};
     my $start = $data->{index}->{end_pos};

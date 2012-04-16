@@ -25,7 +25,7 @@ has selectedAliases => ( is => 'rw', isa => 'HashRef',default => sub{
 		CompoundAliasSet => "ModelSEED",
 		ComplexAliasSet => "ModelSEED",
 		RoleAliasSet => "ModelSEED",
-		RolesetAliasSet => "ModelSEED"
+		RoleSetAliasSet => "ModelSEED"
 	};
 });
 has biochemistry => ( is => 'rw', isa => 'ModelSEED::uuid');
