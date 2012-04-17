@@ -5833,7 +5833,17 @@ sub PrintSBMLFile {
 	if (-e $self->directory().$self->id().".xml") {
 		unlink($self->directory().$self->id().".xml");	
 	}
-	
+    # convert ids to SIds
+    my $idToSId = sub {
+        my $id = shift @_;
+        my $cpy = $id;
+        # SIds must begin with a letter
+        $cpy =~ s/^([^a-zA-Z])/A_$1/;
+        # SIDs must only contain letters numbers or '_'
+        $cpy =~ s/[^a-zA-Z0-9_]/_/g;
+        return $cpy;
+    };
+
 	#Handling media formulation for SBML file
 	my $mediaCpd;
 	if ($args->{media} ne "Complete") {
@@ -5895,8 +5905,7 @@ sub PrintSBMLFile {
 	}
 
 	#Printing header to SBML file
-	my $ModelName = $self->fullId();
-	$ModelName =~ s/\./_/g;
+	my $ModelName = $idToSId->($self->id());
 	my $output;
 	push(@{$output},'<?xml version="1.0" encoding="UTF-8"?>');
 	push(@{$output},'<sbml xmlns="http://www.sbml.org/sbml/level2" level="2" version="1" xmlns:html="http://www.w3.org/1999/xhtml">');
@@ -5928,14 +5937,14 @@ sub PrintSBMLFile {
 			if (defined($CompartmentsPresent{$Outside})) {
 				my $newObj = $self->figmodel()->database()->get_object("compartment",{id => $Outside});
 				if (defined($newObj)) {
-					push(@{$output},'<compartment id="'.$cmpObj->name().'" outside="'.$newObj->name().'"/>');
+					push(@{$output},'<compartment id="'.$cmpObj->id().'" name="'.$newObj->name().'" outside="'.$newObj->id().'"/>');
 					$Printed = 1;
 					last;
 				}
 			}
 		}
 		if ($Printed eq 0) {
-			push(@{$output},'<compartment id="'.$cmpObj->name().'"/>');
+			push(@{$output},'<compartment id="'.$cmpObj->id().'" name="'.$cmpObj->name().'" />');
 		}
 	}
 	push(@{$output},'</listOfCompartments>');
@@ -5998,7 +6007,7 @@ sub PrintSBMLFile {
 		if (defined($cpdObj->charge())) {
 			$Charge = $cpdObj->charge();
 		}
-		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="Extracellular" charge="'.$Charge.'" boundaryCondition="true"/>');
+		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="e" charge="'.$Charge.'" boundaryCondition="true"/>');
 	}
 	push(@{$output},'</listOfSpecies>');
 
