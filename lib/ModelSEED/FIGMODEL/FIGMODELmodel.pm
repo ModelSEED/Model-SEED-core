@@ -5849,9 +5849,8 @@ sub PrintSBMLFile {
 	}
 	
 	#Adding intracellular metabolites that also need exchange fluxes to the exchange hash
-	my $ExchangeHash = {"cpd11416" => "c"};
-	my %CompartmentsPresent;
-	$CompartmentsPresent{"c"} = 1;
+	my $ExchangeHash = {};
+	my %CompartmentsPresent = ("c"=>1,"e"=>1);
 	my %CompoundList;
 	my @ReactionList;
 	my $rxnDBHash = $self->figmodel()->database()->get_object_hash({
@@ -5895,7 +5894,7 @@ sub PrintSBMLFile {
 	}
 
 	#Printing header to SBML file
-	my $ModelName = $self->fullId();
+	my $ModelName = $self->id();
 	$ModelName =~ s/\./_/g;
 	my $output;
 	push(@{$output},'<?xml version="1.0" encoding="UTF-8"?>');
@@ -5928,14 +5927,14 @@ sub PrintSBMLFile {
 			if (defined($CompartmentsPresent{$Outside})) {
 				my $newObj = $self->figmodel()->database()->get_object("compartment",{id => $Outside});
 				if (defined($newObj)) {
-					push(@{$output},'<compartment id="'.$cmpObj->name().'" outside="'.$newObj->name().'"/>');
+					push(@{$output},'<compartment id="'.$cmpObj->id().'" name="'.$cmpObj->name().'" outside="'.$newObj->id().'"/>');
 					$Printed = 1;
 					last;
 				}
 			}
 		}
 		if ($Printed eq 0) {
-			push(@{$output},'<compartment id="'.$cmpObj->name().'"/>');
+			push(@{$output},'<compartment id="'.$cmpObj->id().'" name="'.$cmpObj->name().'"/>');
 		}
 	}
 	push(@{$output},'</listOfCompartments>');
@@ -5998,8 +5997,13 @@ sub PrintSBMLFile {
 		if (defined($cpdObj->charge())) {
 			$Charge = $cpdObj->charge();
 		}
-		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="Extracellular" charge="'.$Charge.'" boundaryCondition="true"/>');
+		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="e" charge="'.$Charge.'" boundaryCondition="true"/>');
 	}
+
+	#Add compounds for specific biomass drain
+	push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+	push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+
 	push(@{$output},'</listOfSpecies>');
 
 	#Printing the list of reactions involved in the model
@@ -6117,10 +6121,10 @@ sub PrintSBMLFile {
 		push(@{$output},"\t\t\t<ci> FLUX_VALUE </ci>");
 		push(@{$output},"\t</math>");
 		push(@{$output},"\t<listOfParameters>");
-		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"".$LowerBound."\" units=\"mmol_per_gDW_per_hr\"/>");
-		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"".$UpperBound."\" units=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"".$LowerBound."\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"".$UpperBound."\" name=\"mmol_per_gDW_per_hr\"/>");
 		push(@{$output},"\t\t<parameter id=\"OBJECTIVE_COEFFICIENT\" value=\"".$ObjectiveCoef."\"/>");
-		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" units=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" name=\"mmol_per_gDW_per_hr\"/>");
 		push(@{$output},"\t</listOfParameters>");
 		push(@{$output},"</kineticLaw>");
 		push(@{$output},'</reaction>');
