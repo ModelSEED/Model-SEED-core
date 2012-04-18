@@ -1,14 +1,14 @@
 ########################################################################
-# ModelSEED::MS::DB::RolesetAliasSet - This is the moose object corresponding to the RolesetAliasSet object
+# ModelSEED::MS::DB::RoleSetAliasSet - This is the moose object corresponding to the RoleSetAliasSet object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-05T22:41:35
+# Date of module creation: 2012-04-11T07:23:38
 ########################################################################
 use strict;
-use ModelSEED::MS::RolesetAlias;
+use ModelSEED::MS::RoleSetAlias;
 use ModelSEED::MS::IndexedObject;
-package ModelSEED::MS::DB::RolesetAliasSet;
+package ModelSEED::MS::DB::RoleSetAliasSet;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
@@ -30,7 +30,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has rolesetAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RolesetAlias]', type => 'child(RolesetAlias)', metaclass => 'Typed');
+has roleSetAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSetAlias]', type => 'child(RoleSetAlias)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -42,10 +42,10 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:
-sub _type { return 'RolesetAliasSet'; }
+sub _type { return 'RoleSetAliasSet'; }
 sub _typeToFunction {
 	return {
-		RolesetAlias => 'rolesetAliases',
+		RoleSetAlias => 'roleSetAliases',
 	};
 }
 

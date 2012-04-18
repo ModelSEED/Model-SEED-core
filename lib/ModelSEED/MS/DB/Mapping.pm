@@ -3,13 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-05T22:41:35
+# Date of module creation: 2012-04-11T07:23:38
 ########################################################################
 use strict;
 use ModelSEED::MS::Role;
-use ModelSEED::MS::Roleset;
+use ModelSEED::MS::RoleSet;
 use ModelSEED::MS::Complex;
-use ModelSEED::MS::RolesetAliasSet;
+use ModelSEED::MS::RoleSetAliasSet;
 use ModelSEED::MS::RoleAliasSet;
 use ModelSEED::MS::ComplexAliasSet;
 use ModelSEED::MS::IndexedObject;
@@ -38,9 +38,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 # SUBOBJECTS:
 has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child(Role)', metaclass => 'Typed');
-has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child(Roleset)', metaclass => 'Typed');
+has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSet]', type => 'child(RoleSet)', metaclass => 'Typed');
 has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child(Complex)', metaclass => 'Typed');
-has rolesetAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RolesetAliasSet]', type => 'child(RolesetAliasSet)', metaclass => 'Typed');
+has roleSetAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSetAliasSet]', type => 'child(RoleSetAliasSet)', metaclass => 'Typed');
 has roleAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleAliasSet]', type => 'child(RoleAliasSet)', metaclass => 'Typed');
 has complexAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexAliasSet]', type => 'child(ComplexAliasSet)', metaclass => 'Typed');
 
@@ -62,11 +62,11 @@ sub _buildbiochemistry {
 sub _type { return 'Mapping'; }
 sub _typeToFunction {
 	return {
-		Roleset => 'rolesets',
+		RoleSet => 'rolesets',
 		Complex => 'complexes',
 		Role => 'roles',
 		RoleAliasSet => 'roleAliasSets',
-		RolesetAliasSet => 'rolesetAliasSets',
+		RoleSetAliasSet => 'roleSetAliasSets',
 		ComplexAliasSet => 'complexAliasSets',
 	};
 }

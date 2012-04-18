@@ -1,15 +1,13 @@
-use strict;
-use warnings;
-use JSON::Any;
-use Data::Dumper;
-use Fcntl qw( :flock );
-use File::stat; # for testing mod time
-use IO::Compress::Gzip qw(gzip);
-use IO::Uncompress::Gunzip qw(gunzip);
-
 package ModelSEED::FileDB;
+
 use Moose;
 use namespace::autoclean;
+
+use JSON::Any;
+use File::stat; # for testing mod time
+use Fcntl qw( :flock );
+use IO::Compress::Gzip qw(gzip);
+use IO::Uncompress::Gunzip qw(gunzip);
 
 with 'ModelSEED::Database';
 
@@ -314,6 +312,7 @@ sub _get_object {
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
     gunzip \$gzip_obj => \$json_obj;
+#    $json_obj = $gzip_obj;
 
     return _decode($json_obj)
 }
@@ -336,6 +335,7 @@ sub _save_object {
     my $gzip_obj;
 
     gzip \$json_obj => \$gzip_obj;
+#    $gzip_obj = $json_obj;
 
     my $data_fh = $data->{data};
     my $start = $data->{index}->{end_pos};

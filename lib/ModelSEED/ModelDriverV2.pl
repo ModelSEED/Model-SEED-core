@@ -15,25 +15,9 @@ use Cwd;
 
 $|=1;
 #First checking to see if at least one argument has been provided
-my $driv;
-ModelSEED::Interface::interface::LOADENVIRONMENT();
-try {
-	$driv = ModelSEED::ModelDriverV2->new({
-		environment => {
-			username => ModelSEED::Interface::interface::USERNAME(),
-			password => ModelSEED::Interface::interface::PASSWORD(),
-			registeredseed => ModelSEED::Interface::interface::REGISTEREDSEED(),
-			seed => ModelSEED::Interface::interface::SEED(),
-			lasterror => ModelSEED::Interface::interface::LASTERROR(),
-			filename => ModelSEED::Interface::interface::ENVIRONMENTFILE(),
-		}
-	});
-} catch {
-	printErrorLog($_);
-    exit(1);
-};
+my $driv = ModelSEED::ModelDriverV2->new({});
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
-    print "Welcome to the Model SEED! You are currently logged in as: ".ModelSEED::Interface::interface::USERNAME().".\n";
+    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->environment()->username().".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";
     print "Possible usage:\n\n";
     print "1.) ModelDriver usage \"name of function\"\n";
@@ -170,8 +154,8 @@ sub printErrorLog {
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
     $errorFilename =~ s/\\/\//g;
-    ModelSEED::Interface::interface::LASTERROR($errorFilename);
-    ModelSEED::Interface::interface::SAVEENVIRONMENT();
+    $driv->environment()->lasterror($errorFilename);
+    $driv->environment()->save();
     print $errorFH <<MSG;
 > ModelDriver encountered an unrecoverable error:
 

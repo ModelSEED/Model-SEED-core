@@ -43,7 +43,7 @@ my $objects = [ qw(
 	Feature
 	Mapping
 	Role
-	Roleset
+	RoleSet
 	ReactionRule
 	ReactionRuleTransport
 	Complex

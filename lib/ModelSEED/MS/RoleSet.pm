@@ -1,16 +1,16 @@
 ########################################################################
-# ModelSEED::MS::Roleset - This is the moose object corresponding to the Roleset object
+# ModelSEED::MS::RoleSet - This is the moose object corresponding to the RoleSet object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 2012-03-26T23:22:35
 ########################################################################
 use strict;
-use ModelSEED::MS::DB::Roleset;
-package ModelSEED::MS::Roleset;
+use ModelSEED::MS::DB::RoleSet;
+package ModelSEED::MS::RoleSet;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::DB::Roleset';
+extends 'ModelSEED::MS::DB::RoleSet';
 # CONSTANTS:
 #TODO
 # FUNCTIONS:

@@ -1,4 +1,4 @@
-package ModelSEED::FileDB::FileIndex;
+package ModelSEED::FileDBold::FileIndex;
 
 use strict;
 use warnings;
@@ -283,7 +283,6 @@ sub _get_object {
     }
 
     my $uuid = _get_uuid($args, $index);
-
     my $start = $index->{uuid_index}->{$uuid}->{start};
     my $end   = $index->{uuid_index}->{$uuid}->{end};
 
@@ -291,8 +290,8 @@ sub _get_object {
     seek $data_fh, $start, 0 or die "";
     read $data_fh, $gzip_data, ($end - $start + 1);
 
-    my $data;
-    gunzip \$gzip_data => \$data;
+    my $data = $gzip_data;
+    #gunzip \$gzip_data => \$data;
 
     return _decode($data)
 }
@@ -401,8 +400,8 @@ sub _save_object {
 
     my $data = _encode($object);
     my $gzip_data;
-
-    gzip \$data => \$gzip_data or die "";
+	$gzip_data = $data;
+    #gzip \$data => \$gzip_data or die "";
 
     my $start = $index->{end_pos};
 

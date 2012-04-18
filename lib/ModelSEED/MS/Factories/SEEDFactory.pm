@@ -99,12 +99,10 @@ sub getRoleObject {
 	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
 	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
 	if (!defined($roleObj)) {
-		$roleObj = ModelSEED::MS::Role->new({
+		$roleObj = $args->{mapping}->create("Role",{
 			name => $args->{roleString},
-			searchname => $searchName
 		});
 	}
-	$args->{mapping}->add($roleObj);			
 	return $roleObj;
 }
 

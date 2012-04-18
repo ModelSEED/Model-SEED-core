@@ -1,12 +1,12 @@
-package ModelSEED::FileDB;
+package ModelSEED::FileDBold::FileDB;
 
 use Moose;
 use Moose::Util::TypeConstraints;
 use Cwd qw(abs_path);
 use File::Path qw(make_path);
-use ModelSEED::FileDB::FileIndex;
+use ModelSEED::FileDBold::FileIndex;
 
-with 'ModelSEED::Database';
+#with 'ModelSEED::Database';
 
 subtype 'Directory',
     as 'Str',
@@ -34,7 +34,7 @@ has indexes => (
 
 has user_index => (
     is      => 'ro',
-    isa     => 'ModelSEED::FileDB::FileIndex',
+    isa     => 'ModelSEED::FileDBold::FileIndex',
     builder => '_buildUserIndex'
 );
 
@@ -53,7 +53,7 @@ sub _buildIndicies {
     my $self = shift @_;
     my $indexes = {};
     foreach my $type (@{$self->types}) {
-        $indexes->{$type} = ModelSEED::FileDB::FileIndex->new({
+        $indexes->{$type} = ModelSEED::FileDBold::FileIndex->new({
             filename => $self->directory . "/" . $type
         });
     }
@@ -62,7 +62,7 @@ sub _buildIndicies {
 
 sub _buildUserIndex {
     my ($self) = @_;
-    return ModelSEED::FileDB::FileIndex->new({
+    return ModelSEED::FileDBold::FileIndex->new({
 	filename => $self->directory . "/Users"
     });
 }

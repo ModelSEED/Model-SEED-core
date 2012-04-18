@@ -537,6 +537,7 @@ int MFAProblem::BuildMFAProblem(Data* InData,OptimizationParameter*& InParameter
 		InData->ClearData("NAME",STRING);
 		InData->AddData("FOREIGNDB",RemoveExtension(RemovePath(Filename)).data(),STRING);
 		InData->AddData("NAME",RemoveExtension(RemovePath(Filename)).data(),STRING);
+		cout<<"MFA-Loading System :"<<Filename<<endl;
 		InData->LoadSystem(Filename);
 		Filename = RemoveExtension(Filename);
 		for (int i=FinalNonForeignCpd; i < InData->FNumSpecies(); i++) {
@@ -565,6 +566,7 @@ int MFAProblem::BuildMFAProblem(Data* InData,OptimizationParameter*& InParameter
 	//Reading in and marking lumped reactions
 	if (InParameters->AddLumpedReactions && InParameters->ThermoConstraints) {
 		int FinalNonlumped = InData->FNumReactions();
+		cout<<"MFA-Loading Lumped System :"<<GetParameter("lumped reaction database")<<endl;
 		InData->LoadSystem(GetParameter("lumped reaction database"));
 		for (int i=FinalNonlumped; i < InData->FNumReactions(); i++) {
 			InData->GetReaction(i)->SetMark(true);
@@ -6027,12 +6029,7 @@ int MFAProblem::IdentifyReactionLoops(Data* InData, OptimizationParameter* InPar
 int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InParameters) {
 	if (InData->GetData("Reaction list loaded",STRING).length() == 0) {
 		InData->AddData("Reaction list loaded","YES",STRING);
-		vector<string> ReactionList;
-		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
-		for (int i=0; i < rxntbl->number_of_objects();i++) {
-			StringDBObject* rxnobj = rxntbl->get_object(i);
-			ReactionList.push_back(rxnobj->get("id"));
-		}
+
 		vector<string>* AllowedUnbalancedReactions = StringToStrings(GetParameter("Allowable unbalanced reactions"),",");
 		//Getting dissapproved compartment list
 		vector<string>* DissapprovedCompartments = NULL;
@@ -6040,18 +6037,45 @@ int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InP
 			DissapprovedCompartments = StringToStrings(GetParameter("dissapproved compartments"),";");
 		}
 		//Iterating through the list and loading any reaction that is not already present in the model		
-		for (int i=0; i < int (ReactionList.size()); i++) {
+
+		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
+		cout << "Loading GapFillingReactions\n";
+		for (int i=0; i < rxntbl->number_of_objects();i++) {
+			StringDBObject* rxnobj = rxntbl->get_object(i);
+			string RxnId = rxnobj->get("id");
+
 			//Making sure the reaction is not on the KO list
 			bool AddReaction = true;
 			for (int j=0; j < int(InParameters->KOReactions.size()); j++) {
-				if (ReactionList[i].compare(InParameters->KOReactions[j]) == 0) {
+				if (RxnId.compare(InParameters->KOReactions[j]) == 0) {
 					AddReaction = false;
 					break;
 				}
 			}
-			if (AddReaction && InData->FindReaction("DATABASE",ReactionList[i].data()) == NULL) {
-				//The reaction is not currently in the model
-				Reaction* NewReaction = new Reaction(ReactionList[i],InData);
+
+			//Test to see if reaction is not in model
+			if (AddReaction && InData->FindReaction("DATABASE",RxnId.data()) != NULL) {
+			  AddReaction = false;
+			}
+			  
+			//Test status for OK flag
+			if(AddReaction && rxnobj->get("status").substr(0,2).compare("OK") != 0){
+			  cout << "Status for reaction " << RxnId << " not OK: " << rxnobj->get("status") << endl;
+			  AddReaction = false;
+			}
+
+			cout<<"Testing parameter: use database objects\t"<<GetParameter("use database objects")<<endl;
+		
+			if(AddReaction){
+			  cout << "Testing reaction " << RxnId << " with status " << rxnobj->get("status") << " and direction " << rxnobj->get("thermoReversibility") << "\t" << rxnobj->get("status").substr(0,2).compare("OK") << endl;
+
+			  Reaction* NewReaction = new Reaction(RxnId,InData);//,rxnobj->get("thermoReversibility"));;
+			  if(GetParameter("use database fields").compare("1") == 0){
+			    cout<<"Using database\n";
+			  }else{
+			    cout<<"Calculate for reaction\n";
+			  }
+				
 				//Checking that only approved compartments are involved in the reaction
 				bool ContainsDissapprovedCompartments = false;
 				if (DissapprovedCompartments != NULL) {

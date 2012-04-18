@@ -58,6 +58,8 @@ int Data::LoadSystem(string Filename, bool StructCues) {
 	ifstream Input;
 	SetData("FILENAME",RemovePath(Filename).data(),STRING);
 	
+	cout << "Loading System: "<<Filename<<endl;
+
 	//Checking if the filename specified is Complete indicating the complete database should be loaded
 	if (Filename.compare("Complete") == 0) {
 		vector<string> ReactionList;

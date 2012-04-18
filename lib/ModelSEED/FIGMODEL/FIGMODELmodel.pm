@@ -5833,7 +5833,17 @@ sub PrintSBMLFile {
 	if (-e $self->directory().$self->id().".xml") {
 		unlink($self->directory().$self->id().".xml");	
 	}
-	
+    # convert ids to SIds
+    my $idToSId = sub {
+        my $id = shift @_;
+        my $cpy = $id;
+        # SIds must begin with a letter
+        $cpy =~ s/^([^a-zA-Z])/A_$1/;
+        # SIDs must only contain letters numbers or '_'
+        $cpy =~ s/[^a-zA-Z0-9_]/_/g;
+        return $cpy;
+    };
+
 	#Handling media formulation for SBML file
 	my $mediaCpd;
 	if ($args->{media} ne "Complete") {
@@ -5894,8 +5904,7 @@ sub PrintSBMLFile {
 	}
 
 	#Printing header to SBML file
-	my $ModelName = $self->id();
-	$ModelName =~ s/\./_/g;
+	my $ModelName = $idToSId->($self->id());
 	my $output;
 	push(@{$output},'<?xml version="1.0" encoding="UTF-8"?>');
 	push(@{$output},'<sbml xmlns="http://www.sbml.org/sbml/level2" level="2" version="1" xmlns:html="http://www.w3.org/1999/xhtml">');

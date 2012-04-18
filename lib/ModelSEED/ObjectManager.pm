@@ -13,11 +13,11 @@ my $types = [ qw( Annotation AnnotationFeature Biochemistry
     ComplexRole Compound CompoundAlias CompoundPk CompoundStructure
     Compoundset CompoundsetCompound DefaultTransportedReagent  Feature
     Genome Mapping MappingAlias MappingComplex MappingReactionRule
-    MappingRole MappingRoleset Media MediaCompound Model ModelAlias ModelBiomass
+    MappingRole MappingRoleSet Media MediaCompound Model ModelAlias ModelBiomass
     ModelCompartment ModelReaction ModelTransportedReagent ModelessFeature
     Modelfba ModelfbaCompound ModelfbaReaction Permission Reaction
     ReactionAlias ReactionRule ReactionRuleTransport Reagent Reactionset
-    ReactionsetReaction Role Roleset RolesetRole
+    ReactionsetReaction Role RoleSet RoleSetRole
 )];
 
 # with 'ModelSEED::Role::ManagerRole' => { types => $types };

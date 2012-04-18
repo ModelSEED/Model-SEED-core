@@ -139,8 +139,8 @@ my $objectDefinitions = {
 	Reagent => {},
 	ReagentTransport => {},
 	Role => {},
-	Roleset => {},
-	RolesetRole => {}
+	RoleSet => {},
+	RoleSetRole => {}
 };
 
 $objectDefinitions->{Biochemistry} = {
@@ -746,7 +746,7 @@ $objectDefinitions->{Mapping} = {
 	],
 	subobjects => [
 		{name => "roles",class => "Role",type => "child"},
-		{name => "rolesets",class => "Roleset",type => "child"},
+		{name => "rolesets",class => "RoleSet",type => "child"},
 		{name => "reactionrules",class => "ReactionRule",type => "child"},
 		{name => "complexes",class => "Complex",type => "child"},
 	],
@@ -773,7 +773,7 @@ $objectDefinitions->{Role} = {
 	links => []
 };
 
-$objectDefinitions->{Roleset} = {
+$objectDefinitions->{RoleSet} = {
 	parents => ['Mapping'],
 	class => 'child',
 	attributes => [
@@ -789,7 +789,7 @@ $objectDefinitions->{Roleset} = {
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 0}
 	],
 	subobjects => [
-		{name => "roles",class => "RolesetRole",type => "link",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"}
+		{name => "roles",class => "RoleSetRole",type => "link",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"}
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []

@@ -4,7 +4,7 @@ package ModelSEED::MS::DB::Definitions;
 my $objectDefinitions = {};
 
 $objectDefinitions->{Genome} = {
-	parents => ['ObjectManager'],
+	parents => ['Annotation'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -578,7 +578,6 @@ $objectDefinitions->{CompoundSet} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
@@ -611,7 +610,6 @@ $objectDefinitions->{ReactionSet} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'id',perm => 'rw',type => 'Str',len => 32,req => 1},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1},
 	],
@@ -781,7 +779,7 @@ $objectDefinitions->{ModelReactionTransports} = {
 	attributes => [
 		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1},
-		{name => 'coefficient',perm => 'rw',type => 'Int',req => 1},
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
 	],
 	subobjects => [],
 	primarykeys => [ qw(model_uuid modelreaction_uuid compound_uuid compartmentIndex) ],
@@ -955,9 +953,9 @@ $objectDefinitions->{Mapping} = {
 	],
 	subobjects => [
 		{name => "roles",class => "Role",type => "child"},
-		{name => "rolesets",class => "Roleset",type => "child"},
+		{name => "rolesets",class => "RoleSet",type => "child"},
 		{name => "complexes",class => "Complex",type => "child"},
-		{name => "rolesetAliasSets",class => "RolesetAliasSet",type => "child"},
+		{name => "roleSetAliasSets",class => "RoleSetAliasSet",type => "child"},
 		{name => "roleAliasSets",class => "RoleAliasSet",type => "child"},
 		{name => "complexAliasSets",class => "ComplexAliasSet",type => "child"}
 	],
@@ -1027,7 +1025,7 @@ $objectDefinitions->{RoleAlias} = {
        ]
 };
 
-$objectDefinitions->{RolesetAliasSet} = {
+$objectDefinitions->{RoleSetAliasSet} = {
 	parents => ['Mapping'],
 	class => 'indexed',
 	attributes => [
@@ -1037,14 +1035,14 @@ $objectDefinitions->{RolesetAliasSet} = {
 		{name => 'source',perm => 'rw',type => 'Str',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
 	],
 	subobjects => [
-		{name => "rolesetAliases",class => "RolesetAlias",type => "child"},
+		{name => "roleSetAliases",class => "RoleSetAlias",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
 
-$objectDefinitions->{RolesetAlias} = {
-       parents => ['RolesetAliasSet'],
+$objectDefinitions->{RoleSetAlias} = {
+       parents => ['RoleSetAliasSet'],
        class => 'encompassed',
        attributes => [
               {name => 'roleset_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
@@ -1053,7 +1051,7 @@ $objectDefinitions->{RolesetAlias} = {
        subobjects => [],
        primarykeys => [ qw(alias roleset_uuid) ],
        links => [
-              {name => "roleset",attribute => "roleset_uuid",parent => "Mapping",class => "Roleset",query => "uuid"},
+              {name => "roleset",attribute => "roleset_uuid",parent => "Mapping",class => "RoleSet",query => "uuid"},
        ]
 };
 
@@ -1066,7 +1064,6 @@ $objectDefinitions->{Role} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'seedfeature',perm => 'rw',type => 'Str',len => 36,req => 0}
 	],
 	subobjects => [],
@@ -1074,7 +1071,7 @@ $objectDefinitions->{Role} = {
 	links => []
 };
 
-$objectDefinitions->{Roleset} = {
+$objectDefinitions->{RoleSet} = {
 	alias => "Mapping",
 	parents => ['Mapping'],
 	class => 'child',
@@ -1084,20 +1081,19 @@ $objectDefinitions->{Roleset} = {
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'public',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'class',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'subclass',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "unclassified"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 1}
 	],
 	subobjects => [
-		{name => "rolesroles",class => "RolesetRole",type => "encompassed"},
+		{name => "rolesroles",class => "RoleSetRole",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
 
-$objectDefinitions->{RolesetRole} = {
-	parents => ['Roleset'],
+$objectDefinitions->{RoleSetRole} = {
+	parents => ['RoleSet'],
 	class => 'encompassed',
 	attributes => [
 		{name => 'role_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
@@ -1118,7 +1114,6 @@ $objectDefinitions->{Complex} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'searchname',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
 	],
 	subobjects => [
 		{name => "complexreactioninstances",class => "ComplexReactionInstance",type => "encompassed"},

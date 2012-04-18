@@ -1,20 +1,20 @@
 ########################################################################
-# ModelSEED::MS::DB::RolesetRole - This is the moose object corresponding to the RolesetRole object
+# ModelSEED::MS::DB::RoleSetRole - This is the moose object corresponding to the RoleSetRole object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-05T22:41:35
+# Date of module creation: 2012-04-11T07:23:38
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::RolesetRole;
+package ModelSEED::MS::DB::RoleSetRole;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Roleset', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::RoleSet', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -35,7 +35,7 @@ sub _buildrole {
 
 
 # CONSTANTS:
-sub _type { return 'RolesetRole'; }
+sub _type { return 'RoleSetRole'; }
 
 
 __PACKAGE__->meta->make_immutable;

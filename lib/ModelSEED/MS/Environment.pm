@@ -12,12 +12,12 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
-has username => ( is => 'rw', isa => 'Str');
-has password => ( is => 'rw', isa => 'Str');
-has registeredseed => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
+has username => ( is => 'rw', isa => 'Str',default => "public");
+has password => ( is => 'rw', isa => 'Str',default => "public");
+has registeredSEED => ( is => 'rw', isa => 'HashRef',default => sub{return {};});
 has seed => ( is => 'rw', isa => 'Str',default => 'local' );
 has lasterror => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
-has filename => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
+has filename => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/config/newenvironment.dat");
 has filedb => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/");
 has selectedAliases => ( is => 'rw', isa => 'HashRef',default => sub{
 	return {
@@ -25,7 +25,7 @@ has selectedAliases => ( is => 'rw', isa => 'HashRef',default => sub{
 		CompoundAliasSet => "ModelSEED",
 		ComplexAliasSet => "ModelSEED",
 		RoleAliasSet => "ModelSEED",
-		RolesetAliasSet => "ModelSEED"
+		RoleSetAliasSet => "ModelSEED"
 	};
 });
 has biochemistry => ( is => 'rw', isa => 'ModelSEED::uuid');
@@ -62,8 +62,8 @@ sub save {
 		lasterror => "s",
 		mapping => "s",
 		biochemistry => "s",
-		registeredseed => "h",
-		selectedaliases => "h"
+		registeredSEED => "h",
+		selectedAliases => "h"
 	};
 	my $output = ["SETTING\tVALUE"];
 	foreach my $var (keys(%{$variables})) {
@@ -89,7 +89,7 @@ sub load {
 	if (!defined($self->filename()) || !-e $self->filename()) {
 		ModelSEED::utilities::ERROR("Cannot load environment filename!");
 	}
-	my $data = ModelSEED::utilities::LOADFILE($self->filename(),$output);
+	my $data = ModelSEED::utilities::LOADFILE($self->filename());
 	my $variables = {
 		username => "s",
 		password => "s",
@@ -97,19 +97,19 @@ sub load {
 		lasterror => "s",
 		mapping => "s",
 		biochemistry => "s",
-		registeredseed => "h",
-		selectedaliases => "h"
+		registeredSEED => "h",
+		selectedAliases => "h"
 	};
-	$self->registeredseed({});
+	$self->registeredSEED({});
 	for (my $i=1; $i < @{$data}; $i++) {
 		my $array = [split(/\t/,$data->[$i])];
 		if (defined($array->[1]) && defined($variables->{$array->[0]})) {
 			my $function = $array->[0];
 			if ($variables->{$array->[0]} eq "s") {
-				$self->$function($array->[0]);
+				$self->$function($array->[1]);
 			} elsif ($variables->{$array->[0]} eq "h") {
-				$variables->{$array->[0]} =~ s/[\{\}]//g;
-				my $newarray = [split(/,/,$variables->{$array->[0]})];
+				$array->[1] =~ s/[\{\}]//g;
+				my $newarray = [split(/,/,$array->[1])];
 				for (my $j=1; $j < @{$newarray}; $j++) {
 					my $item = [split(/=/,$newarray->[$j])];
 					if (defined($item->[1])) {
