@@ -1,4 +1,4 @@
-# Unit tests for FileDB.pm 
+# Performance tests for FileDB.pm 
 use strict;
 use warnings;
 
@@ -18,6 +18,7 @@ use Time::HiRes qw(time);
 
 my $dir = tempdir();
 
+my $type = 'test';
 my $db = ModelSEED::FileDB->new({filename => "$dir/test"});
 
 # test time for small objects
@@ -64,13 +65,13 @@ sub save_object {
     my ($write, $read, $delete) = (0,0,0);
     for (my $i=0; $i<$num; $i++) {
 	my $time = time;
-	$db->save_object($obj->{id}, $obj);
+	$db->save_object($type, $obj->{id}, $obj);
 	$write += time - $time;
 	$time = time;
-	my $obj2 = $db->get_object($obj->{id});
+	my $obj2 = $db->get_object($type, $obj->{id});
 	$read += time - $time;
 	$time = time;
-	$db->delete_object($obj->{id});
+	$db->delete_object($type, $obj->{id});
 	$delete += time - $time;
 
 	unless (eq_deeply($obj, $obj2)) {
@@ -87,7 +88,7 @@ sub pretty_size {
     my ($size) = @_;
 
     my $suf_ind = 0;
-    my $suf = ['B', 'KB', 'MB', 'GB', 'TB'];
+    my $suf = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
 
     while ($size >= 1024) {
 	$size = $size / 1024;
