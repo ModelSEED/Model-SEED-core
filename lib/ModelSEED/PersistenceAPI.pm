@@ -6,9 +6,9 @@ use Try::Tiny;
 
 use ModelSEED::Database;
 
-has db          => ( is => 'rw', isa => 'ModelSEED::Database' );
-has db_type     => ( is => 'rw', isa => 'Str' );
-has db_config   => ( is => 'rw', isa => 'Str' );
+has db        => ( is => 'rw', isa => 'ModelSEED::Database' );
+has db_type   => ( is => 'rw', isa => 'Str', required => 1 );
+has db_config => ( is => 'rw', isa => 'HashRef', required => 1 );
 
 =head
 
@@ -27,57 +27,67 @@ params
 sub BUILD {
     my ($self) = @_;
 
-    my $env = $self->environment();
-    $self->set_environment($env);
-}
-
-sub set_environment {
-    my ($self, $env) = @_;
-
-    $self->environment($env);
-
-    # check required environment params
-    my $required = ['db_type', 'db_config'];
-    foreach my $req (@$required) {
-	unless (exists($env->{$req})) {
-	    die "Required environment parameter not found: '$req'";
-	}
-    }
-
     # get database connection
-    my $db_mod = "ModelSEED::" . $env->{db_type};
+    my $db_mod = "ModelSEED::" . $self->db_type;
     my $db_req = $db_mod . ".pm";
     $db_req =~ s/::/\//g;
 
-    my $db;
     try {
 	require $db_req;
-
-	$self->db($db_mod->new($env->{db_config}));
+	$self->db($db_mod->new($self->db_config));
     } catch {
 	die "Could not import database package: $db_mod";
     }
 }
 
+
+
+sub _get_id_from_alias {
+    my ($self, $
+}
+
+
+sub has_object {
+    my ($user, $type, $alias) = @_;
+
+}
+
 =head
     get_object(user, type, alias);
 =cut
-sub get_object {}
+sub get_object {
+    my ($user, $type, $alias) = @_;
+
+    my $data = $self->get_data($user, $type, $alias);
+}
 
 =head
     get_data(user, type, alias);
 =cut
-sub get_data {}
+sub get_data {
+    my ($user, $type, $alias) = @_;
+
+    
+}
 
 =head
     save_object(user, type, alias, object);
 =cut
-sub save_object {}
+sub save_object {
+    my ($user, $type, $alias, $object) = @_;
+
+    if ($self->has_object($user, $type, $alias)) {
+	
+    }
+}
 
 =head
     delete_object(user, type, alias);
 =cut
-sub delete_object {}
+sub delete_object {
+    my ($user, $type, $alias) = @_;
+
+}
 
 =head
     find_aliases(user, type);
