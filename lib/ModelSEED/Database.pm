@@ -14,6 +14,8 @@ requires 'get_object';
 
 =head save_object
 (success) = $db->save_object(type, id, object);
+
+object can be hash/array ref or an already encoded json string
 =cut
 requires 'save_object';
 

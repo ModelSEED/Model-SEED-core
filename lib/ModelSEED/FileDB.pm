@@ -343,7 +343,14 @@ sub _save_object {
 	return 0;
     }
 
-    my $json_obj = _encode($object);
+    my $json_obj;
+    my $ref = ref($object);
+    if ($ref eq 'ARRAY' || $ref eq 'HASH') {
+	$json_obj = _encode($object);
+    } else {
+	$json_obj = $object;
+    }
+
     my $gzip_obj;
 
     gzip \$json_obj => \$gzip_obj;
