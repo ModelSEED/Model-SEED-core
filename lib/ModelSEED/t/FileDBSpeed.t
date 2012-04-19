@@ -18,7 +18,7 @@ use Time::HiRes qw(time);
 
 my $dir = tempdir();
 
-my $db = ModelSEED::FileDB->new({filename => "$dir/test"});
+my $db = ModelSEED::FileDB->new({ directory => $dir });
 
 # test time for small objects
 my $object = build_object(1);

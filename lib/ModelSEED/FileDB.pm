@@ -4,6 +4,7 @@ use Moose;
 use namespace::autoclean;
 
 use JSON::Any;
+use File::Path qw(make_path);
 use File::stat; # for testing mod time
 use Fcntl qw( :flock );
 use IO::Compress::Gzip qw(gzip);
@@ -27,7 +28,8 @@ my $DATA_EXT  = 'dat';
 my $LOCK_EXT  = 'lock';
 
 # External attributes (configurable)
-has filename => (is => 'rw', isa => 'Str', required => 1);
+has directory => (is => 'rw', isa => 'Str', required => 1);
+has filename  => (is => 'rw', isa => 'Str', default => 'database');
 
 =head
 
@@ -47,7 +49,12 @@ Index Structure
 sub BUILD {
     my ($self) = @_;
 
-    my $file = $self->filename;
+    my $dir = $self->directory;
+    unless (-d $dir) {
+	make_path($dir);
+    }
+
+    my $file = $self->_get_file();
 
     my $ind = -f "$file.$INDEX_EXT";
     my $met = -f "$file.$META_EXT";
@@ -89,6 +96,12 @@ sub _initialize_index {
     };
 }
 
+sub _get_file {
+    my ($self) = @_;
+
+    return $self->directory . '/' . $self->filename;
+}
+
 sub _perform_transaction {
     my ($self, $files, $sub, @args) = @_;
 
@@ -97,7 +110,7 @@ sub _perform_transaction {
     my $meta_mode  = $files->{meta};
     my $data_mode  = $files->{data};
 
-    my $file = $self->filename;
+    my $file = $self->_get_file();
 
     # use a semaphore file for locking
     open LOCK, ">$file.$LOCK_EXT" or die "Couldn't open file: $!";

@@ -10,7 +10,7 @@ my $testCount = 0;
 {
     my $dir = tempdir();
 
-    my $db = ModelSEED::FileDB->new({filename => "$dir/foo"});
+    my $db = ModelSEED::FileDB->new({ directory => $dir });
     ok defined $db, "Database successfully created";
 
     # Test methods for non-existant object
