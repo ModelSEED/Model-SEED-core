@@ -7,8 +7,7 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-#use ModelSEED::FileDBold::FileDB;
-use ModelSEED::FileDB;
+use ModelSEED::PersistenceAPI;
 use ModelSEED::MS::User;
 use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::Mapping;
@@ -19,7 +18,7 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
-has db => ( is => 'rw', isa => 'ModelSEED::FileDB', required => 1 );
+has api => ( is => 'rw', isa => 'ModelSEED::PersistenceAPI', required => 1 );
 has username => ( is  => 'rw', isa => 'Str' );
 has password => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User', lazy => 1, builder => '_builduser');
@@ -47,7 +46,6 @@ sub getSelectedAliases {
 
 sub authenticate {
 	my ($self,$username,$password) = @_;
-	#my $userData = $self->filedb()->authenticate({username => $username,password => $password});
 	my $userData = {
 		login => "chenry",
 		password => "password",
@@ -87,8 +85,7 @@ sub get {
 	my ($self,$type,$uuid) = @_;
 	my $class = "ModelSEED::MS::".$type;
 	if (!defined($self->objects()->{$uuid})) {
-#		$self->objects()->{$uuid} = $class->new($self->db()->get_object($type,{user => $self->username(),uuid => $uuid}));	
-		$self->objects()->{$uuid} = $class->new($self->db()->get_object($uuid));	
+		$self->objects()->{$uuid} = $class->new($self->db()->get_object($uuid));
 	}
 	return $self->objects()->{$uuid};
 }
@@ -107,7 +104,6 @@ sub create {
 
 sub save {
 	my ($self,$object) = @_;
-	#return $self->db()->save_object($object->_type(),{user => $self->username(),object => $object->serializeToDB(),uuid => $object->uuid()});
 	return $self->db()->save_object($object->uuid(),$object->serializeToDB());
 }
 
