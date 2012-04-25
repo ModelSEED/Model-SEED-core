@@ -506,13 +506,12 @@ int LoadParameterFile(string Filename) {
 	//Read in the parameters and store them
 	do {
 		vector<string>* Strings = GetStringsFileline(Input, "|",false);
-		if(Parameters[ (*Strings)[0] ].length()==0){
-		  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
-		}else{
-		  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
-		}
-
 		if (Strings->size() >= 2) {
+			if(Parameters[ (*Strings)[0] ].length()==0){
+			  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			}else{
+			  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			}
 			Parameters[ (*Strings)[0] ] = (*Strings)[1];
 		}
 		delete Strings;
