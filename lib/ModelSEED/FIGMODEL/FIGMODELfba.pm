@@ -1053,7 +1053,7 @@ sub runFBA {
 	$self->createProblemDirectory({parameterFile => $args->{parameterFile},printToScratch => $args->{printToScratch}});
 	my $ParameterFileList = $self->parameter_files();
 	for (my $i=0; $i < @{$ParameterFileList}; $i++) {
-		if ($ParameterFileList->[$i] =~ m/^\// || $ParameterFileList->[$i] =~ m/^[a-z]:/i) {
+		if ($ParameterFileList->[$i] =~ m/^\// || $ParameterFileList->[$i] =~ m/^[a-zA-Z]:/i) {
 			$commandLine->{files} .= " parameterfile \"".$ParameterFileList->[$i]."\"";
 		} else {
 			$commandLine->{files} .= " parameterfile \"../Parameters/".$ParameterFileList->[$i].".txt\"";
