@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::MS::DB::Insertion - This is the moose object corresponding to the Insertion object
+# ModelSEED::MS::DB::FBAObjectiveTerm - This is the moose object corresponding to the FBAObjectiveTerm object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -7,20 +7,21 @@
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::Insertion;
+package ModelSEED::MS::DB::FBAObjectiveTerm;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Genome', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba|FBASolution', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has insertionTarget => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has sequence => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has compartment_uuid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
 
 
 # ANCESTOR:
@@ -35,7 +36,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:
-sub _type { return 'Insertion'; }
+sub _type { return 'FBAObjectiveTerm'; }
 
 
 __PACKAGE__->meta->make_immutable;

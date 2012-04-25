@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::MS::DB::ModelReactionRawGPR - This is the moose object corresponding to the ModelReactionRawGPR object
+# ModelSEED::MS::DB::GeneKO - This is the moose object corresponding to the GeneKO object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -7,19 +7,18 @@
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::ModelReactionRawGPR;
+package ModelSEED::MS::DB::GeneKO;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::Modelfba', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
-has isCustomGPR => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1' );
-has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'UNKNOWN' );
+has feature_uuid => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 
 
 
@@ -31,7 +30,7 @@ has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typ
 
 
 # CONSTANTS:
-sub _type { return 'ModelReactionRawGPR'; }
+sub _type { return 'GeneKO'; }
 
 
 __PACKAGE__->meta->make_immutable;

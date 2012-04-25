@@ -2107,18 +2107,18 @@ sub completeGapfilling {
 		});
 	}
 	#Assessing the gapfilling solution
-	if ($args->{testsolution} == 1) {
-		$results = $self->fbaTestGapfillingSolution({
-			fbaStartParameters => {
-				media => "Complete",
-				drnRxn => $args->{drnRxn}	
-			},
-			problemDirectory => $self->id()."GFT"
-		});
-		if (defined($results->{fbaObj})) {
-			$results->{fbaObj}->clearOutput();
-		}
-	}
+#	if ($args->{testsolution} == 1) {
+#		$results = $self->fbaTestGapfillingSolution({
+#			fbaStartParameters => {
+#				media => "Complete",
+#				drnRxn => $args->{drnRxn}	
+#			},
+#			problemDirectory => $self->id()."GFT"
+#		});
+#		if (defined($results->{fbaObj})) {
+#			$results->{fbaObj}->clearOutput();
+#		}
+#	}
 	$self->set_status(2,"New gapfilling complete");
 	$self->update_model_stats();
 	#$self->update_stats_for_gap_filling(time() - $start);
