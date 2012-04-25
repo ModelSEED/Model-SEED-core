@@ -258,16 +258,18 @@ int LoadTextDatabase() {
 	if (!OpenInput(Input,Filename)) {
 		return FAIL;
 	}
-
+	cout << Filename << "\tfile!" << endl;
 	bool New = false;
 	string CurrentObject;
 	string CurrentObjectID;
 	while (!Input.eof()) {
 		vector<string>* Strings = GetStringsFileline(Input, "|");
-
+		
 		if (Strings->size() == 1 && (*Strings)[0].compare("NEW") == 0) {
+			cout << (*Strings)[0] << "\tValue1" << endl;		
 			New = true;
 		} else if (Strings->size() == 2) {
+			cout << (*Strings)[0] << "\tValue2" << endl;
 			if (New) {
 				CurrentObject = (*Strings)[0];
 				CurrentObjectID = (*Strings)[1];
