@@ -437,9 +437,9 @@ sub atoms {
     my $self=shift;
     return {} if !defined($self->ppo()); #some compounds in equations no longer exist in database?!
     my $formula=$self->ppo()->formula();
-    #special case of electron
-    return {$self->id()=>1} if $self->id() eq "cpd12713";
-    return {'noformula'=>1} if !$formula || $formula eq 'noformula';
+    #special cases of electrons/protons
+    return {} if $self->id() eq "cpd12713" || $self->id() eq "cpd11632";
+    return {"noformula"=>1} if !$formula || $formula eq 'noformula';
 
     my @atoms = ($formula =~ /(\D[a-z]?\d*)/g);
     my %atomKey=();    

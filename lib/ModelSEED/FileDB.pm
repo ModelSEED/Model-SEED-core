@@ -4,6 +4,7 @@ use Moose;
 use namespace::autoclean;
 
 use JSON::Any;
+use File::Path qw(make_path);
 use File::stat; # for testing mod time
 use Fcntl qw( :flock );
 use IO::Compress::Gzip qw(gzip);
@@ -27,7 +28,8 @@ my $DATA_EXT  = 'dat';
 my $LOCK_EXT  = 'lock';
 
 # External attributes (configurable)
-has filename => (is => 'rw', isa => 'Str', required => 1);
+has directory => (is => 'rw', isa => 'Str', required => 1);
+has filename  => (is => 'rw', isa => 'Str', default => 'database');
 
 =head
 
@@ -47,7 +49,12 @@ Index Structure
 sub BUILD {
     my ($self) = @_;
 
-    my $file = $self->filename;
+    my $dir = $self->directory;
+    unless (-d $dir) {
+	make_path($dir);
+    }
+
+    my $file = $self->_get_file();
 
     my $ind = -f "$file.$INDEX_EXT";
     my $met = -f "$file.$META_EXT";
@@ -89,6 +96,12 @@ sub _initialize_index {
     };
 }
 
+sub _get_file {
+    my ($self) = @_;
+
+    return $self->directory . '/' . $self->filename;
+}
+
 sub _perform_transaction {
     my ($self, $files, $sub, @args) = @_;
 
@@ -97,7 +110,7 @@ sub _perform_transaction {
     my $meta_mode  = $files->{meta};
     my $data_mode  = $files->{data};
 
-    my $file = $self->filename;
+    my $file = $self->_get_file();
 
     # use a semaphore file for locking
     open LOCK, ">$file.$LOCK_EXT" or die "Couldn't open file: $!";
@@ -274,14 +287,14 @@ sub rebuild_data {
 =cut
 
 sub has_object {
-    my ($self, $id) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ index => 'r' },
-				       \&_has_object, $id);
+				       \&_has_object, @args);
 }
 
 sub _has_object {
-    my ($data, $id) = @_;
+    my ($data, $type, $id) = @_;
 
     if (defined($data->{index}->{ids}->{$id})) {
 	return 1;
@@ -291,16 +304,16 @@ sub _has_object {
 }
 
 sub get_object {
-    my ($self, $id) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ index => 'r', data => 'r' },
-				       \&_get_object, $id);
+				       \&_get_object, @args);
 }
 
 sub _get_object {
-    my ($data, $id) = @_;
+    my ($data, $type, $id) = @_;
 
-    unless (_has_object($data, $id)) {
+    unless (_has_object($data, $type, $id)) {
 	return;
     }
 
@@ -312,30 +325,35 @@ sub _get_object {
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
     gunzip \$gzip_obj => \$json_obj;
-#    $json_obj = $gzip_obj;
 
     return _decode($json_obj)
 }
 
 sub save_object {
-    my ($self, $id, $object) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ index => 'w', data => 'w', meta => 'w' },
-				       \&_save_object, $id, $object);
+				       \&_save_object, @args);
 }
 
 sub _save_object {
-    my ($data, $id, $object) = @_;
+    my ($data, $type, $id, $object) = @_;
 
-    if (_has_object($data, $id)) {
+    if (_has_object($data, $type, $id)) {
 	return 0;
     }
 
-    my $json_obj = _encode($object);
+    my $json_obj;
+    my $ref = ref($object);
+    if ($ref eq 'ARRAY' || $ref eq 'HASH') {
+	$json_obj = _encode($object);
+    } else {
+	$json_obj = $object;
+    }
+
     my $gzip_obj;
 
     gzip \$json_obj => \$gzip_obj;
-#    $gzip_obj = $json_obj;
 
     my $data_fh = $data->{data};
     my $start = $data->{index}->{end_pos};
@@ -352,16 +370,16 @@ sub _save_object {
 }
 
 sub delete_object {
-    my ($self, $id) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ index => 'w', meta => 'w' },
-				       \&_delete_object, $id);
+				       \&_delete_object, @args);
 }
 
 sub _delete_object {
-    my ($data, $id) = @_;
+    my ($data, $type, $id) = @_;
 
-    unless (_has_object($data, $id)) {
+    unless (_has_object($data, $type, $id)) {
 	return 0;
     }
 
@@ -375,14 +393,14 @@ sub _delete_object {
 }
 
 sub get_metadata {
-    my ($self, $id, $selection) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ meta => 'r' },
-				       \&_get_metadata, $id, $selection);
+				       \&_get_metadata, @args);
 }
 
 sub _get_metadata {
-    my ($data, $id, $selection) = @_;
+    my ($data, $type, $id, $selection) = @_;
 
     my $meta = $data->{meta}->{$id};
     unless (defined($meta)) {
@@ -415,14 +433,14 @@ sub _get_metadata {
 }
 
 sub set_metadata {
-    my ($self, $id, $selection, $metadata) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ meta => 'w' },
-				       \&_set_metadata, $id, $selection, $metadata);
+				       \&_set_metadata, @args);
 }
 
 sub _set_metadata {
-    my ($data, $id, $selection, $metadata) = @_;
+    my ($data, $type, $id, $selection, $metadata) = @_;
 
     my $meta = $data->{meta}->{$id};
     unless (defined($meta)) {
@@ -458,14 +476,14 @@ sub _set_metadata {
 }
 
 sub remove_metadata {
-    my ($self, $id, $selection) = @_;
+    my ($self, @args) = @_;
 
     return $self->_perform_transaction({ meta => 'w' },
-				       \&_remove_metadata, $id, $selection);
+				       \&_remove_metadata, @args);
 }
 
 sub _remove_metadata {
-    my ($data, $id, $selection) = @_;
+    my ($data, $type, $id, $selection) = @_;
 
     my $meta = $data->{meta}->{$id};
     unless (defined($meta)) {

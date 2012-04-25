@@ -1,4 +1,4 @@
-package ModelSEED::CLI::mseed::Command::login;
+package ModelSEED::App::mseed::Command::login;
 use ModelSEED::FIGMODEL;
 use IO::Prompt;
 use base 'App::Cmd::Command';

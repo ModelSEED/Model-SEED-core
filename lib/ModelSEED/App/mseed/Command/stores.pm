@@ -1,5 +1,5 @@
-package ModelSEED::CLI::mseed::Command::stores; 
-use ModelSEED::CLI::stores;
+package ModelSEED::App::mseed::Command::stores; 
+use ModelSEED::App::stores;
 use base 'App::Cmd::Command';
 use autouse 'Data::Dumper' => qw(Dumper);
 sub abstract { "Alias to mseed-stores command" }
@@ -8,7 +8,7 @@ sub execute {
     {
         local @ARGV = @ARGV;
         my $arg0 = shift @ARGV;
-        my $app = ModelSEED::CLI::stores->new;    
+        my $app = ModelSEED::App::stores->new;    
         $app->run;
     }
 }

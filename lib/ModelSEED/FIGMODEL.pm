@@ -3247,7 +3247,6 @@ sub import_model {
 
 		    #Special update flag for integrating mol file and inchi data
 		    #Need to make sure that the same compound doesn't have an alias with KEGGimport.45632 as the type.
-		    
 		    my $test_alias = $mdl->figmodel()->database()->get_object("cpdals",{COMPOUND=>$cpd->id(),type=>"KEGGimport.45632"});
 
 		    my $Update=0;
@@ -3265,8 +3264,10 @@ sub import_model {
 			if (!defined($cpd->charge()) || $cpd->charge() eq "" || $cpd->charge() == 10000000 || 
 			    ($Update==1 && $cpd->charge() != $row->{"CHARGE"}->[0])){
 			    $cpd->charge(10000000) if !defined($cpd->charge());
-			    push(@{$result->{outputFile}},"Updating charge for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."");
-			    $cpd->charge($row->{"CHARGE"}->[0]);
+			    if($cpd->charge() ne $row->{"CHARGE"}->[0]){
+				push(@{$result->{outputFile}},"Updating charge for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]."");
+				$cpd->charge($row->{"CHARGE"}->[0]);
+			    }
 			}
 		    }
 		    if (defined($row->{"MASS"}->[0]) && $row->{"MASS"} ne "" && $row->{"MASS"} != 10000000){
@@ -3276,8 +3277,10 @@ sub import_model {
 			if (!defined($cpd->mass()) || $cpd->mass() eq "" || $cpd->mass() == 10000000 || 
 			    ($Update==1 && $cpd->mass() != $row->{"MASS"}->[0])){
 			    $cpd->mass(10000000) if !defined($cpd->mass());
-			    push(@{$result->{outputFile}},"Updating mass for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
-			    $cpd->mass($row->{"MASS"}->[0]);
+			    if($cpd->mass() ne $row->{"MASS"}->[0]){
+				push(@{$result->{outputFile}},"Updating mass for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
+				$cpd->mass($row->{"MASS"}->[0]);
+			    }
 			}
 		    }
 		    if (defined($row->{"FORMULA"}->[0]) && $row->{"FORMULA"} ne "" && $row->{"FORMULA"} ne "noformula"){
@@ -3287,8 +3290,10 @@ sub import_model {
 			if (!defined($cpd->formula()) || $cpd->formula() eq "" || $cpd->formula() eq "noformula" || 
 			    ($Update==1 && $cpd->formula() ne $row->{"FORMULA"}->[0])) {
 			    $cpd->formula("noformula") if !defined($cpd->formula());
-			    push(@{$result->{outputFile}},"Updating formula for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
-			    $cpd->formula($row->{"FORMULA"}->[0]);
+			    if($cpd->formula() ne $row->{"FORMULA"}->[0]){
+				push(@{$result->{outputFile}},"Updating formula for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
+				$cpd->formula($row->{"FORMULA"}->[0]);
+			    }
 			}
 		    }
 		    if (defined($row->{"STRINGCODE"}->[0]) && $row->{"STRINGCODE"} ne "" && $row->{"STRINGCODE"} ne "nostringcode"){
@@ -3298,8 +3303,10 @@ sub import_model {
 			if (!defined($cpd->stringcode()) || $cpd->stringcode() eq "" || $cpd->stringcode() eq "nostringcode" || 
 			    ($Update==1 && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0])){
 			    $cpd->stringcode("nostringcode") if !defined($cpd->stringcode());
-			    push(@{$result->{outputFile}},"Updating stringcode for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]);
-			    $cpd->stringcode($row->{"STRINGCODE"}->[0]);
+			    if($cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
+				push(@{$result->{outputFile}},"Updating stringcode for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]);
+				$cpd->stringcode($row->{"STRINGCODE"}->[0]);
+			    }
 			}
 		    }
 		    if (defined($row->{"GROUPS"}->[0]) && $row->{"GROUPS"}->[0] ne "" && $row->{"GROUPS"}->[0] ne "nogroups"){
@@ -3309,8 +3316,10 @@ sub import_model {
 			if (!defined($cpd->structuralCues()) || $cpd->structuralCues() eq "" || $cpd->structuralCues() eq "nogroups" || 
 			    ($Update==1 && $cpd->structuralCues() ne join("|",@{$row->{"GROUPS"}}))) {
 			    $cpd->structuralCues("nogroups") if !defined($cpd->structuralCues());
-			    push(@{$result->{outputFile}},"Updating groups for ".$cpd->id()." from ".$cpd->structuralCues()." to ".join("|",@{$row->{"GROUPS"}}));
-			    $cpd->structuralCues(join("|",@{$row->{"GROUPS"}}));
+			    if($cpd->structuralCues() ne join("|",@{$row->{"GROUPS"}})){
+				push(@{$result->{outputFile}},"Updating groups for ".$cpd->id()." from ".$cpd->structuralCues()." to ".join("|",@{$row->{"GROUPS"}}));
+				$cpd->structuralCues(join("|",@{$row->{"GROUPS"}}));
+			    }
 			}
 		    }
 		} else {
@@ -3373,24 +3382,6 @@ sub import_model {
 	}
 	close(FOUNDCPD);
 	close(NEWCPD);
-
-	#loading the cues for deltaG
-	open(FH, "< ",$self->config("cues data filename")->[0]);
-	my $header=1;
-	my @temp=();
-	my %Cues_Energy=();
-	my %Cues_EnergyUncertainty=();
-	while(<FH>){
-	    chomp;
-	    if($header){$header--;next;}
-	    @temp=split(/\t/,$_);
-	    my @cues=split(/\|/,$temp[0]);
-	    foreach my $c(@cues){
-		$Cues_Energy{$c}=$temp[2];
-		$Cues_EnergyUncertainty{$c}=$temp[4];
-	    }
-	}
-	close(FH);
 
 	open(NEWRXN, "> ".$self->ws()->directory()."mdl-importmodel_New_Reactions_".$id);
 	open(FOUNDRXN, "> ".$self->ws()->directory()."mdl-importmodel_Found_Reactions_".$id);
@@ -3473,7 +3464,11 @@ sub import_model {
 		}
 		my $prior_eqn=$codeResults->{code};
 
-		($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation}) = $self->ApplyStoichiometryCorrections($codeResults->{code},$codeResults->{reverseCode},$codeResults->{fullEquation});
+#		($codeResults->{code},
+#		 $codeResults->{reverseCode},
+#		 $codeResults->{fullEquation}) = $self->ApplyStoichiometryCorrections($codeResults->{code},
+#										      $codeResults->{reverseCode},
+#										      $codeResults->{fullEquation});
 
 		my $rxn = $mdl->figmodel()->database()->get_object("reaction",{code => $codeResults->{code}});
 		if (!defined($rxn)) {
@@ -3493,81 +3488,6 @@ sub import_model {
 			if ($row->{"DIRECTIONALITY"}->[0] ne $rxn->reversibility() && $rxn->reversibility() ne "<=>") {
 				$rxn->reversibility("<=>");
 			}
-
-			my $test_alias = $mdl->figmodel()->database()->get_object("rxnals",{COMPOUND=>$rxn->id(),type=>"KEGGimport.45632"});
-
-			my $Update=0;
-			if($args->{owner} eq "seaver" &&
-			   ($id eq "KEGGimport.45632" || 
-			    ($id =~ /Cyc\.45632/ && !defined($test_alias)) || 
-			    $id =~ /^Test/)){
-			    $Update=1;
-			}
-
-			if($Update==1){
-			    my ($deltaG,$deltaGErr,$sCues) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
-												      energy=>\%Cues_Energy,
-												      uncertainty=>\%Cues_EnergyUncertainty});
-
-			    my $thermoreversibility={"direction"=>"","status"=>"No deltaG"};
-			    if($deltaG ne ''){
-				$thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
-														deltaG=>$deltaG},deltaGerr=>$deltaGErr);
-			    }else{
-				$deltaG=10000000;
-				$deltaGErr=10000000;
-			    }
-
-			    if($deltaG != 10000000){
-				if(defined($rxn->deltaG()) && $rxn->deltaG() != $deltaG){
-				    push(@{$result->{outputFile}},"deltaG different for ".$rxn->id()." from ".$rxn->deltaG()." to ".$deltaG);
-				}
-				if (!defined($rxn->deltaG()) || $rxn->deltaG() eq "" || $rxn->deltaG() == 10000000 || 
-				    ($Update==1 && $rxn->deltaG() != $deltaG)){
-				    $rxn->deltaG(10000000) if !defined($rxn->deltaG());
-				    push(@{$result->{outputFile}},"Updating deltaG for ".$rxn->id()." from ".$rxn->deltaG()." to ".$deltaG);
-				    $rxn->deltaG($deltaG);				
-				}
-			    }
-
-			    if($deltaGErr != 10000000){
-				if(defined($rxn->deltaGErr()) && $rxn->deltaGErr() != $deltaGErr){
-				    push(@{$result->{outputFile}},"deltaGErr different for ".$rxn->id()." from ".$rxn->deltaGErr()." to ".$deltaGErr);
-				}
-				if (!defined($rxn->deltaGErr()) || $rxn->deltaGErr() eq "" || $rxn->deltaGErr() == 10000000 || 
-				    ($Update==1 && $rxn->deltaGErr() != $deltaGErr)){
-				    $rxn->deltaGErr(10000000) if !defined($rxn->deltaGErr());
-				    push(@{$result->{outputFile}},"Updating deltaGErr for ".$rxn->id()." from ".$rxn->deltaGErr()." to ".$deltaGErr);
-				    $rxn->deltaGErr($deltaGErr);				
-				}
-			    }
-
-#			    if($thermoreversibility->{direction} ne ""){ #commented out because I want to force default thermoreversibility of ""
-				if(defined($rxn->thermoReversibility()) && $rxn->thermoReversibility() ne $thermoreversibility->{direction}){
-				    push(@{$result->{outputFile}},"Direction different for ".$rxn->id()." from ".$rxn->thermoReversibility()." to ".$thermoreversibility->{direction});
-				}
-				if (!defined($rxn->thermoReversibility()) || $rxn->thermoReversibility() eq "" || 
-				    ($Update==1 && $rxn->thermoReversibility() ne $thermoreversibility->{direction})){
-				    my $dir=$rxn->thermoReversibility();
-				    $dir="" if !$dir;
-				    push(@{$result->{outputFile}},"Updating direction for ".$rxn->id()." from ".$dir." to ".$thermoreversibility->{direction});
-				    $rxn->thermoReversibility($thermoreversibility->{direction});				
-				}
-#			    }
-
-			    if($sCues ne "" && $sCues ne "nogroups"){ 
-				if(defined($rxn->structuralCues()) && $rxn->structuralCues() ne $sCues){
-				    push(@{$result->{outputFile}},"Groups different for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
-				}
-				if (!defined($rxn->structuralCues()) || $rxn->structuralCues() eq "" ||
-				    ($Update==1 && $rxn->structuralCues() ne $sCues)){
-				    $rxn->structuralCues("nogroups") if !defined($rxn->structuralCues());
-				    push(@{$result->{outputFile}},"Updating groups for ".$rxn->id()." from ".$rxn->structuralCues()." to ".$sCues);
-				    $rxn->structuralCues($sCues);
-				}
-			    }
-			}
-
 			if (defined($row->{"ENZYMES"}->[0])) {
 				my $enzymeHash;
 				for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
@@ -3583,7 +3503,7 @@ sub import_model {
 					}
 				    }
 				}
-				my $newString = join("|",sort(keys(%{$enzymeHash})));
+				my $newString = join("|", grep { $_ ne "" } sort(keys(%{$enzymeHash})));
 				$newString="undetermined" if !$newString;
 				if (!defined($rxn->enzyme()) || $newString ne $rxn->enzyme()) {
 					$rxn->enzyme($newString);
@@ -3591,21 +3511,8 @@ sub import_model {
 			}
 		} else {
 			my $newid = $mdl->figmodel()->get_reaction()->get_new_temp_id();
-			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\t",$codeResults->{status},"\n";
+			print NEWRXN $newid,"\t",$row->{"ID"}->[0],"\t",$codeResults->{transporter},"\n";
 			push(@{$result->{outputFile}},"New:".$newid." for ".$row->{"ID"}->[0]." with code: ".$codeResults->{code});
-
-			my ($deltaG,$deltaGErr,$sCues) = $self->get_reaction()->calculate_deltaG({equation=>$codeResults->{fullEquation},
-												  energy=>\%Cues_Energy,
-												  uncertainty=>\%Cues_EnergyUncertainty});
-
-			my $thermoreversibility={"direction"=>"","status"=>"No deltaG"};
-			if($deltaG ne ''){
-			    $thermoreversibility = $self->get_reaction()->find_thermodynamic_reversibility({equation => $codeResults->{fullEquation},
-													    deltaG=>$deltaG},deltaGerr=>$deltaGErr);
-			}else{
-			    $deltaG='10000000';
-			    $deltaGErr='10000000';
-			}
 
 			my $enzymeHash;
 			for (my $j=0; $j < @{$row->{"ENZYMES"}}; $j++) {
@@ -3624,17 +3531,17 @@ sub import_model {
 				code => $codeResults->{code},
 				equation => $codeResults->{fullEquation},
 				definition => $row->{"EQUATION"}->[0],
-				deltaG => $deltaG,
-				deltaGErr => $deltaGErr,
+				deltaG => -10000000,
+				deltaGErr => -10000000,
 				reversibility => $row->{"DIRECTIONALITY"}->[0],
-				thermoReversibility => $thermoreversibility->{direction},
+				thermoReversibility => "",
 				owner => $args->{owner},
 				modificationDate => time(),
 				creationDate => time(),
 				public => 1,
-				status => $codeResults->{status},
+				status => "",
 				scope => $id,
-				structuralCues => $sCues
+				structuralCues => "nogroups"
 			});
 		}
 

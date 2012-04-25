@@ -1,9 +1,9 @@
-package ModelSEED::CLI::stores::Command::add;
-use ModelSEED::Config;
+package ModelSEED::App::stores::Command::add;
+use ModelSEED::Configuration;
 use base 'App::Cmd::Command';
 
-$typeToClass = $ModelSEED::CLI::stores::typeToClass;
-$typeToArgs = $ModelSEED::CLI::stores::typeToArgs;
+$typeToClass = $ModelSEED::App::stores::typeToClass;
+$typeToArgs = $ModelSEED::App::stores::typeToArgs;
 
 sub abstract { "Add another store interface" }
 sub opt_spec {
@@ -28,7 +28,7 @@ sub execute {
     my ($self, $opt, $args) = @_;
     my $name = shift @$args;
     my $config = $self->_buildConfig($opt, $name);
-    my $ms = ModelSEED::Config->new();    
+    my $ms = ModelSEED::Configuration->new();    
     my $stores = $ms->config->{stores};
     my %map = map { $_->{name} => $_ } @$stores; 
     if (defined($map{$name})) {
