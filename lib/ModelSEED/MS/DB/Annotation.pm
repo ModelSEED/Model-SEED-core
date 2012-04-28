@@ -3,11 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-24T02:58:25
+# Date of module creation: 2012-04-28T22:59:34
 ########################################################################
 use strict;
 use ModelSEED::MS::Genome;
 use ModelSEED::MS::Feature;
+use ModelSEED::MS::SubsystemState;
 use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Annotation;
 use Moose;
@@ -34,6 +35,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 # SUBOBJECTS:
 has genomes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child(Genome)', metaclass => 'Typed');
 has features => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child(Feature)', metaclass => 'Typed');
+has subsystemStates => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::SubsystemState]', type => 'child(SubsystemState)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -54,6 +56,7 @@ sub _type { return 'Annotation'; }
 sub _typeToFunction {
 	return {
 		Genome => 'genomes',
+		SubsystemState => 'subsystemStates',
 		Feature => 'features',
 	};
 }

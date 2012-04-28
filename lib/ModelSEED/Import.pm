@@ -569,7 +569,7 @@ sub _makeObjectToQueryFns {
         return {
             biomass_uuid           => $_[0]->biomass_uuid,
             compound_uuid          => $_[0]->compound_uuid,
-            model_compartment_uuid => $_[0]->model_compartment_uuid,
+            modelcompartment_uuid => $_[0]->modelcompartment_uuid,
         };
     };
     return $f;
@@ -816,7 +816,7 @@ sub _makeConversionFns {
         return {
             reaction_uuid          => $rxn,
             compound_uuid          => $cpd,
-            model_compartment_uuid => $cmp,
+            modelcompartment_uuid => $cmp,
             compartmentIndex       => $row->{compartmentIndex}->[0],
             transportCoefficient   => $row->{transportCoefficient}->[0],
             isImport               => $row->{isImport}->[0],
@@ -826,7 +826,7 @@ sub _makeConversionFns {
         my ($self, $row) = @_;
         my $compound = $self->uuidCache("compound", $row->{compound}->[0]);
         return {
-            model_compartment_uuid => $row->{model_compartment_uuid}->[0], 
+            modelcompartment_uuid => $row->{modelcompartment_uuid}->[0], 
             compound_uuid          => $compound,
             coefficient            => $row->{coefficient}->[0],
         };
@@ -1500,7 +1500,7 @@ sub getBiomass {
         my $row = {
             compound    => [$cpdbof->COMPOUND],
             coefficient => [$cpdbof->coefficient],
-            model_compartment_uuid => [$mdl_cmp->uuid],
+            modelcompartment_uuid => [$mdl_cmp->uuid],
         };
         my $hash = $self->convert("biomass_compound", $row);
         push(@$biomassCompounds, $hash);

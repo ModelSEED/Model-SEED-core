@@ -3,11 +3,11 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-24T02:58:25
+# Date of module creation: 2012-04-28T22:59:34
 ########################################################################
 use strict;
 use ModelSEED::MS::ModelReactionRawGPR;
-use ModelSEED::MS::ModelReactionTransports;
+use ModelSEED::MS::ModelReactionReagent;
 use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ModelReaction;
 use Moose;
@@ -24,8 +24,8 @@ has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metacla
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '=' );
-has protons => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has model_compartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has protons => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
+has modelcompartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 # ANCESTOR:
@@ -34,12 +34,12 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 # SUBOBJECTS:
 has gpr => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReactionRawGPR]', type => 'encompassed(ModelReactionRawGPR)', metaclass => 'Typed');
-has transports => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReactionTransports]', type => 'encompassed(ModelReactionTransports)', metaclass => 'Typed');
+has modelReactionReagents => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReactionReagent]', type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed');
 
 
 # LINKS:
 has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,Reaction,uuid,reaction_uuid)', metaclass => 'Typed',weak_ref => 1);
-has modelcompartment => (is => 'rw',lazy => 1,builder => '_buildmodelcompartment',isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,ModelCompartment,uuid,model_compartment_uuid)', metaclass => 'Typed',weak_ref => 1);
+has modelcompartment => (is => 'rw',lazy => 1,builder => '_buildmodelcompartment',isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,ModelCompartment,uuid,modelcompartment_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -51,7 +51,7 @@ sub _buildreaction {
 }
 sub _buildmodelcompartment {
 	my ($self) = @_;
-	return $self->getLinkedObject('Model','ModelCompartment','uuid',$self->model_compartment_uuid());
+	return $self->getLinkedObject('Model','ModelCompartment','uuid',$self->modelcompartment_uuid());
 }
 
 
@@ -59,8 +59,8 @@ sub _buildmodelcompartment {
 sub _type { return 'ModelReaction'; }
 sub _typeToFunction {
 	return {
-		ModelReactionTransports => 'transports',
 		ModelReactionRawGPR => 'gpr',
+		ModelReactionReagent => 'modelReactionReagents',
 	};
 }
 

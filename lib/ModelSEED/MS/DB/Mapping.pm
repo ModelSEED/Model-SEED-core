@@ -3,9 +3,11 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-24T02:58:25
+# Date of module creation: 2012-04-28T22:59:34
 ########################################################################
 use strict;
+use ModelSEED::MS::UniversalReaction;
+use ModelSEED::MS::BiomassTemplate;
 use ModelSEED::MS::Role;
 use ModelSEED::MS::RoleSet;
 use ModelSEED::MS::Complex;
@@ -37,6 +39,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
+has universalReactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::UniversalReaction]', type => 'child(UniversalReaction)', metaclass => 'Typed');
+has biomassTemplates => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::BiomassTemplate]', type => 'child(BiomassTemplate)', metaclass => 'Typed');
 has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child(Role)', metaclass => 'Typed');
 has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSet]', type => 'child(RoleSet)', metaclass => 'Typed');
 has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child(Complex)', metaclass => 'Typed');
@@ -63,8 +67,10 @@ sub _type { return 'Mapping'; }
 sub _typeToFunction {
 	return {
 		RoleSet => 'rolesets',
+		UniversalReaction => 'universalReactions',
 		Complex => 'complexes',
 		Role => 'roles',
+		BiomassTemplate => 'biomassTemplates',
 		RoleAliasSet => 'roleAliasSets',
 		RoleSetAliasSet => 'roleSetAliasSets',
 		ComplexAliasSet => 'complexAliasSets',

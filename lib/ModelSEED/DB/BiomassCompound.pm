@@ -10,11 +10,11 @@ __PACKAGE__->meta->setup(
     columns => [
         biomass_uuid           => { type => 'character', length => 36, not_null => 1 },
         compound_uuid          => { type => 'character', length => 36, not_null => 1 },
-        model_compartment_uuid => { type => 'character', length => 36, not_null => 1 },
+        modelcompartment_uuid => { type => 'character', length => 36, not_null => 1 },
         coefficient            => { type => 'scalar' },
     ],
 
-    primary_key_columns => [ 'biomass_uuid', 'compound_uuid', 'model_compartment_uuid' ],
+    primary_key_columns => [ 'biomass_uuid', 'compound_uuid', 'modelcompartment_uuid' ],
 
     foreign_keys => [
         biomass => {
@@ -24,7 +24,7 @@ __PACKAGE__->meta->setup(
 
         model_compartment => {
             class       => 'ModelSEED::DB::ModelCompartment',
-            key_columns => { model_compartment_uuid => 'uuid' },
+            key_columns => { modelcompartment_uuid => 'uuid' },
         },
 
         compound => {

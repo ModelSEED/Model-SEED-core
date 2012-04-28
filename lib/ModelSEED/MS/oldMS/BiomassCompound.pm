@@ -22,7 +22,7 @@ has model => (is => 'rw',isa => 'ModelSEED::MS::Model',weak_ref => 1);
 #Attributes
 has biomass_uuid => (is => 'rw', isa => 'Str', required => 1);
 has compound_uuid => (is => 'rw', isa => 'Str', required => 1);
-has model_compartment_uuid => (is => 'rw', isa => 'Str', required => 1);
+has modelcompartment_uuid => (is => 'rw', isa => 'Str', required => 1);
 has coefficient => (is => 'rw', isa => 'Num', required => 1);
 
 #Subobjects
@@ -77,9 +77,9 @@ sub _getCompound {
 sub _getCompartment {
 	my ($self) = @_;
 	if (defined($self->model())) {
-        my $cmp = $self->model()->getModelCompartment({uuid => $self->model_compartment_uuid});
+        my $cmp = $self->model()->getModelCompartment({uuid => $self->modelcompartment_uuid});
         if (!defined($cmp)) {
-        	ModelSEED::utilities::ERROR("Model compartment ".$self->model_compartment_uuid." not found in model!");
+        	ModelSEED::utilities::ERROR("Model compartment ".$self->modelcompartment_uuid." not found in model!");
         }
         return $cmp;
     } else {
@@ -87,7 +87,7 @@ sub _getCompartment {
     }	
 }
 
-sub _buildDbAttributes { return [qw( biomass_uuid  compound_uuid model_compartment_uuid coefficient )]; }
+sub _buildDbAttributes { return [qw( biomass_uuid  compound_uuid modelcompartment_uuid coefficient )]; }
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -2997,7 +2997,7 @@ sub reconstruction {
 		checkpoint => 1,
 		autocompletion => 1,
 		biochemSource => undef
-	});	
+	});
 	#Getting genome data and feature table
 	$self->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
@@ -3156,41 +3156,16 @@ sub reconstruction {
 		ModelSEED::utilities::ERROR("Could not find biomass reaction ".$biomassID);
 	}
 	#Getting the list of essential reactions for biomass reaction
-	my $ReactionList;
-	my $essentialReactions = $bioRxn->essentialRxn();
-	if (defined($essentialReactions) && $essentialReactions =~ m/rxn\d\d\d\d\d/) {
-		push(@{$ReactionList},split(/\|/,$essentialReactions));
-		if ($essentialReactions !~ m/$biomassID/) {
-			push(@{$ReactionList},$biomassID);
-		}
-	} else {
-		push(@{$ReactionList},$biomassID);
-	}
-	#Adding biomass reactions to the model table
-	foreach my $BOFReaction (@{$ReactionList}) {
-		if (!defined($newRxnRowHash->{$BOFReaction})) {
-			my ($direction,$pegs,$confidence);
-			if ($BOFReaction =~ m/bio/) {
-				$direction = "=>";
-				$pegs = "BIOMASS";
-				$confidence = 1;
-			} else {
-				$direction = $rxnRevHash->{$BOFReaction};
-				$pegs = "BIOMASS AUTOCOMPLETION";
-				$confidence = 5;
-			}
-			$newRxnRowHash->{$BOFReaction} = {
-				MODEL => $self->id(),
-				REACTION => $BOFReaction,
-				directionality => $direction,
-				compartment => "c",
-				pegs => "UNIVERSAL",
-				reference => "SEED",
-				notes => "NONE",
-				confidence => $confidence
-			};
-		}
-	}
+	$newRxnRowHash->{$biomassID} = {
+		MODEL => $self->id(),
+		REACTION => $biomassID,
+		directionality => "=>",
+		compartment => "c",
+		pegs => "UNIVERSAL",
+		reference => "SEED",
+		notes => "NONE",
+		confidence => 3
+	};
    	#If a model already exists, we checkpoint
 	my $rxnMdl = $self->rxnmdl({clearCache => 1});
 	my $checkpointed = 0;

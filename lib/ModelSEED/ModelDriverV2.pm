@@ -567,31 +567,31 @@ sub testobj {
 		compound_uuid => $cpdA->uuid(),
 		charge => 0,
 		formula => "C",
-		model_compartment_uuid => $mdlcompE->uuid()
+		modelcompartment_uuid => $mdlcompE->uuid()
 	});
 	my $mdlcpdAC = $model->create("ModelCompound",{
 		compound_uuid => $cpdA->uuid(),
 		charge => 0,
 		formula => "C",
-		model_compartment_uuid => $mdlcompC->uuid()
+		modelcompartment_uuid => $mdlcompC->uuid()
 	});
 	my $mdlcpdBC = $model->create("ModelCompound",{
 		compound_uuid => $cpdB->uuid(),
 		charge => 0,
 		formula => "C",
-		model_compartment_uuid => $mdlcompC->uuid()
+		modelcompartment_uuid => $mdlcompC->uuid()
 	});
 	my $mdlcpdCC = $model->create("ModelCompound",{
 		compound_uuid => $cpdC->uuid(),
 		charge => 0,
 		formula => "C",
-		model_compartment_uuid => $mdlcompC->uuid()
+		modelcompartment_uuid => $mdlcompC->uuid()
 	});
 	my $mdlrxnA = $model->create("ModelReaction",{
 		reaction_uuid => $rxnA->uuid(),
 		direction => "=",
 		protons => 0,
-		model_compartment_uuid => $mdlcompC->uuid()
+		modelcompartment_uuid => $mdlcompC->uuid()
 	});
 	$mdlrxnA->create("ModelReactionRawGPR",{
 		isCustomGPR => 1,
@@ -606,7 +606,7 @@ sub testobj {
 		reaction_uuid => $rxnB->uuid(),
 		direction => "=",
 		protons => 0,
-		model_compartment_uuid => $mdlcompC->uuid()
+		modelcompartment_uuid => $mdlcompC->uuid()
 	});
 	$mdlrxnB->create("ModelReactionRawGPR",{
 		isCustomGPR => 1,
