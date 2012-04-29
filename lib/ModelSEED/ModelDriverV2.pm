@@ -40,7 +40,7 @@ sub new {
 	$self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
 	$self->om(ModelSEED::MS::ObjectManager->new({
 #		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
-		db => ModelSEED::FileDB->new({filename => $self->environment()->filedb()}),
+		db => ModelSEED::FileDB->new({directory => $self->environment()->filedb()}),
 		username => $self->environment()->username(),
 		password => $self->environment()->password(),
 		selectedAliases => $self->environment()->selectedAliases()
@@ -370,15 +370,30 @@ sub dbtransfermain {
 	});
 	my $bio = $ppofactory->createBiochemistry();
 	$bio->save();
+	$bio->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
 	print "Saved biochemistry with uuid ".$bio->uuid()."\n";
 	$self->environment()->biochemistry($bio->uuid());
+	#print "Loading biochemistry!\n";
+	#my $bio = $self->biochemistry();
+	#print "Biochemistry loaded!\n";
 	my $map = $ppofactory->createMapping({
 		biochemistry => $bio,	
 	});
 	$map->save();
+	$map->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
 	print "Saved mapping with uuid ".$map->uuid()."\n";
 	$self->environment()->mapping($map->uuid());
 	$self->environment()->save();
+	print "Transfering model!\n";
+	my $model = $ppofactory->createModel({
+		model => "Seed83333.1.796",
+		biochemistry => $bio,
+		mapping => $map
+	});
+	$model->save();
+	$model->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullModel.json");
+	$model->annotation()->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullAnnotation.json");
+	print "Saved model with uuid ".$model->uuid()."\n";
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
 =head3 dbtransfermodel
@@ -420,7 +435,7 @@ Description:
 sub testobj {
 	my($self,@Data) = @_;
 	my $om = ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::FileDB->new({filename => "C:/Code/Model-SEED-core/data/filedb/"}),
+		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
 		username => $self->environment()->username(),
 		password => $self->environment()->password(),
 		selectedAliases => {
@@ -492,11 +507,11 @@ sub testobj {
 		deltaGErr => 0,
 		status => "Balanced",
 	});
-	my $inst = $rxnA->loadFromEquation({
+	my $instA = $rxnA->loadFromEquation({
 		equation => "A[e] => A",
 		aliasType => "name"
 	});
-	$biochemistry->add("ReactionInstance",$inst);
+	$biochemistry->add("ReactionInstance",$instA);
 	print "Equation:".$rxnA->definition()."\n";
 	my $rxnB =  $biochemistry->create("Reaction",{
 		locked => "0",
@@ -509,11 +524,11 @@ sub testobj {
 		deltaGErr => 0,
 		status => "Balanced",
 	});
-	$inst = $rxnB->loadFromEquation({
+	my $instB = $rxnB->loadFromEquation({
 		equation => "A => B",
 		aliasType => "name"
 	});
-	$biochemistry->add("ReactionInstance",$inst);
+	$biochemistry->add("ReactionInstance",$instB);
 	my $media = $biochemistry->create("Media",{
 		locked => "0",
 		id => "MediaA",
@@ -587,30 +602,17 @@ sub testobj {
 		formula => "C",
 		modelcompartment_uuid => $mdlcompC->uuid()
 	});
-	my $mdlrxnA = $model->create("ModelReaction",{
-		reaction_uuid => $rxnA->uuid(),
+	$model->addReactionInstanceToModel({
+		reactionInstance => $instA,
 		direction => "=",
 		protons => 0,
-		modelcompartment_uuid => $mdlcompC->uuid()
+		gpr => "(b0001 and b0002)",
 	});
-	$mdlrxnA->create("ModelReactionRawGPR",{
-		isCustomGPR => 1,
-		rawGPR => "b0001"
-	});
-	$mdlrxnA->create("ModelReactionTransports",{
-		modelcompound_uuid => $mdlcpdAE->uuid(),
-		compartmentIndex => 1,
-		coefficient => -1
-	});
-	my $mdlrxnB = $model->create("ModelReaction",{
-		reaction_uuid => $rxnB->uuid(),
+	$model->addReactionInstanceToModel({
+		reactionInstance => $instB,
 		direction => "=",
 		protons => 0,
-		modelcompartment_uuid => $mdlcompC->uuid()
-	});
-	$mdlrxnB->create("ModelReactionRawGPR",{
-		isCustomGPR => 1,
-		rawGPR => "b0002"
+		gpr => "(b0003 and b0004)",
 	});
 	my $biomass = $model->create("Biomass",{
 		locked => 0,
@@ -624,12 +626,12 @@ sub testobj {
 		modelcompound_uuid => $mdlcpdCC->uuid(),
 		coefficient => 1
 	});
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/MediaA.media.json",[JSON::Any->encode($media->serializeToDB())]);
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/cpdA.compound.json",[JSON::Any->encode($cpdA->serializeToDB())]);
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Test.biochem.json",[JSON::Any->encode($biochemistry->serializeToDB())]);
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/rxnA.reaction.json",[JSON::Any->encode($rxnA->serializeToDB())]);
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/TestModel.model.json",[JSON::Any->encode($model->serializeToDB())]);
-	ModelSEED::utilities::PRINTFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Biomass.biomass.json",[JSON::Any->encode($biomass->serializeToDB())]);
+	$media->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/MediaA.media.json");
+	$cpdA->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/cpdA.compound.json");
+	$biochemistry->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Test.biochem.json");
+	$rxnA->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/rxnA.reaction.json");
+	$model->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/TestModel.model.json");
+	$biomass->printJSONFile($ENV{MODEL_SEED_CORE}."/data/ReactionDB/Examples/Biomass.biomass.json");
 	return {success => 1};
 }
 =head

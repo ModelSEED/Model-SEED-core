@@ -34,7 +34,7 @@ has mapping => ( is => 'rw', isa => 'ModelSEED::uuid');
 # BUILDER:
 sub BUILD {
 	my ($self) = @_;
-	if (defined($self->filename()) && -e $self->filename() && !defined($self->username())) {
+	if (defined($self->filename()) && -e $self->filename()) {
 		$self->load();
 	}
 }

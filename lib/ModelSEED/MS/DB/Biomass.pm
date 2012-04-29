@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-28T22:59:34
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BiomassCompound;
@@ -23,12 +23,12 @@ has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metacla
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
-has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
-has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
-has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
-has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
-has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '' );
+has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05' );
+has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.1' );
+has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.5' );
+has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15' );
+has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05' );
+has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15' );
 
 
 # ANCESTOR:

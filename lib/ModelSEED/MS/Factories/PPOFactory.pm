@@ -490,34 +490,34 @@ sub createMapping {
 	});
 	my $spontaneousRxn = $self->figmodel()->config("spontaneous reactions");
 	for (my $i=0; $i < @{$spontaneousRxn}; $i++) {
-		$rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$spontaneousRxn->[$i],"ModelSEED");
+		my $rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$spontaneousRxn->[$i],"ModelSEED");
 		if (defined($rxnInst)) {
 			$mapping->create("UniversalReaction",{
 				type => "SPONTANEOUS",
 				reactioninstance_uuid => $rxnInst->uuid()	
-			}
+			});
 		}
 	}
 	my $universalRxn = $self->figmodel()->config("universal reactions");
 	for (my $i=0; $i < @{$universalRxn}; $i++) {
-		$rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$universalRxn->[$i],"ModelSEED");
+		my $rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$universalRxn->[$i],"ModelSEED");
 		if (defined($rxnInst)) {
 			$mapping->create("UniversalReaction",{
 				type => "UNIVERSAL",
 				reactioninstance_uuid => $rxnInst->uuid()	
-			}
+			});
 		}
 	}
 	my $biomassTempComp = {
-		gp {
+		"Gram positive" => {
 			rna => {cpd00002=>-0.262,cpd00012=>1,cpd00038=>-0.323,cpd00052=>-0.199,cpd00062=>-0.215},
 			protein => {cpd00001=>1,cpd00023=>-0.0637,cpd00033=>-0.0999,cpd00035=>-0.0653,cpd00039=>-0.0790,cpd00041=>-0.0362,cpd00051=>-0.0472,cpd00053=>-0.0637,cpd00054=>-0.0529,cpd00060=>-0.0277,cpd00065=>-0.0133,cpd00066=>-0.0430,cpd00069=>-0.0271,cpd00084=>-0.0139,cpd00107=>-0.0848,cpd00119=>-0.0200,cpd00129=>-0.0393,cpd00132=>-0.0362,cpd00156=>-0.0751,cpd00161=>-0.0456,cpd00322=>-0.0660}
 		},
-		gn {
+		"Gram negative" => {
 			rna => {cpd00002=>-0.262,cpd00012=>1,cpd00038=>-0.322,cpd00052=>-0.2,cpd00062=>-0.216},
 			protein => {cpd00001=>1,cpd00023=>-0.0492,cpd00033=>-0.1145,cpd00035=>-0.0961,cpd00039=>-0.0641,cpd00041=>-0.0451,cpd00051=>-0.0554,cpd00053=>-0.0492,cpd00054=>-0.0403,cpd00060=>-0.0287,cpd00065=>-0.0106,cpd00066=>-0.0347,cpd00069=>-0.0258,cpd00084=>-0.0171,cpd00107=>-0.0843,cpd00119=>-0.0178,cpd00129=>-0.0414,cpd00132=>-0.0451,cpd00156=>-0.0791,cpd00161=>-0.0474,cpd00322=>-0.0543}
 		},
-		un {
+		"Unknown" => {
 			rna => {cpd00002=>-0.262,cpd00012=>1,cpd00038=>-0.322,cpd00052=>-0.2,cpd00062=>-0.216},
 			protein => {cpd00001=>1,cpd00023=>-0.0492,cpd00033=>-0.1145,cpd00035=>-0.0961,cpd00039=>-0.0641,cpd00041=>-0.0451,cpd00051=>-0.0554,cpd00053=>-0.0492,cpd00054=>-0.0403,cpd00060=>-0.0287,cpd00065=>-0.0106,cpd00066=>-0.0347,cpd00069=>-0.0258,cpd00084=>-0.0171,cpd00107=>-0.0843,cpd00119=>-0.0178,cpd00129=>-0.0414,cpd00132=>-0.0451,cpd00156=>-0.0791,cpd00161=>-0.0474,cpd00322=>-0.0543}
 		}
@@ -605,8 +605,8 @@ sub createMapping {
 		["cofactor","cpd01997","cpd00166","AND{COMPOUND:cpd00166}"],
 		["cofactor","cpd03422","cpd00166","AND{COMPOUND:cpd00166}"]
 	];
-	my $templates = {
-		gp => $mapping->create("BiomassTemplate",{
+	my $templates = [
+		$mapping->create("BiomassTemplate",{
 			class => "Gram positive",
 			dna => "0.026",
 			rna => "0.0655",
@@ -615,7 +615,7 @@ sub createMapping {
 			cellwall => "0.25",
 			cofactor => "0.10"
 		}),
-		gn => $mapping->create("BiomassTemplate",{
+		$mapping->create("BiomassTemplate",{
 			class => "Gram negative",
 			dna => "0.031",
 			rna => "0.21",
@@ -624,7 +624,7 @@ sub createMapping {
 			cellwall => "0.177",
 			cofactor => "0.039"
 		}),
-		un => $mapping->create("BiomassTemplate",{
+		$mapping->create("BiomassTemplate",{
 			class => "Unknown",
 			dna => "0.031",
 			rna => "0.21",
@@ -633,15 +633,15 @@ sub createMapping {
 			cellwall => "0.177",
 			cofactor => "0.039"
 		})
-	};
-	foreach my $template (keys(%{$templates})) {
+	];
+	foreach my $template (@{$templates}) {
 		if (defined($biomassTempComp->{$template->class()})) {
 			foreach my $type (keys(%{$biomassTempComp->{$template->class()}})) {
 				foreach my $cpd (keys(%{$biomassTempComp->{$template->class()}->{$type}})) {
 					my $cpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$cpd,"ModelSEED");
 					$template->create("BiomassTemplateComponent",{
 						class => $type,
-						fraction => 0,
+						coefficientType => "NUMBER",
 						coefficient => $biomassTempComp->{$template->class()}->{$type}->{$cpd},
 						compound_uuid => $cpdobj->uuid(),
 						condition => "UNIVERSAL"
@@ -660,7 +660,7 @@ sub createMapping {
 					$array->[$j] = $newcpdobj->uuid();
 				}
 				$coefficientType = join(",",@{$array});
-			} else {
+			} elsif ($universalBiomassTempComp->[$i]->[2] =~ m/\d/) {
 				$coefficientType = "NUMBER";
 				$coefficient = $universalBiomassTempComp->[$i]->[2];
 			}
@@ -683,7 +683,7 @@ sub createMapping {
 					$array->[$j] = $newcpdobj->uuid();
 				}
 				$coefficientType = join(",",@{$array});
-			} else {
+			} elsif ($conditionedBiomassTempComp->[$i]->[2] =~ m/\d/) {
 				$coefficientType = "NUMBER";
 				$coefficient = $conditionedBiomassTempComp->[$i]->[2];
 			}

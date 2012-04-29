@@ -312,20 +312,22 @@ sub get_object {
 
 sub _get_object {
     my ($data, $type, $id) = @_;
-
+	
     unless (_has_object($data, $type, $id)) {
-	return;
+		return;
     }
 
     my $start = $data->{index}->{ids}->{$id}->[0];
     my $end   = $data->{index}->{ids}->{$id}->[1];
+	print $start.":".$end."\n";
 
     my $data_fh = $data->{data};
     my ($json_obj, $gzip_obj);
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
+    print "Data read!\n";
     gunzip \$gzip_obj => \$json_obj;
-
+	print "Data unzipped!\n";
     return _decode($json_obj)
 }
 

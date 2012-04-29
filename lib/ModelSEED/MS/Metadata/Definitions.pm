@@ -675,12 +675,12 @@ $objectDefinitions->{Biomass} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'dna',perm => 'rw',type => 'Num',req => 0,default => ""},
-		{name => 'rna',perm => 'rw',type => 'Num',req => 0,default => ""},
-		{name => 'protein',perm => 'rw',type => 'Num',req => 0,default => ""},
-		{name => 'cellwall',perm => 'rw',type => 'Num',req => 0,default => ""},
-		{name => 'lipid',perm => 'rw',type => 'Num',req => 0,default => ""},
-		{name => 'cofactor',perm => 'rw',type => 'Num',req => 0,default => ""}
+		{name => 'dna',perm => 'rw',type => 'Num',req => 0,default => "0.05"},
+		{name => 'rna',perm => 'rw',type => 'Num',req => 0,default => "0.1"},
+		{name => 'protein',perm => 'rw',type => 'Num',req => 0,default => "0.5"},
+		{name => 'cellwall',perm => 'rw',type => 'Num',req => 0,default => "0.15"},
+		{name => 'lipid',perm => 'rw',type => 'Num',req => 0,default => "0.05"},
+		{name => 'cofactor',perm => 'rw',type => 'Num',req => 0,default => "0.15"}
 	],
 	subobjects => [
 		{name => "biomasscompounds",class => "BiomassCompound",type => "encompassed"}
@@ -765,7 +765,7 @@ $objectDefinitions->{ModelReaction} = {
 };
 
 $objectDefinitions->{ModelReactionReagent} = {
-	parents => ['Reaction'],
+	parents => ['ModelReaction'],
 	class => 'encompassed',
 	attributes => [
 		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
@@ -1064,7 +1064,7 @@ $objectDefinitions->{BiomassTemplate} = {
 };
 
 $objectDefinitions->{BiomassTemplateComponent} = {
-	parents => ['Mapping'],
+	parents => ['BiomassTemplate'],
 	class => 'encompassed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},

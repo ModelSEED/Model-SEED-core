@@ -143,9 +143,9 @@ sub createStandardFBABiomass {
 	my $bio = $self->create("Biomass",{
 		name => $self->name()." auto biomass"
 	});
-	my $template = $mapping->get_object("BiomassTemplate",{class => $self->genomes()->[0]->class()});
+	my $template = $mapping->getObject("BiomassTemplate",{class => $self->genomes()->[0]->class()});
 	if (!defined($template)) {
-		$template = $mapping->get_object("BiomassTemplate",{class => "Unknown"});
+		$template = $mapping->getObject("BiomassTemplate",{class => "Unknown"});
 	}
 	my $list = ["dna","rna","protein","lipid","cellwall","cofactor","energy"];
 	for (my $i=0; $i < @{$list}; $i++) {
@@ -182,7 +182,7 @@ sub createStandardFBABiomass {
 			}
 		}
 		foreach my $templateComp (keys(%{$biomassComps->{$class}})) {
-			my $cmp = $biochem->get_object("Compartment",{id => "c"});
+			my $cmp = $biochem->getObject("Compartment",{id => "c"});
 			my $mdlcmp = $self->addCompartmentToModel({compartment => $cmp,pH => 7,potential => 0,compartmentIndex => 0});
 			my $mdlcpd = $self->addCompoundToModel({
 				compound => $templateComp->compound(),
@@ -372,7 +372,7 @@ sub addReactionInstanceToModel {
 	});
 	my $rxninst = $args->{reactionInstance};
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
-	my $mdlrxn = $self->get_object("ModelReaction",{
+	my $mdlrxn = $self->getObject("ModelReaction",{
 		reaction_uuid => $rxninst->reaction_uuid(),
 		modelcompartment_uuid => $mdlcmp->uuid()
 	});
@@ -380,7 +380,7 @@ sub addReactionInstanceToModel {
 		$mdlrxn = $self->create("ModelReaction",{
 			reaction_uuid => $rxninst->reaction_uuid(),
 			direction => $rxninst->direction(),
-			protons => $rxninst->protons(),
+			protons => $rxninst->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
 			gpr => [{isCustomGPR => 1,rawGPR => $args->{gpr}}]
 		});
@@ -395,7 +395,7 @@ sub addReactionInstanceToModel {
 					modelCompartment => $mdlcmp,
 				});
 				$cpdHash->{$mdlcpd->compound_uuid()}->{$mdlcmp->compartment_uuid()} = $mdlcpd;
-				$speciesHash->{$mdlcpd} = $rgt->coefficient();
+				$speciesHash->{$mdlcpd->uuid()} = $rgt->coefficient();
 			}
 		}	
 		for (my $i=0; $i < @{$rxninst->transports()}; $i++) {
@@ -406,24 +406,24 @@ sub addReactionInstanceToModel {
 					compound => $trans->compound(),
 					modelCompartment => $newmdlcmp,
 				});
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}} = $trans->coefficient();
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}->uuid()} = $trans->coefficient();
 			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}} += $trans->coefficient();
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}->uuid()} += $trans->coefficient();
 			}
 			if (!defined($cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()})) {
 				$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()} = $self->addCompoundToModel({
 					compound => $trans->compound(),
 					modelCompartment => $mdlcmp,
 				});
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}} = (-1*$trans->coefficient());
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}->uuid()} = (-1*$trans->coefficient());
 			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}} += (-1*$trans->coefficient());
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}->uuid()} += (-1*$trans->coefficient());
 			}
 		}
-		foreach my $mdlcpd (keys(%{$speciesHash})) {
+		foreach my $mdluuid (keys(%{$speciesHash})) {
 			$mdlrxn->addReagentToReaction({
-				coefficient => $speciesHash->{$mdlcpd},
-				modelcompound_uuid => $mdlcpd->uuid()
+				coefficient => $speciesHash->{$mdluuid},
+				modelcompound_uuid => $mdluuid
 			});
 		}
 	}
@@ -448,7 +448,7 @@ sub addCompartmentToModel {
 		potential => 0,
 		compartmentIndex => 0
 	});
-	my $mdlcmp = $self->get_object("ModelCompartment",{compartment_uuid => $args->{compartment}->uuid(),compartmentIndex => $args->{compartmentIndex}});
+	my $mdlcmp = $self->getObject("ModelCompartment",{compartment_uuid => $args->{compartment}->uuid(),compartmentIndex => $args->{compartmentIndex}});
 	if (!defined($mdlcmp)) {
 		$mdlcmp = $self->create("ModelCompartment",{
 			compartment_uuid => $args->{compartment}->uuid(),
@@ -477,7 +477,7 @@ sub addCompoundToModel {
 		charge => undef,
 		formula => undef
 	});
-	my $mdlcpd = $self->get_object("ModelCompound",{compound_uuid => $args->{compound}->uuid(),modelcompartment_uuid => $args->{modelCompartment}->uuid()});
+	my $mdlcpd = $self->getObject("ModelCompound",{compound_uuid => $args->{compound}->uuid(),modelcompartment_uuid => $args->{modelCompartment}->uuid()});
 	if (!defined($mdlcpd)) {
 		if (!defined($args->{charge})) {
 			$args->{charge} = $args->{compound}->defaultCharge();

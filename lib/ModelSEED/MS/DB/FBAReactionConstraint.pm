@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-28T22:59:33
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -27,13 +27,13 @@ has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed'
 
 
 # LINKS:
-has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,Reaction,uuid,reaction_uuid)', metaclass => 'Typed',weak_ref => 1);
+has modelreaction => (is => 'rw',lazy => 1,builder => '_buildmodelreaction',isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,ModelReaction,uuid,modelreaction_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildreaction {
+sub _buildmodelreaction {
 	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','Reaction','uuid',$self->reaction_uuid());
+	return $self->getLinkedObject('Model','ModelReaction','uuid',$self->modelreaction_uuid());
 }
 
 

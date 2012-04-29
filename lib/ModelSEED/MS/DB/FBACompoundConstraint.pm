@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-28T22:59:34
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -18,7 +18,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::fbaformulation_uuid', type => '
 
 
 # ATTRIBUTES:
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
+has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
 has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has max => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
 has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
@@ -27,13 +27,13 @@ has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed'
 
 
 # LINKS:
-has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
+has modelcompound => (is => 'rw',lazy => 1,builder => '_buildmodelcompound',isa => 'ModelSEED::MS::ModelCompound', type => 'link(Model,ModelCompound,uuid,modelcompound_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildcompound {
+sub _buildmodelcompound {
 	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','Compound','uuid',$self->compound_uuid());
+	return $self->getLinkedObject('Model','ModelCompound','uuid',$self->modelcompound_uuid());
 }
 
 
