@@ -1,11 +1,13 @@
 package ModelSEED::App::stores::Command::add;
-use ModelSEED::Configuration;
+use Class::Autouse qw(ModelSEED::Configuration);
 use base 'App::Cmd::Command';
 
 $typeToClass = $ModelSEED::App::stores::typeToClass;
 $typeToArgs = $ModelSEED::App::stores::typeToArgs;
 
 sub abstract { "Add another store interface" }
+sub usage_desc { "stores add name --type type ..." }
+
 sub opt_spec {
     my $spec = [
         [ 'type=s', "Type of interface [".join('|', keys %$typeToClass) ."]" ],

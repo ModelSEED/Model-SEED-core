@@ -96,7 +96,7 @@ sub _buildJSON {
 }
 
 sub _buildFilename {
-    my $filename = $ENV{MODELSEED_CONFIG};
+    my $filename = $ENV{MODELSEED_CONF};
     $filename  ||= $ENV{HOME} . "/.modelseed";
     mkpath dirname($filename) unless(-d dirname($filename));
     return $filename;

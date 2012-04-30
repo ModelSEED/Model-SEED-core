@@ -1,5 +1,5 @@
 package ModelSEED::App::stores::Command::rm;
-use ModelSEED::Configuration;
+use Class::Autouse qw(ModelSEED::Configuration);
 use base 'App::Cmd::Command';
 
 
