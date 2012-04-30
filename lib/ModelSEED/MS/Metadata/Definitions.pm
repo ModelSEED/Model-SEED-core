@@ -646,9 +646,6 @@ $objectDefinitions->{Model} = {
 		{name => 'version',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'type',perm => 'rw',type => 'Str',len => 32,req => 0,default => "Singlegenome"},
 		{name => 'status',perm => 'rw',type => 'Str',len => 32,req => 0},
-		{name => 'reactions',perm => 'rw',type => 'Int',req => 0},
-		{name => 'compounds',perm => 'rw',type => 'Int',req => 0},
-		{name => 'annotations',perm => 'rw',type => 'Int',req => 0},
 		{name => 'growth',perm => 'rw',type => 'Num',req => 0},
 		{name => 'current',perm => 'rw',type => 'Int',req => 0,default => "1"},
 		{name => 'mapping_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -678,6 +675,12 @@ $objectDefinitions->{Biomass} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'dna',perm => 'rw',type => 'Num',req => 0,default => "0.05"},
+		{name => 'rna',perm => 'rw',type => 'Num',req => 0,default => "0.1"},
+		{name => 'protein',perm => 'rw',type => 'Num',req => 0,default => "0.5"},
+		{name => 'cellwall',perm => 'rw',type => 'Num',req => 0,default => "0.15"},
+		{name => 'lipid',perm => 'rw',type => 'Num',req => 0,default => "0.05"},
+		{name => 'cofactor',perm => 'rw',type => 'Num',req => 0,default => "0.15"}
 	],
 	subobjects => [
 		{name => "biomasscompounds",class => "BiomassCompound",type => "encompassed"}
@@ -729,13 +732,13 @@ $objectDefinitions->{ModelCompound} = {
 		{name => 'compound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'charge',perm => 'rw',type => 'Num',req => 0},
 		{name => 'formula',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'model_compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'modelcompartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 	],
 	subobjects => [],
 	primarykeys => [ qw(model_uuid uuid) ],
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
-		{name => "modelcompartment",attribute => "model_compartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
+		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
 	]
 };
 
@@ -747,17 +750,31 @@ $objectDefinitions->{ModelReaction} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'direction',perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
-		{name => 'protons',perm => 'rw',type => 'Num',req => 0},
-		{name => 'model_compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'protons',perm => 'rw',type => 'Num',req => 0,default => 0},
+		{name => 'modelcompartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 	],
 	subobjects => [
 		{name => "gpr",class => "ModelReactionRawGPR",type => "encompassed"},
-		{name => "transports",class => "ModelReactionTransports",type => "encompassed"},
+		{name => "modelReactionReagents",class => "ModelReactionReagent",type => "encompassed"},
 	],
 	primarykeys => [ qw(model_uuid uuid) ],
 	links => [
 		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
-		{name => "modelcompartment",attribute => "model_compartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
+		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{ModelReactionReagent} = {
+	parents => ['ModelReaction'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(modelcompound_uuid) ],
+	links => [
+		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"}
 	]
 };
 
@@ -773,46 +790,30 @@ $objectDefinitions->{ModelReactionRawGPR} = {
 	links => []
 };
 
-$objectDefinitions->{ModelReactionTransports} = {
-	parents => ['ModelReaction'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'compartmentIndex',perm => 'rw',type => 'Int',req => 1},
-		{name => 'coefficient',perm => 'rw',type => 'Num',req => 1},
-	],
-	subobjects => [],
-	primarykeys => [ qw(model_uuid modelreaction_uuid compound_uuid compartmentIndex) ],
-	links => [
-		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{Modelfba} = {
-	parents => ['Model'],
+$objectDefinitions->{FBAFormulation} = {
+	parents => ['model_uuid','Model'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
-		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
+		{name => 'model_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'regulatorymodel_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'media_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'type',perm => 'rw',type => 'Str',req => 1},
 		{name => 'description',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'media_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'expressionData_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'regmodel_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'geneko',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'reactionko',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'drainRxn',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'growthConstraint',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'uptakeLimits',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'thermodynamicConstraints',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'growthConstraint',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
+		{name => 'thermodynamicConstraints',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
 		{name => 'allReversible',perm => 'rw',type => 'Int',len => 255,req => 0,default => "0"},
+		{name => 'uptakeLimits',perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
+		{name => 'numberOfSolutions',perm => 'rw',type => 'Int',req => 1,default => "1"},
+		{name => 'geneKO',perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 	],
 	subobjects => [
-		{name => "compounds",class => "ModelfbaCompound",type => "encompassed"},
-		{name => "reactions",class => "ModelfbaReaction",type => "encompassed"},
-		{name => "genes",class => "ModelfbaFeature",type => "encompassed"}
+		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
+		{name => "fbaCompoundConstraints",class => "FBACompoundConstraint",type => "encompassed"},
+		{name => "fbaReactionConstraints",class => "FBAReactionConstraint",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -820,61 +821,107 @@ $objectDefinitions->{Modelfba} = {
 	]
 };
 
-$objectDefinitions->{ModelfbaCompound} = {
-	parents => ['Modelfba'],
+$objectDefinitions->{FBACompoundConstraint} = {
+	parents => ['fbaformulation_uuid','FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'variableType',perm => 'rw',type => 'Str',req => 1},
+		{name => 'max',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'min',perm => 'rw',type => 'Num',req => 0,default => "0"}
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => [
+		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBAReactionConstraint} = {
+	parents => ['fbaformulation_uuid','FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'variableType',perm => 'rw',type => 'Str',req => 1},
+		{name => 'max',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'min',perm => 'rw',type => 'Num',req => 0,default => "0"}
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => [
+		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBAObjectiveTerm} = {
+	parents => ['fbaformulation_uuid','FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'coefficient',perm => 'rw',type => 'Num',len => 1,req => 0},
+		{name => 'variableType',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'variable_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => []
+};
+
+$objectDefinitions->{FBAResults} = {
+	parents => ['model_uuid','Model'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'fbaformulation_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'resultNotes',perm => 'rw',type => 'Str',req => 1,default => ""},
+		{name => 'objectiveValue',perm => 'rw',type => 'Num',req => 1,default => ""},
+	],
+	subobjects => [
+		{name => "fbaCompoundVariables",class => "FBACompoundVariable",type => "encompassed"},
+		{name => "fbaReactionVariables",class => "FBAReactionVariable",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "Model",class => "FBAFormulation",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBACompoundVariable} = {
+	parents => ['FBAResults'],
 	class => 'encompassed',
 	attributes => [
 		{name => 'modelcompound_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'flux',perm => 'rw',type => 'Num',req => 0},
-		{name => 'lowerbound',perm => 'rw',type => 'Num',req => 1},
-		{name => 'upperbound',perm => 'rw',type => 'Num',req => 1},
-		{name => 'min',perm => 'rw',type => 'Num',req => 0},
-		{name => 'max',perm => 'rw',type => 'Num',req => 0},
-		{name => 'class',perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'ko',perm => 'rw',type => 'Int',req => 0,default => "0"}
-	],
+		{name => 'variableType',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'lowerBound',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'upperBound',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'min',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'max',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'value',perm => 'rw',type => 'Str',len => 1,req => 0},
+	],	
 	subobjects => [],
 	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
 	links => [
-		{name => "compound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"},
+		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"},
 	]
 };
 
-$objectDefinitions->{ModelfbaReaction} = {
-	parents => ['Modelfba'],
+$objectDefinitions->{FBAReactionVariable} = {
+	parents => ['FBAResults'],
 	class => 'encompassed',
 	attributes => [
 		{name => 'modelreaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'flux',perm => 'rw',type => 'Num',req => 0},
-		{name => 'lowerbound',perm => 'rw',type => 'Num',req => 1},
-		{name => 'upperbound',perm => 'rw',type => 'Num',req => 1},
-		{name => 'min',perm => 'rw',type => 'Num',req => 0},
-		{name => 'max',perm => 'rw',type => 'Num',req => 0},
-		{name => 'class',perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'ko',perm => 'rw',type => 'Int',req => 0,default => "0"}
-	],
+		{name => 'variableType',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'lowerBound',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'upperBound',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'min',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'max',perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'value',perm => 'rw',type => 'Str',len => 1,req => 0},
+	],	
 	subobjects => [],
-	primarykeys => [ qw(modelfba_uuid modelreaction_uuid) ],
+	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
 	links => [
-		{name => "reaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{ModelfbaFeature} = {
-	parents => ['Modelfba'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'feature_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'growthFraction',perm => 'rw',type => 'Num',req => 0},
-		{name => 'essential',perm => 'rw',type => 'Int',req => 0},
-		{name => 'class',perm => 'rw',type => 'Str',req => 0},
-		{name => 'activity',perm => 'rw',type => 'Num',req => 0},
-		{name => 'ko',perm => 'rw',type => 'Int',req => 0,default => "0"}
-	],
-	subobjects => [],
-	primarykeys => [ qw(modelfba_uuid feature_uuid) ],
-	links => [
-		{name => "feature",attribute => "feature_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
+		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"},
 	]
 };
 
@@ -890,7 +937,8 @@ $objectDefinitions->{Annotation} = {
 	],
 	subobjects => [
 		{name => "genomes",class => "Genome",type => "child"},
-		{name => "features",class => "Feature",type => "child"}
+		{name => "features",class => "Feature",type => "child"},
+		{name => "subsystemStates",class => "SubsystemState",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -924,6 +972,19 @@ $objectDefinitions->{Feature} = {
 	]
 };
 
+$objectDefinitions->{SubsystemState} = {
+	parents => ['Annotation'],
+	class => 'child',
+	attributes => [
+		{name => 'roleset_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',perm => 'rw',type => 'Str',req => 0},
+		{name => 'variant',perm => 'rw',type => 'Str',req => 0,default => ""}
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
 $objectDefinitions->{FeatureRole} = {
 	parents => ['Feature'],
 	class => 'encompassed',
@@ -952,6 +1013,8 @@ $objectDefinitions->{Mapping} = {
 		{name => 'biochemistry_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 	],
 	subobjects => [
+		{name => "universalReactions",class => "UniversalReaction",type => "child"},
+		{name => "biomassTemplates",class => "BiomassTemplate",type => "child"},
 		{name => "roles",class => "Role",type => "child"},
 		{name => "rolesets",class => "RoleSet",type => "child"},
 		{name => "complexes",class => "Complex",type => "child"},
@@ -962,6 +1025,60 @@ $objectDefinitions->{Mapping} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ObjectManager",class => "Biochemistry",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{UniversalReaction} = {
+	parents => ['Mapping'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'type',perm => 'rw',type => 'Str',req => 1},
+		{name => 'reactioninstance_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",class => "ReactionInstance",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{BiomassTemplate} = {
+	parents => ['Mapping'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'class',perm => 'rw',type => 'Str',req => 0,default => "0"},
+		{name => 'dna',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'rna',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'protein',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'lipid',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'cellwall',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'cofactor',perm => 'rw',type => 'Num',req => 0,default => "0"}
+	],
+	subobjects => [
+		{name => "biomassTemplateComponents",class => "BiomassTemplateComponent",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{BiomassTemplateComponent} = {
+	parents => ['BiomassTemplate'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
+		{name => 'class',perm => 'rw',type => 'Str',req => 0,default => "0"},
+		{name => 'compound_uuid',perm => 'rw',type => 'Str',req => 0,default => "0"},
+		{name => 'coefficientType',perm => 'rw',type => 'Str',req => 0,default => "0"},
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'condition',perm => 'rw',type => 'Str',req => 0,default => "0"},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
 	]
 };
 
@@ -1114,6 +1231,7 @@ $objectDefinitions->{Complex} = {
 		{name => 'modDate',perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',perm => 'rw',type => 'Int',req => 0,default => "0"},
 		{name => 'name',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'compartment',perm => 'rw',type => 'Str',req => 0,default => "cytosol"},
 	],
 	subobjects => [
 		{name => "complexreactioninstances",class => "ComplexReactionInstance",type => "encompassed"},
@@ -1129,7 +1247,8 @@ $objectDefinitions->{ComplexRole} = {
 	attributes => [
 		{name => 'role_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'optional',perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'type',perm => 'rw',type => 'Str',len => 1,req => 0,default => "G"}
+		{name => 'type',perm => 'rw',type => 'Str',len => 1,req => 0,default => "G"},
+		{name => 'triggering',perm => 'rw',type => 'Int',len => 1,req => 0,default => "1"}
 	],
 	subobjects => [],
 	primarykeys => [ qw(complex_uuid role_uuid) ],

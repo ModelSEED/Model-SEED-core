@@ -258,14 +258,13 @@ int LoadTextDatabase() {
 	if (!OpenInput(Input,Filename)) {
 		return FAIL;
 	}
-
 	bool New = false;
 	string CurrentObject;
 	string CurrentObjectID;
 	while (!Input.eof()) {
 		vector<string>* Strings = GetStringsFileline(Input, "|");
-
 		if (Strings->size() == 1 && (*Strings)[0].compare("NEW") == 0) {
+			cout << (*Strings)[0] << "\tValue1" << endl;		
 			New = true;
 		} else if (Strings->size() == 2) {
 			if (New) {
@@ -506,13 +505,12 @@ int LoadParameterFile(string Filename) {
 	//Read in the parameters and store them
 	do {
 		vector<string>* Strings = GetStringsFileline(Input, "|",false);
-		if(Parameters[ (*Strings)[0] ].length()==0){
-		  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
-		}else{
-		  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
-		}
-
 		if (Strings->size() >= 2) {
+			if(Parameters[ (*Strings)[0] ].length()==0){
+			  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			}else{
+			  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			}
 			Parameters[ (*Strings)[0] ] = (*Strings)[1];
 		}
 		delete Strings;
@@ -2336,13 +2334,13 @@ string GetMFAVariableName(MFAVariable* InVariable) {
 		cout << "problem" << endl;
 	}
 
-	if (variableNames[TypeName] != NULL && variableNames[TypeName] != InVariable) {
-	  if(InVariable->Type == DRAIN_FLUX){
-	    cout <<"Renaming drain flux from "<<variableNames[TypeName]->Name<<" to "<<InVariable->Name<<endl;
-	  }else{
-	    cout <<"Error naming variable!"<<"\t"<<InVariable->Name<<"\t"<<variableNames[TypeName]->Name<<endl;
-	  }
-	}
+	//if (variableNames[TypeName] != NULL && variableNames[TypeName] != InVariable) {
+	  //if(InVariable->Type == DRAIN_FLUX){
+	    //cout <<"Renaming drain flux from "<<variableNames[TypeName]->Name<<" to "<<InVariable->Name<<endl;
+	  //}else{
+	    //cout <<"Error naming variable!"<<"\t"<<InVariable->Name<<"\t"<<variableNames[TypeName]->Name<<endl;
+	  //}
+	//}
 	variableNames[TypeName] = InVariable;
 	return TypeName;
 }

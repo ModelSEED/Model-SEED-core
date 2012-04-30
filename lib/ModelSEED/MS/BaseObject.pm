@@ -9,6 +9,7 @@ use strict;
 use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
+use JSON::Any;
 use Digest::MD5 qw(md5_hex);
 use Module::Load;
 
@@ -90,6 +91,13 @@ sub serializeToDB {
 		}
 	}
 	return $data;
+}
+
+sub printJSONFile {
+	my ($self,$filename) = @_;
+	my $data = $self->serializeToDB();
+	my $jsonData = JSON::Any->encode($data);
+	ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
 }
 
 ######################################################################

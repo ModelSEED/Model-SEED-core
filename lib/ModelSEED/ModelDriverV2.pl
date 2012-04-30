@@ -15,7 +15,12 @@ use Cwd;
 
 $|=1;
 #First checking to see if at least one argument has been provided
-my $driv = ModelSEED::ModelDriverV2->new({});
+my $driv;
+try {
+	$driv = ModelSEED::ModelDriverV2->new({});
+} catch {
+	print $_;
+};
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
     print "Welcome to the Model SEED! You are currently logged in as: ".$driv->environment()->username().".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";

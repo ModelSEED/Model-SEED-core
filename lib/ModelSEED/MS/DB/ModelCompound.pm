@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-11T07:23:38
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -23,7 +23,7 @@ has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Ty
 has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has charge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
 has formula => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
-has model_compartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modelcompartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 
 
 # ANCESTOR:
@@ -32,7 +32,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 # LINKS:
 has compound => (is => 'rw',lazy => 1,builder => '_buildcompound',isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,Compound,uuid,compound_uuid)', metaclass => 'Typed',weak_ref => 1);
-has modelcompartment => (is => 'rw',lazy => 1,builder => '_buildmodelcompartment',isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,ModelCompartment,uuid,model_compartment_uuid)', metaclass => 'Typed',weak_ref => 1);
+has modelcompartment => (is => 'rw',lazy => 1,builder => '_buildmodelcompartment',isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,ModelCompartment,uuid,modelcompartment_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -44,7 +44,7 @@ sub _buildcompound {
 }
 sub _buildmodelcompartment {
 	my ($self) = @_;
-	return $self->getLinkedObject('Model','ModelCompartment','uuid',$self->model_compartment_uuid());
+	return $self->getLinkedObject('Model','ModelCompartment','uuid',$self->modelcompartment_uuid());
 }
 
 

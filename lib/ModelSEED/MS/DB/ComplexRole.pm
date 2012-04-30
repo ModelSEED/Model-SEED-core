@@ -3,7 +3,7 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-11T07:23:38
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
@@ -21,6 +21,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Complex', type => 'parent', met
 has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
 has optional => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
 has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'G' );
+has triggering => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1' );
 
 
 

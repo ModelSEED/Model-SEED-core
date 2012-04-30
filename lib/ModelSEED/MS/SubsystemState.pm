@@ -1,16 +1,16 @@
 ########################################################################
-# ModelSEED::MS::ReactionRule - This is the moose object corresponding to the ReactionRule object
+# ModelSEED::MS::SubsystemState - This is the moose object corresponding to the SubsystemState object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-26T23:22:35
+# Date of module creation: 2012-04-28T22:56:11
 ########################################################################
 use strict;
-use ModelSEED::MS::DB::ReactionRule;
-package ModelSEED::MS::ReactionRule;
+use ModelSEED::MS::DB::SubsystemState;
+package ModelSEED::MS::SubsystemState;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::DB::ReactionRule';
+extends 'ModelSEED::MS::DB::SubsystemState';
 # CONSTANTS:
 #TODO
 # FUNCTIONS:
