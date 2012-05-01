@@ -73,5 +73,18 @@ sub createStandardFBAModel {
 	return $mdl;
 }
 
+=head3 classifyGenomeFromAnnotation
+Definition:
+	ModelSEED::MS::Model = ModelSEED::MS::Annotation->classifyGenomeFromAnnotation({});
+Description:
+	Classifies genome as gram negative, gram positive, archeae etc based on annotations
+=cut
+sub classifyGenomeFromAnnotation {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+	});
+	
+}
+
 __PACKAGE__->meta->make_immutable;
 1;

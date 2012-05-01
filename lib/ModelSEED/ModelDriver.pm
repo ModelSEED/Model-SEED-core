@@ -2531,9 +2531,9 @@ sub mdlloadbiomass {
 	my $msg="";
 	if(!defined($bio) || $args->{overwrite} == 1){
 	    my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
-		equation => $args->{equation},
-		biomassID => $args->{biomass}
-	       });
+			equation => $args->{equation},
+			biomassID => $args->{biomass}
+	    });
 	    my $msg = "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
 	}
 
