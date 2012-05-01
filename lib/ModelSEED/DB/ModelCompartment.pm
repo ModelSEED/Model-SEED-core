@@ -44,13 +44,13 @@ __PACKAGE__->meta->setup(
 
         model_reaction_transports => {
             class      => 'ModelSEED::DB::ModelReactionTransport',
-            column_map => { uuid => 'model_compartment_uuid' },
+            column_map => { uuid => 'modelcompartment_uuid' },
             type       => 'one to many',
         },
 
         model_reactions => {
             class      => 'ModelSEED::DB::ModelReaction',
-            column_map => { uuid => 'model_compartment_uuid' },
+            column_map => { uuid => 'modelcompartment_uuid' },
             type       => 'one to many',
         },
     ],

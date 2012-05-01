@@ -74,6 +74,7 @@ sub get {
 	my ($self, $type, $alias) = @_;
 
 	my $class = "ModelSEED::MS::".$type;
+
 	my $obj = $self->api->get_object($self->username, $type, $alias);
 	if (!defined($obj)) {
 	    # handle error

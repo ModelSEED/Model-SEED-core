@@ -19,7 +19,7 @@ my $reagent_cols = ['reaction_uuid', 'compound_uuid', 'compartmentIndex',
 		    
 my $biomass_cols = ['uuid', 'modDate', 'locked', 'id', 'name'];
 
-my $biomass_compound_cols = ['biomass_uuid','compound_uuid','model_compartment_uuid', 'coefficient'];
+my $biomass_compound_cols = ['biomass_uuid','compound_uuid','modelcompartment_uuid', 'coefficient'];
 
 my $compound_cols = ['uuid', 'modDate', 'locked', 'id', 'name', 'abbreviation',
 		     'cksum', 'unchargedFormula', 'formula', 'mass',
@@ -68,10 +68,10 @@ my $model_compartment_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'compar
 			      'compartmentIndex', 'label', 'pH', 'potential'];
 
 my $model_reaction_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', 'direction',
-			   'transproton', 'protons', 'model_compartment_uuid'];
+			   'transproton', 'protons', 'modelcompartment_uuid'];
 			   
 my $model_biomass_cols = ['model_uuid', 'reaction_uuid', 'reaction_rule_uuid', 'direction',
-			   'transproton', 'protons', 'model_compartment_uuid'];
+			   'transproton', 'protons', 'modelcompartment_uuid'];
 
 my $modelfba_cols = ['uuid', 'modDate', 'locked', 'model_uuid', 'media_uuid',
 		     'options', 'geneko', 'reactionko'];

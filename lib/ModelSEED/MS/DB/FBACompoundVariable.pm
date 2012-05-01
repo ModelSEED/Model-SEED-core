@@ -1,26 +1,30 @@
 ########################################################################
-# ModelSEED::MS::DB::ModelReactionTransports - This is the moose object corresponding to the ModelReactionTransports object
+# ModelSEED::MS::DB::FBACompoundVariable - This is the moose object corresponding to the FBACompoundVariable object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-04-11T07:23:38
+# Date of module creation: 2012-04-29T05:19:03
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::ModelReactionTransports;
+package ModelSEED::MS::DB::FBACompoundVariable;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAResults', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
 has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has compartmentIndex => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1 );
-has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has lowerBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has upperBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has min => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has max => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 
 
 
@@ -37,7 +41,7 @@ sub _buildmodelcompound {
 
 
 # CONSTANTS:
-sub _type { return 'ModelReactionTransports'; }
+sub _type { return 'FBACompoundVariable'; }
 
 
 __PACKAGE__->meta->make_immutable;

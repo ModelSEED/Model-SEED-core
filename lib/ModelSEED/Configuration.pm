@@ -1,8 +1,11 @@
 ########################################################################
-# ModelSEED::Configuration - This moose object stores data on user environment
+# ModelSEED::Configuration - This moose object stores data on user env
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: Mathematics and Computer Science Division, Argonne National Lab
+# Development location: 
+#   Mathematics and Computer Science Division, Argonne National Lab;
+#   Computation Institute, University of Chicago
+#                       
 # Date of module creation: 2012-03-18
 ########################################################################
 =pod
@@ -96,7 +99,7 @@ sub _buildJSON {
 }
 
 sub _buildFilename {
-    my $filename = $ENV{MODELSEED_CONFIG};
+    my $filename = $ENV{MODELSEED_CONF};
     $filename  ||= $ENV{HOME} . "/.modelseed";
     mkpath dirname($filename) unless(-d dirname($filename));
     return $filename;

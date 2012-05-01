@@ -25,7 +25,7 @@ sub new {
 	});
 	my $self = {_figmodel => $args->{figmodel},_mainfigmodel => $args->{figmodel}};
 	# weaken figmodel even though it should disappear quickly, replaced by a private figmodel
-	Scalar::Util::weaken($self->{_figmodel});
+	#Scalar::Util::weaken($self->{_figmodel});
 	Scalar::Util::weaken($self->{_mainfigmodel});
 	bless $self;
 	#If the init argument is provided, we attempt to build a new model
@@ -1655,25 +1655,21 @@ sub biomassReaction {
 		if (!defined($bioobj)) {
 			ModelSEED::utilities::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
 		}
-		my $oldBiomass = $self->ppo()->biomassReaction();
-		my $found = 0;
+		#Deleting all existing biomass reactions
 		my $rxnmdl = $self->rxnmdl();
 		for (my $i=0; $i < @{$rxnmdl}; $i++) {
-			if ($rxnmdl->[$i]->REACTION() eq $oldBiomass) {
-				$found = 1;
-				$rxnmdl->[$i]->REACTION($newBiomass);
+			if ($rxnmdl->[$i]->REACTION() =~ m/bio\d+/) {
+				$rxnmdl->[$i]->delete();
 			}
 		}
-		if ($found == 0) {
-			$self->db()->create_object("rxnmdl",{
-				MODEL=>$self->id(),
-				REACTION=>$newBiomass,
-				compartment=>"c",
-				confidence=>1,
-				pegs=>"SPONTANEOUS",
-				directionality=>"=>"
-			})
-		}
+		$self->db()->create_object("rxnmdl",{
+			MODEL=>$self->id(),
+			REACTION=>$newBiomass,
+			compartment=>"c",
+			confidence=>1,
+			pegs=>"SPONTANEOUS",
+			directionality=>"=>"
+		});
 		$self->ppo()->biomassReaction($newBiomass);
 	}
 	return $self->ppo()->biomassReaction();
@@ -2107,18 +2103,18 @@ sub completeGapfilling {
 		});
 	}
 	#Assessing the gapfilling solution
-	if ($args->{testsolution} == 1) {
-		$results = $self->fbaTestGapfillingSolution({
-			fbaStartParameters => {
-				media => "Complete",
-				drnRxn => $args->{drnRxn}	
-			},
-			problemDirectory => $self->id()."GFT"
-		});
-		if (defined($results->{fbaObj})) {
-			$results->{fbaObj}->clearOutput();
-		}
-	}
+#	if ($args->{testsolution} == 1) {
+#		$results = $self->fbaTestGapfillingSolution({
+#			fbaStartParameters => {
+#				media => "Complete",
+#				drnRxn => $args->{drnRxn}	
+#			},
+#			problemDirectory => $self->id()."GFT"
+#		});
+#		if (defined($results->{fbaObj})) {
+#			$results->{fbaObj}->clearOutput();
+#		}
+#	}
 	$self->set_status(2,"New gapfilling complete");
 	$self->update_model_stats();
 	#$self->update_stats_for_gap_filling(time() - $start);
@@ -2997,7 +2993,7 @@ sub reconstruction {
 		checkpoint => 1,
 		autocompletion => 1,
 		biochemSource => undef
-	});	
+	});
 	#Getting genome data and feature table
 	$self->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
@@ -3156,41 +3152,16 @@ sub reconstruction {
 		ModelSEED::utilities::ERROR("Could not find biomass reaction ".$biomassID);
 	}
 	#Getting the list of essential reactions for biomass reaction
-	my $ReactionList;
-	my $essentialReactions = $bioRxn->essentialRxn();
-	if (defined($essentialReactions) && $essentialReactions =~ m/rxn\d\d\d\d\d/) {
-		push(@{$ReactionList},split(/\|/,$essentialReactions));
-		if ($essentialReactions !~ m/$biomassID/) {
-			push(@{$ReactionList},$biomassID);
-		}
-	} else {
-		push(@{$ReactionList},$biomassID);
-	}
-	#Adding biomass reactions to the model table
-	foreach my $BOFReaction (@{$ReactionList}) {
-		if (!defined($newRxnRowHash->{$BOFReaction})) {
-			my ($direction,$pegs,$confidence);
-			if ($BOFReaction =~ m/bio/) {
-				$direction = "=>";
-				$pegs = "BIOMASS";
-				$confidence = 1;
-			} else {
-				$direction = $rxnRevHash->{$BOFReaction};
-				$pegs = "BIOMASS AUTOCOMPLETION";
-				$confidence = 5;
-			}
-			$newRxnRowHash->{$BOFReaction} = {
-				MODEL => $self->id(),
-				REACTION => $BOFReaction,
-				directionality => $direction,
-				compartment => "c",
-				pegs => "UNIVERSAL",
-				reference => "SEED",
-				notes => "NONE",
-				confidence => $confidence
-			};
-		}
-	}
+	$newRxnRowHash->{$biomassID} = {
+		MODEL => $self->id(),
+		REACTION => $biomassID,
+		directionality => "=>",
+		compartment => "c",
+		pegs => "UNIVERSAL",
+		reference => "SEED",
+		notes => "NONE",
+		confidence => 3
+	};
    	#If a model already exists, we checkpoint
 	my $rxnMdl = $self->rxnmdl({clearCache => 1});
 	my $checkpointed = 0;
@@ -5955,8 +5926,12 @@ sub PrintSBMLFile {
 		attribute => "id",
 		useCache => 1
 	});
+    my $biomassDrainC = 1;
+    my $biomassDrainB = 1;
+     
 	foreach my $Compound (keys(%CompoundList)) {
 		my $cpdObj;
+        $biomassDrainC = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -5988,6 +5963,7 @@ sub PrintSBMLFile {
 	#Printing the boundary species
 	foreach my $Compound (keys(%{$ExchangeHash})) {
 		my $cpdObj;
+        $biomassDrainB = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -6009,9 +5985,13 @@ sub PrintSBMLFile {
 		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="e" charge="'.$Charge.'" boundaryCondition="true"/>');
 	}
 
-	#Add compounds for specific biomass drain
-	push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-	push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+	#Add compounds for specific biomass drain if we haven't added them already
+    if($biomassDrainC) {
+        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+    }
+    if($biomassDrainB) {
+        push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+    }
 
 	push(@{$output},'</listOfSpecies>');
 
