@@ -2182,7 +2182,9 @@ sub balanceReaction {
 
     my $status=join("|", grep { $_ ne "" } ($atom_status,$proton_status,$electron_status,$problem));
     if($status && 
-       (!$atom_status && (!$proton_status || $proton_status =~ /^HB/) && !$electron_status) && 
+       (!$atom_status && 
+	(!$proton_status || $proton_status =~ /^HB/) && 
+	!$electron_status) && 
        (!$problem || $problem eq "POLYMER")){
 	$status="OK|".$status;
     }elsif(!$status){
