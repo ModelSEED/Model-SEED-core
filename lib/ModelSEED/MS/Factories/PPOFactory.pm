@@ -203,9 +203,9 @@ sub createBiochemistry {
 	}
 	#Adding compounds to biochemistry
 	my $cpds = $args->{database}->get_objects("compound");
+    print "Handling compounds!\n";
 	#for (my $i=0; $i < 1000; $i++) {
 	for (my $i=0; $i < @{$cpds}; $i++) {
-		print $cpds->[$i]->id()."\n";
 		my $cpd = $biochemistry->create("Compound",{
 			locked => "0",
 			name => $cpds->[$i]->name(),
