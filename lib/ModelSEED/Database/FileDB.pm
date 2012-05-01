@@ -1,4 +1,4 @@
-package ModelSEED::FileDB;
+package ModelSEED::Database::FileDB;
 
 use Moose;
 use namespace::autoclean;
