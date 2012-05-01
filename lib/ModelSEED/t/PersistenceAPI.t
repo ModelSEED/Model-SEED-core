@@ -5,13 +5,10 @@ use Test::More;
 use File::Temp qw(tempfile tempdir);
 use ModelSEED::PersistenceAPI;
 
-use Data::Dumper;
-
 my $testCount = 0;
 # test initialization
 {
     my $dir = tempdir();
-    print "Directory: $dir\n";
 
     my $user1 = 'paul';
     my $user_obj1 = { name => 'Paul Frybarger' };

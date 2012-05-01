@@ -18,7 +18,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
 has login => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has password => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has email => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
@@ -26,15 +25,10 @@ has firstname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => '
 has lastname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
 
 
-# ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
-
-
 # LINKS:
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:

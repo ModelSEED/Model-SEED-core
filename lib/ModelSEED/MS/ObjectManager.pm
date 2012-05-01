@@ -18,15 +18,41 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
+has username => ( is => 'rw', isa => 'Str', required => 1, default => 'public' );
+has password => ( is => 'rw', isa => 'Str', required => 1, default => 'public' );
 has api => ( is => 'rw', isa => 'ModelSEED::PersistenceAPI', required => 1 );
-has username => ( is  => 'rw', isa => 'Str' );
-has password => ( is => 'rw', isa => 'Str', required => 1 );
-has user => ( is => 'rw', isa => 'ModelSEED::MS::User', lazy => 1, builder => '_builduser');
-has objects => (is => 'rw', isa => 'HashRef', default => sub { return {}; } );
+
+has user => ( is => 'rw', isa => 'ModelSEED::MS::User', required => 0 );
 has selectedAliases => (is => 'rw', isa => 'HashRef', default => sub { return {}; } );
 
 sub BUILD {
     # authenticate username and password, and get the user object from database  
+    my ($self) = @_;
+
+    my $pass = $self->password();
+    $self->password('########');
+
+    my $user;
+    if ($self->username eq 'public') {
+	$user = ModelSEED::MS::User->new({
+	    login => 'public',
+	    password => 'public'
+        });
+    } else {
+	my $user_hash = $self->api->get_user($self->username);
+	if (!defined($user_hash)) {
+	    die "User does not exist: " . $self->username;
+	}
+
+	$user = ModelSEED::MS::User->new($user_hash);
+
+	# authenticate
+	if (crypt($pass, $user->password) ne $user->password) {
+	    die "Incorrect password";
+	}
+    }
+
+    $self->user($user);
 }
 
 # CONSTANTS:
@@ -44,67 +70,32 @@ sub getSelectedAliases {
 	return $self->selectedAliases()->{$aliasClass};
 }
 
-sub authenticate {
-	my ($self,$username,$password) = @_;
-	my $userData = {
-		login => "chenry",
-		password => "password",
-		email => "chenry\@mcs.anl.gov",
-		firstname => "Christopher",
-		lastname => "Henry"
-	};
-	if (defined($userData)) {
-		my $user = ModelSEED::MS::User->new($userData);
-		$self->user($user);
-		$self->clear();
-	}
-}
-
-sub _builduser {
-	my ($self) = @_;
-	my $userData = {
-		login => "chenry",
-		password => "password",
-		email => "chenry\@mcs.anl.gov",
-		firstname => "Christopher",
-		lastname => "Henry"
-	};
-	return ModelSEED::MS::User->new($userData);
-}
-
-sub clear {
-	my ($self,$uuid) = @_;
-	if (defined($uuid)) {
-		delete $self->objects()->{$uuid};
-	} else {
-		$self->objects({});
-	}
-}
-
 sub get {
-	my ($self,$type,$uuid) = @_;
+	my ($self, $type, $alias) = @_;
+
 	my $class = "ModelSEED::MS::".$type;
-	if (!defined($self->objects()->{$uuid})) {
-		$self->objects()->{$uuid} = $class->new($self->db()->get_object($uuid));
+	my $obj = $self->api->get_object($self->username, $type, $alias);
+	if (!defined($obj)) {
+	    # handle error
 	}
-	return $self->objects()->{$uuid};
+
+	return $class->new($obj);
 }
 
 sub create {
-	my ($self,$type,$args) = @_;
+	my ($self, $type, $args) = @_;
 	my $class = "ModelSEED::MS::".$type;
 	if (!defined($args)) {
 		$args = {};	
 	}
 	my $object = $class->new($args);
 	$object->parent($self);
-	$self->objects()->{$object->uuid()} = $object;
 	return $object;
 }
 
 sub save {
-	my ($self,$object) = @_;
-	return $self->db()->save_object($object->uuid(),$object->serializeToDB());
+	my ($self, $type, $alias, $object) = @_;
+	return $self->api->save_object($self->username, $type, $alias, $object->serializeToDB());
 }
 
 __PACKAGE__->meta->make_immutable;

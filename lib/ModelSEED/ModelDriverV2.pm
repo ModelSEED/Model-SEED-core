@@ -29,23 +29,25 @@ Description:
 	Returns a driver object
 =cut
 sub new { 
-	my ($class,$args) = @_;
-	ModelSEED::utilities::ARGS($args,[],{
-		environment => {},
-		finishfile => undef
-	});
-	my $self = {};
-	bless $self;
-	$self->environment(ModelSEED::MS::Environment->new($args->{environment}));
-	$self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
-	$self->om(ModelSEED::MS::ObjectManager->new({
-#		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
-		db => ModelSEED::FileDB->new({filename => $self->environment()->filedb()}),
-		username => $self->environment()->username(),
-		password => $self->environment()->password(),
-		selectedAliases => $self->environment()->selectedAliases()
-	}));
-	$self->finishfile($args->{finishfile});
+    my ($class,$args) = @_;
+    ModelSEED::utilities::ARGS($args,[],{
+	environment => {},
+	finishfile => undef
+    });
+    my $self = {};
+    bless $self;
+    $self->environment(ModelSEED::MS::Environment->new($args->{environment}));
+    $self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
+    $self->om(ModelSEED::MS::ObjectManager->new({
+	api => ModelSEED::PersistenceAPI->new({
+	    db_type => $self->environment->db_type,
+	    db_config => $self->environment->db_config
+        }),
+        username => $self->environment()->username(),
+        password => $self->environment()->password(),
+        selectedAliases => $self->environment()->selectedAliases()
+    }));
+    $self->finishfile($args->{finishfile});
     return $self;
 }
 =head3 figmodel
