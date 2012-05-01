@@ -936,7 +936,6 @@ sub get_model {
 	# if cache miss:
     my $mdl = undef;
     eval {
-
 	    $mdl = ModelSEED::FIGMODEL::FIGMODELmodel->new({
 			figmodel => $self,
 			id => $id

@@ -25,7 +25,7 @@ sub new {
 	});
 	my $self = {_figmodel => $args->{figmodel},_mainfigmodel => $args->{figmodel}};
 	# weaken figmodel even though it should disappear quickly, replaced by a private figmodel
-	Scalar::Util::weaken($self->{_figmodel});
+	#Scalar::Util::weaken($self->{_figmodel});
 	Scalar::Util::weaken($self->{_mainfigmodel});
 	bless $self;
 	#If the init argument is provided, we attempt to build a new model
@@ -1655,25 +1655,21 @@ sub biomassReaction {
 		if (!defined($bioobj)) {
 			ModelSEED::utilities::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
 		}
-		my $oldBiomass = $self->ppo()->biomassReaction();
-		my $found = 0;
+		#Deleting all existing biomass reactions
 		my $rxnmdl = $self->rxnmdl();
 		for (my $i=0; $i < @{$rxnmdl}; $i++) {
-			if ($rxnmdl->[$i]->REACTION() eq $oldBiomass) {
-				$found = 1;
-				$rxnmdl->[$i]->REACTION($newBiomass);
+			if ($rxnmdl->[$i]->REACTION() =~ m/bio\d+/) {
+				$rxnmdl->[$i]->delete();
 			}
 		}
-		if ($found == 0) {
-			$self->db()->create_object("rxnmdl",{
-				MODEL=>$self->id(),
-				REACTION=>$newBiomass,
-				compartment=>"c",
-				confidence=>1,
-				pegs=>"SPONTANEOUS",
-				directionality=>"=>"
-			})
-		}
+		$self->db()->create_object("rxnmdl",{
+			MODEL=>$self->id(),
+			REACTION=>$newBiomass,
+			compartment=>"c",
+			confidence=>1,
+			pegs=>"SPONTANEOUS",
+			directionality=>"=>"
+		});
 		$self->ppo()->biomassReaction($newBiomass);
 	}
 	return $self->ppo()->biomassReaction();
