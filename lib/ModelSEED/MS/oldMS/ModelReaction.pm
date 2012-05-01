@@ -20,7 +20,7 @@ has model => (is => 'rw',isa => 'ModelSEED::MS::Model',weak_ref => 1);
 
 #Attributes
 has reaction_uuid     => (is => 'rw', isa => 'Str', default  => "");
-has model_compartment_uuid     => (is => 'rw', isa => 'Str', default  => "");
+has modelcompartment_uuid     => (is => 'rw', isa => 'Str', default  => "");
 has direction     => (is => 'rw', isa => 'Str', default  => "");
 has transproton    => (is => 'rw', isa => 'Num');
 has protons   => (is => 'rw', isa => 'Num',default  => 0);
@@ -92,9 +92,9 @@ sub _getReaction {
 sub _getCompartment {
 	my ($self) = @_;
 	if (defined($self->model())) {
-        my $cmp = $self->model()->getModelCompartment({uuid => $self->model_compartment_uuid});
+        my $cmp = $self->model()->getModelCompartment({uuid => $self->modelcompartment_uuid});
         if (!defined($cmp)) {
-        	ModelSEED::utilities::ERROR("Model compartment ".$self->model_compartment_uuid." not found in model!");
+        	ModelSEED::utilities::ERROR("Model compartment ".$self->modelcompartment_uuid." not found in model!");
         }
         return $cmp;
     } else {
@@ -108,7 +108,7 @@ sub _buildEquation {
 	return $equation;
 }
 
-sub _buildDbAttributes { return [qw( reaction_uuid  model_compartment_uuid direction transproton)]; }
+sub _buildDbAttributes { return [qw( reaction_uuid  modelcompartment_uuid direction transproton)]; }
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -161,14 +161,14 @@ sub loadFromEquation {
 			}
 			my $modcpd = $mod->getObject("ModelCompound",{
 				compound_uuid => $cpd->uuid(),
-				model_compartment_uuid => $comp->uuid()
+				modelcompartment_uuid => $comp->uuid()
 			});			
 			if (!defined($modcpd)) {
 				$modcpd = $mod->create("ModelCompound",{
 					compound_uuid => $cpd->uuid(),
 					charge => $cpd->defaultCharge(),
 					formula => $cpd->formula(),
-					model_compartment_uuid => $comp->uuid()
+					modelcompartment_uuid => $comp->uuid()
 				});
 			}
 			$self->create("BiomassCompound",{

@@ -87,8 +87,10 @@ sub get {
 	my ($self,$type,$uuid) = @_;
 	my $class = "ModelSEED::MS::".$type;
 	if (!defined($self->objects()->{$uuid})) {
-#		$self->objects()->{$uuid} = $class->new($self->db()->get_object($type,{user => $self->username(),uuid => $uuid}));	
-		$self->objects()->{$uuid} = $class->new($self->db()->get_object($uuid));	
+		print "Getting data!\n";
+		my $data = $self->db()->get_object($type,$uuid);
+		print "Building biochemistry!\n";
+		$self->objects()->{$uuid} = $class->new($data);	
 	}
 	return $self->objects()->{$uuid};
 }
@@ -107,8 +109,8 @@ sub create {
 
 sub save {
 	my ($self,$object) = @_;
-	#return $self->db()->save_object($object->_type(),{user => $self->username(),object => $object->serializeToDB(),uuid => $object->uuid()});
-	return $self->db()->save_object($object->uuid(),$object->serializeToDB());
+	return $self->db()->save_object($object->_type(),$object->uuid(),$object->serializeToDB());
+#	return $self->db()->save_object($object->uuid(),$object->serializeToDB());
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -6059,7 +6059,7 @@ int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InP
 			}
 			  
 			//Test status for OK flag
-			if(AddReaction && rxnobj->get("status").substr(0,2).compare("OK") != 0){
+			if(AddReaction && rxnobj->get("status").length() >= 2 && rxnobj->get("status").substr(0,2).compare("OK") != 0){
 			  cout << "Status for reaction " << RxnId << " not OK: " << rxnobj->get("status") << endl;
 			  AddReaction = false;
 			}

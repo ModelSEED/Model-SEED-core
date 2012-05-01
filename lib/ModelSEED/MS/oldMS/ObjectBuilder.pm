@@ -491,13 +491,13 @@ $objectDefinitions->{ModelCompound} = {
 		{name => 'compound_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
 		{name => 'charge',perm => 'rw',type => 'Num',req => 0},
 		{name => 'formula',perm => 'rw',type => 'Str',req => 0},
-		{name => 'model_compartment_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
+		{name => 'modelcompartment_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
 	],
 	subobjects => [],
 	primarykeys => [ qw(model_uuid uuid) ],
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
-		{name => "modelcompartment",attribute => "model_compartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
+		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
 	]
 };
 
@@ -510,7 +510,7 @@ $objectDefinitions->{ModelReaction} = {
 		{name => 'reaction_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
 		{name => 'direction',perm => 'rw',type => 'Str',len => 1,req => 0},
 		{name => 'protons',perm => 'rw',type => 'Num',req => 0},
-		{name => 'model_compartment_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
+		{name => 'modelcompartment_uuid',perm => 'rw',type => 'Str',len => 36,req => 1},
 	],
 	subobjects => [
 		{name => "gpr",class => "ModelReactionRawGPR",type => "encompassed"},
@@ -519,7 +519,7 @@ $objectDefinitions->{ModelReaction} = {
 	primarykeys => [ qw(model_uuid uuid) ],
 	links => [
 		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
-		{name => "modelcompartment",attribute => "model_compartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
+		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",class => "ModelCompartment",query => "uuid"}
 	]
 };
 

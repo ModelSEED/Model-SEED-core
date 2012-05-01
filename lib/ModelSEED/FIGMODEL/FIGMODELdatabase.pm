@@ -1,7 +1,7 @@
 use strict;
 use ModelSEED::FIGMODEL::FIGMODELdata;
 use File::Path qw(make_path);
-use File::NFSLock;
+#use File::NFSLock;
 #use CHI;
 use DBMaster;
 use Storable;
