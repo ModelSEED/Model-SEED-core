@@ -386,16 +386,6 @@ sub dbtransfermain {
 	print "Saved mapping with uuid ".$map->uuid()."\n";
 	$self->environment()->mapping($map->uuid());
 	$self->environment()->save();
-	print "Transfering model!\n";
-	my $model = $ppofactory->createModel({
-		model => "Seed83333.1.796",
-		biochemistry => $bio,
-		mapping => $map
-	});
-	$model->save();
-	$model->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullModel.json");
-	$model->annotation()->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullAnnotation.json");
-	print "Saved model with uuid ".$model->uuid()."\n";
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
 =head3 dbtransfermodel

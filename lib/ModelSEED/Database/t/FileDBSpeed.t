@@ -4,7 +4,7 @@ use warnings;
 
 use Data::Dumper;
 
-use ModelSEED::FileDB;
+use ModelSEED::Database::FileDB;
 
 use JSON::Any;
 use IO::Compress::Gzip qw(gzip);
@@ -19,7 +19,7 @@ use Time::HiRes qw(time);
 my $dir = tempdir();
 
 my $type = 'test';
-my $db = ModelSEED::FileDB->new({ directory => $dir });
+my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
 
 # test time for small objects
 my $object = build_object(1);

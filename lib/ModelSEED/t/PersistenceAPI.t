@@ -19,7 +19,7 @@ my $testCount = 0;
     my $alias2 = 'chris/test';
 
     my $api = ModelSEED::PersistenceAPI->new({
-	db_type => 'FileDB',
+	db_type => 'Database::FileDB',
 	db_config => {
 	    directory => $dir
 	}

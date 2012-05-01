@@ -90,6 +90,9 @@ around BUILDARGS => sub {
     my ($orig, $class, $args) = @_;
     my $authorized = 0;
     my $private = $args->{private};
+    unless(defined($private)) {
+        $private = ModelSEED::Store::Private->new();
+    }
     # Handle Authentication methods
     if(defined($args->{username}) && defined($args->{password})) {
         my $user = $private->get_user($args->{username});

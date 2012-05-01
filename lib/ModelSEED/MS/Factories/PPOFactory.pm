@@ -27,7 +27,7 @@ has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager', lazy => 1, builde
 sub _buildom {
 	my ($self) = @_;
 	my $om = ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+		db => ModelSEED::Database::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
 		username => $self->username(),
 		password => $self->password(),
 		selectedAliases => {
@@ -203,9 +203,9 @@ sub createBiochemistry {
 	}
 	#Adding compounds to biochemistry
 	my $cpds = $args->{database}->get_objects("compound");
+    print "Handling compounds!\n";
 	#for (my $i=0; $i < 1000; $i++) {
 	for (my $i=0; $i < @{$cpds}; $i++) {
-		print $cpds->[$i]->id()."\n";
 		my $cpd = $biochemistry->create("Compound",{
 			locked => "0",
 			name => $cpds->[$i]->name(),

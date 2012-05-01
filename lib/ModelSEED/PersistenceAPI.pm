@@ -27,7 +27,7 @@ TODO:
 constructor params
 
 {
-    db_type   => 'FileDB',
+    db_type   => 'Database::FileDB',
     db_config => {
         directory => '',
         filename => ''

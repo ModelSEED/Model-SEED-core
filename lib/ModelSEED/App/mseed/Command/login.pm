@@ -32,7 +32,11 @@ sub execute {
     unless(defined($usrObj)) {
         die "Could not find specified user account.\n";
     }
-    $fm->authenticate({username => $username, password => $password});
+    try {
+        $fm->authenticate({username => $username, password => $password});
+    } catch {
+        die "Invalid password\n";
+    };
     if (!defined($fm->userObj()) || $fm->userObj()->login() ne $username) {
         die "Invalid password\n"; 
     } else {

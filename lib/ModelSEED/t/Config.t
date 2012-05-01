@@ -32,7 +32,7 @@ my $TESTINI = <<INI;
     "stores" : [
         {
             "name" : "local",
-            "class" : "ModelSEED::FileDB",
+            "class" : "ModelSEED::Database::FileDB",
             "filename" : "$TMPDB"
         }
     ]
