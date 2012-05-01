@@ -19,7 +19,7 @@ use Moose;
 use namespace::autoclean;
 
 # ATTRIBUTES:
-has db => ( is => 'rw', isa => 'ModelSEED::FileDB', required => 1 );
+has db => ( is => 'rw', isa => 'ModelSEED::Database::FileDB', required => 1 );
 has username => ( is  => 'rw', isa => 'Str' );
 has password => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User', lazy => 1, builder => '_builduser');

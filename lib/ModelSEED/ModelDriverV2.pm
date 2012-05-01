@@ -40,7 +40,7 @@ sub new {
 	$self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
 	$self->om(ModelSEED::MS::ObjectManager->new({
 #		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
-		db => ModelSEED::FileDB->new({directory => $self->environment()->filedb()}),
+		db => ModelSEED::Database::FileDB->new({directory => $self->environment()->filedb()}),
 		username => $self->environment()->username(),
 		password => $self->environment()->password(),
 		selectedAliases => $self->environment()->selectedAliases()

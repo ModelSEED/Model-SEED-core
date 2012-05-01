@@ -27,7 +27,7 @@ has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager', lazy => 1, builde
 sub _buildom {
 	my ($self) = @_;
 	my $om = ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
+		db => ModelSEED::Database::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
 		username => $self->username(),
 		password => $self->password(),
 		selectedAliases => {
