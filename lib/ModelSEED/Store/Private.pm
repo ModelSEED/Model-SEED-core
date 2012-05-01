@@ -134,7 +134,7 @@ queries against the data store.
 
 Permissions are handled via the "alias" attribute and the following
 functions. As an overview, any object with an alias like
-C<"$username/aribtraryString> is "owned" by C<$username>. That
+C<$username/aribtraryString> is "owned" by C<$username>. That
 user may perform a C<save_object> call against the alias. No other
 users may do this. So we have single-user write-access to objects.
 

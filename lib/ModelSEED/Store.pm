@@ -34,6 +34,8 @@ base storage interface that the Store will use. If this is not
 provided, it will be initialized based on the contents of the
 C<ModelSEED::Configuration> package.
 
+=back
+
 =head3 Authentication
 
 The C<new> method requires authentication information. Without this,
