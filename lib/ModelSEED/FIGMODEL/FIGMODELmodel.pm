@@ -5926,8 +5926,12 @@ sub PrintSBMLFile {
 		attribute => "id",
 		useCache => 1
 	});
+    my $biomassDrainC = 1;
+    my $biomassDrainB = 1;
+     
 	foreach my $Compound (keys(%CompoundList)) {
 		my $cpdObj;
+        $biomassDrainC = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -5959,6 +5963,7 @@ sub PrintSBMLFile {
 	#Printing the boundary species
 	foreach my $Compound (keys(%{$ExchangeHash})) {
 		my $cpdObj;
+        $biomassDrainB = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -5980,9 +5985,13 @@ sub PrintSBMLFile {
 		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="e" charge="'.$Charge.'" boundaryCondition="true"/>');
 	}
 
-	#Add compounds for specific biomass drain
-	push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-	push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+	#Add compounds for specific biomass drain if we haven't added them already
+    if($biomassDrainC) {
+        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+    }
+    if($biomassDrainB) {
+        push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+    }
 
 	push(@{$output},'</listOfSpecies>');
 

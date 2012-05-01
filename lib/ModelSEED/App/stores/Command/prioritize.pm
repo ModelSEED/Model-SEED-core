@@ -1,6 +1,5 @@
 package ModelSEED::App::stores::Command::prioritize;
-use ModelSEED::Configuration;
-use Data::Dumper;
+use Class::Autouse qw(ModelSEED::Configuration);
 use base 'App::Cmd::Command';
 my $MS = ModelSEED::Configuration->new;
 sub abstract { "Set the storage priority" }
