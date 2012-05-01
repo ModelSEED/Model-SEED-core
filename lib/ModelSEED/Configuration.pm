@@ -5,7 +5,7 @@
 # Development location: 
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-03-18
 ########################################################################
 =pod
@@ -39,7 +39,7 @@ in the current user's C<$HOME> directory.
 Returns a hashref of configuration information. From the perspective
 of ModelSEED::Configuration, this hashref is unstructured, and may
 contain keys pointing to strings, arrays or other hashrefs.
-    
+
     my $item = $Config->config->{key};
 
 =head2 save

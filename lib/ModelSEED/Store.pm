@@ -2,10 +2,10 @@
 # ModelSEED::Store - Authenticated storage interface layer
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: 
+# Development location:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-05-01
 ########################################################################
 =pod
@@ -88,7 +88,7 @@ has private => ( is => 'ro', isa => 'ModelSEED::Store::Private', required => 1);
 
 around BUILDARGS => sub {
     my ($orig, $class, $args) = @_;
-    my $authorized = 0; 
+    my $authorized = 0;
     my $private = $args->{private};
     # Handle Authentication methods
     if(defined($args->{username}) && defined($args->{password})) {
@@ -109,7 +109,7 @@ around BUILDARGS => sub {
                         lastname => $info->{lastname},
                         email => $info->{email},
                     });
-                $private->create_user($user->login, $user->serializeToDB);
+                $private->create_user($user);
             }
         }
         if($user->check_password($args->{password})) {
