@@ -1816,6 +1816,9 @@ sub mdlautocomplete {
 		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
 		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
 	],[@Data],"adds reactions to the model to eliminate inactive reactions");
+    if (!defined($ENV{ILOG_LICENSE_FILE}) || !defined($ENV{CPLEXAPI}) || !-e $ENV{ILOG_LICENSE_FILE}) {
+    	ModelSEED::utilities::ERROR("Cannot run auto-completion without CPLEX!");
+    }
     $args->{media} =~ s/\_/ /g;
     #Getting model list
     my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
