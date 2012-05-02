@@ -1,25 +1,32 @@
-# Unit tests for PersistenceAPI.pm 
+# Unit tests for Private.pm
 use strict;
 use warnings;
 use Test::More;
 use File::Temp qw(tempfile tempdir);
-use ModelSEED::PersistenceAPI;
+use ModelSEED::Store::Private;
+use ModelSEED::MS::User;
 
 my $testCount = 0;
 # test initialization
 {
     my $dir = tempdir();
 
-    my $user1 = 'paul';
-    my $user_obj1 = { name => 'Paul Frybarger' };
-    my $user2 = 'chris';
-    my $user_obj2 = { name => 'Chris Henry' };
+    my $user1 = 'pfrybarger';
+    my $user_obj1 = ModelSEED::MS::User->new({
+        login => $user1,
+        password => 'pass'
+    });
+    my $user2 = 'chenry';
+    my $user_obj2 = ModelSEED::MS::User->new({
+        login => $user2,
+        password => 'pass'
+    });
     my $type = 'test';
-    my $alias1 = 'paul/main';
-    my $alias2 = 'chris/test';
+    my $alias1 = "$user1/main";
+    my $alias2 = "$user2/test";
 
-    my $api = ModelSEED::PersistenceAPI->new({
-	db_type => 'Database::FileDB',
+    my $api = ModelSEED::Store::Private->new({
+	db_class  => 'ModelSEED::FileDB',
 	db_config => {
 	    directory => $dir
 	}
@@ -28,8 +35,10 @@ my $testCount = 0;
     ok defined $api, "PersistenceAPI successfully created";
     ok !$api->has_object($user1, $type, $alias1), "No objects in database";
 
-    ok $api->create_user($user1, $user_obj1), "Saved user to database";
-    is_deeply $user_obj1, $api->get_user($user1), "Got user from database";
+    ok $api->create_user($user_obj1), "Saved user to database";
+    is_deeply $user_obj1->serializeToDB,
+      $api->get_user($user1)->serializeToDB,
+      "Got user from database";
 
     my $obj1 = {
 	hello => 'world',
@@ -41,21 +50,23 @@ my $testCount = 0;
     };
 
     ok $api->save_object($user1, $type, $alias1, $obj1), "Saved object to database";
-    is_deeply $obj1, $api->get_object($user1, $type, $alias1), "Got object from database";
+    is_deeply $obj1, $api->get_data($user1, $type, $alias1), "Got object from database";
 
-    $api->create_user($user2, $user_obj2);
+    $api->create_user($user_obj2);
     ok !$api->has_object($user2, $type, $alias1), "User 2 does not have permission on object";
 
     ok $api->add_viewer($user1, $type, $alias1, $user2), "add_viewer returned success";
-    is_deeply $obj1, $api->get_object($user2, $type, $alias1), "User 2 has permission on object";
+    is_deeply $obj1, $api->get_data($user2, $type, $alias1), "User 2 has permission on object";
 
     ok !$api->save_object($user2, $type, $alias1, $obj1), "User can't save object to another users alias space";
 
     $api->save_object($user2, $type, $alias2, $obj1);
-    is_deeply $obj1, $api->get_object($user2, $type, $alias2), "User can save to own alias space";
+    is_deeply $obj1, $api->get_data($user2, $type, $alias2), "User can save to own alias space";
 
-# test parents/ancestors
-#    $api->save_object($user1, $type, $alias1, $obj2);
+    # test get_object (not only get_data)
+
+    # test parents/ancestors
+    #    $api->save_object($user1, $type, $alias1, $obj2);
 
     # test get_aliases_for_type
     my $aliases = {};

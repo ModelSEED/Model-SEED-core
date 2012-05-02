@@ -1,7 +1,4 @@
-
-
 #!/usr/bin/perl -w
-
 ########################################################################
 # Driver module that holds all functions that govern user interaction with the Model SEED
 # Author: Christopher Henry
@@ -9,15 +6,16 @@
 # Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 9/6/2011
 ########################################################################
-
 use strict;
 use lib "../../config/";
+use Class::Autouse qw(
+    ModelSEED::FIGMODEL
+    ModelSEED::Configuration
+    ModelSEED::Store
+    ModelSEED::MS::Factories::PPOFactory
+);
 use ModelSEEDbootstrap;
 use ModelSEED::utilities;
-use ModelSEED::FIGMODEL;
-use ModelSEED::MS::ObjectManager;
-use ModelSEED::MS::Environment;
-use ModelSEED::MS::Factories::PPOFactory;
 use File::Basename qw(dirname basename);
 
 package ModelSEED::ModelDriverV2;
@@ -36,16 +34,17 @@ sub new {
 	});
 	my $self = {};
 	bless $self;
-	$self->environment(ModelSEED::MS::Environment->new($args->{environment}));
-	$self->figmodel(ModelSEED::FIGMODEL->new({username => $self->environment()->username(),password => $self->environment()->password()}));
-	$self->om(ModelSEED::MS::ObjectManager->new({
-#		db => ModelSEED::FileDBold::FileDB->new({directory => $self->environment()->filedb()}),
-		db => ModelSEED::FileDB->new({directory => $self->environment()->filedb()}),
-		username => $self->environment()->username(),
-		password => $self->environment()->password(),
-		selectedAliases => $self->environment()->selectedAliases()
-	}));
-	$self->finishfile($args->{finishfile});
+    $self->config(ModelSEED::Configuration->new());
+    $self->environment($self->config->config);
+    my $c = $self->config->config;
+	$self->figmodel(ModelSEED::FIGMODEL->new({
+        username => $c->{login}->{username},
+        password => $c->{login}->{password},
+    }));
+    $self->om(ModelSEED::Store->new({
+        username => $c->{login}->{username},
+        password => $c->{login}->{password},
+    }));
     return $self;
 }
 =head3 figmodel
@@ -63,7 +62,7 @@ sub figmodel {
 }
 =head3 environment
 Definition:
-	ModelSEED::MS::Environment = ModelDriverV2->environment();
+	ModelSEED::MS:: = ModelDriverV2->environment();
 Description:
 	Returns an Environment object
 =cut
@@ -76,9 +75,9 @@ sub environment {
 }
 =head3 om
 Definition:
-	ModelSEED::MS::ObjectManager = driver->om();
+	ModelSEED::Store = driver->om();
 Description:
-	Returns an ObjectManager object
+    Returns a ModelSEED::Store object
 =cut
 sub om {
 	my ($self,$om) = @_;
@@ -95,9 +94,11 @@ Description:
 =cut
 sub biochemistry {
 	my ($self) = @_;
-	if (!defined($self->{_biochemistry}) || $self->{_biochemistry}->uuid() ne $self->environment()->biochemistry()) {
-		$self->{_biochemistry} = $self->om()->get("Biochemistry",$self->environment()->biochemistry());
-	}
+    my $wanted = $self->environment()->{biochemistry};
+    my $got = $self->{_biochemistry};
+    if (!defined($got) || $got->uuid ne $wanted) {
+        $self->{_biochemistry} = $self->om()->get_object("Biochemistry", $wanted);
+    }
 	return $self->{_biochemistry};
 }
 =head3 mapping
@@ -108,9 +109,11 @@ Description:
 =cut
 sub mapping {
 	my ($self) = @_;
-	if (!defined($self->{_mapping}) || $self->{_mapping}->uuid() ne $self->environment()->mapping()) {
-		$self->{_mapping} = $self->om()->get("Mapping",$self->environment()->mapping());
-	}
+    my $wanted = $self->environment()->{mapping};
+    my $got = $self->{_mapping};
+    if (!defined($got) || $got->uuid ne $wanted) {
+        $self->{_mapping} = $self->om()->get_object("mapping", $wanted);
+    }
 	return $self->{_mapping};
 }
 =head3 db
@@ -130,8 +133,11 @@ Description:
 	Returns a requested configuration object
 =cut
 sub config {
-	my ($self,$key) = @_;
-	return $self->figmodel()->config($key);
+	my ($self,$val) = @_;
+    if($val) {
+        $self->{_config} = $val;
+    }
+    return $self->{_config};
 }
 =head3 check
 Definition:
@@ -277,67 +283,6 @@ sub outputdirectory {
 	my ($self) = @_;
 	return $self->{_outputdirectory};
 }
-=head
-=CATEGORY
-Workspace Operations
-=DESCRIPTION
-This command is used to login as a user in the Model SEED environment. If you have a SEED account already, use those credentials to log in here. Your account information will automatically be imported and used locally. You will remain logged in until you use either the '''mslogin''' or '''mslogout''' command. Once you login, you will automatically switch to the current workspace for the account you log into.
-=EXAMPLE
-./mslogin -username public -password public
-=cut
-sub mslogin {
-    my($self,@Data) = @_;
-	my $args = $self->check([
-		["username",1,undef,"username of user account you wish to log into or import from the SEED"],
-		["password",1,undef,"password of user account you wish to log into or import from the SEED"],
-		["noimport",0,0,undef,"username of user account you wish to log into"]
-	],[@Data],"login as new user and import user account from SEED");
-	#Checking for existing account in local database
-	my $usrObj = $self->db()->get_object("user",{login => $args->{username}});
-	if (!defined($usrObj) && $self->figmodel()->config("PPO_tbl_user")->{name}->[0] ne "ModelDB") {
-		ModelSEED::utilities::ERROR("Could not find specified user account. Try new \"username\" or register an account on the SEED website!");
-	}
-	#If local account was not found, attempting to import account from the SEED
-	if (!defined($usrObj) && $args->{noimport} == 0) {
-        print "Unable to find account locally, trying to obtain login info from theseed.org...\n";
-		$usrObj = $self->figmodel()->import_seed_account({
-			username => $args->{username},
-			password => $args->{password}
-		});
-		if (!defined($usrObj)) {
-			ModelSEED::utilities::ERROR("Could not find specified user account in the local or SEED environment.".
-                "Try new \"username\", run \"createlocaluser\", or register an account on the SEED website.");
-		}
-        print "Success! Downloaded user credentials from theseed.org!\n";
-	}
-	#Authenticating
-	$self->figmodel()->authenticate($args);
-	if (!defined($self->figmodel()->userObj()) || $self->figmodel()->userObj()->login() ne $args->{username}) {
-		ModelSEED::utilities::ERROR("Authentication failed! Try new password!");
-	}
-	$self->environment()->username($args->{username});
-	$self->environment()->password($args->{password});
-	$self->environment()->save();
-	my $message = "Authentication Successful!\n".
-		"You will remain logged in as \"".$args->{username}."\" until you run the \"login\" or \"logout\" functions.";
-	return {success => 1,message => $message};
-}
-=head
-Definition:
-	ModelDriverV2->mslogout();
-=Description:
-	This function is used to log a user out of the Model SEED environment. Effectively, this switches the currently logged user to the "public" account and switches to the current workspace for the public account.
-=cut
-sub mslogout {
-    my($self,@Data) = @_;
-	my $args = $self->check([],[@Data],"logout of the Model SEED environment");
-	$self->environment()->username("public");
-	$self->environment()->password("public");
-	$self->environment()->save();
-	my $message = "Logout Successful!\n".
-		"You will not be able to access user-associated data anywhere unless you log in again.";
-	return {success => 1,message => $message};
-}
 =head3 mslasterror
 Definition:
 	driver->mslasterror();
@@ -347,11 +292,12 @@ Description:
 sub mslasterror {
     my ($self, @Data) = @_;
     my $args = $self->check([],[@Data],"print last error");
-	if ($self->environment()->lasterror() eq "NONE" || !-e $self->environment()->lasterror()) {
+    my $errorFile = $self->environment()->{lasterror};
+	if ( $errorFile eq "NONE" || !-e $errorFile) {
 		return "Last error file not found!";
 	}
-	my $output = ["Last error printed to file:","",$self->environment()->lasterror(),"","Error text printed below:"];
-	push(@{$output},@{ModelSEED::utilities::LOADFILE($self->environment()->lasterror())});
+	my $output = ["Last error printed to file:","",$errorFile,"","Error text printed below:"];
+	push(@{$output},@{ModelSEED::utilities::LOADFILE($errorFile)});
     return {success => 1,message => join("\n",@{$output})};
 }
 =head3 dbtransfermain
@@ -365,8 +311,8 @@ sub dbtransfermain {
 	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
 		om => $self->om(),
-		username => $self->environment()->username(),
-		password => $self->environment()->password()	
+		username => $self->environment()->{username},
+		password => $self->environment()->{password}	
 	});
 	my $bio = $ppofactory->createBiochemistry();
 	$bio->save();
@@ -382,18 +328,8 @@ sub dbtransfermain {
 	$map->save();
 	$map->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
 	print "Saved mapping with uuid ".$map->uuid()."\n";
-	$self->environment()->mapping($map->uuid());
-	$self->environment()->save();
-	print "Transfering model!\n";
-	my $model = $ppofactory->createModel({
-		model => "Seed83333.1.796",
-		biochemistry => $bio,
-		mapping => $map
-	});
-	$model->save();
-	$model->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullModel.json");
-	$model->annotation()->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullAnnotation.json");
-	print "Saved model with uuid ".$model->uuid()."\n";
+	$self->environment()->{mapping} = $map->uuid();
+	$self->config()->save();
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
 =head3 dbtransfermodel
@@ -409,8 +345,8 @@ sub dbtransfermodel {
 	],[@Data],"transfers model to new scheme");
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
 		om => $self->om(),
-		username => $self->environment()->username(),
-		password => $self->environment()->password()	
+		username => $self->environment()->{username},
+		password => $self->environment()->{password}
 	});
 	print "Loading biochemistry!\n";
 	my $biochemistry = $self->biochemistry();
@@ -436,8 +372,8 @@ sub testobj {
 	my($self,@Data) = @_;
 	my $om = ModelSEED::MS::ObjectManager->new({
 		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
-		username => $self->environment()->username(),
-		password => $self->environment()->password(),
+		username => $self->environment()->{username},
+		password => $self->environment()->{password},
 		selectedAliases => {
 			ReactionAliasSet => "ModelSEED",
 			CompoundAliasSet => "ModelSEED",

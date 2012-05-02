@@ -18,7 +18,12 @@ has registeredSEED => ( is => 'rw', isa => 'HashRef',default => sub{return {};})
 has seed => ( is => 'rw', isa => 'Str',default => 'local' );
 has lasterror => ( is => 'rw', isa => 'ModelSEED::varchar',default => "NONE");
 has filename => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/config/newenvironment.dat");
-has filedb => ( is => 'rw', isa => 'ModelSEED::varchar',default => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/");
+has db_type => ( is => 'rw', isa => 'Str', default => 'FileDB' );
+has db_config => ( is => 'rw', isa => 'HashRef', default => sub {
+    return {
+	directory => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/"
+    }
+});
 has selectedAliases => ( is => 'rw', isa => 'HashRef',default => sub{
 	return {
 		ReactionAliasSet => "ModelSEED",

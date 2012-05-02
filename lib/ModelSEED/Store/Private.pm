@@ -2,10 +2,10 @@
 # ModelSEED::Store::Private - Base storage interface layer
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: 
+# Development location:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-05-01
 ########################################################################
 =pod
@@ -42,12 +42,9 @@ user objects.
 
 =head2 create_user
 
-    $PStore->create_user($username, \%);
+    $PStore->create_user($user);
 
-Creates a user object. C<$username> is a unique string representing
-the user's login name. C<\%> is a hashref containing user information.
-This should really be the contents of C<ModelSEED::MS::User>.
-
+Creates a user object. C<$user> is a C<ModelSEED::MS::User> object.
 
 =head2 get_user
 
@@ -65,7 +62,7 @@ has wide-ranging affects; that user will no longer be able to access
 objects within the Store. This does not delete objects owned by that
 user, however.
 
-=head1 Object Methods 
+=head1 Object Methods
 
 These functions deal with checking for the existence of, getting
 and saving objects. In most cases, objects are assumed to be instances
@@ -172,49 +169,47 @@ use Digest::MD5 qw(md5_hex);
 use JSON::Any;
 use ModelSEED::Configuration;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw(
-    ModelSEED::MS::User
-);
+use Class::Autouse qw( ModelSEED::MS::User );
 
 my $RESERVED_META = "__system__";
 
 role_type 'ModelSEED::Database';
 
-has databases => ( is => 'rw', isa => 'ArrayRef' );
-has db        => ( is => 'rw', isa => 'ModelSEED::Database' );
+has db => ( is => 'rw', isa => 'ModelSEED::Database', required => 1 );
 
-sub BUILD {
-    my ($self) = @_;
-    my $Config = ModelSEED::Configuration->new();
-    my $stores = $Config->config->{stores} || [];
-    my $databases = [];
-    die "No storage defined!" unless(@$stores);
-    foreach my $store (@$stores) {
-        # get database connection
-        my $db_class = $store->{class};
+around BUILDARGS => sub {
+    my ($orig, $class, $args) = @_;
+
+    if (defined($args->{db})) {
+        # database already defined, do nothing
+    } elsif (defined($args->{db_class}) && defined($args->{db_config})) {
+        my $db_class = $args->{db_class};
         my $db_req = $db_class . ".pm";
         $db_req =~ s/::/\//g;
+
         try {
             require $db_req;
-            push(@$databases, $db_class->new($store));
+            $args->{db} = $db_class->new($args->{db_config});
         } catch {
             die "Could not import database package: $db_class";
         };
+    } else {
+        # TODO: get database from config
     }
-    $self->databases($databases);
-    $self->db($databases->[0]);
-}
+
+    return $class->$orig($args);
+};
 
 sub create_user {
-    my ($self, $user, $object) = @_;
+    my ($self, $user) = @_;
 
-    unless ($self->db->save_object('user', $user, $object)) {
-    return 0;
+    unless ($self->db->save_object('user', $user->login, $user->serializeToDB)) {
+        return 0;
     }
 
     # now save type meta
     my $meta_path = "$RESERVED_META.type";
-    $self->db->set_metadata('user', $user, $meta_path, 'user');
+    $self->db->set_metadata('user', $user->login, $meta_path, 'user');
 
     return 1;
 }
@@ -244,15 +239,15 @@ sub has_object {
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
-    # no object, return false
-    return 0;
+        # no object, return false
+        return 0;
     }
 
     # check permissions
     unless ($user eq $alias_user ||
-        $info->{public}      ||
-        $info->{viewers}->{$user}) {
-    return 0;
+            $info->{public}      ||
+            $info->{viewers}->{$user}) {
+        return 0;
     }
 
     return 1;
@@ -260,10 +255,13 @@ sub has_object {
 
 sub get_object {
     my ($self, $user, $type, $user_alias) = @_;
-    $type = lc($type);
+
     my $obj_data = $self->get_data($user, $type, $user_alias);
+    return undef unless(defined($obj_data));
+
     my $classBase = uc(substr($type,0,1)) . substr($type,1);
     my $class = "ModelSEED::MS::".$classBase;
+
     return $class->new($obj_data);
 }
 
@@ -279,15 +277,15 @@ sub get_data {
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
-    # no object, return undef
-    return;
+        # no object, return undef
+        return;
     }
 
     # check permissions
     unless ($user eq $alias_user ||
-        $info->{public}      ||
-        $info->{viewers}->{$user}) {
-    return;
+            $info->{public}      ||
+            $info->{viewers}->{$user}) {
+        return;
     }
 
     my $obj_id = $info->{object};
@@ -304,8 +302,8 @@ sub save_object {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-    # cannot save to someone else's alias space
-    return 0;
+        # cannot save to someone else's alias space
+        return 0;
     }
 
     # save data, unless object already exists (check via md5)
@@ -313,38 +311,39 @@ sub save_object {
     my $md5 = md5_hex($json_obj);
     my $new = 0;
     unless ($self->db->has_object($type, $md5)) {
-    $new = 1;
-    $self->db->save_object($type, $md5, $json_obj);
+        $new = 1;
+        $self->db->save_object($type, $md5, $json_obj);
 
-    # now save type meta
-    my $obj_meta = {
-        type    => $type,
-        parents => []
-    };
+        # now save type meta
+        my $obj_meta = {
+            type    => $type,
+            parents => []
+        };
 
-    my $meta_path = "$RESERVED_META";
-    $self->db->set_metadata($type, $md5, $meta_path, $obj_meta);
+        my $meta_path = "$RESERVED_META";
+        $self->db->set_metadata($type, $md5, $meta_path, $obj_meta);
     }
 
     # now save the alias
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $user, $meta_path);
     if (defined($info)) {
-    # update alias to point to new object
-    $self->db->set_metadata('user', $user, "$meta_path.object", $md5);
+        # update alias to point to new object
+        $self->db->set_metadata('user', $user, "$meta_path.object", $md5);
 
-    # get current list of parents and add parent obj
-    my $parents = $self->db->get_metadata($type, $md5, "$RESERVED_META.parents");
-    push(@$parents, $info->{object});
-    $self->db->set_metadata($type, $md5, "$RESERVED_META.parents", $parents);
+        # get current list of parents and add parent obj
+        my $parents = $self->db->get_metadata($type, $md5, "$RESERVED_META.parents");
+        push(@$parents, $info->{object});
+        $self->db->set_metadata($type, $md5, "$RESERVED_META.parents", $parents);
     } else {
-    # create new alias and permissions
-    $self->db->set_metadata('user', $user, $meta_path, {
-        object  => $md5,
-        type    => $type,
-        public  => 0,
-        viewers => {}
-    });
+        # create new alias and permissions
+        $self->db->set_metadata('user', $user, $meta_path,
+                                {
+                                    object  => $md5,
+                                    type    => $type,
+                                    public  => 0,
+                                    viewers => {}
+                                });
     }
 
     return 1;
@@ -358,8 +357,8 @@ sub delete_object {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-    # cannot delete from someone else's alias space
-    return 0;
+        # cannot delete from someone else's alias space
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias";
@@ -377,9 +376,9 @@ sub get_aliases_for_type {
 
     my $aliases = [];
     foreach my $alias (keys %$alias_hash) {
-    if ($alias_hash->{$alias}->{type} eq $type) {
-        push(@$aliases, $alias);
-    }
+        if ($alias_hash->{$alias}->{type} eq $type) {
+            push(@$aliases, $alias);
+        }
     }
 
     return $aliases;
@@ -393,8 +392,8 @@ sub add_viewer {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-    # can only change viewers if you own the object
-    return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.viewers.$viewer";
@@ -409,8 +408,8 @@ sub remove_viewer {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-    # can only change viewers if you own the object
-    return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.viewers.$viewer";
@@ -421,7 +420,7 @@ sub set_public {
     my ($self, $user, $type, $user_alias, $public) = @_;
 
     unless ($public == 0 || $public == 1) {
-    return 0;
+        return 0;
     }
 
     $type = lc($type);
@@ -429,8 +428,8 @@ sub set_public {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-    # can only change viewers if you own the object
-    return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.public";

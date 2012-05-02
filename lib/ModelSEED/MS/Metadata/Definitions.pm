@@ -179,19 +179,19 @@ $objectDefinitions->{GeneMeasurement} = {
 };
 
 $objectDefinitions->{User} = {
-	parents => ["ObjectManager"],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'login',perm => 'rw',type => 'Str',req => 1},
-		{name => 'password',perm => 'rw',type => 'Str',req => 1},
-		{name => 'email',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'firstname',perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'lastname',perm => 'rw',type => 'Str',req => 0,default => ""},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => []
+    parents => ["ObjectManager"],
+    class => 'child',
+    attributes => [
+        {name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+        {name => 'login',perm => 'rw',type => 'Str',req => 1},
+        {name => 'password',perm => 'rw',type => 'Str',req => 1},
+        {name => 'email',perm => 'rw',type => 'Str',req => 0,default => ""},
+        {name => 'firstname',perm => 'rw',type => 'Str',req => 0,default => ""},
+        {name => 'lastname',perm => 'rw',type => 'Str',req => 0,default => ""},
+    ],
+    subobjects => [],
+    primarykeys => [ qw(uuid) ],
+    links => []
 };
 
 $objectDefinitions->{Biochemistry} = {

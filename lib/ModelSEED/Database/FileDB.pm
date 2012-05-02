@@ -1,4 +1,4 @@
-package ModelSEED::FileDB;
+package ModelSEED::Database::FileDB;
 
 use Moose;
 use namespace::autoclean;
@@ -65,7 +65,7 @@ sub BUILD {
     } elsif (!$ind && !$met && !$dat) {
 	# new database
 	my $index = _initialize_index();
-	
+
 	# use a semaphore to lock the files
 	open LOCK, ">$file.$LOCK_EXT" or die "$!";
 	flock LOCK, LOCK_EX or die "";
@@ -128,19 +128,18 @@ sub _perform_transaction {
     # check for errors if last transaction died
     # TODO: implement
 
-=head
     # check if rebuild died between two rename statements
-    if (-f "$file.$DATA_EXT.tmp") {
-	if (-f "$file.$INDEX_EXT.tmp") {
-	    # both exist, roll back transaction by deleting
-	    unlink "$file.$DATA_EXT.tmp";
-	    unlink "$file.$INDEX_EXT.tmp";
-	} else {
-	    # index tmp has been copied but data has not
-	    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
-	}
-    }
-=cut
+
+    # if (-f "$file.$DATA_EXT.tmp") {
+    #     if (-f "$file.$INDEX_EXT.tmp") {
+    #         # both exist, roll back transaction by deleting
+    #         unlink "$file.$DATA_EXT.tmp";
+    #         unlink "$file.$INDEX_EXT.tmp";
+    #     } else {
+    #         # index tmp has been copied but data has not
+    #         rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
+    #     }
+    # }
 
     my $sub_data = {};
     my ($index, $meta, $data);
@@ -312,22 +311,22 @@ sub get_object {
 
 sub _get_object {
     my ($data, $type, $id) = @_;
-	
+
     unless (_has_object($data, $type, $id)) {
 		return;
     }
 
     my $start = $data->{index}->{ids}->{$id}->[0];
     my $end   = $data->{index}->{ids}->{$id}->[1];
-	print $start.":".$end."\n";
+    # print $start.":".$end."\n";
 
     my $data_fh = $data->{data};
     my ($json_obj, $gzip_obj);
     seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
     read $data_fh, $gzip_obj, ($end - $start + 1);
-    print "Data read!\n";
+    # print "Data read!\n";
     gunzip \$gzip_obj => \$json_obj;
-	print "Data unzipped!\n";
+    # print "Data unzipped!\n";
     return _decode($json_obj)
 }
 

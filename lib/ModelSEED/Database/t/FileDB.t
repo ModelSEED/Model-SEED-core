@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 use File::Temp qw(tempfile tempdir);
-use ModelSEED::FileDB;
+use ModelSEED::Database::FileDB;
 
 my $testCount = 0;
 # test initialization
@@ -11,7 +11,7 @@ my $testCount = 0;
     my $dir = tempdir();
 
     my $type = 'test';
-    my $db = ModelSEED::FileDB->new({ directory => $dir });
+    my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
 
     ok defined $db, "Database successfully created";
 
