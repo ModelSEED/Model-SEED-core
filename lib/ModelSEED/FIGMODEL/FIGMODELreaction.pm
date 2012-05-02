@@ -1865,21 +1865,21 @@ sub balanceReaction {
     #Problems are: compounds with noformula, polymers (see next line), and reactions with duplicate compounds in the same compartment
     #Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
     my @ignore=(')','n','*');
-    my $problem='';
 
+    my %problem=();
     foreach my $cpd(keys %ReactantHash){
 	my $cpdObj=$self->figmodel()->get_compound($cpd);
 	my $atomKey=$cpdObj->atoms();
 	if(exists($atomKey->{noformula})){
-	    $problem="NOFORMULA";
+	    $problem{$cpd.":NOFORMULA"}=1;
 	}
 	foreach my $ig(@ignore){
 	    if(exists($atomKey->{$ig})){
-		$problem="POLYMER";
+		$problem{$cpd.":POLYMER"}=1;
 	    }
 	}
 	if(exists($ProductHash{$cpd}) && $ReactantHash{$cpd}{"COMP"} eq $ProductHash{$cpd}{"COMP"}){
-	    $problem="DUPLICATE";
+	    $problem{$cpd.":DUPLICATE"}=1;
 	}
 	print STDERR "R:",$cpd,"\t",$ReactantHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\t",$cpdObj->charge(),"\n" if($args->{debug});
 	foreach my $a(keys %$atomKey){
@@ -1896,11 +1896,11 @@ sub balanceReaction {
 	my $cpdObj=$self->figmodel()->get_compound($cpd);
 	my $atomKey=$cpdObj->atoms();
 	if(exists($atomKey->{noformula})){
-	    $problem="NOFORMULA";
+	    $problem{$cpd.":NOFORMULA"}=1;
 	}
 	foreach my $ig(@ignore){
 	    if(exists($atomKey->{$ig})){
-		$problem="POLYMER";
+		$problem{$cpd.":POLYMER"}=1;
 	    }
 	}
 	print STDERR "P:",$cpd,"\t",$ProductHash{$cpd}{"COEFF"},"\t",$cpdObj->ppo()->formula(),"\t",join("|",%$atomKey),"\t",$cpdObj->charge(),"\n" if($args->{debug});
@@ -2180,12 +2180,13 @@ sub balanceReaction {
 	print STDERR $self->id(),"\t",join("|",%atoms),"\t",$charge,"\n" if($args->{debug});
     }
 
+    my $problem=join("|",sort keys %problem);
     my $status=join("|", grep { $_ ne "" } ($atom_status,$proton_status,$electron_status,$problem));
     if($status && 
        (!$atom_status && 
 	(!$proton_status || $proton_status =~ /^HB/) && 
 	!$electron_status) && 
-       (!$problem || $problem eq "POLYMER")){
+       (!$problem || ($problem !~ /DUPLICATE/ && $problem !~ /NOFORMULA/))){
 	$status="OK|".$status;
     }elsif(!$status){
 	$status="OK";
