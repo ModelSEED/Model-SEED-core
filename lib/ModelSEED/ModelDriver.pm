@@ -2505,12 +2505,21 @@ sub mdlloadbiomass {
     	["equation",0,undef,"The stoichiometric equation for the biomass reaction."],
     	["overwrite",0,0,"If you are attempting to alter and existing biomass reaction, you MUST set this argument to '1'"]
 	],[@Data],"Loads a model biomass reaction into the database from a flatfile");
-	#Load the file if no equation was specified
-	if (!defined($args->{equation})) {
+
+	my $bio = $self->db()->get_object("bof",{id => $args->{biomass}});
+	if (defined($bio) && $args->{overwrite} == 0 && !defined($args->{model})) {
+	  ModelSEED::utilities::ERROR("Biomass ".$args->{biomass}." already exists, and you did not pass a model id, You must therefore specify an overwrite!");
+	}
+
+	#Loading the biomass into the database	
+	my $msg="";
+	if(!defined($bio) || $args->{overwrite} == 1){
+	    #Load the file if no equation was specified
+	    if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
 		my $filename = $args->{biomass};
 		if ($filename =~ m/^bio\d+$/) {
-			$filename = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
+		    $filename = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
 		ModelSEED::utilities::ERROR("Could not find specified biomass file ".$filename."!") if (!-e $filename);
@@ -2518,18 +2527,11 @@ sub mdlloadbiomass {
 		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$filename,delimiter=>"\t",-load => 1});
 		$args->{equation} = $obj->{EQUATION}->[0];
 		if ($args->{biomass} =~ m/(^bio\d+)/) {
-			$obj->{DATABASE}->[0] = $1;
+		    $obj->{DATABASE}->[0] = $1;
 		}
 		$args->{biomass} = $obj->{DATABASE}->[0];
-	}
-	#Loading the biomass into the database
-	my $bio = $self->db()->get_object("bof",{id => $args->{biomass}});
-	if (defined($bio) && $args->{overwrite} == 0 && !defined($args->{model})) {
-	  ModelSEED::utilities::ERROR("Biomass ".$args->{biomass}." already exists, and you did not pass a model id, You must therefore specify an overwrite!");
-	}
-	
-	my $msg="";
-	if(!defined($bio) || $args->{overwrite} == 1){
+	    }
+
 	    my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
 			equation => $args->{equation},
 			biomassID => $args->{biomass}
