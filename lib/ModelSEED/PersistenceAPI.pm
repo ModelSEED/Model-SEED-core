@@ -27,10 +27,10 @@ TODO:
 constructor params
 
 {
-    db_type   => 'FileDB',
+    db_type   => 'Database::FileDB',
     db_config => {
-	directory => '',
-	filename => ''
+        directory => '',
+        filename => ''
     },
 }
 
@@ -45,10 +45,10 @@ sub BUILD {
     $db_req =~ s/::/\//g;
 
     try {
-	require $db_req;
-	$self->db($db_mod->new($self->db_config));
+        require $db_req;
+        $self->db($db_mod->new($self->db_config));
     } catch {
-	die "Could not import database package: $db_mod";
+        die "Could not import database package: $db_mod";
     }
 }
 
@@ -56,7 +56,7 @@ sub create_user {
     my ($self, $user, $object) = @_;
 
     unless ($self->db->save_object('user', $user, $object)) {
-	return 0;
+        return 0;
     }
 
     # now save type meta
@@ -95,15 +95,15 @@ sub has_object {
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
-	# no object, return false
-	return 0;
+        # no object, return false
+        return 0;
     }
 
     # check permissions
     unless ($user eq $alias_user ||
-	    $info->{public}      ||
-	    $info->{viewers}->{$user}) {
-	return 0;
+            $info->{public}      ||
+            $info->{viewers}->{$user}) {
+        return 0;
     }
 
     return 1;
@@ -136,15 +136,15 @@ sub get_data {
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
-	# no object, return undef
-	return;
+        # no object, return undef
+        return;
     }
 
     # check permissions
     unless ($user eq $alias_user ||
-	    $info->{public}      ||
-	    $info->{viewers}->{$user}) {
-	return;
+            $info->{public}      ||
+            $info->{viewers}->{$user}) {
+        return;
     }
 
     my $obj_id = $info->{object};
@@ -164,8 +164,8 @@ sub save_object {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-	# cannot save to someone else's alias space
-	return 0;
+        # cannot save to someone else's alias space
+        return 0;
     }
 
     # save data, unless object already exists (check via md5)
@@ -173,38 +173,38 @@ sub save_object {
     my $md5 = md5_hex($json_obj);
     my $new = 0;
     unless ($self->db->has_object($type, $md5)) {
-	$new = 1;
-	$self->db->save_object($type, $md5, $json_obj);
+        $new = 1;
+        $self->db->save_object($type, $md5, $json_obj);
 
-	# now save type meta
-	my $obj_meta = {
-	    type    => $type,
-	    parents => []
-	};
+        # now save type meta
+        my $obj_meta = {
+            type    => $type,
+            parents => []
+        };
 
-	my $meta_path = "$RESERVED_META";
-	$self->db->set_metadata($type, $md5, $meta_path, $obj_meta);
+        my $meta_path = "$RESERVED_META";
+        $self->db->set_metadata($type, $md5, $meta_path, $obj_meta);
     }
 
     # now save the alias
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $user, $meta_path);
     if (defined($info)) {
-	# update alias to point to new object
-	$self->db->set_metadata('user', $user, "$meta_path.object", $md5);
+        # update alias to point to new object
+        $self->db->set_metadata('user', $user, "$meta_path.object", $md5);
 
-	# get current list of parents and add parent obj
-	my $parents = $self->db->get_metadata($type, $md5, "$RESERVED_META.parents");
-	push(@$parents, $info->{object});
-	$self->db->set_metadata($type, $md5, "$RESERVED_META.parents", $parents);
+        # get current list of parents and add parent obj
+        my $parents = $self->db->get_metadata($type, $md5, "$RESERVED_META.parents");
+        push(@$parents, $info->{object});
+        $self->db->set_metadata($type, $md5, "$RESERVED_META.parents", $parents);
     } else {
-	# create new alias and permissions
-	$self->db->set_metadata('user', $user, $meta_path, {
-	    object  => $md5,
-	    type    => $type,
-	    public  => 0,
-	    viewers => {}
-	});
+        # create new alias and permissions
+        $self->db->set_metadata('user', $user, $meta_path, {
+            object  => $md5,
+            type    => $type,
+            public  => 0,
+            viewers => {}
+        });
     }
 
     return 1;
@@ -221,8 +221,8 @@ sub delete_object {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-	# cannot delete from someone else's alias space
-	return 0;
+        # cannot delete from someone else's alias space
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias";
@@ -243,9 +243,9 @@ sub get_aliases_for_type {
 
     my $aliases = [];
     foreach my $alias (keys %$alias_hash) {
-	if ($alias_hash->{$alias}->{type} eq $type) {
-	    push(@$aliases, $alias);
-	}
+        if ($alias_hash->{$alias}->{type} eq $type) {
+            push(@$aliases, $alias);
+        }
     }
 
     return $aliases;
@@ -259,8 +259,8 @@ sub add_viewer {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-	# can only change viewers if you own the object
-	return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.viewers.$viewer";
@@ -275,8 +275,8 @@ sub remove_viewer {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-	# can only change viewers if you own the object
-	return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.viewers.$viewer";
@@ -287,7 +287,7 @@ sub set_public {
     my ($self, $user, $type, $user_alias, $public) = @_;
 
     unless ($public == 0 || $public == 1) {
-	return 0;
+        return 0;
     }
 
     $type = lc($type);
@@ -295,8 +295,8 @@ sub set_public {
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
-	# can only change viewers if you own the object
-	return 0;
+        # can only change viewers if you own the object
+        return 0;
     }
 
     my $meta_path = "$RESERVED_META.aliases.$alias.public";

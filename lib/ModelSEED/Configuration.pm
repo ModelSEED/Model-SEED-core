@@ -5,7 +5,7 @@
 # Development location: 
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-03-18
 ########################################################################
 =pod
@@ -32,37 +32,42 @@ filename inside a hashref:
 If no filename is supplied, the enviornment variable C<MODELSEED_CONFIG>
 is checked. If this variable is defined and is a valid path, it is
 used.  Otherwise the default is to store configuration at C<.modelseed>
-in the current user's C<$HOME> directory.
+in the current user's C<$HOME> directory. Note that you should probably
+use the C<instance> method instead.
+
+=head2 instance
+
+Returns an instance of the C<MODELSEED_CONFIG> object.
 
 =head2 config
 
 Returns a hashref of configuration information. From the perspective
 of ModelSEED::Configuration, this hashref is unstructured, and may
 contain keys pointing to strings, arrays or other hashrefs.
-    
+
     my $item = $Config->config->{key};
 
 =head2 save
 
-Saves the data to the JSON file. This must be done manually whenever
-the configuration state is changed.
+Saves the data to the JSON file. Note that this happens on object
+destruction, so it's not absolutely neccesary.
 
     $Config->save();
 
 =cut
 
 package ModelSEED::Configuration;
-use Moose;
+use MooseX::Singleton;
 use namespace::autoclean;
 use JSON;
 use File::Path qw(mkpath);
 use File::Basename qw(dirname);
 
 has filename => (
-    is      => 'rw',
-    isa     => 'Str',
-    builder => '_buildFilename',
-    lazy    => 1,
+    is       => 'rw',
+    isa      => 'Str',
+    builder  => '_buildFilename',
+    lazy     => 1,
 );
 
 has config => (
@@ -90,7 +95,9 @@ sub _buildConfig {
         close($fh);
         return $self->JSON->decode($text);
     } else {
-        return {};
+        return {
+            error_dir => $ENV{HOME} . "/.modelseed_error", 
+        };
     }
 }
 
@@ -110,6 +117,11 @@ sub save {
     open(my $fh, ">", $self->filename);
     print $fh $self->JSON->encode($self->config);
     close($fh);
+}
+
+sub DEMOLISH {
+    my ($self) = $_;
+    $self->save();
 }
 
 __PACKAGE__->meta->make_immutable;

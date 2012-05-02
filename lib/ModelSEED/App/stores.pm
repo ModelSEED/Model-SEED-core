@@ -4,9 +4,9 @@ sub default_command { 'list' };
 sub usage_desc { $_[0]->arg0 . " [command] " }
 
 $ModelSEED::App::stores::typeToClass = {
-    file => 'ModelSEED::FileDB',
-    mongo => 'ModelSEED::MongoDB',
-    rest => 'ModelSEED::Rest',
+    file => 'ModelSEED::Database::FileDB',
+    mongo => 'ModelSEED::Database::MongoDB',
+    rest => 'ModelSEED::Database::Rest',
 };
 
 $ModelSEED::App::stores::typeToArgs = {

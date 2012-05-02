@@ -128,6 +128,12 @@ sub new {
     	defined($password) && length($password) > 0) {
 		$self->authenticate_user($username,$password);
 	}
+    # set the global pointer in ModelSEED::globals to this instance
+    # unless it is already defined.
+    my $globalFM = ModelSEED::globals::GETFIGMODEL();
+    unless(defined($globalFM)) {
+        ModelSEED::globals::SETFIGMODEL($self);
+    }
 	return $self;	
 }
 

@@ -2,10 +2,10 @@
 # ModelSEED::Store - Authenticated storage interface layer
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: 
+# Development location:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-05-01
 ########################################################################
 =pod
@@ -84,12 +84,15 @@ use Data::Dumper;
 
 has username => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User');
-has private => ( is => 'ro', isa => 'ModelSEED::Store::Private', required => 1);
+has private => ( is => 'ro', isa => 'ModelSEED::Store::Private');
 
 around BUILDARGS => sub {
     my ($orig, $class, $args) = @_;
-    my $authorized = 0; 
+    my $authorized = 0;
     my $private = $args->{private};
+    unless(defined($private)) {
+        $private = ModelSEED::Store::Private->new();
+    }
     # Handle Authentication methods
     if(defined($args->{username}) && defined($args->{password})) {
         my $user = $private->get_user($args->{username});
@@ -109,10 +112,14 @@ around BUILDARGS => sub {
                         lastname => $info->{lastname},
                         email => $info->{email},
                     });
-                $private->create_user($user->login, $user->serializeToDB);
+                $private->create_user($user);
             }
         }
+        # Check if plaintext password passed
         if($user->check_password($args->{password})) {
+            $authorized = 1;
+        # Check if crypt + salted password passed
+        } elsif($user->password eq $args->{password}) {
             $authorized = 1;
         }
         $args->{user} = $user;

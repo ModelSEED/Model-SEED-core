@@ -430,9 +430,9 @@ sub temptransfermodels {
 			my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
 			if (!-d $mdldir) {
 				print "Generating provenance for ".$models->[$i]."!\n";
-				File::Path::mkpath $mdldir."biochemistry/";
-				File::Path::mkpath $mdldir."mapping/";
-				File::Path::mkpath $mdldir."annotations/";
+				File::Path::mkpath($mdldir."biochemistry/");
+				File::Path::mkpath($mdldir."mapping/");
+				File::Path::mkpath($mdldir."annotations/");
 				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
 				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
 	#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
