@@ -2,10 +2,10 @@
 # ModelSEED::Database::Composite - Composite implementation of Database
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development locations: 
+# Development locations:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-05-01
 ########################################################################
 =pod
@@ -102,7 +102,7 @@ around BUILDARGS => sub {
         $args->{databases} = [ @{$Config->config->{stores}} ];
     }
     foreach my $db (@{ $args->{databases} || [] }) {
-        if(ref($db) eq 'HASH') {           
+        if(ref($db) eq 'HASH') {
             my $class = $db->{class};
             $db = $class->new($db);
         } elsif(ref($db) && $db->does("ModelSEED::Database")) {

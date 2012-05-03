@@ -190,6 +190,8 @@ use ModelSEED::Configuration;
 use Moose::Util::TypeConstraints;
 use Class::Autouse qw( ModelSEED::MS::User );
 
+use Data::Dumper;
+
 my $RESERVED_META = "__system__";
 
 role_type 'ModelSEED::Database';
@@ -214,6 +216,7 @@ around BUILDARGS => sub {
         };
     } else {
         # TODO: get database from config
+#        my $config = ModelSEED::Configuration->new();
     }
 
     return $class->$orig($args);

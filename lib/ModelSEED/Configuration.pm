@@ -2,7 +2,7 @@
 # ModelSEED::Configuration - This moose object stores data on user env
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: 
+# Development location:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
 #

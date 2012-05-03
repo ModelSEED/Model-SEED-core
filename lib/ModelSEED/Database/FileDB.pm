@@ -9,6 +9,7 @@ use File::stat; # for testing mod time
 use Fcntl qw( :flock );
 use IO::Compress::Gzip qw(gzip);
 use IO::Uncompress::Gunzip qw(gunzip);
+use Scalar::Util qw(looks_like_number);
 
 with 'ModelSEED::Database';
 
@@ -551,6 +552,12 @@ sub _find_objects {
 
     my $ids = [];
 
+    if (!defined($query)) {
+        $query = {};
+    } elsif (ref($query) ne 'HASH') {
+        return [];
+    }
+
     # loop through object metadata
     foreach my $id (keys %{$data->{meta}}) {
         my $meta = $data->{meta}->{$id};
@@ -558,7 +565,86 @@ sub _find_objects {
             next;
         }
 
-        if (1) { # check query
+        my $match = 1;
+
+        foreach my $field (keys %$query) {
+            unless ($match) {
+                last;
+            }
+
+            # check if it's nested
+            my @path = split(/\./, $field);
+            my $last = pop(@path);
+            my $inner_hash = $meta;
+            for (my $i=0; $i<scalar @path; $i++) {
+                my $cur = $path[$i];
+                if (ref($inner_hash->{$cur}) ne 'HASH') {
+                    $match = 0;
+                    last;
+                }
+                $inner_hash = $inner_hash->{$cur};
+            }
+
+            unless ($match && exists($inner_hash->{$last})) {
+                $match = 0;
+                last;
+            }
+
+            my $value = $inner_hash->{$last};
+
+            # determine if value is string or number
+            my $is_num = looks_like_number($value);
+
+            # now check if it matched
+            if (ref($query->{$field}) eq 'HASH') {
+                # comparison
+                my $multi_match = 1;
+                foreach my $comp (keys %{$query->{$field}}) {
+                    unless ($multi_match) {
+                        last;
+                    }
+
+                    my $comp_to = $query->{$field}->{$comp};
+                    if ($is_num) {
+                        if ($comp eq '$gt') {
+                            $multi_match = $value > $comp_to;
+                        } elsif ($comp eq '$gte') {
+                            $multi_match = $value >= $comp_to;
+                        } elsif ($comp eq '$lt') {
+                            $multi_match = $value < $comp_to;
+                        } elsif ($comp eq '$lte') {
+                            $multi_match = $value <= $comp_to;
+                        }
+                    } else {
+                        if ($comp eq '$gt') {
+                            $multi_match = $value gt $comp_to;
+                        } elsif ($comp eq '$gte') {
+                            $multi_match = $value ge $comp_to;
+                        } elsif ($comp eq '$lt') {
+                            $multi_match = $value lt $comp_to;
+                        } elsif ($comp eq '$lte') {
+                            $multi_match = $value le $comp_to;
+                        }
+                    }
+                }
+
+                if (!$multi_match) {
+                    $match = 0;
+                }
+            } else {
+                if ($is_num) {
+                    if ($value != $query->{$field}) {
+                        $match = 0;
+                    }
+                } else {
+                    if ($value ne $query->{$field}) {
+                        $match = 0;
+                    }
+                }
+            }
+        }
+
+        if ($match) { # check query
             push(@$ids, $id);
         }
     }

@@ -108,25 +108,54 @@ my $testCount = 0;
     my $o2 = { hello => 'world2' };
     my $o3 = { hello => 'world3' };
     my $o4 = { hello => 'world4' };
-    my $meta1 = {};
-    my $meta2 = {};
-    my $meta3 = {};
-    my $meta4 = {};
+    my $meta1 = { string => 'yes', test => 'what' };
+    my $meta2 = { size => 100 };
+    my $meta3 = { size => 50 };
+    my $meta4 = { size => 10 };
 
     $db->save_object($type1, $id1, $o1);
     $db->save_object($type2, $id2, $o2);
     $db->save_object($type1, $id3, $o4);
     $db->save_object($type2, $id4, $o4);
 
-    my $objs1 = {};
-    map {$objs1->{$_} = 1} @{$db->find_objects($type1, "")};
-    is_deeply $objs1, { $id1 => 1, $id3 => 1}, "Find objects works for empty query (type1)";
+    $db->set_metadata($type1, $id1, '', $meta1);
+    $db->set_metadata($type2, $id2, '', $meta2);
+    $db->set_metadata($type1, $id3, '', $meta3);
+    $db->set_metadata($type2, $id4, '', $meta4);
 
-    my $objs2 = {};
-    map {$objs2->{$_} = 1} @{$db->find_objects($type2, "")};
-    is_deeply $objs2, { $id2 => 1, $id4 => 1}, "Find objects works for empty query (type2)";
+    my $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1)};
+    is_deeply $objs, { $id1 => 1, $id3 => 1}, "Find objects works for empty query (type1)";
 
-    $testCount += 2;
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2)};
+    is_deeply $objs, { $id2 => 1, $id4 => 1}, "Find objects works for empty query (type2)";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes' })};
+    is_deeply $objs, { $id1 => 1 }, "Find objects (string 'eq')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { size => 50 })};
+    is_deeply $objs, { $id3 => 1 }, "Find objects (numeric '==')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0} })};
+    is_deeply $objs, { $id2 => 1, $id4 => 1 }, "Find objects (numeric '>')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0, '$lte' => 10} })};
+    is_deeply $objs, { $id4 => 1 }, "Find objects (numeric '> and <=')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'no' })};
+    is_deeply $objs, {}, "Find objects (string multiple 'eq')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'what' })};
+    is_deeply $objs, { $id1 => 1 }, "Find objects (string multiple 'eq')";
+
+    $testCount += 8;
 }
 
 done_testing($testCount);
