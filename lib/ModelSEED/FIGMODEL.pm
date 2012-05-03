@@ -949,7 +949,6 @@ sub get_model {
         }
     };
     if($@) {
-	ModelSEED::utilities::ERROR("Model not valid ".$id."\n".$@."\n");
 	  return undef;
     }
     return $mdl;
