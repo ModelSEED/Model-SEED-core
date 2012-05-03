@@ -84,7 +84,7 @@ use Data::Dumper;
 
 has username => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User');
-has private => ( is => 'ro', isa => 'ModelSEED::Store::Private', required => 1);
+has private => ( is => 'ro', isa => 'ModelSEED::Store::Private');
 
 around BUILDARGS => sub {
     my ($orig, $class, $args) = @_;
@@ -115,7 +115,11 @@ around BUILDARGS => sub {
                 $private->create_user($user);
             }
         }
+        # Check if plaintext password passed
         if($user->check_password($args->{password})) {
+            $authorized = 1;
+        # Check if crypt + salted password passed
+        } elsif($user->password eq $args->{password}) {
             $authorized = 1;
         }
         $args->{user} = $user;

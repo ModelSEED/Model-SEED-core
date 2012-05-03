@@ -430,9 +430,9 @@ sub temptransfermodels {
 			my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
 			if (!-d $mdldir) {
 				print "Generating provenance for ".$models->[$i]."!\n";
-				File::Path::mkpath $mdldir."biochemistry/";
-				File::Path::mkpath $mdldir."mapping/";
-				File::Path::mkpath $mdldir."annotations/";
+				File::Path::mkpath($mdldir."biochemistry/");
+				File::Path::mkpath($mdldir."mapping/");
+				File::Path::mkpath($mdldir."annotations/");
 				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/biochemistry/* ".$mdldir."biochemistry/");
 				system("cp /vol/model-dev/MODEL_DEV_DB/Models2/master/Seed83333.1/0/mapping/* ".$mdldir."mapping/");
 	#			if (lc($obj->genome()) ne "unknown" && lc($obj->genome()) ne "none") {	
@@ -1816,6 +1816,9 @@ sub mdlautocomplete {
 		["problemdirectory",0,undef, "The name of the job directory where the intermediate gapfilling output will be stored."],
 		["startfresh",0,1,"Any files from previous gapfilling runs in the same output directory will be deleted if this flag is set to '1'."],
 	],[@Data],"adds reactions to the model to eliminate inactive reactions");
+    if (!defined($ENV{ILOG_LICENSE_FILE}) || !defined($ENV{CPLEXAPI}) || !-e $ENV{ILOG_LICENSE_FILE}) {
+    	ModelSEED::utilities::ERROR("Cannot run auto-completion without CPLEX!");
+    }
     $args->{media} =~ s/\_/ /g;
     #Getting model list
     my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
@@ -2505,12 +2508,21 @@ sub mdlloadbiomass {
     	["equation",0,undef,"The stoichiometric equation for the biomass reaction."],
     	["overwrite",0,0,"If you are attempting to alter and existing biomass reaction, you MUST set this argument to '1'"]
 	],[@Data],"Loads a model biomass reaction into the database from a flatfile");
-	#Load the file if no equation was specified
-	if (!defined($args->{equation})) {
+
+	my $bio = $self->db()->get_object("bof",{id => $args->{biomass}});
+	if (defined($bio) && $args->{overwrite} == 0 && !defined($args->{model})) {
+	  ModelSEED::utilities::ERROR("Biomass ".$args->{biomass}." already exists, and you did not pass a model id, You must therefore specify an overwrite!");
+	}
+
+	#Loading the biomass into the database	
+	my $msg="";
+	if(!defined($bio) || $args->{overwrite} == 1){
+	    #Load the file if no equation was specified
+	    if (!defined($args->{equation})) {
 		#Setting the filename if only an ID was specified
 		my $filename = $args->{biomass};
 		if ($filename =~ m/^bio\d+$/) {
-			$filename = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
+		    $filename = $self->figmodel()->ws()->directory().$args->{biomass}.".bof";
 		}
 		#Loading the biomass reaction
 		ModelSEED::utilities::ERROR("Could not find specified biomass file ".$filename."!") if (!-e $filename);
@@ -2518,18 +2530,11 @@ sub mdlloadbiomass {
 		my $obj = ModelSEED::FIGMODEL::FIGMODELObject->new({filename=>$filename,delimiter=>"\t",-load => 1});
 		$args->{equation} = $obj->{EQUATION}->[0];
 		if ($args->{biomass} =~ m/(^bio\d+)/) {
-			$obj->{DATABASE}->[0] = $1;
+		    $obj->{DATABASE}->[0] = $1;
 		}
 		$args->{biomass} = $obj->{DATABASE}->[0];
-	}
-	#Loading the biomass into the database
-	my $bio = $self->db()->get_object("bof",{id => $args->{biomass}});
-	if (defined($bio) && $args->{overwrite} == 0 && !defined($args->{model})) {
-	  ModelSEED::utilities::ERROR("Biomass ".$args->{biomass}." already exists, and you did not pass a model id, You must therefore specify an overwrite!");
-	}
-	
-	my $msg="";
-	if(!defined($bio) || $args->{overwrite} == 1){
+	    }
+
 	    my $bofobj = $self->figmodel()->get_reaction()->add_biomass_reaction_from_equation({
 			equation => $args->{equation},
 			biomassID => $args->{biomass}
