@@ -27,6 +27,8 @@ my $META_EXT  = 'met';
 my $DATA_EXT  = 'dat';
 my $LOCK_EXT  = 'lock';
 
+my $TYPE_META = "__type__";
+
 # External attributes (configurable)
 has directory => (is => 'rw', isa => 'Str', required => 1);
 has filename  => (is => 'rw', isa => 'Str', default => 'database');
@@ -365,7 +367,9 @@ sub _save_object {
     push(@{$data->{index}->{ordered_ids}}, $id);
     $data->{index}->{end_pos} = $start + length($gzip_obj);
 
-    $data->{meta}->{$id} = {};
+    $data->{meta}->{$id} = {
+        $TYPE_META => $type
+    };
 
     return (1, { index => 1, meta => 1 });
 }
@@ -410,7 +414,13 @@ sub _get_metadata {
     }
 
     if (!defined($selection) || $selection eq "") {
+        delete $meta->{$TYPE_META};
 	return $meta;
+    }
+
+    # can't get type
+    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
+        return;
     }
 
     my @path = split(/\./, $selection);
@@ -451,6 +461,7 @@ sub _set_metadata {
 
     if (!defined($selection) || $selection eq "") {
 	if (ref($metadata) eq "HASH") {
+            $metadata->{$TYPE_META} = $type;
 	    $data->{meta}->{$id} = $metadata;
 	    return (1, { meta => 1 });
 	} else {
@@ -458,8 +469,12 @@ sub _set_metadata {
 	}
     }
 
-    my @path = split(/\./, $selection);
+    # can't set type
+    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
+        return 0;
+    }
 
+    my @path = split(/\./, $selection);
     my $last = pop(@path);
     my $inner_hash = $meta;
     for (my $i=0; $i<scalar @path; $i++) {
@@ -493,12 +508,18 @@ sub _remove_metadata {
     }
 
     if (!defined($selection) || $selection eq "") {
-	$data->{meta}->{$id} = {};
+	$data->{meta}->{$id} = {
+            $TYPE_META => $type
+        };
 	return (1, { meta => 1 });
     }
 
-    my @path = split(/\./, $selection);
+    # can't remove type
+    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
+        return 0;
+    }
 
+    my @path = split(/\./, $selection);
     my $last = pop(@path);
     my $inner_hash = $meta;
     for (my $i=0; $i<scalar @path; $i++) {
@@ -519,7 +540,30 @@ sub _remove_metadata {
 }
 
 sub find_objects {
+    my ($self, @args) = @_;
 
+    return $self->_perform_transaction({ meta => 'r' },
+				       \&_find_objects, @args);
+}
+
+sub _find_objects {
+    my ($data, $type, $query) = @_;
+
+    my $ids = [];
+
+    # loop through object metadata
+    foreach my $id (keys %{$data->{meta}}) {
+        my $meta = $data->{meta}->{$id};
+        unless ($meta->{$TYPE_META} eq $type) {
+            next;
+        }
+
+        if (1) { # check query
+            push(@$ids, $id);
+        }
+    }
+
+    return $ids;
 }
 
 sub _sleep_test {
