@@ -81,8 +81,8 @@ Allows you to query for objects based on the metadata will use query
 syntax similar to MongoDB.
 
 Uses MongoDB syntax like here:
-http://search.cpan.org/~kristina/MongoDB/lib/MongoDB/Tutorial.pod#Queries
-http://www.mongodb.org/display/DOCS/Advanced+Queries
+L<http://search.cpan.org/~kristina/MongoDB/lib/MongoDB/Tutorial.pod#Queries>
+L<http://www.mongodb.org/display/DOCS/Advanced+Queries>
 
 =cut
 package ModelSEED::Database;

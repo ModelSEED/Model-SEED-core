@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Store 
 
-ModelSEED::Store - Authenticated storage interface layer
+Authenticated storage interface layer
 
 =head1 METHODS
 
@@ -27,12 +27,12 @@ accepts one parameter:
 
 =over
 
-=item C<private>
+=item private
 
-A reference to a C<ModelSEED::Store::Private> object. This is the
+A reference to a L<ModelSEED::Store::Private> object. This is the
 base storage interface that the Store will use. If this is not
 provided, it will be initialized based on the contents of the
-C<ModelSEED::Configuration> package.
+L<ModelSEED::Configuration> package.
 
 =back
 
@@ -50,7 +50,7 @@ authentication:
 Basic Authentication - Requires "username" and "password" fields.
 This will attempt to authenticate against the data in the Store::Private
 dataset under the type "user". If no user is found, it will attempt
-to use the C<ModelSEED::ModelSEEDClients::MSSeedSupportClient>
+to use the L<ModelSEED::ModelSEEDClients::MSSeedSupportClient>
 package to retrieve authentication information from the central
 servers.
 
@@ -65,13 +65,13 @@ private interface, we have this function:
 
     my $data = $StorePrivate->get_data("alice", "model", "alice/myModel");
 
-This is equivalent to the following function in the C<ModelSEED::Store>
+This is equivalent to the following function in the L<ModelSEED::Store>
 interface, provided that the user C<alice> authenticated during
 initialization:
 
     my $data = $Store->get_data("model", "alice/myModel");
 
-Therefore, you should consult the C<ModelSEED::Store::Private>
+Therefore, you should consult the L<ModelSEED::Store::Private>
 documentation for further method details.
 
 =cut

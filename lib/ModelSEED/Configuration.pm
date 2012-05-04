@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Configuration 
 
-ModelSEED::Configuration - Simple interface to store configuration info
+Simple interface to store configuration info
 
 =head1 DESCRIPTION
 

@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Store::Private 
 
-ModelSEED::Store - Base storage interface layer
+Base storage interface layer; not for public use.
 
 =head1 NOTE
 
@@ -21,7 +21,7 @@ access to the datastore. While the datastore is designed to limit
 the visibility of objects to particular users, this class does
 nothing to prevent people from accessing data. The "user" is passed
 into each API function, therefore there is no assumption of security
-when using this interface.  Use C<ModelSEED::Store> instead.
+when using this interface. Use L<ModelSEED::Store> instead.
 
 =head1 Initialization
 
