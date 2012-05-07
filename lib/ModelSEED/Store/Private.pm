@@ -186,9 +186,11 @@ use Moose;
 use Try::Tiny;
 use Digest::MD5 qw(md5_hex);
 use JSON::Any;
-use ModelSEED::Configuration;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw( ModelSEED::MS::User );
+use Class::Autouse qw(
+    ModelSEED::Database::Composite
+    ModelSEED::MS::User
+);
 
 my $RESERVED_META = "__system__";
 
@@ -205,7 +207,6 @@ around BUILDARGS => sub {
         my $db_class = $args->{db_class};
         my $db_req = $db_class . ".pm";
         $db_req =~ s/::/\//g;
-
         try {
             require $db_req;
             $args->{db} = $db_class->new($args->{db_config});
@@ -213,8 +214,7 @@ around BUILDARGS => sub {
             die "Could not import database package: $db_class";
         };
     } else {
-        # TODO: get database from config
-#        my $config = ModelSEED::Configuration->new();
+        $args->{db} = ModelSEED::Database::Composite->new({ use_config => 1 });
     }
 
     return $class->$orig($args);
