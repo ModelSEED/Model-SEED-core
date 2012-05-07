@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Store::Private 
 
-ModelSEED::Store - Base storage interface layer
+Base storage interface layer; not for public use.
 
 =head1 NOTE
 
@@ -21,7 +21,7 @@ access to the datastore. While the datastore is designed to limit
 the visibility of objects to particular users, this class does
 nothing to prevent people from accessing data. The "user" is passed
 into each API function, therefore there is no assumption of security
-when using this interface.  Use C<ModelSEED::Store> instead.
+when using this interface. Use L<ModelSEED::Store> instead.
 
 =head1 Initialization
 
@@ -127,6 +127,25 @@ queries against the data store.
 
     $ps->get_aliases_for_type($username, $type);
 
+=head2 get_metadata
+
+    $ps->get_metadata($username, $type, $alias, $selection);
+
+=head2 set_metadata
+
+    $ps->set_metadata($username, $type, $alias, $selection, $metadata);
+
+=head2 remove_metadata
+
+    $ps->remove_metadata($username, $type, $alias, $selection);
+
+=head2 find_objects
+
+    $ps->find_objects($username, $type, $query);
+
+Returns an iterator which allows you to individually access the objects,
+or gather them all into an array (interface to come)
+
 =head1 Permissions: Editing and Viewing
 
 Permissions are handled via the "alias" attribute and the following
@@ -171,6 +190,8 @@ use ModelSEED::Configuration;
 use Moose::Util::TypeConstraints;
 use Class::Autouse qw( ModelSEED::MS::User );
 
+use Data::Dumper;
+
 my $RESERVED_META = "__system__";
 
 role_type 'ModelSEED::Database';
@@ -195,6 +216,7 @@ around BUILDARGS => sub {
         };
     } else {
         # TODO: get database from config
+#        my $config = ModelSEED::Configuration->new();
     }
 
     return $class->$orig($args);
@@ -206,10 +228,6 @@ sub create_user {
     unless ($self->db->save_object('user', $user->login, $user->serializeToDB)) {
         return 0;
     }
-
-    # now save type meta
-    my $meta_path = "$RESERVED_META.type";
-    $self->db->set_metadata('user', $user->login, $meta_path, 'user');
 
     return 1;
 }
@@ -278,6 +296,7 @@ sub get_data {
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
         # no object, return undef
+        print "No object\n";
         return;
     }
 
@@ -285,6 +304,7 @@ sub get_data {
     unless ($user eq $alias_user ||
             $info->{public}      ||
             $info->{viewers}->{$user}) {
+        print "No permissions\n";
         return;
     }
 
@@ -309,19 +329,8 @@ sub save_object {
     # save data, unless object already exists (check via md5)
     my $json_obj = _encode($object);
     my $md5 = md5_hex($json_obj);
-    my $new = 0;
     unless ($self->db->has_object($type, $md5)) {
-        $new = 1;
         $self->db->save_object($type, $md5, $json_obj);
-
-        # now save type meta
-        my $obj_meta = {
-            type    => $type,
-            parents => []
-        };
-
-        my $meta_path = "$RESERVED_META";
-        $self->db->set_metadata($type, $md5, $meta_path, $obj_meta);
     }
 
     # now save the alias
@@ -333,6 +342,9 @@ sub save_object {
 
         # get current list of parents and add parent obj
         my $parents = $self->db->get_metadata($type, $md5, "$RESERVED_META.parents");
+        unless (ref($parents) eq 'ARRAY') {
+            $parents = [];
+        }
         push(@$parents, $info->{object});
         $self->db->set_metadata($type, $md5, "$RESERVED_META.parents", $parents);
     } else {
@@ -382,6 +394,106 @@ sub get_aliases_for_type {
     }
 
     return $aliases;
+}
+
+sub get_metadata {
+    my ($self, $user, $type, $user_alias, $selection) = @_;
+
+    $type = lc($type);
+
+    # can't see system metadata
+    if ($RESERVED_META eq substr($selection, 0, length($RESERVED_META))) {
+        return;
+    }
+
+    # split user from alias (paul/main)
+    my ($alias_user, $alias) = _split_alias($user_alias);
+    unless ($user eq $alias_user) {
+        # cannot get metadata from someone else's alias space
+        return;
+    }
+
+    my $meta_path = "$RESERVED_META.aliases.$alias.object";
+    my $id = $self->db->get_metadata('user', $user, $meta_path);
+
+    my $meta = $self->db->get_metadata($type, $id, $selection);
+
+    if (!defined($selection) || $selection eq "") {
+        delete $meta->{$RESERVED_META};
+    }
+
+    return $meta;
+}
+
+sub set_metadata {
+    my ($self, $user, $type, $user_alias, $selection, $metadata) = @_;
+
+    $type = lc($type);
+
+    # can't set system metadata
+    if ($RESERVED_META eq substr($selection, 0, length($RESERVED_META))) {
+        return 0;
+    }
+
+    # split user from alias (paul/main)
+    my ($alias_user, $alias) = _split_alias($user_alias);
+    unless ($user eq $alias_user) {
+        # cannot set metadata from someone else's alias space
+        return;
+    }
+
+    my $meta_path = "$RESERVED_META.aliases.$alias.object";
+    my $id = $self->db->get_metadata('user', $user, $meta_path);
+
+    if (!defined($selection) || $selection eq "") {
+        unless (ref($metadata) eq "HASH") {
+            return 0;
+        }
+
+        my $system_meta = $self->db->get_metadata($type, $id, $RESERVED_META);
+        $metadata->{$RESERVED_META} = $system_meta;
+    }
+
+    return $self->db->set_metadata($type, $id, $selection, $metadata);
+}
+
+sub remove_metadata {
+    my ($self, $user, $type, $user_alias, $selection) = @_;
+
+    $type = lc($type);
+
+    # can't remove system metadata
+    if ($RESERVED_META eq substr($selection, 0, length($RESERVED_META))) {
+        return 0;
+    }
+
+    # split user from alias (paul/main)
+    my ($alias_user, $alias) = _split_alias($user_alias);
+    unless ($user eq $alias_user) {
+        # cannot remove metadata from someone else's alias space
+        return;
+    }
+
+    my $meta_path = "$RESERVED_META.aliases.$alias.object";
+    my $id = $self->db->get_metadata('user', $user, $meta_path);
+
+    if (!defined($selection) || $selection eq "") {
+        my $system_meta = $self->db->get_metadata($type, $id, $RESERVED_META);
+        return $self->db->set_metadata($type, $id, $selection, { $RESERVED_META => $system_meta });
+    } else {
+        return $self->db->remove_metadata($type, $id, $selection);
+    }
+}
+
+sub find_objects {
+    my ($self, $user, $type, $query) = @_;
+
+    $type = lc($type);
+
+    # add user query to $query
+    my $ids = $self->db->find_objects($type, $query);
+
+    return $ids;
 }
 
 sub add_viewer {

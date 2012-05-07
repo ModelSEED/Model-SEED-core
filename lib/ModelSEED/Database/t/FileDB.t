@@ -5,6 +5,8 @@ use Test::More;
 use File::Temp qw(tempfile tempdir);
 use ModelSEED::Database::FileDB;
 
+my $TYPE_META = "__type__";
+
 my $testCount = 0;
 # test initialization
 {
@@ -58,10 +60,12 @@ my $testCount = 0;
     $db->save_object($type, $id2, $o2);
 
     $db->set_metadata($type, $id2, '', {foo => 'bar'});
-    is_deeply {foo => 'bar'}, $db->get_metadata($type, $id2), "Simple metadata test";
+    is_deeply $db->get_metadata($type, $id2), {foo => 'bar'}, "Simple metadata test";
 
     $db->set_metadata($type, $id2, 'foo2', 'bar2');
-    is_deeply {foo => 'bar', foo2 => 'bar2'}, $db->get_metadata($type, $id2), "Added to existing metadata";
+    is_deeply $db->get_metadata($type, $id2),
+      {foo => 'bar', foo2 => 'bar2'},
+      "Added to existing metadata";
     is undef, $db->get_metadata($type, $id2, 'none'), "Non-existant metadata";
 
     $db->set_metadata($type, $id2, 'foo', {hello => 'world!'});
@@ -74,13 +78,84 @@ my $testCount = 0;
     is undef, $db->get_metadata($type, $id2, 'foo2'), "Removed metadata successfully";
 
     $db->remove_metadata($type, $id2);
-    is_deeply {}, $db->get_metadata($type, $id2), "Removed all metadata";
+    is_deeply $db->get_metadata($type, $id2), {}, "Removed all metadata";
 
     $db->set_metadata($type, $id2, 'this.is.a', 'test');
     is_deeply {this => {is => {a => 'test'}}}, $db->get_metadata($type, $id2), "Saved nested metadata";
     is_deeply {a => 'test'}, $db->get_metadata($type, $id2, 'this.is'), "Got nested metadata";
 
-    $testCount += 23;
+    # test reserved type_meta
+    is $db->get_metadata($type, $id2, $TYPE_META), undef, "Can't get type metadata";
+    ok !$db->set_metadata($type, $id2, $TYPE_META, "test"), "Can't set type metadata";
+    ok !$db->remove_metadata($type, $id2, $TYPE_META), "Can't remove type metadata";
+
+    $testCount += 26;
+}
+
+# test find_objects
+{
+    my $dir = tempdir();
+
+    my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
+
+    my $type1 = 'foo';
+    my $type2 = 'bar';
+    my $id1 = 'obj1';
+    my $id2 = 'obj2';
+    my $id3 = 'obj3';
+    my $id4 = 'obj4';
+    my $o1 = { hello => 'world1' };
+    my $o2 = { hello => 'world2' };
+    my $o3 = { hello => 'world3' };
+    my $o4 = { hello => 'world4' };
+    my $meta1 = { string => 'yes', test => 'what' };
+    my $meta2 = { size => 100 };
+    my $meta3 = { size => 50 };
+    my $meta4 = { size => 10 };
+
+    $db->save_object($type1, $id1, $o1);
+    $db->save_object($type2, $id2, $o2);
+    $db->save_object($type1, $id3, $o4);
+    $db->save_object($type2, $id4, $o4);
+
+    $db->set_metadata($type1, $id1, '', $meta1);
+    $db->set_metadata($type2, $id2, '', $meta2);
+    $db->set_metadata($type1, $id3, '', $meta3);
+    $db->set_metadata($type2, $id4, '', $meta4);
+
+    my $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1)};
+    is_deeply $objs, { $id1 => 1, $id3 => 1}, "Find objects works for empty query (type1)";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2)};
+    is_deeply $objs, { $id2 => 1, $id4 => 1}, "Find objects works for empty query (type2)";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes' })};
+    is_deeply $objs, { $id1 => 1 }, "Find objects (string 'eq')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { size => 50 })};
+    is_deeply $objs, { $id3 => 1 }, "Find objects (numeric '==')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0} })};
+    is_deeply $objs, { $id2 => 1, $id4 => 1 }, "Find objects (numeric '>')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0, '$lte' => 10} })};
+    is_deeply $objs, { $id4 => 1 }, "Find objects (numeric '> and <=')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'no' })};
+    is_deeply $objs, {}, "Find objects (string multiple 'eq')";
+
+    $objs = {};
+    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'what' })};
+    is_deeply $objs, { $id1 => 1 }, "Find objects (string multiple 'eq')";
+
+    $testCount += 8;
 }
 
 done_testing($testCount);

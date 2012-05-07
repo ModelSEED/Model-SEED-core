@@ -2,10 +2,10 @@
 # ModelSEED::Database - Abstract role / interface for Database drivers
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development locations: 
+# Development locations:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
-#                       
+#
 # Date of module creation: 2012-04-01
 ########################################################################
 =pod
@@ -66,7 +66,7 @@ to data (in this case data has to be a hash)
     while the second adds the user named 'paul'
 
 =head2 remove_metadata
-    
+
     $bool = $db->remove_metadata(type, id, selection);
 
 Deletes the data at selection (uses dot notation)
@@ -79,6 +79,11 @@ Deletes the data at selection (uses dot notation)
 
 Allows you to query for objects based on the metadata will use query
 syntax similar to MongoDB.
+
+Uses MongoDB syntax like here:
+L<http://search.cpan.org/~kristina/MongoDB/lib/MongoDB/Tutorial.pod#Queries>
+L<http://www.mongodb.org/display/DOCS/Advanced+Queries>
+
 =cut
 package ModelSEED::Database;
 use Moose::Role;

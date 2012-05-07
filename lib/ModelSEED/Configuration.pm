@@ -2,7 +2,7 @@
 # ModelSEED::Configuration - This moose object stores data on user env
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: 
+# Development location:
 #   Mathematics and Computer Science Division, Argonne National Lab;
 #   Computation Institute, University of Chicago
 #
@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Configuration 
 
-ModelSEED::Configuration - Simple interface to store configuration info
+Simple interface to store configuration info
 
 =head1 DESCRIPTION
 
