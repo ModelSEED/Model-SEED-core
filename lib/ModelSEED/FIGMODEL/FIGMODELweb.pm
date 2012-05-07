@@ -186,12 +186,12 @@ sub display_reaction_roles {
 	if (!defined($roleHash->{$rxn})) {
 		return "None";
 	}
-	my $list;
+	my $list = [];
 	foreach my $role (keys(%{$roleHash->{$rxn}})) {
 		if (defined($roleHash->{$rxn}->{$role})) {
 			push(@{$list},$roleHash->{$rxn}->{$role}->name());
 		} else {
-			print STERR "Could not find ".$rxn."->".$role."\n";
+			print STDERR "Could not find ".$rxn."->".$role."\n";
 		}
 	}
 	return join("<br><br>",@{$list});
