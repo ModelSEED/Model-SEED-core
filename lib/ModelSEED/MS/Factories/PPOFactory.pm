@@ -8,6 +8,7 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::utilities;
+use ModelSEED::Store;
 use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Utilities::GlobalFunctions;
@@ -26,20 +27,10 @@ has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager', lazy => 1, builde
 # BUILDERS:
 sub _buildom {
 	my ($self) = @_;
-	my $om = ModelSEED::MS::ObjectManager->new({
-		db => ModelSEED::Database::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
-		username => $self->username(),
-		password => $self->password(),
-		selectedAliases => {
-			ReactionAliasSet => "ModelSEED",
-			CompoundAliasSet => "ModelSEED",
-			ComplexAliasSet => "ModelSEED",
-			RoleAliasSet => "ModelSEED",
-			RoleSetAliasSet => "ModelSEED"
-		}
-	});
-	$om->authenticate($self->username(),$self->password());
-	return $om; 
+    return ModelSEED::Store->new(
+        username => $self->username,
+        password => $self->password
+    );
 }
 sub _buildfigmodel {
 	my ($self) = @_;

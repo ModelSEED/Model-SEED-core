@@ -19,7 +19,7 @@ use MSSeedSupportClient;
 # ATTRIBUTES:
 has sapsvr => ( is => 'rw', isa => 'SAPserver', lazy => 1, builder => '_buildsapsvr' );
 has msseedsvr => ( is => 'rw', isa => 'MSSeedSupportClient', lazy => 1, builder => '_buildmsseedsvr' );
-has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has om => ( is => 'rw', isa => 'ModelSEED::Store');
 
 
 # BUILDERS:
