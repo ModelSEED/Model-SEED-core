@@ -315,8 +315,8 @@ sub getLinkedObject {
 	$soureType = lc($soureType);
 	my $parent = $self->$soureType();
 	my $object;
-	if (ref($parent) eq "ModelSEED::MS::ObjectManager") {
-		$object = $parent->get($type,$value);
+	if (ref($parent) eq "ModelSEED::Store") {
+		$object = $parent->get_object($type,$value);
 	} else {
 		$object = $parent->getObject($type,{$attribute => $value});
 	}
@@ -331,8 +331,8 @@ sub biochemistry {
 	my $parent = $self->parent();
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
 		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->biochemistry();
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 	}
 	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
@@ -342,8 +342,8 @@ sub model {
 	my $parent = $self->parent();
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
 		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->model();
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 	}
 	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
@@ -353,8 +353,8 @@ sub annotation {
 	my $parent = $self->parent();
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
 		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->annotation();
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 	}
 	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
@@ -364,17 +364,21 @@ sub mapping {
 	my $parent = $self->parent();
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
 		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->mapping();
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 	}
 	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }
 
 sub objectmanager {
+    return $_[0]->store;
+}
+
+sub store {
 	my ($self) = @_;
 	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) ne "ModelSEED::MS::ObjectManager") {
-		return $parent->objectmanager();
+	if (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+		return $parent->store();
 	}
 	return $parent;
 }

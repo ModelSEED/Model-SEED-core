@@ -37,7 +37,7 @@ my ($media, $data);
     ok defined($media->locked), "Should have locked";
     ok defined($media->name), "Should have name";
     ok defined($media->type), "Should have type";
-    $testCount += 6;
+    $testCount += 5;
 }
 
 # Test media_compound accessors

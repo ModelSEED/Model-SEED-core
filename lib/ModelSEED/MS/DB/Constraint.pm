@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:57
 ########################################################################
 use strict;
 use ModelSEED::MS::ConstraintVariable;
@@ -20,10 +19,13 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAProblem', type => 'parent', 
 
 # ATTRIBUTES:
 has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
+has name => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
 has rightHandSide => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
 has equalityType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
 has index => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1 );
 has primal => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1 );
+has entity_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
 has dualConstraint_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
 has dualVariable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
 

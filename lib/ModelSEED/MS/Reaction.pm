@@ -8,6 +8,7 @@
 use strict;
 use ModelSEED::MS::DB::Reaction;
 package ModelSEED::MS::Reaction;
+use ModelSEED::utilities;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::Reaction';

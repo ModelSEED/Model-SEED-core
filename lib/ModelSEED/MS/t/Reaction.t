@@ -4,6 +4,8 @@ use warnings;
 use Test::More;
 use JSON::Any;
 use ModelSEED::MS::Reaction;
+use File::Basename;
+use Data::Dumper;
 use Clone qw(clone);
 use List::Util qw(shuffle);
 my $testCount = 0;
@@ -39,11 +41,9 @@ my $reactions = [];
    foreach my $rxn (@$reactions) {
        ok defined $rxn->uuid, "Should have uuid";
        ok defined $rxn->modDate, "Should have modDate";
-       ok defined $rxn->id, "Should have id";
        ok defined $rxn->name, "Should have name";
-       ok defined $rxn->compartment_uuid, "Should have compartment_uuid";
        ok defined $rxn->equation, "Should have equation";
-       $testCount += 6;
+       $testCount += 4;
    }
 }
 
