@@ -283,6 +283,18 @@ sub get_object {
     return $class->new($obj_data);
 }
 
+sub get_object_by_uuid {
+    my ($self, $user, $type, $uuid) = @_;
+
+    my $ids = $self->db->find_objects($type, { "$RESERVED_META.uuid" => $uuid });
+
+    if (scalar @$ids == 1) {
+        return $self->db->get_object($type, $ids->[0]);
+    } else {
+        return;
+    }
+}
+
 sub get_data {
     my ($self, $user, $type, $user_alias) = @_;
 
@@ -331,6 +343,12 @@ sub save_object {
     my $md5 = md5_hex($json_obj);
     unless ($self->db->has_object($type, $md5)) {
         $self->db->save_object($type, $md5, $json_obj);
+
+        # save the uuid in metadata
+        if (exists($object->{uuid})) {
+            $self->db->set_metadata($type, $md5, "$RESERVED_META",
+                                    { uuid => $object->{uuid} });
+        }
     }
 
     # now save the alias
