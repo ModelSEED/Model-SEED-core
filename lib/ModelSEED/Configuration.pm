@@ -63,6 +63,10 @@ use JSON qw(encode_json decode_json);
 use Try::Tiny;
 use File::Path qw(mkpath);
 use File::Basename qw(dirname);
+use Class::Autouse qw(
+    JSON::Schema
+);
+
 
 has filename => (
     is       => 'rw',
@@ -83,6 +87,14 @@ has JSON => (
     is       => 'ro',
     isa      => 'JSON',
     builder  => '_buildJSON',
+    lazy     => 1,
+    init_arg => undef
+);
+
+has validator => (
+    is       => 'ro',
+    isa      => 'JSON::Schema',
+    builder  => '_buildValidator',
     lazy     => 1,
     init_arg => undef
 );
@@ -118,12 +130,31 @@ sub _buildFilename {
     return $filename;
 }
 
+sub _buildValidator {
+    my ($self) = @_;
+    my $dir = dirname($INC{'ModelSEED/Configuration.pm'});
+    my $schemaFile = "$dir/Configuration.schema.json";
+    local $/;
+    open(my $fh, "<", $schemaFile) || die "$!";
+    my $text = <$fh>;
+    close($fh);
+    my $json = $self->JSON->decode($text);
+    return JSON::Schema->new($json);
+}
+
 sub save {
     my ($self) = @_;
+    # Validate Config against schema
+    my $result = $self->validator->validate($self->config);
+    unless($result) {
+        die "Errors in configuration!\n".
+        join("\n", $result->errors) . "\n";
+    }
     open(my $fh, ">", $self->filename) ||
         die "Error saving " . $self->filename . ", $@";
     print $fh $self->JSON->encode($self->config);
     close($fh);
+    return 1;
 }
 
 # FIXME - kludge until MooseX::Singleton fixed
@@ -131,6 +162,7 @@ sub instance {
     my $class = shift @_;
     return $class->new(@_);
 }
+
 
 __PACKAGE__->meta->make_immutable;
 1;

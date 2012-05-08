@@ -1,0 +1,50 @@
+{
+   "type" : "object",
+   "description" : "Configuration details for the ModelSEED",
+   "properties" : {
+      "error_log" : {
+         "type" : "string",
+         "description" : "Directory where error logs are stored"
+      },
+      "stores" : {         "type" : "array",
+         "description" : "An array of storage configurations",
+         "items" : {
+            "type" : "object",
+            "additionalProperties" : {},
+            "properties" : {
+               "class" : {
+                  "required" : true,
+                  "type" : "string"
+               }
+            }
+         }
+      },
+      "mapping" : {
+         "type" : "string",
+         "description" : "Alias for preferred mapping"
+      },
+      "biochemistry" : {
+         "type" : "string",
+         "description" : "Alias for preferred biochemistry"
+      },
+      "model" : {
+         "type" : "string",
+         "description" : "Alias for preferred model"
+      },
+      "login" : {
+         "type" : "object",
+         "description" : "Authentication information",
+         "properties" : {
+            "password" : {
+               "required" : true,
+               "type" : "string"
+            },
+            "username" : {
+               "required" : true,
+               "type" : "string"
+            }
+         }
+      }
+   },
+   "additionalProperties" : false
+}
