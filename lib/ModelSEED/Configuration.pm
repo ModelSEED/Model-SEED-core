@@ -10,9 +10,9 @@
 ########################################################################
 =pod
 
-=head1 NAME
+=head1 ModelSEED::Configuration 
 
-ModelSEED::Configuration - Simple interface to store configuration info
+Simple interface to store configuration info
 
 =head1 DESCRIPTION
 
@@ -57,9 +57,10 @@ destruction, so it's not absolutely neccesary.
 =cut
 
 package ModelSEED::Configuration;
-use MooseX::Singleton;
+use Moose; #X::Singleton;
 use namespace::autoclean;
-use JSON;
+use JSON qw(encode_json decode_json);
+use Try::Tiny;
 use File::Path qw(mkpath);
 use File::Basename qw(dirname);
 
@@ -88,16 +89,21 @@ has JSON => (
 
 sub _buildConfig {
     my ($self) = @_;
+    my $default = { error_dir => $ENV{HOME} . "/.modelseed_error" };
     if (-f $self->filename) {
         local $/;
         open(my $fh, "<", $self->filename) || die "$!";
         my $text = <$fh>;
         close($fh);
-        return $self->JSON->decode($text);
-    } else {
-        return {
-            error_dir => $ENV{HOME} . "/.modelseed_error", 
+        my $json;
+        try {
+            $json = $self->JSON->decode($text);
+        } catch {
+            $json = $default;
         };
+        return $json;
+    } else {
+        return $default;
     }
 }
 
@@ -114,14 +120,16 @@ sub _buildFilename {
 
 sub save {
     my ($self) = @_;
-    open(my $fh, ">", $self->filename);
+    open(my $fh, ">", $self->filename) ||
+        die "Error saving " . $self->filename . ", $@";
     print $fh $self->JSON->encode($self->config);
     close($fh);
 }
 
-sub DEMOLISH {
-    my ($self) = $_;
-    $self->save();
+# FIXME - kludge until MooseX::Singleton fixed
+sub instance {
+    my $class = shift @_;
+    return $class->new(@_);
 }
 
 __PACKAGE__->meta->make_immutable;

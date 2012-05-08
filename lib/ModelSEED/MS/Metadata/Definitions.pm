@@ -3,6 +3,112 @@ package ModelSEED::MS::DB::Definitions;
 
 my $objectDefinitions = {};
 
+$objectDefinitions->{FBAProblem} = {
+	parents => ['ObjectManager'],
+	class => 'indexed',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'maximize',perm => 'rw',type => 'Bool',req => 0},
+		{name => 'milp',perm => 'rw',type => 'Bool',req => 0},
+		{name => 'decomposeReversibleFlux',perm => 'rw',type => 'Bool',len => 32,req => 1},
+		{name => 'decomposeReversibleDrainFlux',perm => 'rw',type => 'Bool',len => 32,req => 1},
+		{name => 'fluxUseVariables',perm => 'rw',type => 'Bool',len => 32,req => 1},
+		{name => 'drainfluxUseVariables',perm => 'rw',type => 'Bool',len => 32,req => 1},
+	],
+	subobjects => [
+		{name => "objectiveTerms",class => "ObjectiveTerm",type => "child"},
+		{name => "constraints",class => "Constraint",type => "child"},
+		{name => "variables",class => "Variable",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{ObjectiveTerm} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 0},
+		{name => 'variable_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{Constraint} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0},
+		{name => 'rightHandSide',perm => 'rw',type => 'Num',req => 1},
+		{name => 'equalityType',perm => 'rw',type => 'Str',len => 1,req => 1},
+		{name => 'index',perm => 'rw',type => 'Int',len => 1,req => 1},
+		{name => 'primal',perm => 'rw',type => 'Bool',len => 1,req => 1},
+		{name => 'entity_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'dualConstraint_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'dualVariable_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+	],
+	subobjects => [
+		{name => "constraintVariables",class => "ConstraintVariable",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+		{name => "dualVariable",attribute => "dualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ConstraintVariable} = {
+	parents => ['Constraint'],
+	class => 'child',
+	attributes => [
+		{name => 'coefficient',perm => 'rw',type => 'Num',req => 0},
+		{name => 'variable_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"}
+	]
+};
+	
+$objectDefinitions->{Variable} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',perm => 'rw',type => 'Str',req => 0},
+		{name => 'binary',perm => 'rw',type => 'Bool',req => 0,default => 0},
+		{name => 'start',perm => 'rw',type => 'Num',req => 1,default => 0},
+		{name => 'upperBound',perm => 'rw',type => 'Num',req => 1},
+		{name => 'lowerBound',perm => 'rw',type => 'Num',req => 1},
+		{name => 'min',perm => 'rw',type => 'Num',req => 1},
+		{name => 'max',perm => 'rw',type => 'Num',req => 1},
+		{name => 'value',perm => 'rw',type => 'Num',req => 1,default => 0},
+		{name => 'entity_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'index',perm => 'rw',type => 'Int',req => 1},
+		{name => 'primal',perm => 'rw',type => 'Bool',len => 1,req => 1,default => 1},	
+		{name => 'dualConstraint_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'upperBoundDualVariable_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'lowerBoundDualVariable_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0}
+	],
+	subobjects => [
+		{name => "constraintVariables",class => "ConstraintVariable",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+		{name => "upperBoundDualVariable",attribute => "upperBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+		{name => "lowerBoundDualVariable",attribute => "lowerBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+	]
+};
+
 $objectDefinitions->{Genome} = {
 	parents => ['Annotation'],
 	class => 'indexed',
@@ -82,7 +188,7 @@ $objectDefinitions->{Experiment} = {
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		 {name => "genome",attribute => "genome_uuid",parent => "ObjectManager",class => "Genome",query => "uuid"},
+		{name => "genome",attribute => "genome_uuid",parent => "ObjectManager",class => "Genome",query => "uuid"},
 	]
 };
 
@@ -809,6 +915,9 @@ $objectDefinitions->{FBAFormulation} = {
 		{name => 'uptakeLimits',perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
 		{name => 'numberOfSolutions',perm => 'rw',type => 'Int',req => 1,default => "1"},
 		{name => 'geneKO',perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'defaultMaxFlux',perm => 'rw',type => 'Int',req => 1,default => 1000},
+		{name => 'defaultMaxDrainFlux',perm => 'rw',type => 'Int',req => 1,default => 1000},
+		{name => 'defaultMinDrainFlux',perm => 'rw',type => 'Int',req => 1,default => -1000},
 	],
 	subobjects => [
 		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
