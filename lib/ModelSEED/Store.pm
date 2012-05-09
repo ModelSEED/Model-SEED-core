@@ -98,6 +98,7 @@ use ModelSEED::ModelSEEDClients::MSSeedSupportClient;
 use ModelSEED::MS::User;
 use Try::Tiny;
 use Module::Load;
+use Carp qw(confess);
 
 has username => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User');
@@ -167,7 +168,15 @@ sub AUTOLOAD {
     my $call = our $AUTOLOAD;
     return if $AUTOLOAD =~ /::DESTROY$/;
     $call =~ s/.*://;
-    return $self->private->$call($self->username, @_);
+    my $rtv;
+    unshift(@_, $self->username);
+    my @args = @_;
+    try {
+        $rtv = $self->private->$call(@args);
+    } catch {
+        confess $_;
+    };
+    return $rtv;
 }
 
 no Moose;
