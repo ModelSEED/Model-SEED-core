@@ -90,8 +90,8 @@ around BUILDARGS => sub {
     my ($orig, $class, $args) = @_;
     my $authorized = 0;
     my $private = $args->{private};
-    unless(defined($private)) {
-        $private = ModelSEED::Store::Private->new();
+    unless (defined($private)) {
+        $args->{private} = $private = ModelSEED::Store::Private->new();
     }
     # Handle Authentication methods
     if(defined($args->{username}) && defined($args->{password})) {
@@ -123,6 +123,9 @@ around BUILDARGS => sub {
             $authorized = 1;
         }
         $args->{user} = $user;
+    } else {
+        $args->{username} = "PUBLIC";
+        $authorized = 1;
     }
     die "Unauthorized" unless($authorized);
     return $class->$orig($args);
