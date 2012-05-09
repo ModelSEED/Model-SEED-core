@@ -193,7 +193,7 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No Storage Object");
     }
-    $om->save_object($self->_type, $alias, $self->serializeToDB);
+    $om->save_object($self->_type, $alias, $self);
 }
 
 sub _buildindices { return {}; }

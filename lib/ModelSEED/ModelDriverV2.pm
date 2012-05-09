@@ -12,8 +12,8 @@ use Class::Autouse qw(
     ModelSEED::FIGMODEL
     ModelSEED::Configuration
     ModelSEED::Store
-    ModelSEED::MS::Factories::PPOFactory
 );
+use ModelSEED::MS::Factories::PPOFactory;
 use ModelSEEDbootstrap;
 use ModelSEED::utilities;
 use File::Basename qw(dirname basename);
@@ -97,7 +97,7 @@ sub biochemistry {
     my $wanted = $self->environment()->{biochemistry};
     my $got = $self->{_biochemistry};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_biochemistry} = $self->om()->get_object("Biochemistry", $wanted);
+        $self->{_biochemistry} = $self->om()->get_object("biochemistry", $wanted);
     }
 	return $self->{_biochemistry};
 }
@@ -309,26 +309,27 @@ Description:
 sub dbtransfermain {
 	my($self,@Data) = @_;
 	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
+    my $username = $self->environment()->{login}->{username};
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
 		om => $self->om(),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password}	
+		username => $self->environment()->{login}->{username},
+		password => $self->environment()->{login}->{password}	
 	});
 	my $bio = $ppofactory->createBiochemistry();
-	$bio->save();
+    my $bioAlias = "$username/bio-main";
+    my $mapAlias = "$username/map-main";
+
+	$bio->save($bioAlias);
 	$bio->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
-	print "Saved biochemistry with uuid ".$bio->uuid()."\n";
-	$self->environment()->biochemistry($bio->uuid());
-	#print "Loading biochemistry!\n";
-	#my $bio = $self->biochemistry();
-	#print "Biochemistry loaded!\n";
+	print "Saved biochemistry with alias '$bioAlias'\n";
+	$self->environment()->{biochemistry} = $bioAlias;
 	my $map = $ppofactory->createMapping({
 		biochemistry => $bio,	
 	});
-	$map->save();
+	$map->save($mapAlias);
 	$map->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
-	print "Saved mapping with uuid ".$map->uuid()."\n";
-	$self->environment()->{mapping} = $map->uuid();
+	print "Saved mapping with alias '$mapAlias'\n";
+	$self->environment()->{mapping} = $mapAlias;
 	$self->config()->save();
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
@@ -343,10 +344,11 @@ sub dbtransfermodel {
 	my $args = $self->check([
 		["model",1,undef,"model to be transfered"]
 	],[@Data],"transfers model to new scheme");
+    my $username = $self->environment()->{login}->{username};
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
 		om => $self->om(),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password}
+		username => $username,
+		password => $self->environment()->{login}->{password}
 	});
 	print "Loading biochemistry!\n";
 	my $biochemistry = $self->biochemistry();
@@ -358,8 +360,10 @@ sub dbtransfermodel {
 		biochemistry => $self->biochemistry(),
 		mapping => $self->mapping()
 	});
-	$model->save();
-	print "Saved model with uuid ".$model->uuid()."\n";
+    my $modelAlias = "$username/mdl-".$args->{model};
+    $modelAlias =~ s/\./-/g;
+	$model->save($modelAlias);
+	print "Saved model with alias '$modelAlias'\n";
     return {success => 1,message => "Successfully imported model!"};
 }
 =head3 testobj
@@ -370,10 +374,13 @@ Description:
 =cut
 sub testobj {
 	my($self,@Data) = @_;
+    my $om = ModelSEED::Store->new({
+		username => $self->environment()->{login}->{username},
+		password => $self->environment()->{login}->{password},
+    });
+=cut
 	my $om = ModelSEED::MS::ObjectManager->new({
 		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password},
 		selectedAliases => {
 			ReactionAliasSet => "ModelSEED",
 			CompoundAliasSet => "ModelSEED",
@@ -382,6 +389,7 @@ sub testobj {
 			RoleSetAliasSet => "ModelSEED"
 		}
 	});
+=cut
 	my $biochemistry = $om->create("Biochemistry",{
 		name=>"chenry/TestBiochem",
 		public => 1,

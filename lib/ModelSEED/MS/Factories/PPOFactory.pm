@@ -6,7 +6,6 @@
 # Date of module creation: 2012-03-15T16:44:01
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::utilities;
 use ModelSEED::Store;
 use ModelSEED::MS::ObjectManager;
@@ -15,13 +14,14 @@ use ModelSEED::MS::Utilities::GlobalFunctions;
 use ModelSEED::MS::Factories::SEEDFactory;
 package ModelSEED::MS::Factories::PPOFactory;
 use Moose;
+use namespace::autoclean;
 
 
 # ATTRIBUTES:
 has username => ( is => 'rw', isa => 'Str', required => 1 );
 has password => ( is => 'rw', isa => 'Str', required => 1 );
 has figmodel => ( is => 'rw', isa => 'ModelSEED::FIGMODEL', lazy => 1, builder => '_buildfigmodel' );
-has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager', lazy => 1, builder => '_buildom' );
+has om => ( is => 'rw', isa => 'ModelSEED::Store', lazy => 1, builder => '_buildom' );
 
 
 # BUILDERS:

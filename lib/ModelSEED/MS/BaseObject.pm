@@ -12,6 +12,7 @@ use Data::UUID;
 use JSON::Any;
 use Digest::MD5 qw(md5_hex);
 use Module::Load;
+use Carp qw(confess);
 
 package ModelSEED::Meta::Attribute::Typed;
 use Moose;
@@ -311,8 +312,22 @@ sub remove {
 }
 
 sub getLinkedObject {
-	my ($self,$soureType,$type,$attribute,$value) = @_;
-	$soureType = lc($soureType);
+	my ($self,$sourceType,$type,$attribute,$value) = @_;
+	my $sourceTypeLC = $sourceType;
+    if(ref($self) =~ /$sourceTypeLC/) {
+        return $self->getObject($type, {$attribute => $value}); 
+    } elsif(ref($self->parent) eq 'ModelSEED::Store') {
+        if($attribute eq 'uuid') {
+            my $o = $self->parent->get_object_by_uuid($type, $value);
+            warn "Getting object ".ref($o);
+            return $o;
+        } else {
+            return $self->parent->get_object($type, $value);
+        }
+    } else {
+        return $self->parent->getLinkedObject($sourceType, $type, $attribute, $value);
+    }
+=cut
 	my $parent = $self->$soureType();
 	my $object;
 	if (ref($parent) eq "ModelSEED::Store") {
@@ -324,6 +339,7 @@ sub getLinkedObject {
 		ModelSEED::utilities::ERROR($type.' '.$value." not found in ".$soureType."!");
 	}
 	return $object;
+=cut
 }
 
 sub biochemistry {
@@ -332,7 +348,7 @@ sub biochemistry {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
+        confess "Cannot find Biochemistry object in tree!";
 	}
 	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
@@ -343,7 +359,7 @@ sub model {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
+        confess "Cannot find Model object in tree!";
 	}
 	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
@@ -354,7 +370,7 @@ sub annotation {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
+        confess "Cannot find Annotation object in tree!";
 	}
 	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
@@ -365,7 +381,7 @@ sub mapping {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
+        confess "Cannot find mapping object in tree!";
 	}
 	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }

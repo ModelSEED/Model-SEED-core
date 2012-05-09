@@ -22,7 +22,7 @@ try {
 	print $_;
 };
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
-    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->environment()->username().".\n";
+    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->environment()->{login}->{username}.".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";
     print "Possible usage:\n\n";
     print "1.) ModelDriver usage \"name of function\"\n";
@@ -155,12 +155,10 @@ sub printErrorLog {
     }
     
     chomp $gitSha;
-    my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
+    my $errorDir= $driv->environment()->{'error_dir'};
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
     $errorFilename =~ s/\\/\//g;
-    $driv->environment()->lasterror($errorFilename);
-    $driv->environment()->save();
     print $errorFH <<MSG;
 > ModelDriver encountered an unrecoverable error:
 
@@ -177,7 +175,7 @@ MSG
     }
     $viewerMessage .= <<MSG;
 
-View error using the "ms-lasterror" command.
+View error using the "ms error" command.
 
 Have you updated recently? ( git pull )
 Have you changed your configuration? ( ms-config )
