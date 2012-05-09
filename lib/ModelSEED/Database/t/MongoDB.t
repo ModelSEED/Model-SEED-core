@@ -73,7 +73,7 @@ my $test_count = 0;
 
     $db->set_metadata($type, $id2, 'foo', {hello => 'world!'});
     is_deeply {hello => 'world!'}, $db->get_metadata($type, $id2, 'foo'),
-	       "Overwrite existing metadata and get with selection";
+               "Overwrite existing metadata and get with selection";
 
     ok !$db->set_metadata($type, $id2, '', 'scalar'), "Overwrite whole metadata must provide hash";
 

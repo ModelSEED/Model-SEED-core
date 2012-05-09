@@ -3,673 +3,166 @@ package ModelSEED::Database::FileDB;
 use Moose;
 use namespace::autoclean;
 
-use JSON::Any;
-use File::Path qw(make_path);
-use File::stat; # for testing mod time
-use Fcntl qw( :flock );
-use IO::Compress::Gzip qw(gzip);
-use IO::Uncompress::Gunzip qw(gunzip);
-use Scalar::Util qw(looks_like_number);
+use ModelSEED::Database::FileDB::KeyValueStore;
 
-with 'ModelSEED::Database';
 
-=head
+# with 'ModelSEED::Database';
 
-TODO
-  * Put index file back in memory (stored in moose object)
-      - test if changed via mod time and size
-      - should speed up data access (as long as index hasn't changed)
-      - would this work with the locking?
-  * Check for .tmp file in BUILD, if it exists then the previous index was not saved
-=cut
+my $uuid_regex =
+  qr/[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/;
 
-my $INDEX_EXT = 'ind';
-my $META_EXT  = 'met';
-my $DATA_EXT  = 'dat';
-my $LOCK_EXT  = 'lock';
+my $user_type = 'user';
+my $obj_types = ['biochemistry', 'annotation', 'mapping'];
 
-my $TYPE_META = "__type__";
+has kvstore => (
+    is  => 'rw',
+    isa => 'ModelSEED::Database::FileDB::KeyValueStore',
+    required => 1
+);
 
-# External attributes (configurable)
-has directory => (is => 'rw', isa => 'Str', required => 1);
-has filename  => (is => 'rw', isa => 'Str', default => 'database');
+around BUILDARGS => sub {
+    my $orig  = shift;
+    my $class = shift;
 
-=head
+    my $kvstore = ModelSEED::Database::FileDB::KeyValueStore->new(@_);
 
-Index Structure
-{
-    ids => { $id => [start, end] }
+    return { kvstore => $kvstore };
+};
 
-    end_pos => int
+sub has_data {
+    my ($user, $refstring) = @_;
 
-    num_del => int
-
-    ordered_ids => [id, id, id, ...]
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-=cut
+sub get_data {
+    my ($user, $refstring) = @_;
 
-sub BUILD {
-    my ($self) = @_;
-
-    my $dir = $self->directory;
-    unless (-d $dir) {
-	make_path($dir);
-    }
-
-    my $file = $self->_get_file();
-
-    my $ind = -f "$file.$INDEX_EXT";
-    my $met = -f "$file.$META_EXT";
-    my $dat = -f "$file.$DATA_EXT";
-
-    if ($ind && $met && $dat) {
-	# all exist
-    } elsif (!$ind && !$met && !$dat) {
-	# new database
-	my $index = _initialize_index();
-
-	# use a semaphore to lock the files
-	open LOCK, ">$file.$LOCK_EXT" or die "$!";
-	flock LOCK, LOCK_EX or die "";
-
-	open INDEX, ">$file.$INDEX_EXT" or die "";
-	print INDEX _encode($index);
-	close INDEX;
-
-	open META, ">$file.$META_EXT" or die "";
-	print META _encode({});
-	close META;
-
-	open DATA, ">$file.$DATA_EXT" or die;
-	close DATA;
-
-	close LOCK;
-    } else {
-	die "Corrupted database: $file";
-    }
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-sub _initialize_index {
-    return {
-	end_pos     => 0,
-	num_del     => 0,
-	ids         => {},
-	ordered_ids => []
-    };
+sub save_data {
+    my ($user, $refstring, $data) = @_;
+
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-sub _get_file {
-    my ($self) = @_;
+sub delete_data {
+    my ($user, $refstring) = @_;
 
-    return $self->directory . '/' . $self->filename;
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-sub _perform_transaction {
-    my ($self, $files, $sub, @args) = @_;
+sub add_viewer {
+    my ($user, $refstring, $viewer) = @_;
 
-    # determine which files are required and the mode to open
-    my $index_mode = $files->{index};
-    my $meta_mode  = $files->{meta};
-    my $data_mode  = $files->{data};
-
-    my $file = $self->_get_file();
-
-    # use a semaphore file for locking
-    open LOCK, ">$file.$LOCK_EXT" or die "Couldn't open file: $!";
-
-    # if we're only reading, get a shared lock, otherwise get exclusive
-    if ((!defined($index_mode) || $index_mode eq 'r') &&
-	(!defined($meta_mode)  || $meta_mode eq 'r') &&
-	(!defined($data_mode)  || $data_mode eq 'r')) {
-
-	flock LOCK, LOCK_SH or die "Couldn't lock file: $!";
-    } else {
-	flock LOCK, LOCK_EX or die "Couldn't lock file: $!";
-    }
-
-    # check for errors if last transaction died
-    # TODO: implement
-
-    # check if rebuild died between two rename statements
-
-    # if (-f "$file.$DATA_EXT.tmp") {
-    #     if (-f "$file.$INDEX_EXT.tmp") {
-    #         # both exist, roll back transaction by deleting
-    #         unlink "$file.$DATA_EXT.tmp";
-    #         unlink "$file.$INDEX_EXT.tmp";
-    #     } else {
-    #         # index tmp has been copied but data has not
-    #         rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
-    #     }
-    # }
-
-    my $sub_data = {};
-    my ($index, $meta, $data);
-    if (defined($index_mode)) {
-	open INDEX, "<$file.$INDEX_EXT" or die "Couldn't open file: $!";
-	$index = _decode(<INDEX>);
-	$sub_data->{index} = $index;
-	close INDEX;
-    }
-
-    if (defined($meta_mode)) {
-	open META, "<$file.$META_EXT" or die "Couldn't open file: $!";
-	$meta = _decode(<META>);
-	$sub_data->{meta} = $meta;
-	close META;
-    }
-
-    if (defined($data_mode)) {
-	if ($data_mode eq 'r') {
-	    open DATA, "<$file.$DATA_EXT" or die "Couldn't open file: $!";
-	    $data = *DATA;
-	    $sub_data->{data} = $data;
-	} elsif ($data_mode eq 'w') {
-	    # open r/w, '+>' clobbers the file
-	    open DATA, "+<$file.$DATA_EXT" or die "Couldn't open file: $!";
-	    $data = *DATA;
-	    $sub_data->{data} = $data;
-	}
-    }
-
-    my ($ret, $save) = $sub->($sub_data, @args);
-
-    if (defined($data_mode)) {
-	close $data;
-    }
-
-    # save files atomically by creating temp files and renaming
-    if (defined($save)) {
-	if ($save->{index}) {
-	    if ($index_mode ne 'w') {
-		die "Cannot write to index file, wrong permissions";
-	    }
-
-	    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "Couldn't open file: $!";
-	    print INDEX_TEMP _encode($index);
-	    close INDEX_TEMP;
-	    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
-	}
-
-	if ($save->{meta}) {
-	    if ($meta_mode ne 'w') {
-		die "Cannot write to meta file, wrong permissions";
-	    }
-
-	    open META_TEMP, ">$file.$META_EXT.tmp" or die "Couldn't open file: $!";
-	    print META_TEMP _encode($meta);
-	    close META_TEMP;
-	    rename "$file.$META_EXT.tmp", "$file.$META_EXT";
-	}
-    }
-
-    close LOCK;
-
-    return $ret;
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-# removes deleted objects from the data file
-# this locks the database while rebuilding
-# much duplicate logic here for locking, should be fixed
-# with _perform_transaction rewrite
+sub remove_viewer {
+    my ($user, $refstring, $viewer) = @_;
 
-=head
-sub rebuild_data {
-    my ($self) = @_;
-
-    # get locked filehandles for index and data files
-    my $file = $self->filename;
-
-    # use a semaphore to lock the files
-    open LOCK, ">$file.$LOCK_EXT" or die "";
-    flock LOCK, LOCK_EX or die "";
-
-    open INDEX, "<$file.$INDEX_EXT" or die "";
-    my $index = _decode(<INDEX>);
-    close INDEX;
-
-    if ($index->{num_del} == 0) {
-	# no need to rebuild
-	return 1;
-    }
-
-    open DATA, "<$file.$DATA_EXT" or die "";
-
-    # open INDEX_TEMP first
-    open INDEX_TEMP, ">$file.$INDEX_EXT.tmp" or die "";
-    open DATA_TEMP, ">$file.$DATA_EXT.tmp" or die "";
-
-    my $end = -1;
-    my $uuids = []; # new ordered uuid list
-    foreach my $uuid (@{$index->{ordered_uuids}}) {
-	if (defined($index->{uuid_index}->{$uuid})) {
-	    my $uuid_hash = $index->{uuid_index}->{$uuid};
-	    my $length = $uuid_hash->{end} - $uuid_hash->{start} + 1;
-
-	    # seek and read the object
-	    my $data;
-	    seek DATA, $uuid_hash->{start}, 0 or die "";
-	    read DATA, $data, $length;
-
-	    # set the new start and end positions
-	    $uuid_hash->{start} = $end + 1;
-	    $uuid_hash->{end} = $end + $length;
-
-	    # print object to temp file
-	    print DATA_TEMP $data;
-
-	    $end += $length;
-	    push(@$uuids, $uuid);
-	}
-    }
-
-    $end++;
-    $index->{num_del} = 0;
-    $index->{end_pos} = $end;
-    $index->{ordered_uuids} = $uuids;
-
-    close DATA;
-    close DATA_TEMP;
-
-    print INDEX_TEMP _encode($index);
-    close INDEX_TEMP;
-
-    # only point we could get corrupted is between next two statements
-    # in '_do_while_locked' check if .dat.tmp exists, but not .int.tmp
-    # if it does then indicates we failed here, so rename data
-    rename "$file.$INDEX_EXT.tmp", "$file.$INDEX_EXT";
-    rename "$file.$DATA_EXT.tmp", "$file.$DATA_EXT";
-
-    close LOCK;
-
-    return 1;
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-=cut
+sub set_public {
+    my ($user, $refstring, $public) = @_;
 
-sub has_object {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ index => 'r' },
-				       \&_has_object, @args);
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-sub _has_object {
-    my ($data, $type, $id) = @_;
+sub list_children {
+    my ($user, $refstring) = @_;
 
-    if (defined($data->{index}->{ids}->{$id})) {
-	return 1;
-    } else {
-	return 0;
-    }
+    $user = _handle_user($user);
+    my $ref = _handle_refstring($refstring);
 }
 
-sub get_object {
-    my ($self, @args) = @_;
+sub _handle_user {
+    my ($user) = @_;
 
-    return $self->_perform_transaction({ index => 'r', data => 'r' },
-				       \&_get_object, @args);
+    # do user stuff
 }
 
-sub _get_object {
-    my ($data, $type, $id) = @_;
+sub _handle_refstring {
+    my ($refstring) = @_;
 
-    unless (_has_object($data, $type, $id)) {
-		return;
-    }
-
-    my $start = $data->{index}->{ids}->{$id}->[0];
-    my $end   = $data->{index}->{ids}->{$id}->[1];
-    # print $start.":".$end."\n";
-
-    my $data_fh = $data->{data};
-    my ($json_obj, $gzip_obj);
-    seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
-    read $data_fh, $gzip_obj, ($end - $start + 1);
-    gunzip \$gzip_obj => \$json_obj;
-    return _decode($json_obj)
-}
-
-sub save_object {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ index => 'w', data => 'w', meta => 'w' },
-				       \&_save_object, @args);
-}
-
-sub _save_object {
-    my ($data, $type, $id, $object) = @_;
-
-    if (_has_object($data, $type, $id)) {
-	return 0;
-    }
-
-    my $json_obj;
-    my $ref = ref($object);
-    if ($ref eq 'ARRAY' || $ref eq 'HASH') {
-	$json_obj = _encode($object);
-    } else {
-	$json_obj = $object;
-    }
-
-    my $gzip_obj;
-
-    gzip \$json_obj => \$gzip_obj;
-
-    my $data_fh = $data->{data};
-    my $start = $data->{index}->{end_pos};
-    seek $data_fh, $start, 0 or die "Couldn't seek file: $!";
-    print $data_fh $gzip_obj;
-
-    $data->{index}->{ids}->{$id} = [$start, $start + length($gzip_obj) - 1];
-    push(@{$data->{index}->{ordered_ids}}, $id);
-    $data->{index}->{end_pos} = $start + length($gzip_obj);
-
-    $data->{meta}->{$id} = {
-        $TYPE_META => $type
-    };
-
-    return (1, { index => 1, meta => 1 });
-}
-
-sub delete_object {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ index => 'w', meta => 'w' },
-				       \&_delete_object, @args);
-}
-
-sub _delete_object {
-    my ($data, $type, $id) = @_;
-
-    unless (_has_object($data, $type, $id)) {
-	return 0;
-    }
-
-    # should we rebuild the database every once in a while?
-    delete $data->{index}->{ids}->{$id};
-    $data->{index}->{num_del}++;
-
-    delete $data->{meta}->{$id};
-
-    return (1, { index => 1, meta => 1 });
-}
-
-sub get_metadata {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ meta => 'r' },
-				       \&_get_metadata, @args);
-}
-
-sub _get_metadata {
-    my ($data, $type, $id, $selection) = @_;
-
-    my $meta = $data->{meta}->{$id};
-    unless (defined($meta)) {
-	# no object with id
-	return;
-    }
-
-    if (!defined($selection) || $selection eq "") {
-        delete $meta->{$TYPE_META};
-	return $meta;
-    }
-
-    # can't get type
-    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
-        return;
-    }
-
-    my @path = split(/\./, $selection);
-    my $last = pop(@path);
-
-    # search through hash for selection
-    my $inner_hash = $meta;
-    for (my $i=0; $i<scalar @path; $i++) {
-	my $cur = $path[$i];
-	unless (ref($inner_hash->{$cur}) eq 'HASH') {
-	    return;
-	}
-	$inner_hash = $inner_hash->{$cur};
-    }
-
-    unless (exists($inner_hash->{$last})) {
-	return;
-    }
-
-    return $inner_hash->{$last};
-}
-
-sub set_metadata {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ meta => 'w' },
-				       \&_set_metadata, @args);
-}
-
-sub _set_metadata {
-    my ($data, $type, $id, $selection, $metadata) = @_;
-
-    my $meta = $data->{meta}->{$id};
-    unless (defined($meta)) {
-	# no object with id
-	return 0;
-    }
-
-    if (!defined($selection) || $selection eq "") {
-	if (ref($metadata) eq "HASH") {
-            $metadata->{$TYPE_META} = $type;
-	    $data->{meta}->{$id} = $metadata;
-	    return (1, { meta => 1 });
-	} else {
-	    return 0;
-	}
-    }
-
-    # can't set type
-    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
-        return 0;
-    }
-
-    my @path = split(/\./, $selection);
-    my $last = pop(@path);
-    my $inner_hash = $meta;
-    for (my $i=0; $i<scalar @path; $i++) {
-	my $cur = $path[$i];
-
-	if (ref($inner_hash->{$cur}) ne 'HASH') {
-	    $inner_hash->{$cur} = {};
-	}
-	$inner_hash = $inner_hash->{$cur};
-    }
-
-    $inner_hash->{$last} = $metadata;
-
-    return (1, { meta => 1 });
-}
-
-sub remove_metadata {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ meta => 'w' },
-				       \&_remove_metadata, @args);
-}
-
-sub _remove_metadata {
-    my ($data, $type, $id, $selection) = @_;
-
-    my $meta = $data->{meta}->{$id};
-    unless (defined($meta)) {
-	# no object with id
-	return 0;
-    }
-
-    if (!defined($selection) || $selection eq "") {
-	$data->{meta}->{$id} = {
-            $TYPE_META => $type
-        };
-	return (1, { meta => 1 });
-    }
-
-    # can't remove type
-    if ($TYPE_META eq substr($selection, 0, length($TYPE_META))) {
-        return 0;
-    }
-
-    my @path = split(/\./, $selection);
-    my $last = pop(@path);
-    my $inner_hash = $meta;
-    for (my $i=0; $i<scalar @path; $i++) {
-	my $cur = $path[$i];
-	if (ref($inner_hash->{$cur}) ne 'HASH') {
-	    return 0;
-	}
-	$inner_hash = $inner_hash->{$cur};
-    }
-
-    unless (exists($inner_hash->{$last})) {
-	return 0;
-    }
-
-    delete $inner_hash->{$last};
-
-    return (1, { meta => 1 });
-}
-
-sub find_objects {
-    my ($self, @args) = @_;
-
-    return $self->_perform_transaction({ meta => 'r' },
-				       \&_find_objects, @args);
-}
-
-sub _find_objects {
-    my ($data, $type, $query) = @_;
-
-    my $ids = [];
-
-    if (!defined($query)) {
-        $query = {};
-    } elsif (ref($query) ne 'HASH') {
-        return [];
-    }
-
-    # loop through object metadata
-    foreach my $id (keys %{$data->{meta}}) {
-        my $meta = $data->{meta}->{$id};
-        unless ($meta->{$TYPE_META} eq $type) {
-            next;
+    my @refs = split(/\./, $refstring);
+    my $type = shift(@refs);
+    if ($type eq $user_type) {
+        # should users have permissions?
+        if (@refs == 0) {
+            # requesting all users
+            return {
+                type => $type
+            }
+        } elsif (@refs == 1) {
+            return {
+                type => $type,
+                id   => $refs[0]
+            };
+        } else {
+            # error
+            die "Bad call";
         }
-
-        my $match = 1;
-
-        foreach my $field (keys %$query) {
-            unless ($match) {
-                last;
-            }
-
-            # check if it's nested
-            my @path = split(/\./, $field);
-            my $last = pop(@path);
-            my $inner_hash = $meta;
-            for (my $i=0; $i<scalar @path; $i++) {
-                my $cur = $path[$i];
-                if (ref($inner_hash->{$cur}) ne 'HASH') {
-                    $match = 0;
-                    last;
-                }
-                $inner_hash = $inner_hash->{$cur};
-            }
-
-            unless ($match && exists($inner_hash->{$last})) {
-                $match = 0;
-                last;
-            }
-
-            my $value = $inner_hash->{$last};
-
-            # determine if value is string or number
-            my $is_num = looks_like_number($value);
-
-            # now check if it matched
-            if (ref($query->{$field}) eq 'HASH') {
-                # comparison
-                my $multi_match = 1;
-                foreach my $comp (keys %{$query->{$field}}) {
-                    unless ($multi_match) {
-                        last;
-                    }
-
-                    my $comp_to = $query->{$field}->{$comp};
-                    if ($is_num) {
-                        if ($comp eq '$gt') {
-                            $multi_match = $value > $comp_to;
-                        } elsif ($comp eq '$gte') {
-                            $multi_match = $value >= $comp_to;
-                        } elsif ($comp eq '$lt') {
-                            $multi_match = $value < $comp_to;
-                        } elsif ($comp eq '$lte') {
-                            $multi_match = $value <= $comp_to;
-                        }
-                    } else {
-                        if ($comp eq '$gt') {
-                            $multi_match = $value gt $comp_to;
-                        } elsif ($comp eq '$gte') {
-                            $multi_match = $value ge $comp_to;
-                        } elsif ($comp eq '$lt') {
-                            $multi_match = $value lt $comp_to;
-                        } elsif ($comp eq '$lte') {
-                            $multi_match = $value le $comp_to;
-                        }
-                    }
-                }
-
-                if (!$multi_match) {
-                    $match = 0;
-                }
-            } else {
-                if ($is_num) {
-                    if ($value != $query->{$field}) {
-                        $match = 0;
-                    }
-                } else {
-                    if ($value ne $query->{$field}) {
-                        $match = 0;
-                    }
-                }
+    } elsif (grep {$_ eq $type} @$obj_types) {
+        # do type stuff
+        if (@refs == 0) {
+            # requesting all objects visible to the user
+            # ex: 'biochem'
+            return {
+                type => $type
             }
         }
 
-        if ($match) { # check query
-            push(@$ids, $id);
+        my $id;
+        my $user_or_uuid = shift(@refs);
+        # check if uuid
+        if ($user_or_uuid =~ $uuid_regex) {
+            # ex: 'biochem.12345678-9012-3456-7890-123456789012'
+            $id = {
+                type => 'uuid',
+                uuid => $user_or_uuid
+            };
+        } else {
+            # assume it's a user
+            # ex: 'biochem.paul'
+            $id = {
+                type => 'alias',
+                user => $user_or_uuid
+            };
+
+            if (@refs > 0) {
+                # ex: 'biochem.paul.main'
+                $id->{alias} = shift(@refs);
+            }
         }
+
+        if (@refs == 0) {
+            # return, no sub-types
+            return {
+                type => $type,
+                id   => $id
+            }
+        }
+
+        while (0) {
+            # parse through subtypes and add
+            # ex: 'biochem.paul.main.reactions'
+
+            # TODO: implement
+        }
+    } else {
+        # error
+        die "Type ($type) not defined";
     }
-
-    return $ids;
 }
 
-sub _sleep_test {
-    my ($self, $time) = @_;
-
-    $self->_do_while_locked(sub {
-	my ($time, $index, $data_fh) = @_;
-	my $sleep = sleep $time;
-    }, $time);
-}
-
-sub _encode {
-    my ($data) = @_;
-
-    return JSON::Any->encode($data);
-}
-
-sub _decode {
-    my ($data) = @_;
-
-    return JSON::Any->decode($data);
-}
-
-no Moose;
-__PACKAGE__->meta->make_immutable;
+1;
