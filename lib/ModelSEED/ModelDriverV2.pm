@@ -349,9 +349,11 @@ sub dbtransfermodel {
 		password => $self->environment()->{password}
 	});
 	print "Loading biochemistry!\n";
-	my $biochemistry = $self->biochemistry();
+	#my $biochemistry = $self->biochemistry();
+	my $biochemistry = $self->om()->loadObjectFromJSONFile("Biochemistry",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
 	print "Loading mapping!\n";
-	my $mapping = $self->mapping();
+	#my $mapping = $self->mapping();
+	my $mapping = $self->om()->loadObjectFromJSONFile("Mapping",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
 	print "Transfering model!\n";
 	my $model = $ppofactory->createModel({
 		model => $args->{model},
@@ -359,6 +361,7 @@ sub dbtransfermodel {
 		mapping => $self->mapping()
 	});
 	$model->save();
+	$model->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullModel.json");
 	print "Saved model with uuid ".$model->uuid()."\n";
     return {success => 1,message => "Successfully imported model!"};
 }

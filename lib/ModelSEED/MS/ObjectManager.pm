@@ -83,6 +83,14 @@ sub get {
 	return $class->new($obj);
 }
 
+sub loadObjectFromJSONFile {
+	my ($self, $type, $filename) = @_;
+	my $class = "ModelSEED::MS::".$type;
+	my $jsonFile = ModelSEED::utilities::LOADFILE($filename);
+	my $data = JSON::Any->decode($jsonFile->[0]);
+	return $class->new($data);	
+}
+
 sub create {
 	my ($self, $type, $args) = @_;
 	my $class = "ModelSEED::MS::".$type;

@@ -32,23 +32,27 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
-=head3 createFBAfiles
+=head3 runFBA
 Definition:
-	Output = ModelSEED::MS::Model->createFBAfiles({
-		format => string(uuid),
-		hashed => 0/1(0)
+	Output = ModelSEED::MS::Model->runFBA({
+		fbaFormulation => ModelSEED::MS::FBAFormulation
 	});
 	Output = {
-		mediatbl => {headings => [],data => [[]]},
-		reactiontbl => {headings => [],data => [[]]},
-		compoundtbl => {headings => [],data => [[]]},
-		modeltbl => {headings => [],data => [[]]}
+		FBAresults => ModelSEED::MS::FBAresults
 	}
 Description:
 	Creates all the files needed by the MFAToolkit to run flux balance analysis
 =cut
-sub createFBAfiles {
-	
+sub runFBA {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["fbaFormulation"],{});
+	my $fba = ModelSEED::MS::FBAProblem->new({
+		model => $self,
+		fbaFormulation => $args->{fbaFormulation}
+	});
+	$fba->buildProblem();
+	$fba->printLPFile();
+	#return $fba->submitLPFile({solver => "cplex"});
 }
 
 =head3 buildModelFromAnnotation

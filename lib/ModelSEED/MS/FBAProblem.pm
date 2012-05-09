@@ -14,15 +14,17 @@ extends 'ModelSEED::MS::DB::FBAProblem';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has model => ( is => 'rw', isa => 'Str', type => 'ModelSEED::MS::Model', metaclass => 'Typed');
-has fbaFormulation => ( is => 'rw', isa => 'Str', type => 'ModelSEED::MS::FBAFormulation', metaclass => 'Typed');
+has model => ( is => 'rw', isa => 'ModelSEED::MS::Model', type => 'msdata', metaclass => 'Typed');
+has fbaFormulation => ( is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', type => 'msdata', metaclass => 'Typed');
+has directory => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddirectory');
+has solver => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed',default => 'glpk');
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
-sub _builddefinition {
+sub _builddirectory {
 	my ($self) = @_;
-	return $self->createEquation({format=>"name",hashed=>0});
+	return File::Temp::tempdir(DIR => ModelSEED::utilities::MODELSEEDCORE()."data/fbafiles/");
 }
 
 #***********************************************************************************************************
@@ -139,8 +141,7 @@ Description:
 	Prints FBA problem in LP formate
 =cut
 sub printLPfile {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["filename"],{});
+	my ($self) = @_;
 	my $output = ["\Problem name: LPProb",""];
 	if ($self->maximize() == 1) {
 		push(@{$output},"Maximize");	
@@ -213,7 +214,29 @@ sub printLPfile {
 		}
 	}
 	push(@{$output},"End");
-	ModelSEED::utilities::PRINTFILE($args->{filename},$output);
+	ModelSEED::utilities::PRINTFILE($self->directory()."currentProb.lp",$output);
+}
+
+=head3 submitLPFile
+Definition:
+	Output = ModelSEED::MS::Model->submitLPFile({
+		solver => string
+		filename => 
+	});
+Description:
+	Prints FBA problem in LP formate
+=cut
+sub submitLPFile {
+	my ($self) = @_;
+	my $command;
+	if ($self->solver() eq "cplex") {
+		$command = ModelSEED::utilities::CPLEX()." ".$self->directory()."currentProb.lp";
+	} elsif ($self->solver() eq "glpk") {
+		$command = ModelSEED::utilities::GLPK()." ".$self->directory()."currentProb.lp";
+	}
+	if (defined($command)) {
+		system($command);	
+	}
 }
 
 =head3 createFluxVariables
