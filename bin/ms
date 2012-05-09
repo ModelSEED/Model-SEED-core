@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+use ModelSEEDBootstrap;
+use ModelSEED::App::mseed;
+ModelSEED::App::mseed->run;
+
