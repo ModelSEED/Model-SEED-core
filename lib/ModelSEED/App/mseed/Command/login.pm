@@ -1,5 +1,6 @@
 package ModelSEED::App::mseed::Command::login;
-use IO::Prompt;
+use IO::Prompt::Tiny;
+use Module::Load;
 use Try::Tiny;
 use Class::Autouse qw(ModelSEED::FIGMODEL ModelSEED::Configuration);
 use base 'App::Cmd::Command';
@@ -14,9 +15,21 @@ sub validate_args {
 sub execute {
     my ($self, $opt, $args) = @_;
     my $username = $args->[0];
-    # Prompt for password
-    prompt("Password: ", -e => '*');
-    my $password = $_;
+    # Prompt for password - try to use IO::Prompt if it is installed
+    # Otherwise use IO::Prompt::Tiny, which may work on Windows
+    my $loaded = 1;
+    try {
+        load 'IO::Prompt';
+    } catch {
+        $loaded = 0;
+    };
+    my $password;
+    if($loaded) {
+        IO::Prompt::prompt("Password: ", -e => "*");
+        $password = $_;
+    } else {
+        $password = IO::Prompt::Tiny::prompt("Password: ");
+    }
     my $fm = ModelSEED::FIGMODEL->new();
     my $usrObj = $fm->database->get_object("user", {login => $username});
     unless(defined($usrObj)) {
