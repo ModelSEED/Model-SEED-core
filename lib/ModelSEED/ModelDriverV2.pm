@@ -12,8 +12,10 @@ use Class::Autouse qw(
     ModelSEED::FIGMODEL
     ModelSEED::Configuration
     ModelSEED::Store
-    ModelSEED::MS::Factories::PPOFactory
 );
+use ModelSEED::Database::FileDB;
+use ModelSEED::Store::Private;
+use ModelSEED::MS::Factories::PPOFactory;
 use ModelSEEDbootstrap;
 use ModelSEED::utilities;
 use File::Basename qw(dirname basename);
@@ -38,13 +40,21 @@ sub new {
     $self->environment($self->config->config);
     my $c = $self->config->config;
 	$self->figmodel(ModelSEED::FIGMODEL->new({
-        username => $c->{login}->{username},
-        password => $c->{login}->{password},
+        username => "chenry",#$c->{login}->{username},
+        password => "Ko3BA9yMnMj2k",#$c->{login}->{password},
     }));
-    $self->om(ModelSEED::Store->new({
-        username => $c->{login}->{username},
-        password => $c->{login}->{password},
-    }));
+    my $filedb = ModelSEED::Database::FileDB->new({
+    	directory => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/"
+    });
+    my $privateStore = ModelSEED::Store::Private->new({
+    	db => $filedb
+    });
+    my $store = ModelSEED::Store->new({
+    	private => $privateStore,
+    	#username => "public",
+        #password => "public"
+    });
+    $self->store($store);
     return $self;
 }
 =head3 figmodel
@@ -73,18 +83,38 @@ sub environment {
 	}
 	return $self->{_environment};
 }
-=head3 om
+=head3 store
 Definition:
-	ModelSEED::Store = driver->om();
+	ModelSEED::Store = driver->store();
 Description:
     Returns a ModelSEED::Store object
 =cut
-sub om {
-	my ($self,$om) = @_;
-	if (defined($om)) {
-		$self->{_om} = $om;
+sub store {
+	my ($self,$store) = @_;
+	if (defined($store)) {
+		$self->{_store} = $store;
 	}
-	return $self->{_om};
+	return $self->{_store};
+}
+=head3 loadObjectFromJSONFile
+Definition:
+	ModelSEED::MS::$type = driver->loadObjectFromJSONFile();
+Description:
+	Loads the object of specified type from the specified JSON file
+=cut
+sub loadObjectFromJSONFile {
+	my ($self, $type, $filename) = @_;
+	#$filename = "c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json";
+	my $class = "ModelSEED::MS::".$type;
+	print "test1\t".$filename."\n";
+	open FILE, "<".$filename;
+	my $string = <FILE>;
+	print "Done!";
+	exit();
+	my $objectData = JSON::Any->decode($string);
+	close TEMPFILE;
+	print "test3\n";
+	return $class->new($objectData);	
 }
 =head3 biochemistry
 Definition:
@@ -97,7 +127,7 @@ sub biochemistry {
     my $wanted = $self->environment()->{biochemistry};
     my $got = $self->{_biochemistry};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_biochemistry} = $self->om()->get_object("Biochemistry", $wanted);
+        $self->{_biochemistry} = $self->store()->get_object("biochemistry", $wanted);
     }
 	return $self->{_biochemistry};
 }
@@ -112,7 +142,7 @@ sub mapping {
     my $wanted = $self->environment()->{mapping};
     my $got = $self->{_mapping};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_mapping} = $self->om()->get_object("mapping", $wanted);
+        $self->{_mapping} = $self->store()->get_object("mapping", $wanted);
     }
 	return $self->{_mapping};
 }
@@ -309,26 +339,27 @@ Description:
 sub dbtransfermain {
 	my($self,@Data) = @_;
 	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
+    my $username = $self->environment()->{login}->{username};
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
-		om => $self->om(),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password}	
+		om => $self->store(),
+		username => $self->environment()->{login}->{username},
+		password => $self->environment()->{login}->{password}	
 	});
 	my $bio = $ppofactory->createBiochemistry();
-	$bio->save();
+    my $bioAlias = "$username/bio-main";
+    my $mapAlias = "$username/map-main";
+
+	$bio->save($bioAlias);
 	$bio->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
-	print "Saved biochemistry with uuid ".$bio->uuid()."\n";
-	$self->environment()->biochemistry($bio->uuid());
-	#print "Loading biochemistry!\n";
-	#my $bio = $self->biochemistry();
-	#print "Biochemistry loaded!\n";
+	print "Saved biochemistry with alias '$bioAlias'\n";
+	$self->environment()->{biochemistry} = $bioAlias;
 	my $map = $ppofactory->createMapping({
 		biochemistry => $bio,	
 	});
-	$map->save();
+	$map->save($mapAlias);
 	$map->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
-	print "Saved mapping with uuid ".$map->uuid()."\n";
-	$self->environment()->{mapping} = $map->uuid();
+	print "Saved mapping with alias '$mapAlias'\n";
+	$self->environment()->{mapping} = $mapAlias;
 	$self->config()->save();
     return {success => 1,message => "Successfully imported mapping and biochemistry!"};
 }
@@ -343,26 +374,29 @@ sub dbtransfermodel {
 	my $args = $self->check([
 		["model",1,undef,"model to be transfered"]
 	],[@Data],"transfers model to new scheme");
+    my $username = $self->environment()->{login}->{username};
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
-		om => $self->om(),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password}
+		om => $self->store(),
+		username => "chenry",
+		password => "Ko3BA9yMnMj2k"
 	});
 	print "Loading biochemistry!\n";
 	#my $biochemistry = $self->biochemistry();
-	my $biochemistry = $self->om()->loadObjectFromJSONFile("Biochemistry",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
+	my $biochemistry = $self->loadObjectFromJSONFile("Biochemistry",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullBiochemistry.json");
 	print "Loading mapping!\n";
 	#my $mapping = $self->mapping();
-	my $mapping = $self->om()->loadObjectFromJSONFile("Mapping",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
+	my $mapping = $self->loadObjectFromJSONFile("Mapping",ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullMapping.json");
 	print "Transfering model!\n";
 	my $model = $ppofactory->createModel({
 		model => $args->{model},
 		biochemistry => $self->biochemistry(),
 		mapping => $self->mapping()
 	});
-	$model->save();
+    my $modelAlias = "$username/mdl-".$args->{model};
+    $modelAlias =~ s/\./-/g;
+	$model->save($modelAlias);
+	print "Saved model with alias '$modelAlias'\n";
 	$model->printJSONFile(ModelSEED::utilities::MODELSEEDCORE()."/data/exampleObjects/FullModel.json");
-	print "Saved model with uuid ".$model->uuid()."\n";
     return {success => 1,message => "Successfully imported model!"};
 }
 =head3 testobj
@@ -373,10 +407,13 @@ Description:
 =cut
 sub testobj {
 	my($self,@Data) = @_;
+    my $om = ModelSEED::Store->new({
+		username => $self->environment()->{login}->{username},
+		password => $self->environment()->{login}->{password},
+    });
+=cut
 	my $om = ModelSEED::MS::ObjectManager->new({
 		db => ModelSEED::FileDB->new({directory => "C:/Code/Model-SEED-core/data/filedb/"}),
-		username => $self->environment()->{username},
-		password => $self->environment()->{password},
 		selectedAliases => {
 			ReactionAliasSet => "ModelSEED",
 			CompoundAliasSet => "ModelSEED",
@@ -385,6 +422,7 @@ sub testobj {
 			RoleSetAliasSet => "ModelSEED"
 		}
 	});
+=cut
 	my $biochemistry = $om->create("Biochemistry",{
 		name=>"chenry/TestBiochem",
 		public => 1,

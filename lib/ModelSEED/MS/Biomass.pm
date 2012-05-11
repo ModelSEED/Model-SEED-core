@@ -125,7 +125,7 @@ sub loadFromEquation {
 			}
 			my $comp = $mod->getObject("ModelCompartment",{label => $compartment});
 			if (!defined($comp)) {
-				ModelSEED::utilities::USEWARNING("Unrecognized compartment '".$compartment."' used in reaction!");
+				ModelSEED::utilities::USEWARNING("Unrecognized compartment '".$compartment."' used in biomass equation!");
 				my $biocompid = substr($compartment,0,1);
 				my $compindex = substr($compartment,1,1);
 				my $biocomp = $bio->getObject("Compartment",{id => $biocompid});
@@ -139,7 +139,8 @@ sub loadFromEquation {
 				}
 				$comp = $mod->create("ModelCompartment",{
 					locked => "0",
-					compartment_uuid => $compindex,
+                    compartment_uuid => $biocomp->uuid,
+					compartmentIndex => $compindex,
 					label => $compartment,
 					pH => 7,
 					potential => 0
@@ -152,7 +153,7 @@ sub loadFromEquation {
 				$cpd = $bio->getObjectByAlias("Compound",$compound,$args->{aliasType});
 			}
 			if (!defined($cpd)) {
-				ModelSEED::utilities::USEWARNING("Unrecognized compound '".$compound."' used in reaction!");
+				ModelSEED::utilities::USEWARNING("Unrecognized compound '".$compound."' used in biomass equation!");
 				$cpd = $bio->create("Compound",{
 					locked => "0",
 					name => $compound,

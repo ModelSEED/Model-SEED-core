@@ -35,6 +35,7 @@ my $testCount = 0;
      });
 
     ok defined $private, "Private data store successfully created";
+    ok !$private->has_data($user1, $type, $alias1), "No objects in database";
     ok !$private->has_object($user1, $type, $alias1), "No objects in database";
 
     ok $private->create_user($user_obj1), "Saved user to database";
@@ -51,7 +52,7 @@ my $testCount = 0;
 	foo => 'bar'
     };
 
-    ok $private->save_object($user1, $type, $alias1, $obj1), "Saved object to database";
+    ok $private->save_data($user1, $type, $alias1, $obj1), "Saved object to database";
 
     my $data = $private->get_data($user1, $type, $alias1);
 
@@ -67,21 +68,21 @@ my $testCount = 0;
     ok $private->add_viewer($user1, $type, $alias1, $user2), "add_viewer returned success";
     is_deeply $obj1, $private->get_data($user2, $type, $alias1), "User 2 has permission on object";
 
-    ok !$private->save_object($user2, $type, $alias1, $obj1), "User can't save object to another users alias space";
+    ok !$private->save_data($user2, $type, $alias1, $obj1), "User can't save object to another users alias space";
 
-    $private->save_object($user2, $type, $alias2, $obj1);
+    $private->save_data($user2, $type, $alias2, $obj1);
     is_deeply $obj1, $private->get_data($user2, $type, $alias2), "User can save to own alias space";
 
     # test get_object (not only get_data)
 
     # test parents/ancestors
-    #    $private->save_object($user1, $type, $alias1, $obj2);
+    #    $private->save_data($user1, $type, $alias1, $obj2);
 
     # test get_aliases_for_type
     my $aliases = {};
     for (my $i=0; $i<20; $i++) {
 	$aliases->{"alias_$i"} = 1;
-	$private->save_object($user1, 'my_type', "$user1/alias_$i", {
+	$private->save_data($user1, 'my_type', "$user1/alias_$i", {
 	    "hello_$i" => "world_$i"
         })
     }
@@ -110,7 +111,7 @@ my $testCount = 0;
     is $private->get_metadata($user1, $type, $alias1, "size"), undef,
       "Removed metadata successfully";
 
-    $testCount += 18;
+    $testCount += 19;
 }
 
 done_testing($testCount);

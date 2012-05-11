@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:58
 ########################################################################
 use strict;
 use ModelSEED::MS::UniversalReaction;
@@ -22,7 +21,7 @@ extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
@@ -50,7 +49,7 @@ has complexAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|
 
 
 # LINKS:
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -58,7 +57,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Biochemistry','uuid',$self->biochemistry_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 
 

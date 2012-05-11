@@ -43,8 +43,13 @@ foreach my $name (keys(%{$objects})) {
 	#Printing parent
 	my $type = ", type => 'parent', metaclass => 'Typed'";
 	if (defined($object->{parents}->[0])) {
+        my $parent = $object->{parents}->[0];
 		push(@{$output},("# PARENT:"));
-		push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."'".$type.",weak_ref => 1);");
+        if($parent =~ /ModelSEED::/) {
+            push(@{$output},"has parent => (is => 'rw', isa => '$parent'$type);");
+        } else {
+            push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."'".$type.",weak_ref => 1);");
+        }
 		push(@{$output},("",""));
 	}
 	#Printing attributes

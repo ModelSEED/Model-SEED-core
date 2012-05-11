@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:57
 ########################################################################
 use strict;
 use ModelSEED::MS::FBAObjectiveTerm;
@@ -36,6 +35,9 @@ has allReversible => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass 
 has uptakeLimits => ( is => 'rw', isa => 'HashRef', type => 'attribute', metaclass => 'Typed', default => 'sub{return {};}' );
 has numberOfSolutions => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1' );
 has geneKO => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => 'sub{return [];}' );
+has defaultMaxFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1000' );
+has defaultMaxDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1000' );
+has defaultMinDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '-1000' );
 
 
 # ANCESTOR:

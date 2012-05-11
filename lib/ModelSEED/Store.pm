@@ -74,13 +74,31 @@ initialization:
 Therefore, you should consult the L<ModelSEED::Store::Private>
 documentation for further method details.
 
+=head2 Helper Functions
+
+Finally this class has a few helper functions that assist in
+object creation. Currently there is only one function:
+
+=head3 create
+
+    my $object = $Store->create("Biochemistry, { name => "Foo" });
+
+This creates a L<ModelSEED::MS::Biochemistry> object and returns
+it.  It does not save the object, however, it does initialize the
+object with the "parent" pointing back at the C<$Store> instance.
+This instance will be used if C<$object->save()> is called without
+another store object. It will also be used if the L<ModelSEED::MS>
+object needs additional data.
+
 =cut
 package ModelSEED::Store;
 use Moose;
 use ModelSEED::Store::Private;
 use ModelSEED::ModelSEEDClients::MSSeedSupportClient;
 use ModelSEED::MS::User;
-use Data::Dumper;
+use Try::Tiny;
+use Module::Load;
+use Carp qw(confess);
 
 has username => ( is => 'rw', isa => 'Str', required => 1 );
 has user => ( is => 'rw', isa => 'ModelSEED::MS::User');
@@ -131,12 +149,34 @@ around BUILDARGS => sub {
     return $class->$orig($args);
 };
 
+sub create {
+    my ($self, $type, $base_hash) = @_;
+    $base_hash = {} unless(defined($base_hash));
+    my $className = uc(substr($type,0,1)).substr($type,1);
+    $className = "ModelSEED::MS::".$className;
+    try {
+        load $className;
+    } catch {
+        die "Unknown class for $type";
+    };
+    $base_hash->{parent} = $self unless(defined($base_hash->{parent}));
+    return $className->new($base_hash);
+}
+
 sub AUTOLOAD {
     my $self = shift @_;
     my $call = our $AUTOLOAD;
     return if $AUTOLOAD =~ /::DESTROY$/;
     $call =~ s/.*://;
-    return $self->private->$call($self->username, @_);
+    my $rtv;
+    unshift(@_, $self->username);
+    my @args = @_;
+    try {
+        $rtv = $self->private->$call(@args);
+    } catch {
+        confess $_;
+    };
+    return $rtv;
 }
 
 no Moose;

@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:57
 ########################################################################
 use strict;
 use ModelSEED::MS::ReactionInstanceAlias;

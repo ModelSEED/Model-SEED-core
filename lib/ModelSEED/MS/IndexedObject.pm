@@ -188,13 +188,12 @@ sub buildIndex {
 }
 
 sub save {
-    my ($self, $om) = @_;
+    my ($self, $alias, $om) = @_;
     $om = $self->parent() unless (defined($om));
     if (!defined($om)) {
-        ModelSEED::utilities::ERROR("No ObjectManager");
+        ModelSEED::utilities::ERROR("No Storage Object");
     }
-    $om->save($self->_type, $self->uuid, $self);
-    print "Saved object!\n";
+    $om->save_object($self->_type, $alias, $self);
 }
 
 sub _buildindices { return {}; }

@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:57
 ########################################################################
 use strict;
 use ModelSEED::MS::Biomass;
@@ -18,7 +17,7 @@ extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
@@ -50,9 +49,9 @@ has modelreactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|Ar
 
 
 # LINKS:
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
-has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
-has annotation => (is => 'rw',lazy => 1,builder => '_buildannotation',isa => 'ModelSEED::MS::Annotation', type => 'link(ObjectManager,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
+has annotation => (is => 'rw',lazy => 1,builder => '_buildannotation',isa => 'ModelSEED::MS::Annotation', type => 'link(ModelSEED::Store,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -60,15 +59,15 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Biochemistry','uuid',$self->biochemistry_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 sub _buildmapping {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Mapping','uuid',$self->mapping_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Mapping','uuid',$self->mapping_uuid());
 }
 sub _buildannotation {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Annotation','uuid',$self->annotation_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Annotation','uuid',$self->annotation_uuid());
 }
 
 

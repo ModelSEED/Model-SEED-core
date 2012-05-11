@@ -177,8 +177,13 @@ sub remove_metadata {
 }
 
 sub find_objects {
-    # TODO
-    return [];
+    my $self = shift @_;
+    my $found = [];
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        push(@$found, @{$db->find_objects(@args)});
+    }
+    return $found;
 }
 
 1;

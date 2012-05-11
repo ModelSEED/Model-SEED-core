@@ -19,16 +19,18 @@ use strict;
 use warnings;
 use ModelSEED::Store;
 use ModelSEED::Store::Private;
-use Test::More tests => 2;                      # last test to print
-use Data::Dumper;
+use Test::More tests => 4;                      # last test to print
 
 
 my $pvt = ModelSEED::Store::Private->new();
 
-warn Dumper $pvt->get_user("sdevoid");
 my $store = ModelSEED::Store->new({ username => "sdevoid", password => "marcopolo", private => $pvt});
 ok defined $store, "Should create class";
 ok defined $store->user, "Should create user object";
+
+my $bio = $store->create("Biochemistry");
+ok defined $bio, "Should create biochemistry object";
+is $store, $bio->parent(), "Parent of created object should be the store";
 
 
 

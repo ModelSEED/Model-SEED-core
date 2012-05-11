@@ -4,7 +4,7 @@ package ModelSEED::MS::DB::Definitions;
 my $objectDefinitions = {};
 
 $objectDefinitions->{FBAProblem} = {
-	parents => ['ObjectManager'],
+	parents => ['ModelSEED::Store'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -175,7 +175,7 @@ $objectDefinitions->{Insertion} = {
 };
 
 $objectDefinitions->{Experiment} = {
-	parents => ["ObjectManager"],
+	parents => ["ModelSEED::Store"],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -188,7 +188,7 @@ $objectDefinitions->{Experiment} = {
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "genome",attribute => "genome_uuid",parent => "ObjectManager",class => "Genome",query => "uuid"},
+		{name => "genome",attribute => "genome_uuid",parent => "ModelSEED::Store",class => "Genome",query => "uuid"},
 	]
 };
 
@@ -285,7 +285,7 @@ $objectDefinitions->{GeneMeasurement} = {
 };
 
 $objectDefinitions->{User} = {
-    parents => ["ObjectManager"],
+    parents => ["ModelSEED::Store"],
     class => 'child',
     attributes => [
         {name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -301,7 +301,7 @@ $objectDefinitions->{User} = {
 };
 
 $objectDefinitions->{Biochemistry} = {
-	parents => ["ObjectManager"],
+	parents => ["ModelSEED::Store"],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -740,7 +740,7 @@ $objectDefinitions->{ReactionSetReaction} = {
 };
 
 $objectDefinitions->{Model} = {
-	parents => ['ObjectManager'],
+	parents => ['ModelSEED::Store'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -766,9 +766,9 @@ $objectDefinitions->{Model} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ObjectManager",class => "Biochemistry",query => "uuid"},
-		{name => "mapping",attribute => "mapping_uuid",parent => "ObjectManager",class => "Mapping",query => "uuid"},
-		{name => "annotation",attribute => "annotation_uuid",parent => "ObjectManager",class => "Annotation",query => "uuid"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",class => "Biochemistry",query => "uuid"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",class => "Mapping",query => "uuid"},
+		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",class => "Annotation",query => "uuid"},
 	]
 };
 
@@ -1035,7 +1035,7 @@ $objectDefinitions->{FBAReactionVariable} = {
 };
 
 $objectDefinitions->{Annotation} = {
-	parents => ['ObjectManager'],
+	parents => ['ModelSEED::Store'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -1051,7 +1051,7 @@ $objectDefinitions->{Annotation} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "mapping",attribute => "mapping_uuid",parent => "ObjectManager",class => "Mapping",query => "uuid"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",class => "Mapping",query => "uuid"},
 	]
 };
 
@@ -1111,7 +1111,7 @@ $objectDefinitions->{FeatureRole} = {
 };
 
 $objectDefinitions->{Mapping} = {
-	parents => ['ObjectManager'],
+	parents => ['ModelSEED::Store'],
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 0},
@@ -1133,7 +1133,7 @@ $objectDefinitions->{Mapping} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ObjectManager",class => "Biochemistry",query => "uuid"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",class => "Biochemistry",query => "uuid"},
 	]
 };
 

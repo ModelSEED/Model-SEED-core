@@ -3,7 +3,6 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-05T02:39:57
 ########################################################################
 use strict;
 use ModelSEED::MS::Genome;
@@ -17,7 +16,7 @@ extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
@@ -39,7 +38,7 @@ has subsystemStates => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|A
 
 
 # LINKS:
-has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -47,7 +46,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildmapping {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Mapping','uuid',$self->mapping_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Mapping','uuid',$self->mapping_uuid());
 }
 
 

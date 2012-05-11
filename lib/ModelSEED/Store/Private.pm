@@ -187,6 +187,7 @@ use Try::Tiny;
 use Digest::MD5 qw(md5_hex);
 use JSON::Any;
 use Moose::Util::TypeConstraints;
+use Module::Load;
 use Class::Autouse qw(
     ModelSEED::Database::Composite
     ModelSEED::MS::User
@@ -243,7 +244,7 @@ sub delete_user {
     return $self->db->delete_object('user', $user);
 }
 
-sub has_object {
+sub has_data {
     my ($self, $user, $type, $user_alias) = @_;
 
     $type = lc($type);
@@ -268,48 +269,23 @@ sub has_object {
 
     return 1;
 }
-
-sub get_object {
-    my ($self, $user, $type, $user_alias) = @_;
-
-    my $obj_data = $self->get_data($user, $type, $user_alias);
-    return undef unless(defined($obj_data));
-
-    my $classBase = uc(substr($type,0,1)) . substr($type,1);
-    my $class = "ModelSEED::MS::".$classBase;
-
-    return $class->new($obj_data);
-}
-
-sub get_object_by_uuid {
-    my ($self, $user, $type, $uuid) = @_;
-
-    my $ids = $self->db->find_objects($type, { "$RESERVED_META.uuid" => $uuid });
-
-    if (scalar @$ids == 1) {
-        return $self->db->get_object($type, $ids->[0]);
-    } else {
-        return;
-    }
+sub has_object {
+    my $self = shift @_;
+    return $self->has_data(@_);
 }
 
 sub get_data {
     my ($self, $user, $type, $user_alias) = @_;
-
     $type = lc($type);
-
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
-
     # get permissions for alias
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $alias_user, $meta_path);
     unless (defined($info)) {
         # no object, return undef
-        print "No object\n";
         return;
     }
-
     # check permissions
     unless ($user eq $alias_user ||
             $info->{public}      ||
@@ -317,12 +293,37 @@ sub get_data {
         print "No permissions\n";
         return;
     }
-
     my $obj_id = $info->{object};
     return $self->db->get_object($type, $obj_id);
 }
 
-sub save_object {
+sub get_object {
+    my $self = shift @_;
+    my $user = shift @_;
+    my $type = shift @_;
+    my $class = $self->_getTypeClass($type);
+    load $class;
+    return $class->new($self->get_data($user, $type, @_));
+}
+
+sub get_data_by_uuid {
+    my ($self, $user, $type, $uuid) = @_;
+    my $ids = $self->db->find_objects($type, { "$RESERVED_META.uuid" => $uuid });
+    if (scalar @$ids >= 1) {
+        return $self->db->get_data($type, $ids->[0]);
+    } 
+}
+
+sub get_object_by_uuid {
+    my ($self, $user, $Type, $uuid) = @_;
+    my $type = lc($Type);
+    my $ids = $self->db->find_objects($type, { "$RESERVED_META.uuid" => $uuid });
+    if (scalar @$ids >= 1) {
+        return $self->get_object($user, $type, $ids->[0]);
+    } 
+}
+
+sub save_data {
     my ($self, $user, $type, $user_alias, $object) = @_;
 
     $type = lc($type);
@@ -335,7 +336,6 @@ sub save_object {
         # cannot save to someone else's alias space
         return 0;
     }
-
     # save data, unless object already exists (check via md5)
     my $json_obj = _encode($object);
     my $md5 = md5_hex($json_obj);
@@ -348,7 +348,6 @@ sub save_object {
                                     { uuid => $object->{uuid} });
         }
     }
-
     # now save the alias
     my $meta_path = "$RESERVED_META.aliases.$alias";
     my $info = $self->db->get_metadata('user', $user, $meta_path);
@@ -373,71 +372,65 @@ sub save_object {
                                     viewers => {}
                                 });
     }
-
     return 1;
 }
 
-sub delete_object {
+sub save_object {
+    my ($self, $user, $type, $user_alias, $object) = @_;
+    return $self->save_data($user, $type, $user_alias, $object->serializeToDB);
+}
+
+sub delete_data {
     my ($self, $user, $type, $user_alias) = @_;
-
     $type = lc($type);
-
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
         # cannot delete from someone else's alias space
         return 0;
     }
-
     my $meta_path = "$RESERVED_META.aliases.$alias";
     $self->db->remove_metadata($type, $user, $meta_path);
+}
+sub delete_object {
+    my $self = shift @_;
+    return $self->delete_data(@_);
 }
 
 sub get_aliases_for_type {
     my ($self, $user, $type) = @_;
-
     $type = lc($type);
-
     # get user aliases
     my $meta_path = "$RESERVED_META.aliases";
     my $alias_hash = $self->db->get_metadata($type, $user, $meta_path);
-
     my $aliases = [];
     foreach my $alias (keys %$alias_hash) {
         if ($alias_hash->{$alias}->{type} eq $type) {
             push(@$aliases, $alias);
         }
     }
-
     return $aliases;
 }
 
 sub get_metadata {
     my ($self, $user, $type, $user_alias, $selection) = @_;
-
     $type = lc($type);
-
     # can't see system metadata
     if ($RESERVED_META eq substr($selection, 0, length($RESERVED_META))) {
         return;
     }
-
     # split user from alias (paul/main)
     my ($alias_user, $alias) = _split_alias($user_alias);
     unless ($user eq $alias_user) {
         # cannot get metadata from someone else's alias space
         return;
     }
-
     my $meta_path = "$RESERVED_META.aliases.$alias.object";
     my $id = $self->db->get_metadata('user', $user, $meta_path);
-
     my $meta = $self->db->get_metadata($type, $id, $selection);
-
     if (!defined($selection) || $selection eq "") {
         delete $meta->{$RESERVED_META};
     }
-
     return $meta;
 }
 
@@ -585,6 +578,21 @@ sub _decode {
     my ($data) = @_;
 
     return JSON::Any->decode($data);
+}
+
+sub _getTypeClass {
+    my ($self, $Type) = @_;
+    my $type = lc($Type);
+    my $struct = {
+        "biochemistry" => "ModelSEED::MS::Biochemistry",
+        "mapping" => "ModelSEED::MS::Mapping",
+        "model" => "ModelSEED::MS::Model",
+    };
+    if(defined($struct->{$type})) {
+        return $struct->{$type};
+    } else {
+        die "Unknown type: $Type";
+    }
 }
 
 no Moose;
