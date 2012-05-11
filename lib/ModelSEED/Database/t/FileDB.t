@@ -20,15 +20,15 @@ my $test_count = 0;
     my $uref2 = 'user.paul';
     my $uref3 = 'user.paul.test';
 
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($uref1),
+    is_deeply $db->_handle_refstring($uref1),
       { type => 'user' },
       "Handled user refstring (no user) correctly: $uref1";
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($uref2),
+    is_deeply $db->_handle_refstring($uref2),
       { type => 'user', id => 'paul' },
       "Handled user refstring (with user) correctly: $uref2";
 
     try {
-        ModelSEED::Database::FileDB::_handle_refstring($uref3);
+        $db->_handle_refstring($uref3);
     } catch {
         ok 1, "Handled user refstring (extra alias, dies) correctly: $uref3";
     };
@@ -41,22 +41,22 @@ my $test_count = 0;
     my $ref3 = 'biochemistry.user.alias';
     my $ref4 = 'biochemistry.' . $uuid;
 
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($ref1),
+    is_deeply $db->_handle_refstring($ref1),
       { type => 'biochemistry' },
       "Handled type refstring (no alias/uuid) correctly: $ref1";
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($ref2),
+    is_deeply $db->_handle_refstring($ref2),
       { type => 'biochemistry', id => { type => 'alias', user => 'user' }},
       "Handled type refstring (only user) correctly: $ref2";
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($ref3),
+    is_deeply $db->_handle_refstring($ref3),
       { type => 'biochemistry', id => { type => 'alias', user => 'user', alias => 'alias'}},
       "Handled type refstring (user/alias) correctly: $ref3";
-    is_deeply ModelSEED::Database::FileDB::_handle_refstring($ref4),
+    is_deeply $db->_handle_refstring($ref4),
       { type => 'biochemistry', id => { type => 'uuid', uuid => $uuid}},
       "Handled type refstring (uuid) correctly: $ref4";
 
     my $notype = 'notype';
     try {
-        ModelSEED::Database::FileDB::_handle_refstring($notype);
+        $db->_handle_refstring($notype);
     } catch {
         ok 1, "Handled unknown type in refstring (dies) correctly: $notype";
     };

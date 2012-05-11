@@ -30,69 +30,145 @@ around BUILDARGS => sub {
 };
 
 sub has_data {
-    my ($user, $refstring) = @_;
+    my ($self, $user, $refstring) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+        # check if user exists
+        return $self->kvstore->has_object('user', $user->{login});
+    } else {
+
+    }
 }
 
 sub get_data {
-    my ($user, $refstring) = @_;
+    my ($self, $user, $refstring) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+        # get user
+        return $self->kvstore->get_object('user', $user->{login});
+    } else {
+
+    }
 }
 
 sub save_data {
-    my ($user, $refstring, $data) = @_;
+    my ($self, $user, $refstring, $data) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+        # create user
+        return $self->kvstore->save_object('user', $data);
+    } else {
+
+    }
 }
 
 sub delete_data {
-    my ($user, $refstring) = @_;
+    my ($self, $user, $refstring) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+        # delete user
+        return $self->kvstore->delete_object('user', $user->{login});
+    } else {
+
+    }
 }
 
 sub add_viewer {
-    my ($user, $refstring, $viewer) = @_;
+    my ($self, $user, $refstring, $viewer) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+
+    } else {
+
+    }
 }
 
 sub remove_viewer {
-    my ($user, $refstring, $viewer) = @_;
+    my ($self, $user, $refstring, $viewer) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+
+    } else {
+
+    }
 }
 
 sub set_public {
-    my ($user, $refstring, $public) = @_;
+    my ($self, $user, $refstring, $public) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+
+    } else {
+
+    }
 }
 
 sub list_children {
-    my ($user, $refstring) = @_;
+    my ($self, $user, $refstring) = @_;
 
-    $user = _handle_user($user);
-    my $ref = _handle_refstring($refstring);
+    $user = $self->_handle_user($user);
+    my $ref = $self->_handle_refstring($refstring);
+
+    if ($ref->{type} eq $user_type) {
+
+    } else {
+
+    }
+}
+
+sub _get_id_from_ref {
+    my ($self, $ref) = @_;
+
+=head
+
+Possible Ref Structure
+  1. { type => $type }
+    Get all objects of type: $type that user can see
+  2. { type => $type, id => { type => 'uuid', uuid => $uuid } }
+    Get single object with uuid: $uuid
+  3. { type => $type, id => { type => 'alias', user => $user } }
+    Get all objects from $user alias space that the user can see
+  4. { type => $type, id => { type => 'alias', user => $user, alias => $alias } }
+    Get single object with alias $user/$alias
+
+=cut
+
+
 }
 
 sub _handle_user {
-    my ($user) = @_;
+    my ($self, $user) = @_;
 
-    # do user stuff
+    # do user stuff, for now just a string so return
+
+    return {
+        login => $user
+    };
 }
 
 sub _handle_refstring {
-    my ($refstring) = @_;
+    my ($self, $refstring) = @_;
 
     my @refs = split(/\./, $refstring);
     my $type = shift(@refs);
