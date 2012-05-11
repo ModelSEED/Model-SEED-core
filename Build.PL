@@ -13,6 +13,7 @@ my $builder = Module::Build->new(
     },
     requires => {
         'perl' => 5.12,
+        "App::Cmd" => 0,
         "Archive::Tar" => 1.54,
         "AutoLoader" => 5.70,
         "Carp" => 1.17,
@@ -39,6 +40,7 @@ my $builder = Module::Build->new(
         "FileHandle" => 2.02,
         "Getopt::Long" => 2.38,
         "IO::Socket::INET" => 1.31,
+        "IO::Prompt::Tiny" => 0,
         "IPC::Open2" => 1.03,
         "IPC::Run" => 0.90,
         "JSON::Any" => 1.29,
@@ -80,6 +82,9 @@ my $builder = Module::Build->new(
         "namespace::autoclean" => 0.13,
         "overload" => 1.10,
         "vars" => 1.01,
+    },
+    recommends => {
+        'IO::Prompt' => 0,
     },
     add_to_cleanup      => [ 'ModelSeedCore-*' ],
     create_makefile_pl => 'traditional',
