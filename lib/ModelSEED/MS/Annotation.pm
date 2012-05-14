@@ -81,8 +81,7 @@ Description:
 =cut
 sub classifyGenomeFromAnnotation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,[],{
-	});
+	$args = ModelSEED::utilities::ARGS($args,[],{});
 	
 }
 
