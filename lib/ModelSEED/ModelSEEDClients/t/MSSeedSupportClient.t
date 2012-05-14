@@ -22,7 +22,6 @@ my $mss = MSSeedSupportClient->new();
     	username => "reviewer",
     	password => "reviewer"
     });
-    print STDERR Data::Dumper->Dump([$usrdata]);
     ok defined($usrdata->{p1}->{sequence}), "Failed to retrieve primers!";
     $usrdata = $mss->blast_sequence({
     	sequences => ["atgaaacgcattagcaccaccattaccaccaccatcaccattaccacagg"],
