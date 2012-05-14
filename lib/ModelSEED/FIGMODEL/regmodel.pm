@@ -58,10 +58,9 @@ sub loadFromFlatData {
 		filedata => undef
 	});
 	#Jose writes code here to fill datastructure as listed below
-	$self->{data}->{attributes}->{id} 
 	$self->{data}->{rules}->[0] = {
 		genes => [],
-		rule => ""	
+		rule => ""
 	};
 	$self->{data}->{regulators}->[0] = {
 		id => "",
@@ -81,7 +80,6 @@ sub printToFlatData {
 	$args = ModelSEED::globals::ARGS($args,[],{});
 	my $flatdata;
 	#Jose writes code here to fill datastructure as listed below
-	$self->{data}->{attributes}->{id} 
 	$self->{data}->{rules}->[0] = {
 		genes => [],
 		rule => ""	
@@ -102,7 +100,7 @@ Description:
 =cut
 sub id {
 	my ($self) = @_;
-	return $self->{};
+	return $self->{id};
 }
 
 =head3 genome
@@ -113,7 +111,7 @@ Description:
 =cut
 sub genome {
 	my ($self) = @_;
-	return $self->{};
+	return $self->{genome};
 }
 
 =head3 source
@@ -124,7 +122,7 @@ Description:
 =cut
 sub source {
 	my ($self) = @_;
-	return $self->{};
+	return $self->{source};
 }
 
 =head3 get_rules
@@ -135,7 +133,7 @@ Description:
 =cut
 sub get_rules {
 	my ($self) = @_;
-	return $self->{};
+	return $self->{rules};
 }
 
 =head3 get_rule
@@ -146,9 +144,7 @@ Description:
 =cut
 sub get_rule {
 	my ($self,$index) = @_;
-	return $self->{};
+	return $self->{rule}->[$index];
 }
-
-
 
 1;

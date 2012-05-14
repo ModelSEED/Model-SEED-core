@@ -19,7 +19,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 
-extends 'ModelSEED::MooseDB::media' #So access to all database content comes through this subclass
+extends 'ModelSEED::MooseDB::media'; #So access to all database content comes through this subclass
 
 has 'id' => (is => 'ro', isa => 'Str', required => 1);
 has 'owner' => (is => 'ro', isa => 'Str', required => 1);
