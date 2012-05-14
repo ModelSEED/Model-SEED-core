@@ -4,15 +4,14 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::Genome;
-use ModelSEED::MS::Feature;
-use ModelSEED::MS::SubsystemState;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Annotation;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::Genome;
+use ModelSEED::MS::LazyHolder::Feature;
+use ModelSEED::MS::LazyHolder::SubsystemState;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -32,9 +31,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has genomes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child(Genome)', metaclass => 'Typed');
-has features => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child(Feature)', metaclass => 'Typed');
-has subsystemStates => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::SubsystemState]', type => 'child(SubsystemState)', metaclass => 'Typed');
+has genomes => (is => 'bare', coerce => 1, handles => { genomes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Genome::Lazy', type => 'child(Genome)', metaclass => 'Typed');
+has features => (is => 'bare', coerce => 1, handles => { features => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Feature::Lazy', type => 'child(Feature)', metaclass => 'Typed');
+has subsystemStates => (is => 'bare', coerce => 1, handles => { subsystemStates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::SubsystemState::Lazy', type => 'child(SubsystemState)', metaclass => 'Typed');
 
 
 # LINKS:

@@ -609,7 +609,7 @@ $objectDefinitions->{ReactionInstance} = {
 		{name => 'reaction_uuid',perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'direction',perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
 		{name => 'compartment_uuid',perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
-		{name => 'sourceEquation',perm => 'rw',type => 'Str',len => 36,req => 1},
+		{name => 'sourceEquation',perm => 'rw',type => 'Str',req => 1},
 		{name => 'transprotonNature',perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""}
 	],
 	subobjects => [

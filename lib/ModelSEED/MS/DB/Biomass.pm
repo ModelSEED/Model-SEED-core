@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::BiomassCompound;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Biomass;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::BiomassCompound;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -35,7 +34,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has biomasscompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::BiomassCompound]', type => 'encompassed(BiomassCompound)', metaclass => 'Typed');
+has biomasscompounds => (is => 'bare', coerce => 1, handles => { biomasscompounds => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::BiomassCompound::Lazy', type => 'encompassed(BiomassCompound)', metaclass => 'Typed');
 
 
 # LINKS:

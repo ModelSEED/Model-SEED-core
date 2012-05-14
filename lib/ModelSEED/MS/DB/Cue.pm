@@ -4,14 +4,13 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::CompoundStructure;
-use ModelSEED::MS::CompoundPk;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Cue;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::CompoundStructure;
+use ModelSEED::MS::LazyHolder::CompoundPk;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -40,8 +39,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed(CompoundStructure)', metaclass => 'Typed');
-has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed(CompoundPk)', metaclass => 'Typed');
+has structures => (is => 'bare', coerce => 1, handles => { structures => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundStructure::Lazy', type => 'encompassed(CompoundStructure)', metaclass => 'Typed');
+has pks => (is => 'bare', coerce => 1, handles => { pks => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundPk::Lazy', type => 'encompassed(CompoundPk)', metaclass => 'Typed');
 
 
 # LINKS:

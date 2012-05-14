@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::CompoundSetCompound;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::CompoundSet;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::CompoundSetCompound;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -32,7 +31,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundSetCompound]', type => 'encompassed(CompoundSetCompound)', metaclass => 'Typed');
+has compounds => (is => 'bare', coerce => 1, handles => { compounds => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundSetCompound::Lazy', type => 'encompassed(CompoundSetCompound)', metaclass => 'Typed');
 
 
 # LINKS:

@@ -4,15 +4,14 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::FBAObjectiveTerm;
-use ModelSEED::MS::FBACompoundConstraint;
-use ModelSEED::MS::FBAReactionConstraint;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::FBAFormulation;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::FBAObjectiveTerm;
+use ModelSEED::MS::LazyHolder::FBACompoundConstraint;
+use ModelSEED::MS::LazyHolder::FBAReactionConstraint;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -45,9 +44,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has fbaObjectiveTerms => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FBAObjectiveTerm]', type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed');
-has fbaCompoundConstraints => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FBACompoundConstraint]', type => 'encompassed(FBACompoundConstraint)', metaclass => 'Typed');
-has fbaReactionConstraints => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FBAReactionConstraint]', type => 'encompassed(FBAReactionConstraint)', metaclass => 'Typed');
+has fbaObjectiveTerms => (is => 'bare', coerce => 1, handles => { fbaObjectiveTerms => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAObjectiveTerm::Lazy', type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed');
+has fbaCompoundConstraints => (is => 'bare', coerce => 1, handles => { fbaCompoundConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBACompoundConstraint::Lazy', type => 'encompassed(FBACompoundConstraint)', metaclass => 'Typed');
+has fbaReactionConstraints => (is => 'bare', coerce => 1, handles => { fbaReactionConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAReactionConstraint::Lazy', type => 'encompassed(FBAReactionConstraint)', metaclass => 'Typed');
 
 
 # LINKS:

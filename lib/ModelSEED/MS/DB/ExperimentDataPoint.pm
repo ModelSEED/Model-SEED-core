@@ -4,16 +4,15 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::FluxMeasurement;
-use ModelSEED::MS::UptakeMeasurement;
-use ModelSEED::MS::MetaboliteMeasurement;
-use ModelSEED::MS::GeneMeasurement;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ExperimentDataPoint;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::FluxMeasurement;
+use ModelSEED::MS::LazyHolder::UptakeMeasurement;
+use ModelSEED::MS::LazyHolder::MetaboliteMeasurement;
+use ModelSEED::MS::LazyHolder::GeneMeasurement;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -38,10 +37,10 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has fluxMeasurements => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::FluxMeasurement]', type => 'child(FluxMeasurement)', metaclass => 'Typed');
-has uptakeMeasurements => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::UptakeMeasurement]', type => 'child(UptakeMeasurement)', metaclass => 'Typed');
-has metaboliteMeasurements => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::MetaboliteMeasurement]', type => 'child(MetaboliteMeasurement)', metaclass => 'Typed');
-has geneMeasurements => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::GeneMeasurement]', type => 'child(GeneMeasurement)', metaclass => 'Typed');
+has fluxMeasurements => (is => 'bare', coerce => 1, handles => { fluxMeasurements => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FluxMeasurement::Lazy', type => 'child(FluxMeasurement)', metaclass => 'Typed');
+has uptakeMeasurements => (is => 'bare', coerce => 1, handles => { uptakeMeasurements => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::UptakeMeasurement::Lazy', type => 'child(UptakeMeasurement)', metaclass => 'Typed');
+has metaboliteMeasurements => (is => 'bare', coerce => 1, handles => { metaboliteMeasurements => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::MetaboliteMeasurement::Lazy', type => 'child(MetaboliteMeasurement)', metaclass => 'Typed');
+has geneMeasurements => (is => 'bare', coerce => 1, handles => { geneMeasurements => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::GeneMeasurement::Lazy', type => 'child(GeneMeasurement)', metaclass => 'Typed');
 
 
 # LINKS:

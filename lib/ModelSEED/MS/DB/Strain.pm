@@ -4,14 +4,13 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::Deletion;
-use ModelSEED::MS::Insertion;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Strain;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::Deletion;
+use ModelSEED::MS::LazyHolder::Insertion;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -31,8 +30,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has deletions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Deletion]', type => 'child(Deletion)', metaclass => 'Typed');
-has insertions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Insertion]', type => 'child(Insertion)', metaclass => 'Typed');
+has deletions => (is => 'bare', coerce => 1, handles => { deletions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Deletion::Lazy', type => 'child(Deletion)', metaclass => 'Typed');
+has insertions => (is => 'bare', coerce => 1, handles => { insertions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Insertion::Lazy', type => 'child(Insertion)', metaclass => 'Typed');
 
 
 # LINKS:

@@ -4,14 +4,13 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ModelReactionRawGPR;
-use ModelSEED::MS::ModelReactionReagent;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ModelReaction;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::ModelReactionRawGPR;
+use ModelSEED::MS::LazyHolder::ModelReactionReagent;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -32,8 +31,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has gpr => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReactionRawGPR]', type => 'encompassed(ModelReactionRawGPR)', metaclass => 'Typed');
-has modelReactionReagents => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReactionReagent]', type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed');
+has gpr => (is => 'bare', coerce => 1, handles => { gpr => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionRawGPR::Lazy', type => 'encompassed(ModelReactionRawGPR)', metaclass => 'Typed');
+has modelReactionReagents => (is => 'bare', coerce => 1, handles => { modelReactionReagents => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionReagent::Lazy', type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed');
 
 
 # LINKS:

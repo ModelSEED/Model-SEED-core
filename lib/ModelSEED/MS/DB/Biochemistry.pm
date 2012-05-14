@@ -4,23 +4,22 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::Compartment;
-use ModelSEED::MS::Compound;
-use ModelSEED::MS::Reaction;
-use ModelSEED::MS::ReactionInstance;
-use ModelSEED::MS::Media;
-use ModelSEED::MS::CompoundSet;
-use ModelSEED::MS::ReactionSet;
-use ModelSEED::MS::CompoundAliasSet;
-use ModelSEED::MS::ReactionAliasSet;
-use ModelSEED::MS::ReactionInstanceAliasSet;
-use ModelSEED::MS::Cue;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Biochemistry;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::Compartment;
+use ModelSEED::MS::LazyHolder::Compound;
+use ModelSEED::MS::LazyHolder::Reaction;
+use ModelSEED::MS::LazyHolder::ReactionInstance;
+use ModelSEED::MS::LazyHolder::Media;
+use ModelSEED::MS::LazyHolder::CompoundSet;
+use ModelSEED::MS::LazyHolder::ReactionSet;
+use ModelSEED::MS::LazyHolder::CompoundAliasSet;
+use ModelSEED::MS::LazyHolder::ReactionAliasSet;
+use ModelSEED::MS::LazyHolder::ReactionInstanceAliasSet;
+use ModelSEED::MS::LazyHolder::Cue;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -40,17 +39,17 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has compartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compartment]', type => 'child(Compartment)', metaclass => 'Typed');
-has compounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Compound]', type => 'child(Compound)', metaclass => 'Typed');
-has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reaction]', type => 'child(Reaction)', metaclass => 'Typed');
-has reactioninstances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionInstance]', type => 'child(ReactionInstance)', metaclass => 'Typed');
-has media => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Media]', type => 'child(Media)', metaclass => 'Typed');
-has compoundSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundSet]', type => 'child(CompoundSet)', metaclass => 'Typed');
-has reactionSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionSet]', type => 'child(ReactionSet)', metaclass => 'Typed');
-has compoundAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundAliasSet]', type => 'child(CompoundAliasSet)', metaclass => 'Typed');
-has reactionAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionAliasSet]', type => 'child(ReactionAliasSet)', metaclass => 'Typed');
-has reactioninstanceAliasSets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionInstanceAliasSet]', type => 'child(ReactionInstanceAliasSet)', metaclass => 'Typed');
-has cues => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Cue]', type => 'encompassed(Cue)', metaclass => 'Typed');
+has compartments => (is => 'bare', coerce => 1, handles => { compartments => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Compartment::Lazy', type => 'child(Compartment)', metaclass => 'Typed');
+has compounds => (is => 'bare', coerce => 1, handles => { compounds => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Compound::Lazy', type => 'child(Compound)', metaclass => 'Typed');
+has reactions => (is => 'bare', coerce => 1, handles => { reactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Reaction::Lazy', type => 'child(Reaction)', metaclass => 'Typed');
+has reactioninstances => (is => 'bare', coerce => 1, handles => { reactioninstances => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionInstance::Lazy', type => 'child(ReactionInstance)', metaclass => 'Typed');
+has media => (is => 'bare', coerce => 1, handles => { media => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Media::Lazy', type => 'child(Media)', metaclass => 'Typed');
+has compoundSets => (is => 'bare', coerce => 1, handles => { compoundSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundSet::Lazy', type => 'child(CompoundSet)', metaclass => 'Typed');
+has reactionSets => (is => 'bare', coerce => 1, handles => { reactionSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionSet::Lazy', type => 'child(ReactionSet)', metaclass => 'Typed');
+has compoundAliasSets => (is => 'bare', coerce => 1, handles => { compoundAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundAliasSet::Lazy', type => 'child(CompoundAliasSet)', metaclass => 'Typed');
+has reactionAliasSets => (is => 'bare', coerce => 1, handles => { reactionAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionAliasSet::Lazy', type => 'child(ReactionAliasSet)', metaclass => 'Typed');
+has reactioninstanceAliasSets => (is => 'bare', coerce => 1, handles => { reactioninstanceAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionInstanceAliasSet::Lazy', type => 'child(ReactionInstanceAliasSet)', metaclass => 'Typed');
+has cues => (is => 'bare', coerce => 1, handles => { cues => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Cue::Lazy', type => 'encompassed(Cue)', metaclass => 'Typed');
 
 
 # LINKS:

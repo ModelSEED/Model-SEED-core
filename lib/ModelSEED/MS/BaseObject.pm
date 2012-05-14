@@ -6,7 +6,6 @@
 # Date of module creation: 3/11/2012
 ########################################################################
 use strict;
-use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
 use JSON::Any;
@@ -24,45 +23,18 @@ has type => (
       isa       => 'Str',
       predicate => 'has_type',
 );
-
+1;
 package Moose::Meta::Attribute::Custom::Typed;
 sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
-
+1;
 package ModelSEED::MS::BaseObject;
 use Moose;
+use ModelSEED::MS::Metadata::Types;
 use namespace::autoclean;
 
 sub BUILD {
     my ($self,$params) = @_;
-    my $class = 'ModelSEED::MS::DB::'.$self->_type();
-    for my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
-			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-	    		my $subclass = 'ModelSEED::MS::'.$1;
-	    		my $function = $attr->name();
-				my $dataArray = $self->$function();
-				my $newData = [];
-				foreach my $data (@{$dataArray}) {
-					$data->{parent} = $self;
-					push(@{$newData},$subclass->new($data));
-				}
-				$self->$function($newData);
-			} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
-	    		my $parameters = [split(/,/,$1)];
-	    		my $subclass = 'ModelSEED::MS::'.$parameters->[0];
-	    		my $attribute = $parameters->[1];
-	    		my $function = $attr->name();
-				my $data = $self->$function // {};
-                if(ref($data) eq 'ARRAY') {
-                    foreach my $d (@$data) {
-                        $self->create($subclass, $d);
-                    }
-				} else {
-                    $self->$function($data);
-                }
-			}
-		}
-    }
+    return;
 }
 
 sub serializeToDB {

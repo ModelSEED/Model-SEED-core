@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ReactionSetReaction;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ReactionSet;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::ReactionSetReaction;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -32,7 +31,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionSetReaction]', type => 'encompassed(ReactionSetReaction)', metaclass => 'Typed');
+has reactions => (is => 'bare', coerce => 1, handles => { reactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionSetReaction::Lazy', type => 'encompassed(ReactionSetReaction)', metaclass => 'Typed');
 
 
 # LINKS:

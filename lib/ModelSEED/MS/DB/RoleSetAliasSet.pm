@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::RoleSetAlias;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::RoleSetAliasSet;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::RoleSetAlias;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -29,7 +28,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has roleSetAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::RoleSetAlias]', type => 'child(RoleSetAlias)', metaclass => 'Typed');
+has roleSetAliases => (is => 'bare', coerce => 1, handles => { roleSetAliases => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSetAlias::Lazy', type => 'child(RoleSetAlias)', metaclass => 'Typed');
 
 
 # LINKS:

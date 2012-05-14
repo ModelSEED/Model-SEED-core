@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::InstanceTransport;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ReactionInstance;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::InstanceTransport;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -33,7 +32,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has transports => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::InstanceTransport]', type => 'encompassed(InstanceTransport)', metaclass => 'Typed');
+has transports => (is => 'bare', coerce => 1, handles => { transports => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::InstanceTransport::Lazy', type => 'encompassed(InstanceTransport)', metaclass => 'Typed');
 
 
 # LINKS:
