@@ -141,7 +141,7 @@ Description:
 sub printLPfile {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["filename"],{});
-	my $output = ["\Problem name: LPProb",""];
+	my $output = ["Problem name: LPProb",""];
 	if ($self->maximize() == 1) {
 		push(@{$output},"Maximize");	
 	} else {
@@ -158,7 +158,7 @@ sub printLPfile {
 		$count++;
 		if ($count >= 4) {
 			push(@{$output},$currentString);
-			$cout = 0;
+			$count = 0;
 			$currentString = "      + ";
 		}
 	}
@@ -409,8 +409,8 @@ sub createDrainFluxVariables {
 			for (my $j=0; $j < @{$self->fbaFormulation()->fbaCompoundConstraints()}; $j++) {
 				my $fbacpdconst = $self->fbaFormulation()->fbaCompoundConstraints()->[$j];
 				if ($fbacpdconst->modelcompound_uuid() eq $cpd->uuid() && $fbacpdconst->variableType() eq "drainflux") {
-					$maxFlux = $fbacpdconst->max();
-					$minFlux = $fbacpdconst->min();
+					my $maxFlux = $fbacpdconst->max();
+					my $minFlux = $fbacpdconst->min();
 					if ($self->decomposeReversibleDrainFlux() == 0) {
 						push(@{$newVariables},ModelSEED::MS::Variable->new({
 							name => "df_".$cpd->id(),
@@ -486,7 +486,7 @@ sub createMassBalanceConstraints {
 			if (!defined($const)) {
 				$const = $self->create("Constaint",{
 					entity_uuid => $rgt->modelcompound_uuid(),
-					name => "mb_".$rgt->modelcompound()->id();
+					name => "mb_".$rgt->modelcompound()->id(),
 					type => "massbalance",
 					rightHandSide => 0,
 					equalityType => "=",
@@ -518,7 +518,7 @@ sub createMassBalanceConstraints {
 			if (!defined($const)) {
 				$const = $self->create("Constaint",{
 					entity_uuid => $biocpd->modelcompound_uuid(),
-					name => "mb_".$biocpd->modelcompound()->id();
+					name => "mb_".$biocpd->modelcompound()->id(),
 					type => "massbalance",
 					rightHandSide => 0,
 					equalityType => "=",
@@ -541,7 +541,10 @@ sub createMassBalanceConstraints {
 	}
 	#Adding drain fluxes
 	for (my $i=0; $i < @{$self->variables()}; $i++) {
-		if ($self->variables()->[$i]->type() eq "drainflux" || $self->variables()->[$i]->type() eq "fordrainflux" || $self->variables()->[$i]->type() eq "revdrainflux") {
+        if (   $self->variables()->[$i]->type() eq "drainflux"
+            || $self->variables()->[$i]->type() eq "fordrainflux"
+            || $self->variables()->[$i]->type() eq "revdrainflux")
+        {
 			my $coef = 1;
 			if ($self->variables()->[$i]->type() eq "revdrainflux") {
 				$coef = -1;
@@ -553,7 +556,7 @@ sub createMassBalanceConstraints {
 			if (!defined($const)) {
 				$const = $self->create("Constaint",{
 					entity_uuid => $self->variables()->[$i]->entity_uuid(),
-					name => "mb_".$rgt->modelcompound()->id();
+#					name => "mb_".$rgt->modelcompound()->id(), # FIXME
 					type => "massbalance",
 					rightHandSide => 0,
 					equalityType => "=",
@@ -681,7 +684,7 @@ sub createUseVariableConstraints {
 				name => $self->variables()->[$i]->name(),
 				type => "useconstraint",
 				rightHandSide => 0,
-				equalityType => "<";
+				equalityType => "<",
 			});
 			my $type = $self->variables()->[$i]->type();
 			$type =~ s/use$//;
