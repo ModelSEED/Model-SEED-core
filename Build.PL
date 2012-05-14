@@ -87,6 +87,7 @@ my $builder = Module::Build->new(
     recommends => {
         'IO::Prompt' => 0,
     },
+    recursive_test_files => 1,
     add_to_cleanup      => [ 'ModelSeedCore-*' ],
     create_makefile_pl => 'traditional',
 );
