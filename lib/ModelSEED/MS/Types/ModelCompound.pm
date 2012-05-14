@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ModelCompound;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ModelCompound );
+use ModelSEED::MS::DB::ModelCompound;
 
-coerce 'ModelSEED::MS::ModelCompound',
+coerce 'ModelSEED::MS::DB::ModelCompound',
     from 'HashRef',
     via { ModelSEED::MS::DB::ModelCompound->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfModelCompound',

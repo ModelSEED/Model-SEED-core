@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::MetaboliteMeasurement;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::MetaboliteMeasurement );
+use ModelSEED::MS::DB::MetaboliteMeasurement;
 
-coerce 'ModelSEED::MS::MetaboliteMeasurement',
+coerce 'ModelSEED::MS::DB::MetaboliteMeasurement',
     from 'HashRef',
     via { ModelSEED::MS::DB::MetaboliteMeasurement->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfMetaboliteMeasurement',

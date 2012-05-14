@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ObjectiveTerm;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ObjectiveTerm );
+use ModelSEED::MS::DB::ObjectiveTerm;
 
-coerce 'ModelSEED::MS::ObjectiveTerm',
+coerce 'ModelSEED::MS::DB::ObjectiveTerm',
     from 'HashRef',
     via { ModelSEED::MS::DB::ObjectiveTerm->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfObjectiveTerm',

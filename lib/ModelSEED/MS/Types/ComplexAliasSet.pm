@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ComplexAliasSet;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ComplexAliasSet );
+use ModelSEED::MS::DB::ComplexAliasSet;
 
-coerce 'ModelSEED::MS::ComplexAliasSet',
+coerce 'ModelSEED::MS::DB::ComplexAliasSet',
     from 'HashRef',
     via { ModelSEED::MS::DB::ComplexAliasSet->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfComplexAliasSet',

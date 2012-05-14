@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBAObjectiveTerm;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBAObjectiveTerm );
+use ModelSEED::MS::DB::FBAObjectiveTerm;
 
-coerce 'ModelSEED::MS::FBAObjectiveTerm',
+coerce 'ModelSEED::MS::DB::FBAObjectiveTerm',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAObjectiveTerm->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAObjectiveTerm',

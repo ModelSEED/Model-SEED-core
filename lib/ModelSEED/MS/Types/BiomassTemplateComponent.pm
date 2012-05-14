@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::BiomassTemplateComponent;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::BiomassTemplateComponent );
+use ModelSEED::MS::DB::BiomassTemplateComponent;
 
-coerce 'ModelSEED::MS::BiomassTemplateComponent',
+coerce 'ModelSEED::MS::DB::BiomassTemplateComponent',
     from 'HashRef',
     via { ModelSEED::MS::DB::BiomassTemplateComponent->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfBiomassTemplateComponent',

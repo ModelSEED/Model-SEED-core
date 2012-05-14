@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Cue;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Cue );
+use ModelSEED::MS::DB::Cue;
 
-coerce 'ModelSEED::MS::Cue',
+coerce 'ModelSEED::MS::DB::Cue',
     from 'HashRef',
     via { ModelSEED::MS::DB::Cue->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCue',

@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBAProblem;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBAProblem );
+use ModelSEED::MS::DB::FBAProblem;
 
-coerce 'ModelSEED::MS::FBAProblem',
+coerce 'ModelSEED::MS::DB::FBAProblem',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAProblem->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAProblem',

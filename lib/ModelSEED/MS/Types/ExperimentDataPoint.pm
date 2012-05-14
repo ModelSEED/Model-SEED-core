@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ExperimentDataPoint;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ExperimentDataPoint );
+use ModelSEED::MS::DB::ExperimentDataPoint;
 
-coerce 'ModelSEED::MS::ExperimentDataPoint',
+coerce 'ModelSEED::MS::DB::ExperimentDataPoint',
     from 'HashRef',
     via { ModelSEED::MS::DB::ExperimentDataPoint->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfExperimentDataPoint',

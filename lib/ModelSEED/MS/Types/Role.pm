@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Role;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Role );
+use ModelSEED::MS::DB::Role;
 
-coerce 'ModelSEED::MS::Role',
+coerce 'ModelSEED::MS::DB::Role',
     from 'HashRef',
     via { ModelSEED::MS::DB::Role->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfRole',

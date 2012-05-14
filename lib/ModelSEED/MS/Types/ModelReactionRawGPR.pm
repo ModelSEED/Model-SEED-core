@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ModelReactionRawGPR;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ModelReactionRawGPR );
+use ModelSEED::MS::DB::ModelReactionRawGPR;
 
-coerce 'ModelSEED::MS::ModelReactionRawGPR',
+coerce 'ModelSEED::MS::DB::ModelReactionRawGPR',
     from 'HashRef',
     via { ModelSEED::MS::DB::ModelReactionRawGPR->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfModelReactionRawGPR',

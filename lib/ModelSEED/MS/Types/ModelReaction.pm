@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ModelReaction;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ModelReaction );
+use ModelSEED::MS::DB::ModelReaction;
 
-coerce 'ModelSEED::MS::ModelReaction',
+coerce 'ModelSEED::MS::DB::ModelReaction',
     from 'HashRef',
     via { ModelSEED::MS::DB::ModelReaction->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfModelReaction',

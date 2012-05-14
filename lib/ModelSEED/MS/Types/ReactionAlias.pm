@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ReactionAlias;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ReactionAlias );
+use ModelSEED::MS::DB::ReactionAlias;
 
-coerce 'ModelSEED::MS::ReactionAlias',
+coerce 'ModelSEED::MS::DB::ReactionAlias',
     from 'HashRef',
     via { ModelSEED::MS::DB::ReactionAlias->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfReactionAlias',

@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::CompoundPk;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::CompoundPk );
+use ModelSEED::MS::DB::CompoundPk;
 
-coerce 'ModelSEED::MS::CompoundPk',
+coerce 'ModelSEED::MS::DB::CompoundPk',
     from 'HashRef',
     via { ModelSEED::MS::DB::CompoundPk->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompoundPk',

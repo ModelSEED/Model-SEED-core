@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::SubsystemState;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::SubsystemState );
+use ModelSEED::MS::DB::SubsystemState;
 
-coerce 'ModelSEED::MS::SubsystemState',
+coerce 'ModelSEED::MS::DB::SubsystemState',
     from 'HashRef',
     via { ModelSEED::MS::DB::SubsystemState->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfSubsystemState',

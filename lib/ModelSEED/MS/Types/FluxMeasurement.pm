@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FluxMeasurement;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FluxMeasurement );
+use ModelSEED::MS::DB::FluxMeasurement;
 
-coerce 'ModelSEED::MS::FluxMeasurement',
+coerce 'ModelSEED::MS::DB::FluxMeasurement',
     from 'HashRef',
     via { ModelSEED::MS::DB::FluxMeasurement->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFluxMeasurement',

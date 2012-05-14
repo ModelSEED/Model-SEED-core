@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBAResults;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBAResults );
+use ModelSEED::MS::DB::FBAResults;
 
-coerce 'ModelSEED::MS::FBAResults',
+coerce 'ModelSEED::MS::DB::FBAResults',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAResults->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAResults',

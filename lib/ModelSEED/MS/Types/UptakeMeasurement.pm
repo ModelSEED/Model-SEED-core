@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::UptakeMeasurement;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::UptakeMeasurement );
+use ModelSEED::MS::DB::UptakeMeasurement;
 
-coerce 'ModelSEED::MS::UptakeMeasurement',
+coerce 'ModelSEED::MS::DB::UptakeMeasurement',
     from 'HashRef',
     via { ModelSEED::MS::DB::UptakeMeasurement->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfUptakeMeasurement',

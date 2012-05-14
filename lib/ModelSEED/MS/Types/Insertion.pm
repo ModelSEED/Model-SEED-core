@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Insertion;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Insertion );
+use ModelSEED::MS::DB::Insertion;
 
-coerce 'ModelSEED::MS::Insertion',
+coerce 'ModelSEED::MS::DB::Insertion',
     from 'HashRef',
     via { ModelSEED::MS::DB::Insertion->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfInsertion',

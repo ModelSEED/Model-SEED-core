@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::CompoundStructure;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::CompoundStructure );
+use ModelSEED::MS::DB::CompoundStructure;
 
-coerce 'ModelSEED::MS::CompoundStructure',
+coerce 'ModelSEED::MS::DB::CompoundStructure',
     from 'HashRef',
     via { ModelSEED::MS::DB::CompoundStructure->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompoundStructure',

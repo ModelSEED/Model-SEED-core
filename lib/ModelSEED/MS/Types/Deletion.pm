@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Deletion;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Deletion );
+use ModelSEED::MS::DB::Deletion;
 
-coerce 'ModelSEED::MS::Deletion',
+coerce 'ModelSEED::MS::DB::Deletion',
     from 'HashRef',
     via { ModelSEED::MS::DB::Deletion->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfDeletion',

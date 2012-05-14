@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Reagent;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Reagent );
+use ModelSEED::MS::DB::Reagent;
 
-coerce 'ModelSEED::MS::Reagent',
+coerce 'ModelSEED::MS::DB::Reagent',
     from 'HashRef',
     via { ModelSEED::MS::DB::Reagent->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfReagent',

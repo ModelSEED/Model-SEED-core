@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBACompoundConstraint;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBACompoundConstraint );
+use ModelSEED::MS::DB::FBACompoundConstraint;
 
-coerce 'ModelSEED::MS::FBACompoundConstraint',
+coerce 'ModelSEED::MS::DB::FBACompoundConstraint',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBACompoundConstraint->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBACompoundConstraint',

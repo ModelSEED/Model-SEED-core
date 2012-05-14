@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBAReactionVariable;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBAReactionVariable );
+use ModelSEED::MS::DB::FBAReactionVariable;
 
-coerce 'ModelSEED::MS::FBAReactionVariable',
+coerce 'ModelSEED::MS::DB::FBAReactionVariable',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAReactionVariable->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAReactionVariable',

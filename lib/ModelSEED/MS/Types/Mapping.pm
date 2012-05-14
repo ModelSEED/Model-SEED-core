@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Mapping;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Mapping );
+use ModelSEED::MS::DB::Mapping;
 
-coerce 'ModelSEED::MS::Mapping',
+coerce 'ModelSEED::MS::DB::Mapping',
     from 'HashRef',
     via { ModelSEED::MS::DB::Mapping->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfMapping',

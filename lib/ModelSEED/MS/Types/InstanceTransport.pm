@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::InstanceTransport;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::InstanceTransport );
+use ModelSEED::MS::DB::InstanceTransport;
 
-coerce 'ModelSEED::MS::InstanceTransport',
+coerce 'ModelSEED::MS::DB::InstanceTransport',
     from 'HashRef',
     via { ModelSEED::MS::DB::InstanceTransport->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfInstanceTransport',

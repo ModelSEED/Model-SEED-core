@@ -219,9 +219,9 @@ foreach my $name (keys(%{$objects})) {
 #
 package ModelSEED::MS::Types::$name;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( $dbPackage );
+use $dbPackage;
 
-coerce '$msPackage',
+coerce '$dbPackage',
     from 'HashRef',
     via { $dbPackage->new(\$_) };
 subtype '$collectionSubtype',

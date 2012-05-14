@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ConstraintVariable;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ConstraintVariable );
+use ModelSEED::MS::DB::ConstraintVariable;
 
-coerce 'ModelSEED::MS::ConstraintVariable',
+coerce 'ModelSEED::MS::DB::ConstraintVariable',
     from 'HashRef',
     via { ModelSEED::MS::DB::ConstraintVariable->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfConstraintVariable',

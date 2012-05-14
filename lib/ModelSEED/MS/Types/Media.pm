@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Media;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Media );
+use ModelSEED::MS::DB::Media;
 
-coerce 'ModelSEED::MS::Media',
+coerce 'ModelSEED::MS::DB::Media',
     from 'HashRef',
     via { ModelSEED::MS::DB::Media->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfMedia',

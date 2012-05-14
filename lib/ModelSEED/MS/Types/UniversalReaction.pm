@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::UniversalReaction;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::UniversalReaction );
+use ModelSEED::MS::DB::UniversalReaction;
 
-coerce 'ModelSEED::MS::UniversalReaction',
+coerce 'ModelSEED::MS::DB::UniversalReaction',
     from 'HashRef',
     via { ModelSEED::MS::DB::UniversalReaction->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfUniversalReaction',

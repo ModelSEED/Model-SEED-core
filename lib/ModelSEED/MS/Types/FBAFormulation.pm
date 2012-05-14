@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::FBAFormulation;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::FBAFormulation );
+use ModelSEED::MS::DB::FBAFormulation;
 
-coerce 'ModelSEED::MS::FBAFormulation',
+coerce 'ModelSEED::MS::DB::FBAFormulation',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAFormulation->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAFormulation',

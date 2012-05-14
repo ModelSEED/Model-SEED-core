@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Biochemistry;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Biochemistry );
+use ModelSEED::MS::DB::Biochemistry;
 
-coerce 'ModelSEED::MS::Biochemistry',
+coerce 'ModelSEED::MS::DB::Biochemistry',
     from 'HashRef',
     via { ModelSEED::MS::DB::Biochemistry->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfBiochemistry',

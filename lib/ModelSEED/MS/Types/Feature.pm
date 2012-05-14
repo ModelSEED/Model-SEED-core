@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Feature;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Feature );
+use ModelSEED::MS::DB::Feature;
 
-coerce 'ModelSEED::MS::Feature',
+coerce 'ModelSEED::MS::DB::Feature',
     from 'HashRef',
     via { ModelSEED::MS::DB::Feature->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFeature',

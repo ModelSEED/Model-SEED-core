@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Complex;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Complex );
+use ModelSEED::MS::DB::Complex;
 
-coerce 'ModelSEED::MS::Complex',
+coerce 'ModelSEED::MS::DB::Complex',
     from 'HashRef',
     via { ModelSEED::MS::DB::Complex->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfComplex',

@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::ComplexRole;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::ComplexRole );
+use ModelSEED::MS::DB::ComplexRole;
 
-coerce 'ModelSEED::MS::ComplexRole',
+coerce 'ModelSEED::MS::DB::ComplexRole',
     from 'HashRef',
     via { ModelSEED::MS::DB::ComplexRole->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfComplexRole',

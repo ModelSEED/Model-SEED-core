@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::MediaCompound;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::MediaCompound );
+use ModelSEED::MS::DB::MediaCompound;
 
-coerce 'ModelSEED::MS::MediaCompound',
+coerce 'ModelSEED::MS::DB::MediaCompound',
     from 'HashRef',
     via { ModelSEED::MS::DB::MediaCompound->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfMediaCompound',

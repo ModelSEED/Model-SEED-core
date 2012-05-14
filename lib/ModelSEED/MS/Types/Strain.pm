@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Strain;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Strain );
+use ModelSEED::MS::DB::Strain;
 
-coerce 'ModelSEED::MS::Strain',
+coerce 'ModelSEED::MS::DB::Strain',
     from 'HashRef',
     via { ModelSEED::MS::DB::Strain->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfStrain',

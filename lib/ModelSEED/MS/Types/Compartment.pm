@@ -3,9 +3,9 @@
 #
 package ModelSEED::MS::Types::Compartment;
 use Moose::Util::TypeConstraints;
-use Class::Autouse qw ( ModelSEED::MS::DB::Compartment );
+use ModelSEED::MS::DB::Compartment;
 
-coerce 'ModelSEED::MS::Compartment',
+coerce 'ModelSEED::MS::DB::Compartment',
     from 'HashRef',
     via { ModelSEED::MS::DB::Compartment->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompartment',
