@@ -8,7 +8,6 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::utilities;
-use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Utilities::GlobalFunctions;
 package ModelSEED::MS::Factories::SEEDFactory;

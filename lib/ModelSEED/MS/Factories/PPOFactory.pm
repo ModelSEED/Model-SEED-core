@@ -8,7 +8,6 @@
 use strict;
 use ModelSEED::utilities;
 use ModelSEED::Store;
-use ModelSEED::MS::ObjectManager;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Utilities::GlobalFunctions;
 use ModelSEED::MS::Factories::SEEDFactory;
