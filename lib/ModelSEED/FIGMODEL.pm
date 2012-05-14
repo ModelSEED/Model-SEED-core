@@ -26,9 +26,7 @@ package ModelSEED::FIGMODEL;
 our $VERSION = '0.01';
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
-use ModelSEED::ModelSEEDUtilities::TimeZone;
-use ModelSEED::ModelSEEDUtilities::JulianDay;
-use ModelSEED::ModelSEEDUtilities::ParseDate;
+use Time::ParseDate;
 use ModelSEED::ModelSEEDUtilities::FileIOFunctions;
 use ModelSEED::FIGMODEL::FIGMODELmodel;
 use ModelSEED::FIGMODEL::FIGMODELdatabase;
@@ -422,7 +420,7 @@ sub cleanup {
 	#Cleaning up old jobs in the job scheduler
 	$objs = $self->database()->get_objects("job");
 	for (my $i=0; $i < @{$objs}; $i++) {
-		if ($objs->[$i]->STATE() eq 2 && (time()-ModelSEED::ModelSEEDUtilities::ParseDate::parsedate($objs->[$i]->FINISHED())) > 2592000) {
+		if ($objs->[$i]->STATE() eq 2 && (time()- Time::ParseDate::parsedate($objs->[$i]->FINISHED())) > 2592000) {
 			#Deleting jobs output files
 			if (-e "/vol/model-prod/FIGdisk/log/QSubOutput/ModelDriver.sh.o".$objs->[$i]->PROCESSID()) {
 				unlink("/vol/model-prod/FIGdisk/log/QSubOutput/ModelDriver.sh.o".$objs->[$i]->PROCESSID());
