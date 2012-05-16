@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::CompoundAlias;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::CompoundAliasSet;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::CompoundAlias;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -29,7 +28,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has compoundAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundAlias]', type => 'child(CompoundAlias)', metaclass => 'Typed');
+has compoundAliases => (is => 'bare', coerce => 1, handles => { compoundAliases => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::CompoundAlias::Lazy', type => 'child(CompoundAlias)', metaclass => 'Typed');
 
 
 # LINKS:

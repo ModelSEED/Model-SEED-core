@@ -4,13 +4,12 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ReactionAlias;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::ReactionAliasSet;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::ReactionAlias;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -29,7 +28,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactionAliases => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionAlias]', type => 'child(ReactionAlias)', metaclass => 'Typed');
+has reactionAliases => (is => 'bare', coerce => 1, handles => { reactionAliases => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionAlias::Lazy', type => 'child(ReactionAlias)', metaclass => 'Typed');
 
 
 # LINKS:

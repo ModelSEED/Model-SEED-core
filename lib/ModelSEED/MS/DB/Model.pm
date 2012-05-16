@@ -4,16 +4,15 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::Biomass;
-use ModelSEED::MS::ModelCompartment;
-use ModelSEED::MS::ModelCompound;
-use ModelSEED::MS::ModelReaction;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Model;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::Biomass;
+use ModelSEED::MS::LazyHolder::ModelCompartment;
+use ModelSEED::MS::LazyHolder::ModelCompound;
+use ModelSEED::MS::LazyHolder::ModelReaction;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -43,10 +42,10 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has biomasses => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Biomass]', type => 'child(Biomass)', metaclass => 'Typed', printOrder => '0');
-has modelcompartments => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompartment]', type => 'child(ModelCompartment)', metaclass => 'Typed', printOrder => '1');
-has modelcompounds => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelCompound]', type => 'child(ModelCompound)', metaclass => 'Typed', printOrder => '2');
-has modelreactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ModelReaction]', type => 'child(ModelReaction)', metaclass => 'Typed', printOrder => '3');
+has biomasses => (is => 'bare', coerce => 1, handles => { biomasses => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Biomass::Lazy', type => 'child(Biomass)', metaclass => 'Typed', printOrder => '0');
+has modelcompartments => (is => 'bare', coerce => 1, handles => { modelcompartments => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelCompartment::Lazy', type => 'child(ModelCompartment)', metaclass => 'Typed', printOrder => '1');
+has modelcompounds => (is => 'bare', coerce => 1, handles => { modelcompounds => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelCompound::Lazy', type => 'child(ModelCompound)', metaclass => 'Typed', printOrder => '2');
+has modelreactions => (is => 'bare', coerce => 1, handles => { modelreactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReaction::Lazy', type => 'child(ModelReaction)', metaclass => 'Typed', printOrder => '3');
 
 
 # LINKS:

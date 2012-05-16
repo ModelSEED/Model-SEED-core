@@ -15,6 +15,5 @@ my $msc = ModelSEEDCommandAPIClient->new();
     	media => ["LB","NMS","GMM_nh4","GMM_gln"],
     	ko => [["peg.3"]]
     });
-    print STDERR Data::Dumper->Dump([$output]);
     ok defined($output->{RESULTS}->{"peg.3"}), "Phenotype simulation failed!";
 }

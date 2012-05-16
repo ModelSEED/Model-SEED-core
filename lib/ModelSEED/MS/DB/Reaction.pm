@@ -4,15 +4,14 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ReactionCue;
-use ModelSEED::MS::ReactionReactionInstance;
-use ModelSEED::MS::Reagent;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Reaction;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::ReactionCue;
+use ModelSEED::MS::LazyHolder::ReactionReactionInstance;
+use ModelSEED::MS::LazyHolder::Reagent;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -39,9 +38,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has reactionCues => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionCue]', type => 'encompassed(ReactionCue)', metaclass => 'Typed');
-has reactionreactioninstances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionReactionInstance]', type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed');
-has reagents => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Reagent]', type => 'encompassed(Reagent)', metaclass => 'Typed');
+has reactionCues => (is => 'bare', coerce => 1, handles => { reactionCues => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionCue::Lazy', type => 'encompassed(ReactionCue)', metaclass => 'Typed');
+has reactionreactioninstances => (is => 'bare', coerce => 1, handles => { reactionreactioninstances => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ReactionReactionInstance::Lazy', type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed');
+has reagents => (is => 'bare', coerce => 1, handles => { reagents => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Reagent::Lazy', type => 'encompassed(Reagent)', metaclass => 'Typed');
 
 
 # LINKS:

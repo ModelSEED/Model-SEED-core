@@ -3,7 +3,7 @@
 use Test::More tests => 1;
 
 BEGIN {
-    use_ok( 'ModelSeedCore' ) || print "Bail out!\n";
+    use_ok( 'ModelSEED::FIGMODEL' ) || print "Bail out!\n";
 }
 
-diag( "Testing ModelSeedCore $ModelSeedCore::VERSION, Perl $], $^X" );
+diag( "Testing ModelSeedCore $ModelSEED::FIGMODEL::VERSION, Perl $], $^X" );

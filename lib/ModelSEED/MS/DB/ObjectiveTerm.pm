@@ -4,12 +4,11 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ObjectiveTerm;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -19,8 +18,6 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAProblem', type => 'parent', 
 # ATTRIBUTES:
 has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 has variable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-
-
 
 
 # LINKS:

@@ -4,14 +4,13 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ComplexReactionInstance;
-use ModelSEED::MS::ComplexRole;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Complex;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::ComplexReactionInstance;
+use ModelSEED::MS::LazyHolder::ComplexRole;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -31,8 +30,8 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has complexreactioninstances => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexReactionInstance]', type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed');
-has complexroles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ComplexRole]', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
+has complexreactioninstances => (is => 'bare', coerce => 1, handles => { complexreactioninstances => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexReactionInstance::Lazy', type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed');
+has complexroles => (is => 'bare', coerce => 1, handles => { complexroles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexRole::Lazy', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
 
 
 # LINKS:

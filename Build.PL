@@ -68,6 +68,7 @@ my $builder = Module::Build->new(
         "Test::More" => 0.98,
         "Time::HiRes" => 1.9719,
         "Time::localtime" => 1.02,
+        "Time::ParseDate" => 0,
         "Try::Tiny" => 0.11,
         "URI::Escape" => 3.31,
         "XML::DOM" => 1.44,
@@ -86,6 +87,7 @@ my $builder = Module::Build->new(
     recommends => {
         'IO::Prompt' => 0,
     },
+    recursive_test_files => 1,
     add_to_cleanup      => [ 'ModelSeedCore-*' ],
     create_makefile_pl => 'traditional',
 );

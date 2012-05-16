@@ -4,12 +4,11 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Genome;
 use Moose;
-use namespace::autoclean;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
