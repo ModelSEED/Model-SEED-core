@@ -16,66 +16,41 @@ An abstract role / interface for database drivers.
 
 =head1 Methods
 
-=head2 has_object
+=head2 has_data
 
-    $bool = $db->has_object(type, id);
+    $bool = $db->has_data(ref, auth);
 
-=head2 get_object
+=head2 get_data
 
-    $obj  = $db->get_object(type, id);
+    $obj = $db->get_data(ref, auth);
 
-=head2 save_object
+=head2 get_data_collection
 
-    $bool = $db->save_object(type, id, object);
+    $collection = $db->get_data_collection(ref, auth);
 
-Object can be hash/array ref or an already encoded JSON string
+=head2 get_data_collection_iterator
 
+    $iterator = $db->get_data_collection_itorator(ref, auth);
 
-=head2 delete_object
+=head2 save_data
 
-    $count = $db->delete_object(type, id);
+    $ref = $db->save_data(ref, data, auth);
 
-=head2 get_metadata
+=head2 save_data_collection
 
-    $meta = $db->get_metadata(type, id, selection);
+    $bool = save_data_collection(ref, collection, auth);
 
-Selection can be specified to return specific meta-data and uses dot
-notation to select inside sub-objects
+=head2 delete_data
 
-    meta: {name => 'foo', users => {paul => 'bar', zedd => 'test'}}
+    $count = $db->delete_object(ref, auth);
 
-    $db->get_metadata('type', '0123', 'users.paul');
-    returns: 'bar'
+=head2 delete_collection
 
-    $db->get_metadata('type', '0123', 'users');
-    returns: { paul => 'bar', zedd => 'test' }
-
-=head2 set_metadata
-
-    $bool = $db->set_metadata(type, id, selection, metadata);
-
-Selection specifies where to save metadata (uses dot notation) if
-selection is C<undef> or the empty string, will set the whole metadata
-to data (in this case data has to be a hash)
-
-    $db->set_metadata('type', '0123', 'users', {paul => 'bar'});
-    or
-    $db->set_metadata('type', '0123', 'users.paul', 'bar');
-
-    difference here is that the first will replace 'users',
-    while the second adds the user named 'paul'
-
-=head2 remove_metadata
-
-    $bool = $db->remove_metadata(type, id, selection);
-
-Deletes the data at selection (uses dot notation)
-
-    $db->remove_metadata('type', '0123', 'users.paul');
+    $count = $db->delete_object(ref, auth);
 
 =head2 find_objects
 
-    ([ids]) = $db->find_objects(type, query);
+    ([ids]) = $db->find_objects(ref, query, auth);
 
 Allows you to query for objects based on the metadata will use query
 syntax similar to MongoDB.
@@ -91,6 +66,7 @@ use Moose::Role;
 requires 'has_object';
 requires 'get_object';
 requires 'save_object';
+requires 'put_object';
 requires 'delete_object';
 requires 'get_metadata';
 requires 'set_metadata';
