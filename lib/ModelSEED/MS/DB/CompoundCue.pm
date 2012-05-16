@@ -17,8 +17,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Compound', type => 'parent', me
 
 
 # ATTRIBUTES:
-has cue_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has count => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '' );
+has cue_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has count => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
 
 
 

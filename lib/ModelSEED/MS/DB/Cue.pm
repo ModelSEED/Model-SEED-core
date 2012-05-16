@@ -19,20 +19,20 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent'
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has abbreviation => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has unchargedFormula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has formula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has mass => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has defaultCharge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has deltaG => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has deltaGErr => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has smallMolecule => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed' );
-has priority => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has abbreviation => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '2' );
+has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '-1' );
+has unchargedFormula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '-1' );
+has formula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '3' );
+has mass => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '4' );
+has defaultCharge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '5' );
+has deltaG => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '6' );
+has deltaGErr => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '7' );
+has smallMolecule => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', printOrder => '8' );
+has priority => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', printOrder => '9' );
 
 
 # ANCESTOR:

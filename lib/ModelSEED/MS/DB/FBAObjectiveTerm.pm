@@ -17,9 +17,9 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::fbaformulation_uuid', type => '
 
 
 # ATTRIBUTES:
-has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has variable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
+has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has variable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 

@@ -17,12 +17,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has genome_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has name => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has description => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has institution => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has source => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has genome_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has name => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has description => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has institution => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has source => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 # ANCESTOR:

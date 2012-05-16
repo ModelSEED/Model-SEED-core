@@ -17,9 +17,9 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ExperimentDataPoint', type => '
 
 
 # ATTRIBUTES:
-has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has feature_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has method => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has feature_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has method => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 

@@ -18,15 +18,16 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping', type => 'parent', met
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has class => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0' );
-has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, lazy => 1, builder => '_builduuid', printOrder => '0' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has class => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has energy => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
 
 
 # ANCESTOR:

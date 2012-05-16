@@ -17,10 +17,10 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ExperimentDataPoint', type => '
 
 
 # ATTRIBUTES:
-has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has compartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has method => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has compartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has method => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 

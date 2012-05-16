@@ -14,9 +14,10 @@ extends 'ModelSEED::MS::DB::ReactionInstance';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has definition => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
-has equation => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
-has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
+has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
+has equation => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
+has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
+has compartmentName => ( is => 'rw', isa => 'Str',printOrder => '5', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildcompartmentName' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -32,6 +33,10 @@ sub _buildequation {
 sub _buildequationcode {
 	my ($self,$args) = @_;
 	return $self->createEquation({format=>"uuid",hashed=>1});
+}
+sub _buildcompartmentName {
+	my ($self,$args) = @_;
+	return $self->compartment()->label();
 }
 
 #***********************************************************************************************************

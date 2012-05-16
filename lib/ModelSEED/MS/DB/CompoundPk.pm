@@ -17,10 +17,10 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Compound', type => 'parent', me
 
 
 # ATTRIBUTES:
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has atom => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has pk => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
-has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has atom => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has pk => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 

@@ -14,7 +14,7 @@ extends 'ModelSEED::MS::DB::Role';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has searchname => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildsearchname' );
+has searchname => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildsearchname' );
 
 #***********************************************************************************************************
 # BUILDERS:

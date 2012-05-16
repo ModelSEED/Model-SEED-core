@@ -17,10 +17,10 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::fbaformulation_uuid', type => '
 
 
 # ATTRIBUTES:
-has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has max => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
-has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0' );
+has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has max => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has min => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
 
 
 

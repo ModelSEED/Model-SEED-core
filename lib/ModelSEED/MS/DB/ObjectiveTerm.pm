@@ -1,19 +1,19 @@
 ########################################################################
-# ModelSEED::MS::DB::ConstraintVariable - This is the moose object corresponding to the ConstraintVariable object
+# ModelSEED::MS::DB::ObjectiveTerm - This is the moose object corresponding to the ObjectiveTerm object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 use strict;
 use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::ConstraintVariable;
+package ModelSEED::MS::DB::ObjectiveTerm;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Constraint', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAProblem', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -35,7 +35,7 @@ sub _buildvariable {
 
 
 # CONSTANTS:
-sub _type { return 'ConstraintVariable'; }
+sub _type { return 'ObjectiveTerm'; }
 
 
 __PACKAGE__->meta->make_immutable;

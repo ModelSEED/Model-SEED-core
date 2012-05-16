@@ -14,7 +14,7 @@ extends 'ModelSEED::MS::DB::Model';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has definition => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
+has definition => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 
 
 #***********************************************************************************************************
@@ -74,7 +74,7 @@ sub buildModelFromAnnotation {
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
 	my $type = "Singlegenome";
-	if (@{$self->genomes()} > 0) {
+	if (@{$annotaton->genomes()} > 0) {
 		$type = "Metagenome";
 	}
 	my $roleFeatures;
@@ -118,7 +118,7 @@ sub buildModelFromAnnotation {
 	}
 	foreach my $universalRxn (@{$mapping->universalReactions()}) {
 		my $mdlrxn = $self->addReactionInstanceToModel({
-			reactionInstance => $universalRxn->reactionInstance(),
+			reactionInstance => $universalRxn->reactioninstance(),
 			gpr => "UNIVERSAL"
 		});
 	}
@@ -142,12 +142,13 @@ sub createStandardFBABiomass {
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
 	});
+	my $anno = $args->{annotation};
 	my $mapping = $args->{mapping};
 	my $biochem = $mapping->biochemistry();
 	my $bio = $self->create("Biomass",{
 		name => $self->name()." auto biomass"
 	});
-	my $template = $mapping->getObject("BiomassTemplate",{class => $self->genomes()->[0]->class()});
+	my $template = $mapping->getObject("BiomassTemplate",{class => $anno->genomes()->[0]->class()});
 	if (!defined($template)) {
 		$template = $mapping->getObject("BiomassTemplate",{class => "Unknown"});
 	}
@@ -157,35 +158,40 @@ sub createStandardFBABiomass {
 		$bio->$function($template->$function());
 	}
 	my $biomassComps;
+	my $biomassCompByUUID;
 	for (my $i=0; $i < @{$template->biomassTemplateComponents()}; $i++) {
+		$biomassCompByUUID->{$template->biomassTemplateComponents()->[$i]->uuid()} = $template->biomassTemplateComponents()->[$i];
 		if ($self->testBiomassCondition({
 				condition => $template->biomassTemplateComponents()->[$i]->condition(),
 				annotation => $args->{annotation}
 			}) == 1) {
-			$biomassComps->{$template->biomassTemplateComponents()->[$i]->class()}->{$template->biomassTemplateComponents()->[$i]} = $template->biomassTemplateComponents()->[$i]->coefficient();
+			$biomassComps->{$template->biomassTemplateComponents()->[$i]->class()}->{$template->biomassTemplateComponents()->[$i]->uuid()} = $template->biomassTemplateComponents()->[$i]->coefficient();
 		}
 	}
 	my $coef;
-	my $gc = $self->genome()->gc();
+	my $gc = $anno->genomes()->[0]->gc();
 	foreach my $class (keys(%{$biomassComps})) {
-		foreach my $templateComp (keys(%{$biomassComps->{$class}})) {
+		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
+			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
 			if ($templateComp->coefficientType() eq "FRACTION") {
-				$biomassComps->{$class}->{$templateComp} = -1/keys(%{$biomassComps->{$class}});
-				$coef->{$templateComp->compound_uuid()} = $biomassComps->{$class}->{$templateComp};
+				$biomassComps->{$class}->{$templateCompUUID} = -1/keys(%{$biomassComps->{$class}});
+				$coef->{$templateComp->compound_uuid()} = $biomassComps->{$class}->{$templateCompUUID};
 			}
 		}
-		foreach my $templateComp (keys(%{$biomassComps->{$class}})) {
+		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
+			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
 			if ($templateComp->coefficientType() ne "FRACTION" && $templateComp->coefficientType() ne "NUMBER") {
 				my $array = [split(/,/,$templateComp->coefficientType())];
-				$biomassComps->{$class}->{$templateComp} = 0;
+				$biomassComps->{$class}->{$templateCompUUID} = 0;
 				for (my $i=0; $i < @{$array}; $i++) {
 					if (defined($coef->{$array->[$i]})) {
-						$biomassComps->{$class}->{$templateComp} += -1*($coef->{$array->[$i]});
+						$biomassComps->{$class}->{$templateCompUUID} += -1*($coef->{$array->[$i]});
 					}
 				}
 			}
 		}
-		foreach my $templateComp (keys(%{$biomassComps->{$class}})) {
+		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
+			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
 			my $cmp = $biochem->getObject("Compartment",{id => "c"});
 			my $mdlcmp = $self->addCompartmentToModel({compartment => $cmp,pH => 7,potential => 0,compartmentIndex => 0});
 			my $mdlcpd = $self->addCompoundToModel({
@@ -196,7 +202,7 @@ sub createStandardFBABiomass {
 			if (!defined($mass) || $mass == 0) {
 				$mass = 1;
 			}
-			my $coefficient = $biomassComps->{$class}->{$templateComp};
+			my $coefficient = $biomassComps->{$class}->{$templateCompUUID};
 			if ($class ne "macromolecule") {
 				$coefficient = $coefficient*($template->$class())	
 			}

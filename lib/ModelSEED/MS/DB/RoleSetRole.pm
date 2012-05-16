@@ -17,7 +17,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::RoleSet', type => 'parent', met
 
 
 # ATTRIBUTES:
-has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 

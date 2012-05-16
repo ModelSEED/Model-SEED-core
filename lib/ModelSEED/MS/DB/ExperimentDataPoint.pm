@@ -21,16 +21,16 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Experiment', type => 'parent', 
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has strain_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
-has pH => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has temperature => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has buffers => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has phenotype => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has notes => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has growthMeasurement => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has growthMeasurementType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has strain_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has pH => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has temperature => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has buffers => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has phenotype => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has notes => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has growthMeasurement => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has growthMeasurementType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 # ANCESTOR:

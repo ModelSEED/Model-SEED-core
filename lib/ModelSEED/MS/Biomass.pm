@@ -14,9 +14,9 @@ extends 'ModelSEED::MS::DB::Biomass';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has definition => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
-has equation => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
-has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
+has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
+has equation => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
+has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -79,7 +79,7 @@ sub createEquation {
 		my $indecies = [sort(keys(%{$rgtHash->{$sortedCpd->[$i]}}))];
 		for (my $j=0; $j < @{$indecies}; $j++) {
 			my $compartment = "";
-			if ($indecies->[$j] != 0) {
+			if ($indecies->[$j] ne "c0") {
 				$compartment = "[".$indecies->[$j]."]";
 			}
 			if ($rgtHash->{$sortedCpd->[$i]}->{$indecies->[$j]} < 0) {

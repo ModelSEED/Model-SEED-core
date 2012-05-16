@@ -14,10 +14,10 @@ extends 'ModelSEED::MS::DB::FBAProblem';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has model => ( is => 'rw', isa => 'ModelSEED::MS::Model', type => 'msdata', metaclass => 'Typed');
-has fbaFormulation => ( is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', type => 'msdata', metaclass => 'Typed');
-has directory => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddirectory');
-has solver => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed',default => 'glpk');
+has model => ( is => 'rw', isa => 'ModelSEED::MS::Model',printOrder => '-1', type => 'msdata', metaclass => 'Typed');
+has fbaFormulation => ( is => 'rw', isa => 'ModelSEED::MS::FBAFormulation',printOrder => '-1', type => 'msdata', metaclass => 'Typed');
+has directory => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddirectory');
+has solver => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed',default => 'glpk');
 
 #***********************************************************************************************************
 # BUILDERS:

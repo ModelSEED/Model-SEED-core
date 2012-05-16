@@ -20,13 +20,13 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has maximize => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed' );
-has milp => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed' );
-has decomposeReversibleFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1 );
-has decomposeReversibleDrainFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1 );
-has fluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1 );
-has drainfluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1 );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has maximize => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has milp => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has decomposeReversibleFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has decomposeReversibleDrainFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has fluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has drainfluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 # ANCESTOR:

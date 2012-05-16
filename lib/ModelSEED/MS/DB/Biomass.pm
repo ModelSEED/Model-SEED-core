@@ -18,16 +18,17 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Model', type => 'parent', metac
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05' );
-has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.1' );
-has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.5' );
-has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15' );
-has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05' );
-has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has dna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05', printOrder => '3' );
+has rna => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.1', printOrder => '4' );
+has protein => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.5', printOrder => '5' );
+has cellwall => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15', printOrder => '6' );
+has lipid => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.05', printOrder => '7' );
+has cofactor => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.15', printOrder => '8' );
+has energy => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '40', printOrder => '9' );
 
 
 # ANCESTOR:

@@ -17,9 +17,9 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Genome', type => 'parent', meta
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has insertionTarget => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has sequence => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has insertionTarget => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has sequence => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
 
 
 # ANCESTOR:

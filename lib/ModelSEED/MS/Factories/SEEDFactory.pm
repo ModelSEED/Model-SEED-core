@@ -8,7 +8,7 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::utilities;
-use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Utilities::GlobalFunctions;
 package ModelSEED::MS::Factories::SEEDFactory;
@@ -46,7 +46,14 @@ sub buildMooseAnnotation {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $annoationObj = $self->om()->create("Annotation");
+	my $annoationObj;
+	if (defined($self->om())) {
+		$annoationObj = $self->om()->create("Annotation");
+	} else {
+		$annoationObj = ModelSEED::MS::Annotation->new({
+			name => $genomeData->{name}
+		});
+	}
 	my $genomeObj = $annoationObj->create("Genome",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},
@@ -56,6 +63,7 @@ sub buildMooseAnnotation {
 		gc => $genomeData->{gc},
 	});
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
+	$annoationObj->mapping($args->{mapping});
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}

@@ -17,8 +17,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent
 
 
 # ATTRIBUTES:
-has isCustomGPR => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1' );
-has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'UNKNOWN' );
+has isCustomGPR => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
+has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'UNKNOWN', printOrder => '0' );
 
 
 

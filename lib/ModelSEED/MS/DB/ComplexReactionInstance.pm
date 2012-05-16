@@ -17,7 +17,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Complex', type => 'parent', met
 
 
 # ATTRIBUTES:
-has reactioninstance_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
+has reactioninstance_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 

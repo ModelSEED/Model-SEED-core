@@ -14,12 +14,67 @@ extends 'ModelSEED::MS::DB::ModelReaction';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-
+has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
+has name => ( is => 'rw', isa => 'Str',printOrder => '1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildname' );
+has modelCompartmentLabel => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmodelCompartmentLabel' );
+has gprString => ( is => 'rw', isa => 'Str',printOrder => '5', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildgprString' );
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
-
+sub _buildname {
+	my ($self) = @_;
+	return $self->reaction()->name();
+}
+sub _builddefinition {
+	my ($self) = @_;
+	my $reactants = "";
+	my $products = "";
+	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
+		my $rgt = $self->modelReactionReagents()->[$i];
+		if ($rgt->coefficient() < 0) {
+			my $coef = -1*$rgt->coefficient();
+			if (length($reactants) > 0) {
+				$reactants .= "+";	
+			}
+			if ($coef ne "1") {
+				$reactants .= "(".$coef.")";
+			}
+			$reactants .= $rgt->modelcompound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
+		} else {
+			if (length($products) > 0) {
+				$products .= "+";	
+			}
+			if ($rgt->coefficient() ne "1") {
+				$products .= "(".$rgt->coefficient().")";
+			}
+			$products .= $rgt->modelcompound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
+		}
+		
+	}
+	if ($self->direction() eq "=") {
+		$reactants .= " <=> ";
+	} elsif ($self->direction() eq ">") {
+		$reactants .= " => ";
+	} elsif ($self->direction() eq "<") {
+		$reactants .= " <= ";
+	} else {
+		$reactants .= $self->direction();
+	}
+	return $reactants.$products;
+}
+sub _buildmodelCompartmentLabel {
+	my ($self) = @_;
+	return $self->modelcompartment()->label();
+}
+sub _buildgprString {
+	my ($self) = @_;
+	if (defined($self->gpr()->[0])) {
+		return $self->gpr()->[0]->rawGPR();
+	} else {
+		return "Unknown";	
+	}
+}
 
 #***********************************************************************************************************
 # CONSTANTS:

@@ -14,7 +14,7 @@ extends 'ModelSEED::MS::DB::Annotation';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has definition => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
+has definition => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 
 
 #***********************************************************************************************************
@@ -55,7 +55,7 @@ sub createStandardFBAModel {
 		$type = "Metagenome";
 	}
 	my $mdl = ModelSEED::MS::Model->new({
-		id => $args->{prefix}.$self->id(),
+		id => $args->{prefix}.$self->genomes()->[0]->id(),
 		version => 0,
 		type => $type,
 		name => $self->name(),
@@ -82,7 +82,7 @@ Description:
 sub classifyGenomeFromAnnotation {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{});
-	
+	return "Gram negative";
 }
 
 __PACKAGE__->meta->make_immutable;

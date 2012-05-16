@@ -17,13 +17,13 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAResults', type => 'parent', 
 
 
 # ATTRIBUTES:
-has modelreaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has lowerBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has upperBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has min => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has max => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
-has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed' );
+has modelreaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has lowerBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has upperBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has min => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has max => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 

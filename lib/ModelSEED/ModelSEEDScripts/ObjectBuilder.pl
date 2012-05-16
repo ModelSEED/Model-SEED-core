@@ -73,6 +73,9 @@ foreach my $name (keys(%{$objects})) {
 			$suffix .= ", lazy => 1, builder => '_buildmodDate'";
 			$modDate = 1;
 		}
+		if (defined($attribute->{printOrder})) {
+			$suffix .= ", printOrder => '".$attribute->{printOrder}."'";
+		}
 		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
 	}
 	push(@{$output},("",""));
@@ -90,6 +93,9 @@ foreach my $name (keys(%{$objects})) {
 		foreach my $subobject (@{$object->{subobjects}}) {
 			$typeToFunction->{$subobject->{class}} = $subobject->{name};
 			$type = ", type => '".$subobject->{type}."(".$subobject->{class}.")', metaclass => 'Typed'";
+			if (defined($subobject->{printOrder})) {
+				$type .= ", printOrder => '".$subobject->{printOrder}."'";
+			}
 			if ($subobject->{type} =~ m/hasharray\((.+)\)/) {
 				$type = ", type => 'hasharray(".$subobject->{class}.",".$1.")', metaclass => 'Typed'";
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]'".$type.");");

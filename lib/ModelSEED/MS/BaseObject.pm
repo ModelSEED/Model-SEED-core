@@ -25,6 +25,13 @@ has type => (
       predicate => 'has_type',
 );
 
+has printOrder => (
+      is        => 'rw',
+      isa       => 'Int',
+      predicate => 'has_printOrder',
+      default => '-1',
+);
+
 package Moose::Meta::Attribute::Custom::Typed;
 sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
 
@@ -148,66 +155,73 @@ sub _buildid {
 ######################################################################
 #Output functions
 ######################################################################
-sub createReadableFormat {
+sub createReadableStringArray {
 	my ($self) = @_;
-	my $output = ["Attributes{"];
-	my $class = 'ModelSEED::MS::DB::'.$self->_type();
-	my $blacklist = {
-		modDate => 1,
-		locked => 1,
-		cksum => 1
-	};
-	my $line = "";
-	foreach my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->type() eq "attribute" && !defined($blacklist->{$attr->name()})) {
-			my $name = $attr->name();
-			if (length($line) == 0) {
-				$line .= "\t";	
-			}
-			$line .= $self->$name();
-		}
+	my $output = ["Attributes {"];
+	my $data = $self->createReadableData();
+	for (my $i=0; $i < @{$data->{attributes}->{headings}}; $i++) {
+		push(@{$output},"\t".$data->{attributes}->{headings}->[$i].":".$data->{attributes}->{data}->[0]->[$i])
 	}
-	foreach my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
-			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-				my $name = $attr->name();
-				push(@{$output},$name."(){");
-				my $objects = $self->$name();
-				foreach my $object ($objects) {
-					push(@{$output},$object->createReadableLine());
-				}	
-				push(@{$output},"}");
+	push(@{$output},"}");
+	if (defined($data->{subobjects})) {
+		for (my $i=0; $i < @{$data->{subobjects}}; $i++) {
+			push(@{$output},$data->{subobjects}->[$i]->{name}." (".join("\t",@{$data->{subobjects}->[$i]->{headings}}).") {");
+			for (my $j=0; $j < @{$data->{subobjects}->[$i]->{data}}; $j++) {
+				push(@{$output},join("\t",@{$data->{subobjects}->[$i]->{data}->[$j]}));
 			}
+			push(@{$output},"}");
 		}
 	}
 	return $output;
 }
 
-sub createReadableLine {
+sub createReadableData {
 	my ($self) = @_;
-	my $output = ["Attributes{"];
-	my $class = 'ModelSEED::MS::DB::'.$self->_type();
-	foreach my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed' && $attr->type() eq "attribute")) {
-			my $name = $attr->name();
-			push(@{$output},$name." = ".$self->$name());
-		}
+	my $data;
+	my ($sortedAtt,$sortedSO) = $self->getReadableAttributes();
+	$data->{attributes}->{headings} = $sortedAtt;
+	for (my $i=0; $i < @{$data->{attributes}->{headings}}; $i++) {
+		my $att = $data->{attributes}->{headings}->[$i];
+		push(@{$data->{attributes}->{data}->[0]},$self->$att());
 	}
-	push(@{$output},"}");
-	foreach my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
-			if ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-				my $name = $attr->name();
-				push(@{$output},$name."(){");
-				my $objects = $self->$name();
-				foreach my $object ($objects) {
-					push(@{$output},$object->createReadableLine());
-				}	
-				push(@{$output},"}");
+	for (my $i=0; $i < @{$sortedSO}; $i++) {
+		my $so = $sortedSO->[$i];
+		my $soData = {name => $so};
+		my $objects = $self->$so();
+		if (defined($objects->[0])) {
+			my ($sortedAtt,$sortedSO) = $objects->[0]->getReadableAttributes();
+			$soData->{headings} = $sortedAtt;
+			for (my $j=0; $j < @{$objects}; $j++) {
+				for (my $k=0; $k < @{$sortedAtt}; $k++) {
+					my $att = $sortedAtt->[$k];
+					$soData->{data}->[$j]->[$k] = $objects->[$j]->$att();
+				}
 			}
+			push(@{$data->{subobjects}},$soData);
 		}
 	}
-	return $output;
+	return $data;
+}
+
+sub getReadableAttributes {
+	my ($self) = @_;
+	my $priority = {};
+	my $attributes = [];
+	my $prioritySO = {};
+	my $attributesSO = [];
+	my $class = 'ModelSEED::MS::'.$self->_type();
+	foreach my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->printOrder() != -1 && ($attr->type() eq "attribute" || $attr->type() eq "msdata")) {
+			push(@{$attributes},$attr->name());
+			$priority->{$attr->name()} = $attr->printOrder();
+		} elsif ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->printOrder() != -1) {
+			push(@{$attributesSO},$attr->name());
+			$prioritySO->{$attr->name()} = $attr->printOrder();
+		}
+	}
+	my $sortedAtt = [sort { $priority->{$a} <=> $priority->{$b} } @{$attributes}];
+	my $sortedSO = [sort { $prioritySO->{$a} <=> $prioritySO->{$b} } @{$attributesSO}];
+	return ($sortedAtt,$sortedSO);
 }
 
 ######################################################################
@@ -313,9 +327,11 @@ sub remove {
 
 sub getLinkedObject {
 	my ($self,$sourceType,$type,$attribute,$value) = @_;
-	my $sourceTypeLC = $sourceType;
-    if(ref($self) =~ /$sourceTypeLC/) {
+	my $sourceTypeLC = lc($sourceType);
+    if(ref($self) =~ /:$sourceType$/) {
         return $self->getObject($type, {$attribute => $value}); 
+    } elsif (defined($self->$sourceTypeLC())) {
+        return $self->$sourceTypeLC()->getLinkedObject($sourceType, $type, $attribute, $value);;
     } elsif(ref($self->parent) eq 'ModelSEED::Store') {
         if($attribute eq 'uuid') {
             my $o = $self->parent->get_object_by_uuid($type, $value);
@@ -324,22 +340,11 @@ sub getLinkedObject {
         } else {
             return $self->parent->get_object($type, $value);
         }
+    } elsif (!defined($self->parent)) {
+    	ModelSEED::utilities::ERROR("Attempting to get linked object from parent that doesn't exist!");
     } else {
         return $self->parent->getLinkedObject($sourceType, $type, $attribute, $value);
     }
-=cut
-	my $parent = $self->$soureType();
-	my $object;
-	if (ref($parent) eq "ModelSEED::Store") {
-		$object = $parent->get_object($type,$value);
-	} else {
-		$object = $parent->getObject($type,{$attribute => $value});
-	}
-	if (!defined($object)) {
-		ModelSEED::utilities::ERROR($type.' '.$value." not found in ".$soureType."!");
-	}
-	return $object;
-=cut
 }
 
 sub biochemistry {
@@ -348,7 +353,7 @@ sub biochemistry {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Biochemistry object in tree!";
+        return $parent->biochemistry();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
@@ -359,7 +364,7 @@ sub model {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Model object in tree!";
+        return $parent->model();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
@@ -370,7 +375,7 @@ sub annotation {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Annotation object in tree!";
+        return $parent->annotation();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
@@ -381,7 +386,7 @@ sub mapping {
 	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
 		return $parent;
 	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find mapping object in tree!";
+        return $parent->mapping();
 	}
 	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }
