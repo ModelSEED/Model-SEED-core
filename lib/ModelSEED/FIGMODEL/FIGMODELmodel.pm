@@ -2005,6 +2005,16 @@ sub completeGapfilling {
 	$fbaObj->filename($args->{problemDirectory});
 	print "Creating problem directory: ",$fbaObj->filename(),"\n";
 
+	#Added by seaver to counter bug introduced using "Biomass" name
+	$args->{fbaStartParameters}->{parameters}->{objective}="MAX;DRAIN_FLUX;cpd11416;c;-1";
+
+	my $biomass=$self->ppo()->biomassReaction();
+	$args->{fbaStartParameters}->{parameters}->{"metabolites to optimize"}="REACTANTS;".$biomass;
+
+	if($self->figmodel->user() eq "seaver"){
+	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
+	}
+
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 	#Printing list of inactive reactions
 	if ($args->{iterative} == 0) {
@@ -7654,6 +7664,17 @@ sub fbaCalculateGrowth {
 	}
 	$args->{fbaStartParameters}->{parameters}->{"optimize metabolite production if objective is zero"} = 1;
 	$args->{fbaStartParameters}->{parameters}->{"MFASolver"} = "GLPK";
+
+	#Added by seaver to counter bug introduced using "Biomass" name
+	$args->{fbaStartParameters}->{parameters}->{objective}="MAX;DRAIN_FLUX;cpd11416;c;-1";
+
+	my $biomass=$self->ppo()->biomassReaction();
+	$args->{fbaStartParameters}->{parameters}->{"metabolites to optimize"}="REACTANTS;".$biomass;
+
+	if($self->figmodel->user() eq "seaver"){
+	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
+	}
+
 	my $result = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
