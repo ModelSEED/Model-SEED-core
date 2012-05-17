@@ -1,15 +1,10 @@
-Build
 Build.PL
-config/environment.dat
-config/newenvironment.dat
 'Configuration Instructions.txt'
 lib/BuildEnv/build.perl
 lib/BuildEnv/module-list
 lib/BuildEnv/ms-build-modules.pl
 lib/BuildEnv/ms-build-perl.sh
 lib/FigKernelPackages/Tracer.pm
-lib/ModelSEED/App/bio.pm
-lib/ModelSEED/App/bio/Command/info.pm
 lib/ModelSEED/App/mseed.pm
 lib/ModelSEED/App/mseed/Command/error.pm
 lib/ModelSEED/App/mseed/Command/get.pm
@@ -269,7 +264,6 @@ lib/ModelSEED/MS/Environment.pm
 lib/ModelSEED/MS/Experiment.pm
 lib/ModelSEED/MS/ExperimentDataPoint.pm
 lib/ModelSEED/MS/Factories/Biochemistry.pm
-lib/ModelSEED/MS/Factories/Model.pm
 lib/ModelSEED/MS/Factories/PPOFactory.pm
 lib/ModelSEED/MS/Factories/SEEDFactory.pm
 lib/ModelSEED/MS/FBACompoundConstraint.pm
@@ -288,7 +282,6 @@ lib/ModelSEED/MS/Genome.pm
 lib/ModelSEED/MS/IndexedObject.pm
 lib/ModelSEED/MS/Insertion.pm
 lib/ModelSEED/MS/InstanceTransport.pm
-lib/ModelSEED/MS/LazyHolder.pm
 lib/ModelSEED/MS/LazyHolder/Annotation.pm
 lib/ModelSEED/MS/LazyHolder/Biochemistry.pm
 lib/ModelSEED/MS/LazyHolder/Biomass.pm
@@ -506,7 +499,6 @@ lib/ModelSEED/StrainDB/PREDICTIONS.pm
 lib/ModelSEED/StrainDB/STRAIN.pm
 lib/ModelSEED/StrainDB/STRAIN_CONTIG.pm
 lib/ModelSEED/StrainDB/StrainDB.xml
-lib/ModelSEED/test
 lib/ModelSEED/TestingHelpers.pm
 lib/ModelSEED/utilities.pm
 lib/ModelSEEDScripts/strain_database_dump.pl
@@ -617,11 +609,7 @@ lib/PPO/PPOBackend/SQLite.pm
 lib/PPO/PPOGenerator.pm
 LICENSE.TXT
 MANIFEST			This list of files
-MANIFEST.bak
 MANIFEST.SKIP
-modelTablesForKbase.pl
-pod2htmd.tmp
-pod2htmi.tmp
 software/mfatoolkit/Include/AtomCPP.h
 software/mfatoolkit/Include/AtomType.h
 software/mfatoolkit/Include/CPLEXapi.h
@@ -652,7 +640,6 @@ software/mfatoolkit/Input/GroupTranslation.txt
 software/mfatoolkit/Input/HopeScenarios.txt
 software/mfatoolkit/Input/ReactionDatabase.txt
 software/mfatoolkit/Linux/makefile
-software/mfatoolkit/Linux/mfatoolkit
 software/mfatoolkit/Linux/SystemParameters.txt
 software/mfatoolkit/Parameters/ArgonneProcessing.txt
 software/mfatoolkit/Parameters/Defaults.txt
