@@ -20,9 +20,7 @@ use Spreadsheet::WriteExcel;
 use DBI;
 use Encode;
 use XML::DOM;
-use Class::Autouse qw(
-    SAPserver
-);
+use SAPserver
 use ModelSEED::globals;
 package ModelSEED::FIGMODEL;
 our $VERSION = '0.01';
