@@ -19,6 +19,7 @@ my $builder = Module::Build->new(
         "AutoLoader" => 5.70,
         "Carp" => 1.17,
         "Class::ISA" => 0.36,
+        "Class::Autouse" => 0,
         "Config::Tiny" => 2.14,
         "Cwd" => 3.31,
         "DBI" => 1.616,
