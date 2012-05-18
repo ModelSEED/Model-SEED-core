@@ -20,10 +20,11 @@ use Spreadsheet::WriteExcel;
 use DBI;
 use Encode;
 use XML::DOM;
-use SAPserver;
+use SAPserver
 use ModelSEED::globals;
 package ModelSEED::FIGMODEL;
 our $VERSION = '0.01';
+$MODELSEED::FIGMODEL::VERSION = $VERSION;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
 use Time::ParseDate;

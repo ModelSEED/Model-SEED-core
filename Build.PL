@@ -5,6 +5,7 @@ use Module::Build;
 
 my $builder = Module::Build->new(
     module_name         => 'ModelSeedCore',
+    dist_abstract       => "Core libraries for the Model SEED",
     license             => 'perl',
     dist_author         => q{Chris Henry <cshenry@mcs.anl.gov>},
     dist_version_from   => 'lib/ModelSEED/FIGMODEL.pm',
@@ -12,12 +13,13 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
     },
     requires => {
-        'perl' => 5.12,
+        'perl' => ">= 5.12.0",
         "App::Cmd" => 0,
         "Archive::Tar" => 1.54,
         "AutoLoader" => 5.70,
         "Carp" => 1.17,
         "Class::ISA" => 0.36,
+        "Class::Autouse" => 0,
         "Config::Tiny" => 2.14,
         "Cwd" => 3.31,
         "DBI" => 1.616,
@@ -34,7 +36,7 @@ my $builder = Module::Build->new(
         "File::Copy::Recursive" => 0.38,
         "File::HomeDir" => 0.98,
         "File::NFSLock" => 1.21,
-        "File::Path" => 2.08_01,
+        "File::Path" => ">= 2.08",
         "File::Temp" => 0.22,
         "File::stat" => 1.02,
         "FileHandle" => 2.02,
