@@ -2539,7 +2539,7 @@ sub mdlloadbiomass {
 			equation => $args->{equation},
 			biomassID => $args->{biomass}
 	    });
-	    my $msg = "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
+	    $msg .= "Successfully loaded biomass reaction ".$args->{biomass}.".\n"; 
 	}
 
 	#Adjusting the model if a model was specified
