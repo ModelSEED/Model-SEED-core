@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::Strain;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::Strain;
+use ModelSEED::MS::Strain;
 
-coerce 'ModelSEED::MS::DB::Strain',
+coerce 'ModelSEED::MS::Strain',
     from 'HashRef',
     via { ModelSEED::MS::DB::Strain->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfStrain',
-    as 'ArrayRef[ModelSEED::MS::DB::Strain]';
+    as 'ArrayRef[ModelSEED::MS::Strain]';
 coerce 'ModelSEED::MS::ArrayRefOfStrain',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::Strain->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::Strain->new( $_ ) } @{$_} ] };
 
 1;

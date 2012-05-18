@@ -225,16 +225,16 @@ foreach my $name (keys(%{$objects})) {
 #
 package ModelSEED::MS::Types::$name;
 use Moose::Util::TypeConstraints;
-use $dbPackage;
+use $msPackage;
 
-coerce '$dbPackage',
+coerce '$msPackage',
     from 'HashRef',
     via { $dbPackage->new(\$_) };
 subtype '$collectionSubtype',
-    as 'ArrayRef[$dbPackage]';
+    as 'ArrayRef[$msPackage]';
 coerce '$collectionSubtype',
     from 'ArrayRef',
-    via { [ map { $dbPackage->new( \$_ ) } \@{\$_} ] };
+    via { [ map { $msPackage->new( \$_ ) } \@{\$_} ] };
 
 1;
 HEREDOC

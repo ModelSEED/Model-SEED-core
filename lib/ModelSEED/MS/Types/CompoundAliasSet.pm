@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::CompoundAliasSet;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::CompoundAliasSet;
+use ModelSEED::MS::CompoundAliasSet;
 
-coerce 'ModelSEED::MS::DB::CompoundAliasSet',
+coerce 'ModelSEED::MS::CompoundAliasSet',
     from 'HashRef',
     via { ModelSEED::MS::DB::CompoundAliasSet->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompoundAliasSet',
-    as 'ArrayRef[ModelSEED::MS::DB::CompoundAliasSet]';
+    as 'ArrayRef[ModelSEED::MS::CompoundAliasSet]';
 coerce 'ModelSEED::MS::ArrayRefOfCompoundAliasSet',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::CompoundAliasSet->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::CompoundAliasSet->new( $_ ) } @{$_} ] };
 
 1;

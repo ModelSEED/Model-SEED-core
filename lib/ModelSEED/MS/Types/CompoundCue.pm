@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::CompoundCue;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::CompoundCue;
+use ModelSEED::MS::CompoundCue;
 
-coerce 'ModelSEED::MS::DB::CompoundCue',
+coerce 'ModelSEED::MS::CompoundCue',
     from 'HashRef',
     via { ModelSEED::MS::DB::CompoundCue->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompoundCue',
-    as 'ArrayRef[ModelSEED::MS::DB::CompoundCue]';
+    as 'ArrayRef[ModelSEED::MS::CompoundCue]';
 coerce 'ModelSEED::MS::ArrayRefOfCompoundCue',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::CompoundCue->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::CompoundCue->new( $_ ) } @{$_} ] };
 
 1;

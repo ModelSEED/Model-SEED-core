@@ -82,6 +82,22 @@ sub printJSONFile {
 	ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
 }
 
+sub setParents {
+	my ($self,$parent) = @_;
+	if (defined($parent)) {
+		$self->parent($parent);
+	}
+	my $class = 'ModelSEED::MS::'.$self->_type();
+	for my $attr ( $class->meta->get_all_attributes ) {
+		if ($attr->isa('ModelSEED::Meta::Attribute::Typed') && ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/)) {
+			my $name = $attr->name();
+			for (my $i=0; $i < @{$self->$name()}; $i++) {
+				$self->$name()->[$i]->setParents($self);
+			}
+		}
+	}
+}
+
 ######################################################################
 #Alias functions
 ######################################################################
@@ -97,12 +113,12 @@ sub getAlias {
 
 sub getAliases {
 	my ($self,$aliasSet) = @_;
-	if (!defined($aliasSet)) {
-		ModelSEED::utilities::ERROR("The 'getAliases' function requires a 'set' as input!");
-	}
 	my $aliasowner = lc($self->_aliasowner());
 	my $owner = $self->$aliasowner();
 	my $aliasSetClass = $self->_type()."AliasSet";
+	if (!defined($aliasSet)) {
+		$aliasSet = $owner->defaultNameSpace();
+	}
 	my $aliasset = $owner->getObject($aliasSetClass,{type => $aliasSet});
 	if (!defined($aliasset)) {
 		print "Alias set ".$aliasset." not found!\n";
@@ -118,12 +134,7 @@ sub getAliases {
 
 sub _buildid {
 	my ($self) = @_;
-	my $aliasSetClass = $self->_type()."AliasSet";
-	my $set = $self->objectmanager()->getSelectedAliases($aliasSetClass);
-	if (!defined($set)) {
-		return $self->uuid();
-	}
-	return $self->getAlias($set);
+	return $self->getAlias();
 }
 
 ######################################################################

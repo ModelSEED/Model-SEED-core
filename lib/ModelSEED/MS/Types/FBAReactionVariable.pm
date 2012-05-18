@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::FBAReactionVariable;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::FBAReactionVariable;
+use ModelSEED::MS::FBAReactionVariable;
 
-coerce 'ModelSEED::MS::DB::FBAReactionVariable',
+coerce 'ModelSEED::MS::FBAReactionVariable',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAReactionVariable->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAReactionVariable',
-    as 'ArrayRef[ModelSEED::MS::DB::FBAReactionVariable]';
+    as 'ArrayRef[ModelSEED::MS::FBAReactionVariable]';
 coerce 'ModelSEED::MS::ArrayRefOfFBAReactionVariable',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::FBAReactionVariable->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::FBAReactionVariable->new( $_ ) } @{$_} ] };
 
 1;

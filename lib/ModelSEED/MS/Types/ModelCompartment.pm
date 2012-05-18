@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::ModelCompartment;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::ModelCompartment;
+use ModelSEED::MS::ModelCompartment;
 
-coerce 'ModelSEED::MS::DB::ModelCompartment',
+coerce 'ModelSEED::MS::ModelCompartment',
     from 'HashRef',
     via { ModelSEED::MS::DB::ModelCompartment->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfModelCompartment',
-    as 'ArrayRef[ModelSEED::MS::DB::ModelCompartment]';
+    as 'ArrayRef[ModelSEED::MS::ModelCompartment]';
 coerce 'ModelSEED::MS::ArrayRefOfModelCompartment',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::ModelCompartment->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::ModelCompartment->new( $_ ) } @{$_} ] };
 
 1;

@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::Genome;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::Genome;
+use ModelSEED::MS::Genome;
 
-coerce 'ModelSEED::MS::DB::Genome',
+coerce 'ModelSEED::MS::Genome',
     from 'HashRef',
     via { ModelSEED::MS::DB::Genome->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfGenome',
-    as 'ArrayRef[ModelSEED::MS::DB::Genome]';
+    as 'ArrayRef[ModelSEED::MS::Genome]';
 coerce 'ModelSEED::MS::ArrayRefOfGenome',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::Genome->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::Genome->new( $_ ) } @{$_} ] };
 
 1;

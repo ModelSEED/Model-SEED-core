@@ -19,6 +19,7 @@ $objectDefinitions->{FBAProblem} = {
 		{name => "objectiveTerms",class => "ObjectiveTerm",type => "child"},
 		{name => "constraints",class => "Constraint",type => "child"},
 		{name => "variables",class => "Variable",type => "child"},
+		{name => "solutions",class => "Solution",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => []
@@ -106,6 +107,54 @@ $objectDefinitions->{Variable} = {
 		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
 		{name => "upperBoundDualVariable",attribute => "upperBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
 		{name => "lowerBoundDualVariable",attribute => "lowerBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{FBASolution} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'status',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'method',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'feasible',printOrder => 0,perm => 'rw',type => 'Bool',req => 0},
+		{name => 'objective',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+	],
+	subobjects => [
+		{name => "solutionconstraints",class => "SolutionConstraint",type => "child"},
+		{name => "solutionvariables",class => "SolutionVariable",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{SolutionConstraint} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'constraint_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'slack',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "constraint",attribute => "constraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{SolutionVariable} = {
+	parents => ['FBAProblem'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'variable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'value',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"}
 	]
 };
 
@@ -1049,13 +1098,13 @@ $objectDefinitions->{Annotation} = {
 		{name => 'defaultNameSpace',printOrder => 3,perm => 'rw',type => 'Str',len => 32,req => 0,default => "SEED"},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'mapping_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid'}
+		{name => 'name',printOrder => 1,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'mapping_uuid',printOrder => 2,perm => 'rw',type => 'ModelSEED::uuid'}
 	],
 	subobjects => [
-		{name => "genomes",class => "Genome",type => "child"},
-		{name => "features",class => "Feature",type => "child"},
-		{name => "subsystemStates",class => "SubsystemState",type => "child"},
+		{name => "genomes",printOrder => 0,class => "Genome",type => "child"},
+		{name => "features",printOrder => 1,class => "Feature",type => "child"},
+		{name => "subsystemStates",printOrder => 2,class => "SubsystemState",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
@@ -1070,15 +1119,15 @@ $objectDefinitions->{Feature} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
 		{name => 'locked',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'id',printOrder => 0,perm => 'rw',type => 'Str',len => 32,req => 1},
-		{name => 'cksum',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'genome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'start',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
-		{name => 'stop',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
-		{name => 'contig',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'direction',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'sequence',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'id',printOrder => 1,perm => 'rw',type => 'Str',len => 32,req => 1},
+		{name => 'cksum',printOrder => -1,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'genome_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'start',printOrder => 3,perm => 'rw',type => 'Int',req => 0},
+		{name => 'stop',printOrder => 4,perm => 'rw',type => 'Int',req => 0},
+		{name => 'contig',printOrder => 5,perm => 'rw',type => 'Str',req => 0},
+		{name => 'direction',printOrder => 6,perm => 'rw',type => 'Str',req => 0},
+		{name => 'sequence',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'type',printOrder => 7,perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
 		{name => "featureroles",class => "FeatureRole",type => "encompassed"},

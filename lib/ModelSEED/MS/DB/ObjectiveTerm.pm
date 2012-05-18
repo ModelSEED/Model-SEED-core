@@ -20,6 +20,8 @@ has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass =>
 has variable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
+
+
 # LINKS:
 has variable => (is => 'rw',lazy => 1,builder => '_buildvariable',isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,Variable,uuid,variable_uuid)', metaclass => 'Typed',weak_ref => 1);
 

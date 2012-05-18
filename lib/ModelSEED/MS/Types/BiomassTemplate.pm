@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::BiomassTemplate;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::BiomassTemplate;
+use ModelSEED::MS::BiomassTemplate;
 
-coerce 'ModelSEED::MS::DB::BiomassTemplate',
+coerce 'ModelSEED::MS::BiomassTemplate',
     from 'HashRef',
     via { ModelSEED::MS::DB::BiomassTemplate->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfBiomassTemplate',
-    as 'ArrayRef[ModelSEED::MS::DB::BiomassTemplate]';
+    as 'ArrayRef[ModelSEED::MS::BiomassTemplate]';
 coerce 'ModelSEED::MS::ArrayRefOfBiomassTemplate',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::BiomassTemplate->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::BiomassTemplate->new( $_ ) } @{$_} ] };
 
 1;

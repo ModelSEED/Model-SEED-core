@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::ComplexRole;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::ComplexRole;
+use ModelSEED::MS::ComplexRole;
 
-coerce 'ModelSEED::MS::DB::ComplexRole',
+coerce 'ModelSEED::MS::ComplexRole',
     from 'HashRef',
     via { ModelSEED::MS::DB::ComplexRole->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfComplexRole',
-    as 'ArrayRef[ModelSEED::MS::DB::ComplexRole]';
+    as 'ArrayRef[ModelSEED::MS::ComplexRole]';
 coerce 'ModelSEED::MS::ArrayRefOfComplexRole',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::ComplexRole->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::ComplexRole->new( $_ ) } @{$_} ] };
 
 1;

@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::CompoundPk;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::CompoundPk;
+use ModelSEED::MS::CompoundPk;
 
-coerce 'ModelSEED::MS::DB::CompoundPk',
+coerce 'ModelSEED::MS::CompoundPk',
     from 'HashRef',
     via { ModelSEED::MS::DB::CompoundPk->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfCompoundPk',
-    as 'ArrayRef[ModelSEED::MS::DB::CompoundPk]';
+    as 'ArrayRef[ModelSEED::MS::CompoundPk]';
 coerce 'ModelSEED::MS::ArrayRefOfCompoundPk',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::CompoundPk->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::CompoundPk->new( $_ ) } @{$_} ] };
 
 1;

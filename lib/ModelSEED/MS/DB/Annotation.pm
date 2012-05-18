@@ -23,8 +23,8 @@ has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metacla
 has defaultNameSpace => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'SEED', printOrder => '3' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
-has mapping_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has mapping_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '2' );
 
 
 # ANCESTOR:
@@ -32,9 +32,9 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has genomes => (is => 'bare', coerce => 1, handles => { genomes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Genome::Lazy', type => 'child(Genome)', metaclass => 'Typed');
-has features => (is => 'bare', coerce => 1, handles => { features => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Feature::Lazy', type => 'child(Feature)', metaclass => 'Typed');
-has subsystemStates => (is => 'bare', coerce => 1, handles => { subsystemStates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::SubsystemState::Lazy', type => 'child(SubsystemState)', metaclass => 'Typed');
+has genomes => (is => 'bare', coerce => 1, handles => { genomes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Genome::Lazy', type => 'child(Genome)', metaclass => 'Typed', printOrder => '0');
+has features => (is => 'bare', coerce => 1, handles => { features => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Feature::Lazy', type => 'child(Feature)', metaclass => 'Typed', printOrder => '1');
+has subsystemStates => (is => 'bare', coerce => 1, handles => { subsystemStates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::SubsystemState::Lazy', type => 'child(SubsystemState)', metaclass => 'Typed', printOrder => '2');
 
 
 # LINKS:

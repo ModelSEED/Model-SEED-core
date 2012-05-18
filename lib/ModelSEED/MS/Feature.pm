@@ -11,10 +11,38 @@ package ModelSEED::MS::Feature;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::Feature';
+#***********************************************************************************************************
+# ADDITIONAL ATTRIBUTES:
+#***********************************************************************************************************
+has genomeID => ( is => 'rw',printOrder => 2, isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildgenomeID' );
+has roleList => ( is => 'rw',printOrder => 8, isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildroleList' );
+
+#***********************************************************************************************************
+# BUILDERS:
+#***********************************************************************************************************
+sub _buildgenomeID {
+	my ($self) = @_;
+	return $self->genome()->id();
+}
+sub _buildroleList {
+	my ($self) = @_;
+	my $roleList = "";
+	for (my $i=0; $i < @{$self->featureroles()}; $i++) {
+		if (length($roleList) > 0) {
+			$roleList .= ";";
+		}
+		$roleList .= $self->featureroles()->[$i]->role()->name();
+	}
+	return $roleList;
+}
+
+#***********************************************************************************************************
 # CONSTANTS:
-#TODO
+#***********************************************************************************************************
+
+#***********************************************************************************************************
 # FUNCTIONS:
-#TODO
+#***********************************************************************************************************
 
 
 __PACKAGE__->meta->make_immutable;

@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::ReactionAliasSet;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::ReactionAliasSet;
+use ModelSEED::MS::ReactionAliasSet;
 
-coerce 'ModelSEED::MS::DB::ReactionAliasSet',
+coerce 'ModelSEED::MS::ReactionAliasSet',
     from 'HashRef',
     via { ModelSEED::MS::DB::ReactionAliasSet->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfReactionAliasSet',
-    as 'ArrayRef[ModelSEED::MS::DB::ReactionAliasSet]';
+    as 'ArrayRef[ModelSEED::MS::ReactionAliasSet]';
 coerce 'ModelSEED::MS::ArrayRefOfReactionAliasSet',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::ReactionAliasSet->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::ReactionAliasSet->new( $_ ) } @{$_} ] };
 
 1;

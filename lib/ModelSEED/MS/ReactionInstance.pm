@@ -36,7 +36,7 @@ sub _buildequationcode {
 }
 sub _buildcompartmentName {
 	my ($self,$args) = @_;
-	return $self->compartment()->label();
+	return $self->compartment()->name();
 }
 
 #***********************************************************************************************************

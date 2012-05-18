@@ -10,6 +10,7 @@ use Moose::Util::TypeConstraints;
 use ModelSEED::MS::LazyHolder::ObjectiveTerm;
 use ModelSEED::MS::LazyHolder::Constraint;
 use ModelSEED::MS::LazyHolder::Variable;
+use ModelSEED::MS::LazyHolder::Solution;
 extends 'ModelSEED::MS::IndexedObject';
 use namespace::autoclean;
 
@@ -36,6 +37,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 has objectiveTerms => (is => 'bare', coerce => 1, handles => { objectiveTerms => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ObjectiveTerm::Lazy', type => 'child(ObjectiveTerm)', metaclass => 'Typed');
 has constraints => (is => 'bare', coerce => 1, handles => { constraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Constraint::Lazy', type => 'child(Constraint)', metaclass => 'Typed');
 has variables => (is => 'bare', coerce => 1, handles => { variables => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Variable::Lazy', type => 'child(Variable)', metaclass => 'Typed');
+has solutions => (is => 'bare', coerce => 1, handles => { solutions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Solution::Lazy', type => 'child(Solution)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -51,6 +53,7 @@ sub _typeToFunction {
 	return {
 		ObjectiveTerm => 'objectiveTerms',
 		Constraint => 'constraints',
+		Solution => 'solutions',
 		Variable => 'variables',
 	};
 }

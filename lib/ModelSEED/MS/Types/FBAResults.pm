@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::FBAResults;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::FBAResults;
+use ModelSEED::MS::FBAResults;
 
-coerce 'ModelSEED::MS::DB::FBAResults',
+coerce 'ModelSEED::MS::FBAResults',
     from 'HashRef',
     via { ModelSEED::MS::DB::FBAResults->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfFBAResults',
-    as 'ArrayRef[ModelSEED::MS::DB::FBAResults]';
+    as 'ArrayRef[ModelSEED::MS::FBAResults]';
 coerce 'ModelSEED::MS::ArrayRefOfFBAResults',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::FBAResults->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::FBAResults->new( $_ ) } @{$_} ] };
 
 1;

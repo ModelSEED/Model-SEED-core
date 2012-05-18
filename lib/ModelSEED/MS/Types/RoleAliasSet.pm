@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::RoleAliasSet;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::RoleAliasSet;
+use ModelSEED::MS::RoleAliasSet;
 
-coerce 'ModelSEED::MS::DB::RoleAliasSet',
+coerce 'ModelSEED::MS::RoleAliasSet',
     from 'HashRef',
     via { ModelSEED::MS::DB::RoleAliasSet->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfRoleAliasSet',
-    as 'ArrayRef[ModelSEED::MS::DB::RoleAliasSet]';
+    as 'ArrayRef[ModelSEED::MS::RoleAliasSet]';
 coerce 'ModelSEED::MS::ArrayRefOfRoleAliasSet',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::RoleAliasSet->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::RoleAliasSet->new( $_ ) } @{$_} ] };
 
 1;

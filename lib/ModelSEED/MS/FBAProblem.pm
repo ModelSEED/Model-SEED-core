@@ -230,14 +230,22 @@ Description:
 sub submitLPFile {
 	my ($self) = @_;
 	my $command;
+	my $solution = $self->create("FBASolution",{parent => $self});
 	if ($self->solver() eq "cplex") {
-		$command = ModelSEED::utilities::CPLEX()." ".$self->directory()."currentProb.lp";
+		my $solver = "primopt";
+		if ($self->milp() eq "1") {
+			$solver = "mipopt";
+		}
+		ModelSEED::utilities::PRINTFILE($self->directory()."cplexcommands.txt",[
+			"read",$self->directory()."currentProb.lp",$solver,"write",$self->directory()."solution.txt","sol","quit"
+		]);
+		system(ModelSEED::utilities::CPLEX()." < ".$self->directory()."cplexcommands.txt");
+		$solution->buildFromCPLEXFile($self->directory()."solution.txt");
 	} elsif ($self->solver() eq "glpk") {
-		$command = ModelSEED::utilities::GLPK()." ".$self->directory()."currentProb.lp";
+		system(ModelSEED::utilities::GLPK()." --cpxlp ".$self->directory()."currentProb.lp -0 ".$self->directory()."solution.txt");
+		$solution->buildFromGLPKFile($self->directory()."solution.txt");
 	}
-	if (defined($command)) {
-		system($command);	
-	}
+	return $solution;
 }
 
 =head3 createFluxVariables

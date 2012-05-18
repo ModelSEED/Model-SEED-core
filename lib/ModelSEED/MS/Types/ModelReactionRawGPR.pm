@@ -3,15 +3,15 @@
 #
 package ModelSEED::MS::Types::ModelReactionRawGPR;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::DB::ModelReactionRawGPR;
+use ModelSEED::MS::ModelReactionRawGPR;
 
-coerce 'ModelSEED::MS::DB::ModelReactionRawGPR',
+coerce 'ModelSEED::MS::ModelReactionRawGPR',
     from 'HashRef',
     via { ModelSEED::MS::DB::ModelReactionRawGPR->new($_) };
 subtype 'ModelSEED::MS::ArrayRefOfModelReactionRawGPR',
-    as 'ArrayRef[ModelSEED::MS::DB::ModelReactionRawGPR]';
+    as 'ArrayRef[ModelSEED::MS::ModelReactionRawGPR]';
 coerce 'ModelSEED::MS::ArrayRefOfModelReactionRawGPR',
     from 'ArrayRef',
-    via { [ map { ModelSEED::MS::DB::ModelReactionRawGPR->new( $_ ) } @{$_} ] };
+    via { [ map { ModelSEED::MS::ModelReactionRawGPR->new( $_ ) } @{$_} ] };
 
 1;
