@@ -3,7 +3,7 @@ use ModelSEED::MS::MetaData::Definitions;
 use ModelSEED::utilities;
 use DateTime;
 
-my $objects = ModelSEED::MS::DB::Definitions::objectDefinitions();
+my $objects = ModelSEED::MS::Metadata::Definitions::objectDefinitions();
 my $subtypes = [];
 my $subtypesUse = [];
 my $subtypesOpening = <<HEREDOC;

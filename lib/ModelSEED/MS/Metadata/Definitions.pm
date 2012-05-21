@@ -1,5 +1,5 @@
 use strict;
-package ModelSEED::MS::DB::Definitions;
+package ModelSEED::MS::Metadata::Definitions;
 
 my $objectDefinitions = {};
 
