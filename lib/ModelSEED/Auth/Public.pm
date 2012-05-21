@@ -38,6 +38,7 @@ sub wrap_http_request {
     die "Not an HTTP::Request" unless($req->isa("HTTP::Request"));
     return 1;
 }
+sub username { return 'PUBLIC'; }
 
 __PACKAGE__->meta->make_immutable;
 1;
