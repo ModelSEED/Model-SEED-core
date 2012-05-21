@@ -62,14 +62,24 @@ L<http://www.mongodb.org/display/DOCS/Advanced+Queries>
 =cut
 package ModelSEED::Database;
 use Moose::Role;
+requires 'has_data';
+requires 'get_data';
+requires 'get_data_collection';
+requires 'get_data_collection_iterator';
+requires 'save_data';
+requires 'save_data_collection';
 
+requires 'delete_data';
+requires 'delete_data_collection';
+
+requires 'find_data';
+
+
+=cut
 requires 'has_object';
 requires 'get_object';
 requires 'save_object';
-requires 'put_object';
 requires 'delete_object';
-requires 'get_metadata';
-requires 'set_metadata';
-requires 'remove_metadata';
 requires 'find_objects';
+=cut
 1;
