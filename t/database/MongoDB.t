@@ -6,6 +6,28 @@ use ModelSEED::Database::MongoDB;
 use Data::Dumper;
 my $test_count = 0;
 
+{
+    my $mongo = ModelSEED::Database::MongoDB->new({ db_name => 'test' });
+    my $refs = {
+        "biochemistry/chenry/master" => "biochemistry",
+        "biochemistry/chenry/master/reactions" => "reactions",
+        "biochemistry/chenry/master/reactions/550e8400-e29b-41d4-a716-446655440000" => "reactions",
+        "biochemistry/550e8400-e29b-41d4-a716-446655440000" => "biochemistry",
+        "biochemistry/550e8400-e29b-41d4-a716-446655440000/reactions" => "reactions",
+        "biochemistry/550e8400-e29b-41d4-a716-446655440000/reactions/550e8400-e29b-41d4-a716-446655440000" => "reactions"
+    };
+    foreach my $ref (keys %$refs) {
+        my $result = $refs->{$ref};
+        my $struct = $mongo->refParse->parse($ref);
+        is $mongo->_get_collection($struct), $result, "Should get correct collection";
+        $test_count += 1;
+    }
+}
+
+
+done_testing($test_count);
+=cut
+
 # Basic object initialization
 {
     my $mongo = ModelSEED::Database::MongoDB->new({ db_name => 'test' });

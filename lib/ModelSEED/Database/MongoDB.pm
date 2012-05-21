@@ -16,6 +16,7 @@ use MongoDB;
 use MongoDB::Connection;
 use MongoDB::Database;
 use JSON::Path;
+use ModelSEED::RefParse;
 
 with 'ModelSEED::Database';
  
@@ -40,22 +41,52 @@ has db => (
 #    init_args => undef
 );
 
-$ModelSEED::Database::MongoDB::METADATA = "__metadata__";
-my $METADATA = $ModelSEED::Database::MongoDB::METADATA;
+has _collectionMap => (
+    is      => 'ro',
+    isa     => 'HashRef',
+    builder => '_buildCollectionMap',
+    lazy    => 1,
+);
 
-sub has_object {
-    my ($self, $type, $id) = @_;
-    my $o = $self->db->$type->find_one({ aliases => "$id" });
+has refParse => (
+    is => 'ro',
+    isa => 'ModelSEED::RefParse',
+    builder => '_buildRefParse',
+    lazy => 1,
+);
+
+
+$ModelSEED::Database::MongoDB::aliasCollection = "aliases";
+
+sub has_data {
+    my ($self, $ref, $auth) = @_;
+    my $refStruct = $self->refParse->parse($ref);
+    my $collection = $self->_get_collection($refStruct);
+    $query = $self->_mixin_auth_query($query, $auth->username, 'r');
+    my $id = $refStruct->{id};
+    my $username = $auth->username;
+    my $o = $self->db->$collection->find_one({ aliases => $id });
+    return 0 unless(defined($o->viewers->{$username}) || $o->{public});
     return (defined($o)) ? 1 : 0;
 }
 
-sub get_object {
-    my ($self, $type, $id) = @_;
-    my $o = $self->db->$type->find_one({ aliases => "$id" });
+sub get_data {
+    my ($self, $ref, $auth) = @_;
+    my $refStruct = $self->refParse->parse($ref);
+    # get the collection
+    my $collection = $self->_get_collection($refStruct);
+    # determine id type =>> query
+    my $query = $self->_mixin_id_query({}, $refStruct);
+    # determine ref => auth_type
+    # if auth_type on this, auth =>> query
+    # else: _get_auth(query)
+    my $id = $refStruct->{id};
+    my $username = $auth->username;
+    my $o = $self->db->$collection->find_one({ aliases => $id });
     return (defined($o)) ? $o->{data} : undef;
 }
 
-sub save_object {
+sub save_data {
     my ($self, $type, $id, $object) = @_;
     my $old = $self->db->$type->find_one({ aliases => "$id" });
     # Remove old alias reference
@@ -93,48 +124,6 @@ sub delete_object {
     $self->db->$type->remove({ aliases => "$id" }, {safe => 0, just_one => 1});
     my $errObj = $self->db->last_error();
     return (!defined($errObj->{err}) && $errObj->{ok}) ? $errObj->{n} : 0;
-}
-
-sub get_metadata {
-    my ($self, $type, $id, $selection) = @_;
-    my $o = $self->db->$type->find_one({ aliases => $id });
-    return undef unless defined $o;
-    my $meta = $o->{$METADATA};
-    unless(defined($meta)) {
-        $meta = $o->{$METADATA} = {};
-    }
-    my ($parent, $key) = _followPath($o, $selection, $METADATA);
-    return $parent->{$key};
-}
-
-sub set_metadata {
-    my ($self, $type, $id, $selection, $metadata) = @_;
-    # Kludge for 'Overwrite metadata must provide hash
-    return 0 if( $selection eq '' && ref($metadata) ne 'HASH');
-    my $o = $self->db->$type->find_one({ aliases => $id });
-    return 0 unless defined $o;
-    my $meta = $o->{$METADATA};
-    unless(defined($meta)) {
-        $meta = $o->{$METADATA} = {};
-    }
-    my ($parent, $key) = _followPath($o, $selection, $METADATA);
-    $parent->{$key} = $metadata;
-    $self->db->$type->save($o, {safe => 0});
-    my $errObj = $self->db->last_error();
-    return (!defined($errObj->{err}) && $errObj->{ok}) ? $errObj->{n} : 0;
-}
-
-sub remove_metadata {
-    my ($self, $type, $id, $selection) = @_;
-    my $o = $self->db->$type->find_one({ aliases => $id });
-    return 0 unless defined $o;
-    my $meta = $o->{$METADATA};
-    unless(defined($meta)) {
-        $meta = $o->{$METADATA} = {};
-    }
-    my ($parent, $key) = _followPath($o, $selection, $METADATA);
-    delete $parent->{$key};
-    $self->db->$type->save($o);
 }
 
 sub find_objects {
@@ -188,4 +177,60 @@ sub _followPath {
     }   
     return ($object, $last);
 }
+
+sub _get_alias_permissions {
+    my ($self, $type, $alias) = @_;
+    my $aliasCollection = $ModelSEED::Database::MongoDB::aliasCollection;
+    my $o = $self->db->$aliasCollection->find_one({ type => $type, alias => $alias });
+    return $o;
+}
+
+sub _set_alias_permissions {
+    my ($self, $type, $alias) = @_;
+    
+}
+sub _get_collection {
+    my ($self, $refParseStruct) = @_;
+    my $map = $self->_collectionMap;
+    my @base_types = @{$refParseStruct->{base_types}};
+    my $currentCollection = undef;
+    while(@base_types) {
+        my $type = shift @base_types;
+        if(ref($map) eq 'HASH' && defined($map->{$type})) {
+            $map = $map->{$type};
+            $currentCollection = $type;
+        } elsif ($map == 1) {
+            return undef;
+        }
+    }
+    return $currentCollection;
+}
+
+sub _buildCollectionMap {
+    my ($self) = @_;
+    return {
+        'biochemistry' => {
+            'reactions'    => 1,
+            'compounds'    => 1,
+            'media'        => 1,
+            'compartments' => 1,
+         },
+    };
+}
+
+sub _mixin_id_query {
+    my ($self, $query, $refStruct) = @_;
+    my ($id, $type) = ($refStruct->{id}, $refStruct->{id_type});
+    if($type eq 'uuid') {
+        return $query->{uuid} = $id;
+    } elsif($type eq 'alias') {
+        return $query->{aliases} = $id;
+    }
+}
+
+sub _buildRefParse {
+    return ModelSEED::RefParse->new();
+}
+
+
 1;
