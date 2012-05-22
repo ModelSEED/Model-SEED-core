@@ -14,41 +14,41 @@
 
 An abstract role / interface for database drivers.
 
-=head1 Methods
+=head2 Methods
 
-=head2 has_data
+=head3 has_data
 
     $bool = $db->has_data(ref, auth);
 
-=head2 get_data
+=head3 get_data
 
     $obj = $db->get_data(ref, auth);
 
-=head2 get_data_collection
+=head3 get_data_collection
 
     $collection = $db->get_data_collection(ref, auth);
 
-=head2 get_data_collection_iterator
+=head3 get_data_collection_iterator
 
     $iterator = $db->get_data_collection_itorator(ref, auth);
 
-=head2 save_data
+=head3 save_data
 
     $ref = $db->save_data(ref, data, auth);
 
-=head2 save_data_collection
+=head3 save_data_collection
 
     $bool = save_data_collection(ref, collection, auth);
 
-=head2 delete_data
+=head3 delete_data
 
     $count = $db->delete_object(ref, auth);
 
-=head2 delete_collection
+=head3 delete_collection
 
     $count = $db->delete_object(ref, auth);
 
-=head2 find_objects
+=head3 find_objects
 
     ([ids]) = $db->find_objects(ref, query, auth);
 
@@ -58,6 +58,46 @@ syntax similar to MongoDB.
 Uses MongoDB syntax like here:
 L<http://search.cpan.org/~kristina/MongoDB/lib/MongoDB/Tutorial.pod#Queries>
 L<http://www.mongodb.org/display/DOCS/Advanced+Queries>
+
+=head2 Alias Functions
+
+These functions manage aliases, which are special pointers to
+objects. These pointers have viewing permissions and can only be
+moved to a different object by their owner. Alias strings have the
+form of "username/arbitraryString" and are used in place of uuids
+in some specific objects (biochemistry, mapping and model for now).
+So a reference to a biochemistry would look like
+C<biochemistry/chenry/main>.
+
+In these functions:
+
+=over 4
+
+=item C<ref> is a L<ModelSEED::Reference>
+
+=item C<auth> is a L<ModelSEED::Auth>
+
+=item C<arbitraryString> is the free-form portion of the alias
+
+=item C<viewerUsername> is a username
+
+=back
+
+=head3 create_alias
+
+    $bool = $db->create_alias(ref, arbitraryString, auth)
+
+=head3 add_viewer
+
+    $bool = $db->add_viewer(ref, viewerUsername, auth)
+
+=head3 remove_viewer
+
+    $bool = $db->remove_viewer(ref, viewerUsername, auth)
+
+=head3 set_public
+
+    $bool = $db->set_public(ref, boolean, auth)
 
 =cut
 package ModelSEED::Database;
@@ -73,6 +113,11 @@ requires 'delete_data';
 requires 'delete_data_collection';
 
 requires 'find_data';
+
+requires 'create_alias';
+requires 'add_viewer';
+requires 'remove_viewer';
+requires 'set_public';
 
 
 =cut
