@@ -46,6 +46,16 @@ sub _buildcompound {
 # CONSTANTS:
 sub _type { return 'BiomassTemplateComponent'; }
 
+my $attributes = ['uuid', 'modDate', 'class', 'compound_uuid', 'coefficientType', 'coefficient', 'condition'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

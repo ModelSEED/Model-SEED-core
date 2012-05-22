@@ -37,6 +37,16 @@ sub _buildreactioninstance {
 # CONSTANTS:
 sub _type { return 'ReactionInstanceAlias'; }
 
+my $attributes = ['reactioninstance_uuid', 'alias'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

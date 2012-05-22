@@ -39,6 +39,16 @@ sub _buildcompound {
 # CONSTANTS:
 sub _type { return 'MediaCompound'; }
 
+my $attributes = ['compound_uuid', 'concentration', 'maxFlux', 'minFlux'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

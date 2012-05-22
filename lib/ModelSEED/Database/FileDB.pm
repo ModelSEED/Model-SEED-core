@@ -138,22 +138,30 @@ sub list_children {
 }
 
 sub _get_id_from_ref {
-    my ($self, $ref) = @_;
+    my ($self, $user, $ref) = @_;
 
 =head
 
 Possible Ref Structure
   1. { type => $type }
     Get all objects of type: $type that user can see
+      return [ids]
   2. { type => $type, id => { type => 'uuid', uuid => $uuid } }
     Get single object with uuid: $uuid
+      return id
   3. { type => $type, id => { type => 'alias', user => $user } }
     Get all objects from $user alias space that the user can see
+      return [ids]
   4. { type => $type, id => { type => 'alias', user => $user, alias => $alias } }
     Get single object with alias $user/$alias
+      return id
 
 =cut
 
+    if (!defined($ref->{id})) {
+        # find ids for type
+
+    }
 
 }
 

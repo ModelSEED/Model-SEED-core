@@ -42,6 +42,16 @@ sub _buildmodelreaction {
 # CONSTANTS:
 sub _type { return 'FBAReactionVariable'; }
 
+my $attributes = ['modelreaction_uuid', 'variableType', 'lowerBound', 'upperBound', 'min', 'max', 'value'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

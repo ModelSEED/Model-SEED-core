@@ -56,11 +56,41 @@ sub _buildmodelcompartment {
 
 # CONSTANTS:
 sub _type { return 'ModelReaction'; }
+
+my $typeToFunction = {
+	ModelReactionRawGPR => 'gpr',
+	ModelReactionReagent => 'modelReactionReagents',
+};
 sub _typeToFunction {
-	return {
-		ModelReactionRawGPR => 'gpr',
-		ModelReactionReagent => 'modelReactionReagents',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	modelReactionReagents => 'ModelReactionReagent',
+	gpr => 'ModelReactionRawGPR',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'reaction_uuid', 'direction', 'protons', 'modelcompartment_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['gpr', 'modelReactionReagents'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

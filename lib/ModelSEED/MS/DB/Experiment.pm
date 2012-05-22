@@ -44,6 +44,16 @@ sub _buildgenome {
 # CONSTANTS:
 sub _type { return 'Experiment'; }
 
+my $attributes = ['uuid', 'genome_uuid', 'name', 'description', 'institution', 'source'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

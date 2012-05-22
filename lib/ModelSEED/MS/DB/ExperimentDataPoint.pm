@@ -63,13 +63,45 @@ sub _buildmedia {
 
 # CONSTANTS:
 sub _type { return 'ExperimentDataPoint'; }
+
+my $typeToFunction = {
+	UptakeMeasurement => 'uptakeMeasurements',
+	FluxMeasurement => 'fluxMeasurements',
+	GeneMeasurement => 'geneMeasurements',
+	MetaboliteMeasurement => 'metaboliteMeasurements',
+};
 sub _typeToFunction {
-	return {
-		UptakeMeasurement => 'uptakeMeasurements',
-		FluxMeasurement => 'fluxMeasurements',
-		GeneMeasurement => 'geneMeasurements',
-		MetaboliteMeasurement => 'metaboliteMeasurements',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	metaboliteMeasurements => 'MetaboliteMeasurement',
+	fluxMeasurements => 'FluxMeasurement',
+	uptakeMeasurements => 'UptakeMeasurement',
+	geneMeasurements => 'GeneMeasurement',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'strain_uuid', 'media_uuid', 'pH', 'temperature', 'buffers', 'phenotype', 'notes', 'growthMeasurement', 'growthMeasurementType'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['fluxMeasurements', 'uptakeMeasurements', 'metaboliteMeasurements', 'geneMeasurements'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

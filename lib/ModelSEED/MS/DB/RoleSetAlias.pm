@@ -37,6 +37,16 @@ sub _buildroleset {
 # CONSTANTS:
 sub _type { return 'RoleSetAlias'; }
 
+my $attributes = ['roleset_uuid', 'alias'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

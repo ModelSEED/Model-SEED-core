@@ -54,11 +54,41 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Cue'; }
+
+my $typeToFunction = {
+	CompoundPk => 'pks',
+	CompoundStructure => 'structures',
+};
 sub _typeToFunction {
-	return {
-		CompoundPk => 'pks',
-		CompoundStructure => 'structures',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	pks => 'CompoundPk',
+	structures => 'CompoundStructure',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'name', 'abbreviation', 'cksum', 'unchargedFormula', 'formula', 'mass', 'defaultCharge', 'deltaG', 'deltaGErr', 'smallMolecule', 'priority'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['structures', 'pks'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

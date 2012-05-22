@@ -46,11 +46,41 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Complex'; }
+
+my $typeToFunction = {
+	ComplexReactionInstance => 'complexreactioninstances',
+	ComplexRole => 'complexroles',
+};
 sub _typeToFunction {
-	return {
-		ComplexReactionInstance => 'complexreactioninstances',
-		ComplexRole => 'complexroles',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	complexroles => 'ComplexRole',
+	complexreactioninstances => 'ComplexReactionInstance',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'name', 'compartment'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['complexreactioninstances', 'complexroles'];
+sub _subobjects {
+	return $subobjects;
 }
 sub _aliasowner { return 'Mapping'; }
 

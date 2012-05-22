@@ -39,6 +39,16 @@ sub _buildmodelreaction {
 # CONSTANTS:
 sub _type { return 'FBAReactionConstraint'; }
 
+my $attributes = ['reaction_uuid', 'variableType', 'max', 'min'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

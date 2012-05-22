@@ -63,20 +63,59 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Biochemistry'; }
+
+my $typeToFunction = {
+	ReactionSet => 'reactionSets',
+	ReactionInstanceAliasSet => 'reactioninstanceAliasSets',
+	CompoundAliasSet => 'compoundAliasSets',
+	ReactionAliasSet => 'reactionAliasSets',
+	Media => 'media',
+	Compound => 'compounds',
+	Reaction => 'reactions',
+	ReactionInstance => 'reactioninstances',
+	Cue => 'cues',
+	Compartment => 'compartments',
+	CompoundSet => 'compoundSets',
+};
 sub _typeToFunction {
-	return {
-		ReactionSet => 'reactionSets',
-		ReactionInstanceAliasSet => 'reactioninstanceAliasSets',
-		CompoundAliasSet => 'compoundAliasSets',
-		ReactionAliasSet => 'reactionAliasSets',
-		Media => 'media',
-		Compound => 'compounds',
-		Reaction => 'reactions',
-		ReactionInstance => 'reactioninstances',
-		Cue => 'cues',
-		Compartment => 'compartments',
-		CompoundSet => 'compoundSets',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	reactioninstanceAliasSets => 'ReactionInstanceAliasSet',
+	reactionAliasSets => 'ReactionAliasSet',
+	compounds => 'Compound',
+	cues => 'Cue',
+	reactionSets => 'ReactionSet',
+	reactions => 'Reaction',
+	compoundAliasSets => 'CompoundAliasSet',
+	compartments => 'Compartment',
+	media => 'Media',
+	compoundSets => 'CompoundSet',
+	reactioninstances => 'ReactionInstance',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'public', 'name'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['compartments', 'compounds', 'reactions', 'reactioninstances', 'media', 'compoundSets', 'reactionSets', 'compoundAliasSets', 'reactionAliasSets', 'reactioninstanceAliasSets', 'cues'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

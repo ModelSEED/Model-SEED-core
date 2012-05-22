@@ -37,6 +37,16 @@ sub _buildcomplex {
 # CONSTANTS:
 sub _type { return 'ComplexAlias'; }
 
+my $attributes = ['complex_uuid', 'alias'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

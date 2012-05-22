@@ -51,11 +51,41 @@ sub _buildfbaformulation {
 
 # CONSTANTS:
 sub _type { return 'FBAResults'; }
+
+my $typeToFunction = {
+	FBAReactionVariable => 'fbaReactionVariables',
+	FBACompoundVariable => 'fbaCompoundVariables',
+};
 sub _typeToFunction {
-	return {
-		FBAReactionVariable => 'fbaReactionVariables',
-		FBACompoundVariable => 'fbaCompoundVariables',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	fbaCompoundVariables => 'FBACompoundVariable',
+	fbaReactionVariables => 'FBAReactionVariable',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'name', 'modDate', 'fbaformulation_uuid', 'resultNotes', 'objectiveValue'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['fbaCompoundVariables', 'fbaReactionVariables'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

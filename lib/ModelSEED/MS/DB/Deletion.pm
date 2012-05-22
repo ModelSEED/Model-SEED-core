@@ -36,6 +36,16 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 # CONSTANTS:
 sub _type { return 'Deletion'; }
 
+my $attributes = ['uuid', 'start', 'stop'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

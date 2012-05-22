@@ -40,6 +40,16 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'Compartment'; }
 
+my $attributes = ['uuid', 'modDate', 'locked', 'id', 'name', 'hierarchy'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

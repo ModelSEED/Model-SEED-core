@@ -45,11 +45,41 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Strain'; }
+
+my $typeToFunction = {
+	Insertion => 'insertions',
+	Deletion => 'deletions',
+};
 sub _typeToFunction {
-	return {
-		Insertion => 'insertions',
-		Deletion => 'deletions',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	deletions => 'Deletion',
+	insertions => 'Insertion',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'name', 'source', 'class'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['deletions', 'insertions'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

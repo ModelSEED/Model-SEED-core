@@ -55,10 +55,39 @@ sub _buildgenome {
 
 # CONSTANTS:
 sub _type { return 'Feature'; }
+
+my $typeToFunction = {
+	FeatureRole => 'featureroles',
+};
 sub _typeToFunction {
-	return {
-		FeatureRole => 'featureroles',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	featureroles => 'FeatureRole',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'id', 'cksum', 'genome_uuid', 'start', 'stop', 'contig', 'direction', 'sequence', 'type'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['featureroles'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

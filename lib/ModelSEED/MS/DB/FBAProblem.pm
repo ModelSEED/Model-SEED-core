@@ -48,12 +48,43 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 
 # CONSTANTS:
 sub _type { return 'FBAProblem'; }
+
+my $typeToFunction = {
+	ObjectiveTerm => 'objectiveTerms',
+	Constraint => 'constraints',
+	Variable => 'variables',
+};
 sub _typeToFunction {
-	return {
-		ObjectiveTerm => 'objectiveTerms',
-		Constraint => 'constraints',
-		Variable => 'variables',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	constraints => 'Constraint',
+	objectiveTerms => 'ObjectiveTerm',
+	variables => 'Variable',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'maximize', 'milp', 'decomposeReversibleFlux', 'decomposeReversibleDrainFlux', 'fluxUseVariables', 'drainfluxUseVariables'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['objectiveTerms', 'constraints', 'variables'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

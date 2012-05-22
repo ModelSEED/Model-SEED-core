@@ -42,10 +42,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'ReactionInstanceAliasSet'; }
+
+my $typeToFunction = {
+	ReactionInstanceAlias => 'reactioninstanceAliases',
+};
 sub _typeToFunction {
-	return {
-		ReactionInstanceAlias => 'reactioninstanceAliases',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	reactioninstanceAliases => 'ReactionInstanceAlias',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'type', 'source'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['reactioninstanceAliases'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

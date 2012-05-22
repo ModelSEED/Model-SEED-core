@@ -42,6 +42,16 @@ sub _buildmodelcompound {
 # CONSTANTS:
 sub _type { return 'FBACompoundVariable'; }
 
+my $attributes = ['modelcompound_uuid', 'variableType', 'lowerBound', 'upperBound', 'min', 'max', 'value'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

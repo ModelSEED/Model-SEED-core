@@ -45,6 +45,16 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'Genome'; }
 
+my $attributes = ['uuid', 'modDate', 'id', 'name', 'source', 'class', 'taxonomy', 'cksum', 'size', 'gc', 'etcType'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

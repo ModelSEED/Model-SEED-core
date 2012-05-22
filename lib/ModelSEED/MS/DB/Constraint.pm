@@ -57,10 +57,39 @@ sub _builddualVariable {
 
 # CONSTANTS:
 sub _type { return 'Constraint'; }
+
+my $typeToFunction = {
+	ConstraintVariable => 'constraintVariables',
+};
 sub _typeToFunction {
-	return {
-		ConstraintVariable => 'constraintVariables',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	constraintVariables => 'ConstraintVariable',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'name', 'type', 'rightHandSide', 'equalityType', 'index', 'primal', 'entity_uuid', 'dualConstraint_uuid', 'dualVariable_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['constraintVariables'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

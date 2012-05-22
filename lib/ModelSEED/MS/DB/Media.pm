@@ -46,10 +46,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Media'; }
+
+my $typeToFunction = {
+	MediaCompound => 'mediacompounds',
+};
 sub _typeToFunction {
-	return {
-		MediaCompound => 'mediacompounds',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	mediacompounds => 'MediaCompound',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'isDefined', 'isMinimal', 'id', 'name', 'type'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['mediacompounds'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

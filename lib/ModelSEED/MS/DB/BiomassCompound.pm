@@ -37,6 +37,16 @@ sub _buildmodelcompound {
 # CONSTANTS:
 sub _type { return 'BiomassCompound'; }
 
+my $attributes = ['modelcompound_uuid', 'coefficient'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

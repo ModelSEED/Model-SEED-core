@@ -37,6 +37,16 @@ sub _buildvariable {
 # CONSTANTS:
 sub _type { return 'ConstraintVariable'; }
 
+my $attributes = ['coefficient', 'variable_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

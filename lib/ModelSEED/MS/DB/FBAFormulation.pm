@@ -65,12 +65,43 @@ sub _buildmedia {
 
 # CONSTANTS:
 sub _type { return 'FBAFormulation'; }
+
+my $typeToFunction = {
+	FBAObjectiveTerm => 'fbaObjectiveTerms',
+	FBAReactionConstraint => 'fbaReactionConstraints',
+	FBACompoundConstraint => 'fbaCompoundConstraints',
+};
 sub _typeToFunction {
-	return {
-		FBAObjectiveTerm => 'fbaObjectiveTerms',
-		FBAReactionConstraint => 'fbaReactionConstraints',
-		FBACompoundConstraint => 'fbaCompoundConstraints',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	fbaObjectiveTerms => 'FBAObjectiveTerm',
+	fbaReactionConstraints => 'FBAReactionConstraint',
+	fbaCompoundConstraints => 'FBACompoundConstraint',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'name', 'model_uuid', 'regulatorymodel_uuid', 'media_uuid', 'type', 'description', 'expressionData_uuid', 'growthConstraint', 'thermodynamicConstraints', 'allReversible', 'uptakeLimits', 'numberOfSolutions', 'geneKO', 'defaultMaxFlux', 'defaultMaxDrainFlux', 'defaultMinDrainFlux'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['fbaObjectiveTerms', 'fbaCompoundConstraints', 'fbaReactionConstraints'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

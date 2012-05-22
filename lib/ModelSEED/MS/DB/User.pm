@@ -39,6 +39,16 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 # CONSTANTS:
 sub _type { return 'User'; }
 
+my $attributes = ['uuid', 'login', 'password', 'email', 'firstname', 'lastname'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -36,6 +36,16 @@ sub _buildrole {
 # CONSTANTS:
 sub _type { return 'RoleSetRole'; }
 
+my $attributes = ['role_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

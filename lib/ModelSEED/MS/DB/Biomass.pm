@@ -49,10 +49,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Biomass'; }
+
+my $typeToFunction = {
+	BiomassCompound => 'biomasscompounds',
+};
 sub _typeToFunction {
-	return {
-		BiomassCompound => 'biomasscompounds',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	biomasscompounds => 'BiomassCompound',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'name', 'dna', 'rna', 'protein', 'cellwall', 'lipid', 'cofactor'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['biomasscompounds'];
+sub _subobjects {
+	return $subobjects;
 }
 sub _aliasowner { return 'Model'; }
 

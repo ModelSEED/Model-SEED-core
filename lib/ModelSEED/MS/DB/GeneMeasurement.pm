@@ -38,6 +38,16 @@ sub _buildfeature {
 # CONSTANTS:
 sub _type { return 'GeneMeasurement'; }
 
+my $attributes = ['value', 'feature_uuid', 'method'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

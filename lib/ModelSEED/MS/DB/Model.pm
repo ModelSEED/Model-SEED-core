@@ -73,13 +73,45 @@ sub _buildannotation {
 
 # CONSTANTS:
 sub _type { return 'Model'; }
+
+my $typeToFunction = {
+	Biomass => 'biomasses',
+	ModelReaction => 'modelreactions',
+	ModelCompound => 'modelcompounds',
+	ModelCompartment => 'modelcompartments',
+};
 sub _typeToFunction {
-	return {
-		Biomass => 'biomasses',
-		ModelReaction => 'modelreactions',
-		ModelCompound => 'modelcompounds',
-		ModelCompartment => 'modelcompartments',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	biomasses => 'Biomass',
+	modelcompounds => 'ModelCompound',
+	modelreactions => 'ModelReaction',
+	modelcompartments => 'ModelCompartment',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'public', 'id', 'name', 'version', 'type', 'status', 'growth', 'current', 'mapping_uuid', 'biochemistry_uuid', 'annotation_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['biomasses', 'modelcompartments', 'modelcompounds', 'modelreactions'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

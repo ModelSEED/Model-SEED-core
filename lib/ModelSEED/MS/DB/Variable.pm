@@ -68,10 +68,39 @@ sub _buildlowerBoundDualVariable {
 
 # CONSTANTS:
 sub _type { return 'Variable'; }
+
+my $typeToFunction = {
+	ConstraintVariable => 'constraintVariables',
+};
 sub _typeToFunction {
-	return {
-		ConstraintVariable => 'constraintVariables',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	constraintVariables => 'ConstraintVariable',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'name', 'type', 'binary', 'start', 'upperBound', 'lowerBound', 'min', 'max', 'value', 'entity_uuid', 'index', 'primal', 'dualConstraint_uuid', 'upperBoundDualVariable_uuid', 'lowerBoundDualVariable_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['constraintVariables'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

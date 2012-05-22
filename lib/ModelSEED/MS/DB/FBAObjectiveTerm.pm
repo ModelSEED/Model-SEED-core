@@ -33,6 +33,16 @@ has variable_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute'
 # CONSTANTS:
 sub _type { return 'FBAObjectiveTerm'; }
 
+my $attributes = ['coefficient', 'variableType', 'variable_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

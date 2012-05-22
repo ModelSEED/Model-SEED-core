@@ -63,17 +63,53 @@ sub _buildbiochemistry {
 
 # CONSTANTS:
 sub _type { return 'Mapping'; }
+
+my $typeToFunction = {
+	RoleSet => 'rolesets',
+	UniversalReaction => 'universalReactions',
+	Complex => 'complexes',
+	Role => 'roles',
+	BiomassTemplate => 'biomassTemplates',
+	RoleAliasSet => 'roleAliasSets',
+	RoleSetAliasSet => 'roleSetAliasSets',
+	ComplexAliasSet => 'complexAliasSets',
+};
 sub _typeToFunction {
-	return {
-		RoleSet => 'rolesets',
-		UniversalReaction => 'universalReactions',
-		Complex => 'complexes',
-		Role => 'roles',
-		BiomassTemplate => 'biomassTemplates',
-		RoleAliasSet => 'roleAliasSets',
-		RoleSetAliasSet => 'roleSetAliasSets',
-		ComplexAliasSet => 'complexAliasSets',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	rolesets => 'RoleSet',
+	roles => 'Role',
+	complexes => 'Complex',
+	universalReactions => 'UniversalReaction',
+	roleAliasSets => 'RoleAliasSet',
+	biomassTemplates => 'BiomassTemplate',
+	complexAliasSets => 'ComplexAliasSet',
+	roleSetAliasSets => 'RoleSetAliasSet',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'locked', 'public', 'name', 'biochemistry_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['universalReactions', 'biomassTemplates', 'roles', 'rolesets', 'complexes', 'roleSetAliasSets', 'roleAliasSets', 'complexAliasSets'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

@@ -47,10 +47,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'BiomassTemplate'; }
+
+my $typeToFunction = {
+	BiomassTemplateComponent => 'biomassTemplateComponents',
+};
 sub _typeToFunction {
-	return {
-		BiomassTemplateComponent => 'biomassTemplateComponents',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	biomassTemplateComponents => 'BiomassTemplateComponent',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'class', 'dna', 'rna', 'protein', 'lipid', 'cellwall', 'cofactor'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['biomassTemplateComponents'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

@@ -38,6 +38,16 @@ sub _buildcompound {
 # CONSTANTS:
 sub _type { return 'UptakeMeasurement'; }
 
+my $attributes = ['value', 'compound_uuid', 'type'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

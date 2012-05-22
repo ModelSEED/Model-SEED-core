@@ -44,6 +44,16 @@ sub _buildcompartment {
 # CONSTANTS:
 sub _type { return 'FluxMeasurement'; }
 
+my $attributes = ['value', 'reacton_uuid', 'compartment_uuid', 'type'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

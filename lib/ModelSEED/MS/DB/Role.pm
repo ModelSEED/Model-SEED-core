@@ -40,6 +40,17 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'Role'; }
 
+my $attributes = ['uuid', 'modDate', 'locked', 'name', 'seedfeature'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+sub _aliasowner { return 'Mapping'; }
+
 
 __PACKAGE__->meta->make_immutable;
 1;

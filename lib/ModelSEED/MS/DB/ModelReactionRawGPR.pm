@@ -32,6 +32,16 @@ has rawGPR => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typ
 # CONSTANTS:
 sub _type { return 'ModelReactionRawGPR'; }
 
+my $attributes = ['isCustomGPR', 'rawGPR'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -42,10 +42,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'ComplexAliasSet'; }
+
+my $typeToFunction = {
+	ComplexAlias => 'complexAliases',
+};
 sub _typeToFunction {
-	return {
-		ComplexAlias => 'complexAliases',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	complexAliases => 'ComplexAlias',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'type', 'source'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['complexAliases'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

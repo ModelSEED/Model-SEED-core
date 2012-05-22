@@ -50,6 +50,16 @@ sub _buildmodelcompartment {
 # CONSTANTS:
 sub _type { return 'ModelCompound'; }
 
+my $attributes = ['uuid', 'modDate', 'compound_uuid', 'charge', 'formula', 'modelcompartment_uuid'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

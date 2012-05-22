@@ -37,6 +37,16 @@ sub _buildcue {
 # CONSTANTS:
 sub _type { return 'CompoundCue'; }
 
+my $attributes = ['cue_uuid', 'count'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

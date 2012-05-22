@@ -1,5 +1,5 @@
 use strict;
-use ModelSEED::MS::MetaData::Definitions;
+use ModelSEED::MS::Metadata::Definitions;
 use ModelSEED::utilities;
 use DateTime;
 
@@ -20,9 +20,9 @@ foreach my $name (keys(%{$objects})) {
 	#Creating perl use statements
 	my $baseObject = "BaseObject";
 	if ($object->{class} eq "indexed") {
-		$baseObject = "IndexedObject";	
+		$baseObject = "IndexedObject";
 	}
-	
+
 	#if (defined($object->{parents}->[0])) {
 	#	push(@{$output},"use ModelSEED::MS::".$object->{parents}->[0].";");
 	#}
@@ -57,6 +57,7 @@ foreach my $name (keys(%{$objects})) {
 	$type = ", type => 'attribute', metaclass => 'Typed'";
 	my $uuid = 0;
 	my $modDate = 0;
+        my $attrs = [];
 	foreach my $attribute (@{$object->{attributes}}) {
 		my $suffix = "";
 		if (defined($attribute->{req}) && $attribute->{req} == 1) {
@@ -74,6 +75,7 @@ foreach my $name (keys(%{$objects})) {
 			$modDate = 1;
 		}
 		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
+                push(@$attrs, "'" . $attribute->{name} . "'");
 	}
 	push(@{$output},("",""));
 	#Printing ancestor
@@ -85,20 +87,24 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("",""));
 	#Printing subobjects
 	my $typeToFunction;
+        my $functionToType;
+        my $subobjs = [];
 	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
 		push(@{$output},("# SUBOBJECTS:"));
 		foreach my $subobject (@{$object->{subobjects}}) {
 			$typeToFunction->{$subobject->{class}} = $subobject->{name};
+                        $functionToType->{$subobject->{name}} = $subobject->{class};
 			$type = ", type => '".$subobject->{type}."(".$subobject->{class}.")', metaclass => 'Typed'";
 			if ($subobject->{type} =~ m/hasharray\((.+)\)/) {
 				$type = ", type => 'hasharray(".$subobject->{class}.",".$1.")', metaclass => 'Typed'";
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]'".$type.");");
-			} elsif ($subobject->{type} =~ m/link/) {				
+			} elsif ($subobject->{type} =~ m/link/) {
 				$type = ", type => 'solink(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.",weak_ref => 1);");
 			} else {
 				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.");");
 			}
+                        push(@$subobjs, "'" . $subobject->{name} . "'");
 		}
 		push(@{$output},("",""));
 	}
@@ -137,17 +143,52 @@ foreach my $name (keys(%{$objects})) {
 	push(@{$output},("# CONSTANTS:"));
 	push(@{$output},"sub _type { return '".$name."'; }");
 	if (defined($typeToFunction)) {
-		push(@{$output},"sub _typeToFunction {");
-		push(@{$output},"\treturn {");
+		push(@$output, "", "my \$typeToFunction = {");
 		foreach my $key (keys(%{$typeToFunction})) {
-			push(@{$output},"\t\t".$key." => '".$typeToFunction->{$key}."',");
+			push(@$output,"\t$key => '".$typeToFunction->{$key}."',");
 		}
-		push(@{$output},"\t};");
-		push(@{$output},"}");
-		if (defined($object->{alias})) {
-			push(@{$output},"sub _aliasowner { return '".$object->{alias}."'; }");
-		}
-	}
+		push(@$output,"};");
+		push(@$output,
+                     "sub _typeToFunction {",
+                     "\tmy (\$self, \$key) = \@_;",
+                     "\tif (defined(\$key)) {",
+                     "\t\treturn \$typeToFunction->{\$key};",
+                     "\t} else {",
+                     "\t\treturn \$typeToFunction;",
+                     "\t}",
+                     "}");
+            }
+        if (defined($functionToType)) {
+            push(@$output, "", "my \$functionToType = {");
+            foreach my $key (keys %$functionToType) {
+                push(@$output, "\t$key => '" . $functionToType->{$key} . "',");
+            }
+            push(@$output, "};");
+            push(@$output,
+                 "sub _functionToType {",
+                 "\tmy (\$self, \$key) = \@_;",
+                 "\tif (defined(\$key)) {",
+                 "\t\treturn \$functionToType->{\$key};",
+                 "\t} else {",
+                 "\t\treturn \$functionToType;",
+                 "\t}",
+                 "}");
+        }
+
+        # add _attributes and _subobjects
+        push(@$output, "", "my \$attributes = [" . join(", ", @$attrs) . "];");
+        push(@$output, "sub _attributes {",
+             "\treturn \$attributes;",
+             "}");
+        push(@$output, "", "my \$subobjects = [" . join(", ", @$subobjs) . "];");
+        push(@$output, "sub _subobjects {",
+             "\treturn \$subobjects;",
+             "}");
+
+        if (defined($object->{alias})) {
+            push(@{$output},"sub _aliasowner { return '".$object->{alias}."'; }");
+        }
+
 	push(@{$output},("",""));
 	#Finalizing
 	push(@{$output},("__PACKAGE__->meta->make_immutable;","1;"));

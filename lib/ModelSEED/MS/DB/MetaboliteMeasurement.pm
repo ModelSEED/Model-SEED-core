@@ -44,6 +44,16 @@ sub _buildcompartment {
 # CONSTANTS:
 sub _type { return 'MetaboliteMeasurement'; }
 
+my $attributes = ['value', 'compound_uuid', 'compartment_uuid', 'method'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

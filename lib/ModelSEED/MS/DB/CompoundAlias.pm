@@ -37,6 +37,16 @@ sub _buildcompound {
 # CONSTANTS:
 sub _type { return 'CompoundAlias'; }
 
+my $attributes = ['compound_uuid', 'alias'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

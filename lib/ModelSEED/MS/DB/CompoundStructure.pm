@@ -33,6 +33,16 @@ has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed
 # CONSTANTS:
 sub _type { return 'CompoundStructure'; }
 
+my $attributes = ['structure', 'cksum', 'type'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

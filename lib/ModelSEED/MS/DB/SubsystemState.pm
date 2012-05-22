@@ -33,6 +33,16 @@ has variant => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Ty
 # CONSTANTS:
 sub _type { return 'SubsystemState'; }
 
+my $attributes = ['roleset_uuid', 'name', 'variant'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;

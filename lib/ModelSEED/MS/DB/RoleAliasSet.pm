@@ -42,10 +42,39 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'RoleAliasSet'; }
+
+my $typeToFunction = {
+	RoleAlias => 'roleAliases',
+};
 sub _typeToFunction {
-	return {
-		RoleAlias => 'roleAliases',
-	};
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $typeToFunction->{$key};
+	} else {
+		return $typeToFunction;
+	}
+}
+
+my $functionToType = {
+	roleAliases => 'RoleAlias',
+};
+sub _functionToType {
+	my ($self, $key) = @_;
+	if (defined($key)) {
+		return $functionToType->{$key};
+	} else {
+		return $functionToType;
+	}
+}
+
+my $attributes = ['uuid', 'modDate', 'type', 'source'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = ['roleAliases'];
+sub _subobjects {
+	return $subobjects;
 }
 
 

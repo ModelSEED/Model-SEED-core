@@ -44,6 +44,16 @@ sub _buildcompartment {
 # CONSTANTS:
 sub _type { return 'InstanceTransport'; }
 
+my $attributes = ['compound_uuid', 'compartment_uuid', 'compartmentIndex', 'coefficient'];
+sub _attributes {
+	return $attributes;
+}
+
+my $subobjects = [];
+sub _subobjects {
+	return $subobjects;
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;
