@@ -42,7 +42,7 @@ my $refs = {
         authority          => 'model-api.theseed.org',
         type               => 'collection',
         class              => "ModelSEED::MS::Reaction",
-        base               => "biochemistry/chenry/master",
+        base               => "biochemistry/chenry/master/reactions",
         base_types         => ['biochemistry', 'reactions'],
         parent_objects     => ["biochemistry/chenry/master"],
         parent_collections => ["biochemistry"],
@@ -68,7 +68,7 @@ my $refs = {
         scheme             => 'http',
         authority          => 'model-api.theseed.org',
         type       => "collection",
-        base       => "biochemistry/550e8400-e29b-41d4-a716-446655440000",
+        base       => "biochemistry/550e8400-e29b-41d4-a716-446655440000/reactions",
         base_types => ['biochemistry', 'reactions'],
         class      => "ModelSEED::MS::Reaction",
         parent_objects =>
@@ -133,6 +133,20 @@ foreach my $ref (keys %$refs) {
         is_deeply $reference->$key, $expected->{$key}, "Ref: $ref should have correct $key";
         $test_count += 1;
     }
+    # test constructing new reference from parts
+    my $config = {
+        base => $reference->base,
+        is_url => $reference->is_url,
+        type => $reference->type
+    };
+    $config->{id} = $reference->id if(defined($reference->id));
+    if($reference->is_url) {
+        $config->{scheme} = $reference->scheme;
+        $config->{authority} = $reference->authority;
+    }
+    my $secondRef = ModelSEED::Reference->new($config);
+    is $secondRef->ref, $reference->ref, "Constructing ref should work for $ref";
+    $test_count += 1;
 }
 
 done_testing($test_count);

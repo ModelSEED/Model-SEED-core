@@ -42,7 +42,7 @@ use ModelSEED::MS::Metadata::Definitions;
 use Data::Dumper;
 use common::sense;
 
-has ref => ( is => 'ro', isa => 'Str', required => 1 );
+has ref => ( is => 'ro', isa => 'Str', required => 1, lazy => 1, builder => '_build_ref' );
 has delimiter => (is => 'ro', isa => 'Str', default => '/');
 has schema => (
     is => 'ro',
@@ -58,13 +58,13 @@ has authority => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_buil
 
 has type  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_type');
 has base  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_base');
-has id    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id');
+has id    => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_id');
 has class => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_class');
 
 has id_type    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id_type');
-has alias_type => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_type');
-has alias_username => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_username');
-has alias_string =>  (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_string');
+has alias_type => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_type');
+has alias_username => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_username');
+has alias_string =>  (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_string');
 
 has base_types => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_base_types');
 has parent_objects => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_objects');
@@ -112,11 +112,6 @@ sub parse {
             # remove this many entries from the parts 
             splice(@parts,0,scalar(@$idParts));
         }
-    }
-    if($type eq 'collection') {
-        # collection types will still have "base" pointing
-        # to that collection
-        pop(@$base);
     }
     # remove empty strings from id, base
     $base = [ grep { defined($_) && $_ ne '' } @$base ];
@@ -216,9 +211,11 @@ sub _build_parsed_ref {
 
 sub _build_ref {
     my ($self) = @_;
-    my $query = $self->base . $self->delimiter . $self->id;
+
+    my $query = $self->base;
+    $query .= $self->delimiter . $self->id if($self->type eq 'object');
     if ($self->is_url) {
-        return uri_join($self->scheme, $self->authority, $self->query);
+        return uri_join($self->scheme, $self->authority, $query);
     } else {
         return $query;
     }
