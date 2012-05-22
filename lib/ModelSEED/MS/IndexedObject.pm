@@ -146,10 +146,12 @@ sub getObjects {
             $resultSet = $newResultSet; 
             next;
         } else {
-            # Otherwise we delete entries in our current $resultSet that
-            # are not defined within the $newResultSet. By grepping and
-            # deleting we can do this in-place in $resultSet
-            delete $resultSet->{ grep { !defined($newResultSet->{$_}) } keys %$resultSet };
+			#Replacing the "grep" based code, which does not appear to work properly
+            foreach my $result (keys(%$resultSet)) {
+            	if (!defined($newResultSet->{$result})) {
+            		delete $resultSet->{$result};
+            	}
+            }
         }
     }
     return [values %$resultSet];

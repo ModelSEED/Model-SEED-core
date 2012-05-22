@@ -32,29 +32,6 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
-=head3 runFBA
-Definition:
-	Output = ModelSEED::MS::Model->runFBA({
-		fbaFormulation => ModelSEED::MS::FBAFormulation
-	});
-	Output = {
-		FBAresults => ModelSEED::MS::FBAresults
-	}
-Description:
-	Creates all the files needed by the MFAToolkit to run flux balance analysis
-=cut
-sub runFBA {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["fbaFormulation"],{});
-	my $fba = ModelSEED::MS::FBAProblem->new({
-		model => $self,
-		fbaFormulation => $args->{fbaFormulation}
-	});
-	$fba->buildProblem();
-	$fba->printLPFile();
-	#return $fba->submitLPFile({solver => "cplex"});
-}
-
 =head3 buildModelFromAnnotation
 Definition:
 	ModelSEED::MS::ModelReaction = ModelSEED::MS::Model->buildModelFromAnnotation({
@@ -81,45 +58,69 @@ sub buildModelFromAnnotation {
 	for (my $i=0; $i < @{$annotaton->features()}; $i++) {
 		my $ftr = $annotaton->features()->[$i];
 		for (my $j=0; $j < @{$ftr->featureroles()}; $j++) {
-			push(@{$roleFeatures->{$ftr->featureroles()->[$j]->role_uuid()}->{$ftr->featureroles()->[$j]->compartment()}},$ftr->uuid());
+			push(@{$roleFeatures->{$ftr->featureroles()->[$j]->role_uuid()}->{$ftr->featureroles()->[$j]->compartment()}},$ftr);
 		}
 	}
-	my $reactionGPR;
 	for (my $i=0; $i < @{$mapping->complexes()};$i++) {
 		my $cpx = $mapping->complexes()->[$i];
-		my $present = 0;
-		my $geneList;
+		my $compartments;
+		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
+			$compartments->{$cpx->complexreactioninstances()->[$j]->compartment()} = {present => 0,subunits => {}};
+		}
 		for (my $j=0; $j < @{$cpx->complexroles()}; $j++) {
 			my $cpxrole = $cpx->complexroles()->[$j];
-			if ($cpxrole->triggering() == 1 && defined($roleFeatures->{$cpxrole->role_uuid()})) {
-				if (defined($roleFeatures->{$cpxrole->role_uuid()}->{"unknown"})) {
-					$present = 1;
-					push(@{$geneList},"(".join(" or ",sort(@{$roleFeatures->{$cpxrole->role_uuid()}->{"unknown"}})).")");
-				} elsif (defined($roleFeatures->{$cpxrole->role_uuid()}->{$cpx->compartment()})) {
-					$present = 1;
-					push(@{$geneList},"(".join(" or ",sort(@{$roleFeatures->{$cpxrole->role_uuid()}->{$cpx->compartment()}})).")");
-				} elsif ($cpxrole->optional() == 0) {
-					push(@{$geneList},"GAP");
+			if (defined($roleFeatures->{$cpxrole->role_uuid()})) {
+				foreach my $compartment (keys(%{$roleFeatures->{$cpxrole->role_uuid()}})) {
+					if ($compartment eq "u") {
+						foreach my $rxncomp (keys(%{$compartments})) {
+							if ($cpxrole->triggering() == 1) {
+								$compartments->{$rxncomp}->{present} = 1;
+							}
+							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+							foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
+								$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
+							}
+						}
+					} elsif (defined($compartments->{$compartment})) {
+						if ($cpxrole->triggering() == 1) {
+							$compartments->{$compartment}->{present} = 1;
+						}
+						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+						foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
+							$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
+						}
+					}
+				}
+			} elsif ($cpxrole->optional() == 0) {
+				foreach my $rxncomp (keys(%{$compartments})) {
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{note} = "Complex-based-gapfilling";
 				}
 			}
 		}
-		if ($present == 1) {
-			for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
-				my $cpxrxninst = $cpx->complexreactioninstances()->[$j];
-				$reactionGPR->{$cpxrxninst->reactioninstance()}->{"(".join(" and ",sort(@{$geneList})).")"} = 1;
+		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
+			my $cpxrxninst = $cpx->complexreactioninstances()->[$j];
+			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
+				my $mdlrxn = $self->addReactionInstanceToModel({
+					reactionInstance => $cpxrxninst->reactioninstance(),
+				});
+				$mdlrxn->addModelReactionProtein({
+					proteinDataTree => $compartments->{$cpxrxninst->compartment()},
+					complex_uuid => $cpx->uuid()
+				});
 			}
 		}
-	}
-	foreach my $rxninst (keys(%{$reactionGPR})) {
-		my $mdlrxn = $self->addReactionInstanceToModel({
-			reactionInstance => $rxninst,
-			gpr => "(".join(" or ",@{keys(%{$reactionGPR->{$rxninst}})}).")"
-		});
 	}
 	foreach my $universalRxn (@{$mapping->universalReactions()}) {
 		my $mdlrxn = $self->addReactionInstanceToModel({
 			reactionInstance => $universalRxn->reactioninstance(),
-			gpr => "UNIVERSAL"
+		});
+		$mdlrxn->addModelReactionProtein({
+			proteinDataTree => {note => "Universal reaction"},
+			complex_uuid => "00000000-0000-0000-0000-000000000000"
 		});
 	}
 	my $bio = $self->createStandardFBABiomass({
@@ -210,10 +211,20 @@ sub createStandardFBABiomass {
 				$coefficient = $coefficient/$mass;	
 			}
 			if ($coefficient != 0) {
-				$bio->create("BiomassCompound",{
-					modelcompound_uuid => $mdlcpd->uuid(),
-					coefficient => $coefficient
-				});
+				my $found = 0;
+				for (my $i=0; $i < @{$bio->biomasscompounds()}; $i++) {
+					my $biocpd = $bio->biomasscompounds()->[$i];
+					if ($bio->biomasscompounds()->[$i]->modelcompound_uuid() eq $mdlcpd->uuid()) {
+						$found = 1;
+						$biocpd->coefficient($biocpd->coefficient() + $coefficient);
+					}
+				}
+				if ($found == 0) {
+					$bio->create("BiomassCompound",{
+						modelcompound_uuid => $mdlcpd->uuid(),
+						coefficient => $coefficient
+					});	
+				}
 			}
 		}
 	}
@@ -378,7 +389,6 @@ sub addReactionInstanceToModel {
 	$args = ModelSEED::utilities::ARGS($args,["reactionInstance"],{
 		direction => undef,
 		protons => undef,
-		gpr => "UNKNOWN",
 	});
 	my $rxninst = $args->{reactionInstance};
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
@@ -392,11 +402,11 @@ sub addReactionInstanceToModel {
 			direction => $rxninst->direction(),
 			protons => $rxninst->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
-			gpr => [{isCustomGPR => 1,rawGPR => $args->{gpr}}]
 		});
 		my $rxn = $rxninst->reaction();
 		my $speciesHash;
 		my $cpdHash;
+		my $mdlcpdHash;
 		for (my $i=0; $i < @{$rxn->reagents()}; $i++) {
 			my $rgt = $rxn->reagents()->[$i];
 			if ($rgt->compartmentIndex() == 0) {
@@ -404,37 +414,42 @@ sub addReactionInstanceToModel {
 					compound => $rgt->compound(),
 					modelCompartment => $mdlcmp,
 				});
-				$cpdHash->{$mdlcpd->compound_uuid()}->{$mdlcmp->compartment_uuid()} = $mdlcpd;
+				$cpdHash->{$rgt->compound_uuid()}->{$mdlcmp->uuid()} = $mdlcpd;
+				$mdlcpdHash->{$mdlcpd->uuid()} = $mdlcpd;
 				$speciesHash->{$mdlcpd->uuid()} = $rgt->coefficient();
 			}
 		}	
 		for (my $i=0; $i < @{$rxninst->transports()}; $i++) {
 			my $trans = $rxninst->transports()->[$i];
-			if (!defined($cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()})) {
-				my $newmdlcmp = $self->addCompartmentToModel({compartment => $trans->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
-				$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()} = $self->addCompoundToModel({
+			my $newmdlcmp = $self->addCompartmentToModel({compartment => $trans->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
+			if (!defined($cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()})) {
+				$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()} = $self->addCompoundToModel({
 					compound => $trans->compound(),
 					modelCompartment => $newmdlcmp,
 				});
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}->uuid()} = $trans->coefficient();
+				$mdlcpdHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} = $cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()};
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} = $trans->coefficient();
 			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$trans->compartment_uuid()}->uuid()} += $trans->coefficient();
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} += $trans->coefficient();
 			}
-			if (!defined($cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()})) {
-				$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()} = $self->addCompoundToModel({
+			if (!defined($cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()})) {
+				$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()} = $self->addCompoundToModel({
 					compound => $trans->compound(),
 					modelCompartment => $mdlcmp,
 				});
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}->uuid()} = (-1*$trans->coefficient());
+				$mdlcpdHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} = $cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()};
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} = (-1*$trans->coefficient());
 			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->compartment_uuid()}->uuid()} += (-1*$trans->coefficient());
+				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} += (-1*$trans->coefficient());
 			}
 		}
 		foreach my $mdluuid (keys(%{$speciesHash})) {
-			$mdlrxn->addReagentToReaction({
-				coefficient => $speciesHash->{$mdluuid},
-				modelcompound_uuid => $mdluuid
-			});
+			if ($speciesHash->{$mdluuid} != 0) {
+				$mdlrxn->addReagentToReaction({
+					coefficient => $speciesHash->{$mdluuid},
+					modelcompound_uuid => $mdluuid
+				});
+			}
 		}
 	}
 	return $mdlrxn;

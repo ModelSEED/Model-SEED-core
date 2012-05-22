@@ -11,10 +11,47 @@ package ModelSEED::MS::Complex;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::Complex';
+#***********************************************************************************************************
+# ADDITIONAL ATTRIBUTES:
+#***********************************************************************************************************
+has roleList => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildroleList' );
+has reactionList => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildreactionList' );
+
+#***********************************************************************************************************
+# BUILDERS:
+#***********************************************************************************************************
+sub _buildroleList {
+	my ($self) = @_;
+	my $roleList = "";
+	for (my $i=0; $i < @{$self->complexroles()}; $i++) {
+		if (length($roleList) > 0) {
+			$roleList .= ";";
+		}
+		my $cpxroles = $self->complexroles()->[$i];
+		$roleList .= $cpxroles->role()->name()."[".$cpxroles->optional()."_".$cpxroles->triggering()."]";		
+	}
+	return $roleList;
+}
+sub _buildreactionList {
+	my ($self) = @_;
+	my $reactionList = "";
+	for (my $i=0; $i < @{$self->complexreactioninstances()}; $i++) {
+		if (length($reactionList) > 0) {
+			$reactionList .= ";";
+		}
+		my $cpxreaction = $self->complexreactioninstances()->[$i];
+		$reactionList .= $cpxreaction->reactioninstance()->id()."[".$cpxreaction->compartment()."]";		
+	}
+	return $reactionList;
+}
+
+#***********************************************************************************************************
 # CONSTANTS:
-#TODO
+#***********************************************************************************************************
+
+#***********************************************************************************************************
 # FUNCTIONS:
-#TODO
+#***********************************************************************************************************
 
 
 __PACKAGE__->meta->make_immutable;

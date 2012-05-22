@@ -11,10 +11,36 @@ package ModelSEED::MS::UniversalReaction;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::UniversalReaction';
+#***********************************************************************************************************
+# ADDITIONAL ATTRIBUTES:
+#***********************************************************************************************************
+has reactionID => ( is => 'rw', isa => 'Str',printOrder => '1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildreactionID' );
+has reactionName => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildreactionName' );
+has reactionDefinition => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildreactionDefinition' );
+
+#***********************************************************************************************************
+# BUILDERS:
+#***********************************************************************************************************
+sub _buildreactionID {
+	my ($self) = @_;
+	return $self->reactioninstance()->id();
+}
+sub _buildreactionName {
+	my ($self) = @_;
+	return $self->reactioninstance()->reaction()->name();
+}
+sub _buildreactionDefinition {
+	my ($self) = @_;
+	return $self->reactioninstance()->definition();
+}
+
+#***********************************************************************************************************
 # CONSTANTS:
-#TODO
+#***********************************************************************************************************
+
+#***********************************************************************************************************
 # FUNCTIONS:
-#TODO
+#***********************************************************************************************************
 
 
 __PACKAGE__->meta->make_immutable;

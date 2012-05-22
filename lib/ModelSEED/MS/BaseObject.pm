@@ -179,7 +179,7 @@ sub createReadableData {
 			for (my $j=0; $j < @{$objects}; $j++) {
 				for (my $k=0; $k < @{$sortedAtt}; $k++) {
 					my $att = $sortedAtt->[$k];
-					$soData->{data}->[$j]->[$k] = $objects->[$j]->$att();
+					$soData->{data}->[$j]->[$k] = ($objects->[$j]->$att() || "");
 				}
 			}
 			push(@{$data->{subobjects}},$soData);
@@ -341,6 +341,17 @@ sub biochemistry {
         return $parent->biochemistry();
 	}
 	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
+}
+
+sub fbaproblem {
+	my ($self) = @_;
+	my $parent = $self->parent();
+	if (defined($parent) && ref($parent) eq "ModelSEED::MS::FBAProblem") {
+		return $parent;
+	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        return $parent->fbaproblem();
+	}
+	ModelSEED::utilities::ERROR("Cannot find FBAProblem object in tree!");
 }
 
 sub model {

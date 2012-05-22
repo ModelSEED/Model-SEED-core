@@ -21,10 +21,10 @@ has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metacla
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
 has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
-has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified', printOrder => '0' );
-has subclass => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified', printOrder => '0' );
-has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '3' );
+has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified', printOrder => '1' );
+has subclass => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified', printOrder => '2' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '4' );
 
 
 # ANCESTOR:
@@ -32,7 +32,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has rolesroles => (is => 'bare', coerce => 1, handles => { rolesroles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSetRole::Lazy', type => 'encompassed(RoleSetRole)', metaclass => 'Typed');
+has rolesetroles => (is => 'bare', coerce => 1, handles => { rolesetroles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSetRole::Lazy', type => 'encompassed(RoleSetRole)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -48,7 +48,7 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _type { return 'RoleSet'; }
 sub _typeToFunction {
 	return {
-		RoleSetRole => 'rolesroles',
+		RoleSetRole => 'rolesetroles',
 	};
 }
 sub _aliasowner { return 'Mapping'; }

@@ -1,10 +1,10 @@
 ########################################################################
-# ModelSEED::MS::DB::FBASolution - This is the moose object corresponding to the FBASolution object
+# ModelSEED::MS::DB::Solution - This is the moose object corresponding to the Solution object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-package ModelSEED::MS::DB::FBASolution;
+package ModelSEED::MS::DB::Solution;
 use Moose;
 use Moose::Util::TypeConstraints;
 use ModelSEED::MS::LazyHolder::SolutionConstraint;
@@ -42,7 +42,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:
-sub _type { return 'FBASolution'; }
+sub _type { return 'Solution'; }
 sub _typeToFunction {
 	return {
 		SolutionVariable => 'solutionvariables',

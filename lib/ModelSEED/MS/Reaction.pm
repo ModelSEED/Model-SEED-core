@@ -18,6 +18,7 @@ extends 'ModelSEED::MS::DB::Reaction';
 has definition => ( is => 'rw',printOrder => 3, isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 has equation => ( is => 'rw',printOrder => 4, isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
 has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
+has balanced => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbalanced' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -33,6 +34,10 @@ sub _buildequation {
 sub _buildequationcode {
 	my ($self,$args) = @_;
 	return $self->createEquation({format=>"uuid",hashed=>1});
+}
+sub _buildbalanced {
+	my ($self,$args) = @_;
+	return $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
 }
 
 #***********************************************************************************************************
@@ -108,7 +113,15 @@ sub createEquation {
 	}
 	return $reactcode.$sign.$productcode;
 }
-
+=head3 loadFromEquation
+Definition:
+	ModelSEED::MS::ReactionInstance = ModelSEED::MS::Reaction->loadFromEquation({
+		equation => REQUIRED:string:stoichiometric equation with reactants and products,
+		aliasType => REQUIRED:string:alias type used in equation
+	});
+Description:
+	Parses the input equation, generates the reaction stoichiometry based on the equation, and returns the reaction instance for the equation
+=cut
 sub loadFromEquation {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["equation","aliasType"],{});
@@ -242,6 +255,101 @@ sub loadFromEquation {
 		}
 	}
 	return $rxninst;
+}
+=head3 checkReactionMassChargeBalance
+Definition:
+	{
+		balanced => 0/1,
+		error => string,
+		imbalancedAtoms => {
+			C => 1,
+			...	
+		}
+		imbalancedCharge => float
+	} = ModelSEED::MS::Reaction->checkReactionMassChargeBalance({
+		rebalanceProtons => 0/1(0):boolean flag indicating if protons should be rebalanced if they are the only imbalanced elements in the reaction
+	});
+Description:
+	Checks if the reaction is mass and charge balanced, and rebalances protons if called for, but only if protons are the only broken element in the equation
+=cut
+sub checkReactionMassChargeBalance {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{rebalanceProtons => 0});
+	my $atomHash;
+	my $netCharge = 0;
+	#Adding up atoms and charge from all reagents
+	for (my $i=0; $i < @{$self->reagents()};$i++) {
+		my $rgt = $self->reagents()->[$i];
+		#Problems are: compounds with noformula, polymers (see next line), and reactions with duplicate compounds in the same compartment
+		#Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
+		my $cpdatoms = $rgt->compound()->calculateAtomsFromFormula();
+		if (defined($cpdatoms->{error})) {
+			return {
+				error => $cpdatoms->{error}
+			};	
+		}
+		foreach my $atom (keys(%{$cpdatoms})) {
+			if (!define($atomHash->{$atom})) {
+				$atomHash->{$atom} = 0;
+			}
+			$netCharge += $rgt->coefficient()*$rgt->compound()->defaultCharge();
+			$atomHash->{$atom} += $rgt->coefficient()*$cpdatoms->{$atom};
+		}
+	}
+	#Adding protons
+	$netCharge += $self->defaultProtons()*1;
+	if (!defined($atomHash->{H})) {
+		$atomHash->{H} = 0;
+	}
+	$atomHash->{H} += $self->defaultProtons();
+	#Checking if charge or atoms are unbalanced
+	my $results = {
+		balanced => 1
+	};
+	my $onlyH = 1;
+	my $HImbalance = 0;
+	foreach my $atom (keys(%{$atomHash})) { 
+		if ($atomHash->{$atom} > 0.00000001 || $atomHash->{$atom} < -0.00000001) {
+			if ($atom eq "H") {
+				$HImbalance = $atomHash->{$atom};
+			} else {
+				$onlyH = 0;
+			}
+		}
+	}
+	if ($HImbalance != 0 && $onlyH == 1 && $HImbalance == $netCharge) {
+		print "Adjusting ".$self->id()." protons by ".$HImbalance."\n";
+		my $currentProtons = $self->defaultProtons();
+		$currentProtons += -1*$HImbalance;
+		$self->defaultProtons($currentProtons);
+		$netCharge = 0;
+		$atomHash->{H} = 0;
+	}
+	my $status = "OK";
+	foreach my $atom (keys(%{$atomHash})) { 
+		if ($atomHash->{$atom} > 0.00000001 || $atomHash->{$atom} < -0.00000001) {
+			if ($status eq "OK") {
+				$status = "MI:";	
+			} else {
+				$status .= "|";
+			}
+			$results->{balanced} = 0;
+			$results->{imbalancedAtoms}->{$atom} = $atomHash->{$atom};
+			$status .= $atom.":".$atomHash->{$atom};
+		}
+	}
+	if ($netCharge != 0) {
+		if ($status eq "OK") {
+			$status = "CI:".$netCharge;	
+		} else {
+			$status .= "|CI:".$netCharge;
+		}
+		$results->{balanced} = 0;
+		$results->{imbalancedCharge} = $netCharge;
+		
+	}
+	$self->status($status);
+	return $results;
 }
 
 __PACKAGE__->meta->make_immutable;

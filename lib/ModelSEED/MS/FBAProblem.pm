@@ -24,7 +24,7 @@ has solver => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', m
 #***********************************************************************************************************
 sub _builddirectory {
 	my ($self) = @_;
-	return File::Temp::tempdir(DIR => ModelSEED::utilities::MODELSEEDCORE()."data/fbafiles/");
+	return File::Temp::tempdir(DIR => ModelSEED::utilities::MODELSEEDCORE()."data/fbafiles/")."/";
 }
 
 #***********************************************************************************************************
@@ -68,13 +68,13 @@ sub buildProblem {
 	$self->createDrainFluxVariables();
 	$self->createMassBalanceConstraints();
 	#Creating use variables if called for
-	if ($self->fbaFormulation()->fluxUseVariables() == 1) {
+	if ($self->fluxUseVariables() == 1) {
 		$self->createFluxUseVariables();	
 	}
-	if ($self->fbaFormulation()->drainfluxUseVariables() == 1) {
+	if ($self->drainfluxUseVariables() == 1) {
 		$self->createDrainFluxUseVariables();	
 	}
-	if ($self->fbaFormulation()->drainfluxUseVariables() == 1 || $self->fbaFormulation()->fluxUseVariables() == 1) {
+	if ($self->drainfluxUseVariables() == 1 || $self->fluxUseVariables() == 1) {
 		$self->milp(1);
 		$self->createUseVariableConstraints();	
 	}
@@ -99,8 +99,8 @@ sub createObjectiveFunction {
 		if ($term->variableType() eq "flux") {
 			my $fluxtypes = ["flux","forflux","revflux"];
 			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
-				my $var = $self->get_object("Variable",{
-					entity_uuid => $term->entity_uuid(),
+				my $var = $self->getObject("Variable",{
+					entity_uuid => $term->variable_uuid(),
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
@@ -113,8 +113,8 @@ sub createObjectiveFunction {
 		} elsif ($term->variableType() eq "drainflux") {
 			my $fluxtypes = ["drainflux","fordrainflux","revdrainflux"];
 			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
-				my $var = $self->get_object("Variable",{
-					entity_uuid => $term->entity_uuid(),
+				my $var = $self->getObject("Variable",{
+					entity_uuid => $term->variable_uuid(),
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
@@ -124,9 +124,20 @@ sub createObjectiveFunction {
 					});
 				}
 			}
+		} elsif ($term->variableType() eq "biomassflux") {
+			my $var = $self->getObject("Variable",{
+				entity_uuid => $term->variable_uuid(),
+				type => "biomassflux"
+			});
+			if (defined($var)) {
+				$self->create("ObjectiveTerm",{
+					coefficient => $term->coefficient(),
+					variable_uuid => $var->uuid()
+				});
+			}
 		}
 	}
-	$self->maximize($self->fbaFormulation()->maximize());
+	$self->maximize($self->fbaFormulation()->maximizeObjective());
 }
 
 =head3 printLPfile
@@ -142,8 +153,7 @@ Description:
 =cut
 sub printLPfile {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["filename"],{});
-	my $output = ["Problem name: LPProb",""];
+	my $output = ["\\Problem name: LPProb",""];
 	if ($self->maximize() == 1) {
 		push(@{$output},"Maximize");	
 	} else {
@@ -152,11 +162,25 @@ sub printLPfile {
 	my $currentString = " obj: ";
 	my $count = 0;
 	for (my $i=0; $i < @{$self->objectiveTerms()}; $i++) {
-		if ($count > 0) {
-			$currentString .= " + ";
-		}
+		my $sign = 1;
 		my $obj = $self->objectiveTerms()->[$i];
-		$currentString .= $obj->coefficient()." ".$obj->variable()->name();
+		if ($count > 0) {
+			if ($obj->coefficient() < 0) {
+				$currentString .= " - ";
+				$sign = -1;
+			} else {
+				$currentString .= " + ";
+			}
+		} elsif ($i > 0) {
+			if ($obj->coefficient() < 0) {
+				$currentString = "      - ";
+				$sign = -1;
+			} else {
+				$currentString = "      + ";
+			}
+		}
+		my $coef = $sign*$obj->coefficient();
+		$currentString .= $coef." ".$obj->variable()->name();
 		$count++;
 		if ($count >= 4) {
 			push(@{$output},$currentString);
@@ -170,20 +194,47 @@ sub printLPfile {
 	push(@{$output},"Subject To");
 	for (my $i=0; $i < @{$self->constraints()}; $i++) {
 		my $const = $self->constraints()->[$i];
+		my $ending;
+		if ($const->equalityType() eq "=") {
+			$ending = " = ".$const->rightHandSide();
+		} elsif ($const->equalityType() eq ">") {
+			$ending = " >= ".$const->rightHandSide();
+		} elsif ($const->equalityType() eq "<") {
+			$ending = " <= ".$const->rightHandSide();
+		}
 		$count = 0;
 		$currentString = $const->name().": ";
 		for (my $j=0; $j < @{$const->constraintVariables()}; $j++) {
+			my $sign = 1;
+			my $obj = $const->constraintVariables()->[$j];
 			if ($count > 0) {
-				$currentString .= " + ";
+				if ($obj->coefficient() < 0) {
+					$currentString .= " - ";
+					$sign = -1;
+				} else {
+					$currentString .= " + ";
+				}
+			} elsif ($j > 0) {
+				if ($obj->coefficient() < 0) {
+					$currentString = "      - ";
+					$sign = -1;
+				} else {
+					$currentString = "      + ";
+				}
 			}
-			my $obj = $self->objectiveTerms()->[$i];
-			$currentString .= $obj->coefficient()." ".$obj->variable()->name();
+			my $coef = $sign*$obj->coefficient();
+			$currentString .= $coef." ".$obj->variable()->name();
 			$count++;
 			if ($count >= 4) {
 				push(@{$output},$currentString);
 				$count = 0;
-				$currentString = "      + ";
 			}
+		}
+		if ($count > 0) {
+			$currentString .= $ending;
+			push(@{$output},$currentString);
+		} else {
+			push(@{$output},"     ".$ending);
 		}
 	}
 	push(@{$output},"Bounds");
@@ -230,7 +281,7 @@ Description:
 sub submitLPFile {
 	my ($self) = @_;
 	my $command;
-	my $solution = $self->create("FBASolution",{parent => $self});
+	my $solution = $self->create("Solution",{parent => $self});
 	if ($self->solver() eq "cplex") {
 		my $solver = "primopt";
 		if ($self->milp() eq "1") {
@@ -240,10 +291,10 @@ sub submitLPFile {
 			"read",$self->directory()."currentProb.lp",$solver,"write",$self->directory()."solution.txt","sol","quit"
 		]);
 		system(ModelSEED::utilities::CPLEX()." < ".$self->directory()."cplexcommands.txt");
-		$solution->buildFromCPLEXFile($self->directory()."solution.txt");
+		$solution->buildFromCPLEXFile({filename => $self->directory()."solution.txt"});
 	} elsif ($self->solver() eq "glpk") {
-		system(ModelSEED::utilities::GLPK()." --cpxlp ".$self->directory()."currentProb.lp -0 ".$self->directory()."solution.txt");
-		$solution->buildFromGLPKFile($self->directory()."solution.txt");
+		system(ModelSEED::utilities::GLPK()." --cpxlp ".$self->directory()."currentProb.lp -o ".$self->directory()."solution.txt");
+		$solution->buildFromGLPKFile({filename => $self->directory()."solution.txt"});
 	}
 	return $solution;
 }
@@ -259,13 +310,6 @@ Description:
 =cut
 sub createFluxVariables {
 	my ($self) = @_;
-	my $newVariables;
-	#First filtering out nonflux variables
-	for (my $i=0; $i < @{$self->variables()}; $i++) {
-		if ($self->variables()->[$i]->type() ne "flux" && $self->variables()->[$i]->type() ne "forflux" && $self->variables()->[$i]->type() ne "revflux") {
-			push(@{$newVariables},$self->variables()->[$i]);
-		}
-	}
 	#Creating flux variables
 	for (my $i=0; $i < @{$self->model()->modelreactions()}; $i++) {
 		my $rxn = $self->model()->modelreactions()->[$i];
@@ -285,7 +329,7 @@ sub createFluxVariables {
 			$maxFlux = 0;
 		}
 		if ($self->decomposeReversibleFlux() == 0) {
-			push(@{$newVariables},ModelSEED::MS::Variable->new({
+			$self->create("Variable",{
 				name => "f_".$self->model()->modelreactions()->[$i]->id(),
 				type => "flux",
 				upperBound => $maxFlux,
@@ -293,7 +337,7 @@ sub createFluxVariables {
 				max => $maxFlux,
 				min => $minFlux,
 				entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-			}));
+			});
 		} else {
 			my $posMax = $maxFlux;
 			my $posMin = 0;
@@ -306,7 +350,7 @@ sub createFluxVariables {
 				$posMin = -1*$negMax;
 				$negMax = 0;
 			}
-			push(@{$newVariables},ModelSEED::MS::Variable->new({
+			$self->create("Variable",{
 				name => "ff_".$self->model()->modelreactions()->[$i]->id(),
 				type => "forflux",
 				upperBound => $posMax,
@@ -314,8 +358,8 @@ sub createFluxVariables {
 				max => $posMax,
 				min => $posMin,
 				entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-			}));
-			push(@{$newVariables},ModelSEED::MS::Variable->new({
+			});
+			$self->create("Variable",{
 				name => "rf_".$self->model()->modelreactions()->[$i]->id(),
 				type => "revflux",
 				upperBound => $negMax,
@@ -323,39 +367,26 @@ sub createFluxVariables {
 				max => $negMax,
 				min => $negMin,
 				entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-			}));
+			});
 		}
 	}
 	for (my $i=0; $i < @{$self->model()->biomasses()}; $i++) {
 		my $bio = $self->model()->biomasses()->[$i];
 		my $maxFlux = $self->fbaFormulation()->defaultMaxFlux();
-		if ($self->decomposeReversibleFlux() == 0) {
-			push(@{$newVariables},ModelSEED::MS::Variable->new({
-				name => "f_".$bio->id(),
-				type => "flux",
-				upperBound => $maxFlux,
-				lowerBound => 0,
-				max => $maxFlux,
-				min => 0,
-				entity_uuid => $bio->uuid()
-			}));
-		} else {
-			push(@{$newVariables},ModelSEED::MS::Variable->new({
-				name => "ff_".$bio->id(),
-				type => "forflux",
-				upperBound => $maxFlux,
-				lowerBound => 0,
-				max => $maxFlux,
-				min => 0,
-				entity_uuid => $bio->uuid()
-			}));
-		}
+		$self->create("Variable",{
+			name => "f_biomass".$i,
+			type => "biomassflux",
+			upperBound => $maxFlux,
+			lowerBound => 0,
+			max => $maxFlux,
+			min => 0,
+			entity_uuid => $bio->uuid()
+		});
 	}
 	#Setting variables
-	for (my $i=0; $i < @{$newVariables}; $i++) {
-		$newVariables->[$i]->index($i);
+	for (my $i=0; $i < @{$self->variables()}; $i++) {
+		$self->variables()->[$i]->index($i);
 	}
-	$self->variables($newVariables);
 }
 
 =head3 createDrainFluxVariables
@@ -369,13 +400,6 @@ Description:
 =cut
 sub createDrainFluxVariables {
 	my ($self) = @_;
-	my $newVariables;
-	#First filtering out nonflux variables
-	for (my $i=0; $i < @{$self->variables()}; $i++) {
-		if ($self->variables()->[$i]->type() ne "drainflux" && $self->variables()->[$i]->type() ne "fordrainflux" && $self->variables()->[$i]->type() ne "revdrainflux") {
-			push(@{$newVariables},$self->variables()->[$i]);
-		}
-	}
 	#Creating drain flux variables
 	for (my $i=0; $i < @{$self->model()->modelcompounds()}; $i++) {
 		my $cpd = $self->model()->modelcompounds()->[$i];
@@ -397,15 +421,15 @@ sub createDrainFluxVariables {
 				}
 			}
 			if ($self->decomposeReversibleDrainFlux() == 0) {
-				push(@{$newVariables},ModelSEED::MS::Variable->new({
-					name => "df_".$self->model()->modelreactions()->[$i]->id(),
+				$self->create("Variable",{
+					name => "df_".$cpd->id(),
 					type => "drainflux",
 					upperBound => $maxFlux,
 					lowerBound => $minFlux,
 					max => $maxFlux,
 					min => $minFlux,
-					entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-				}));
+					entity_uuid => $cpd->uuid()
+				});
 			} else {
 				my $posMax = $maxFlux;
 				my $posMin = 0;
@@ -418,24 +442,24 @@ sub createDrainFluxVariables {
 					$posMin = -1*$negMax;
 					$negMax = 0;
 				}
-				push(@{$newVariables},ModelSEED::MS::Variable->new({
-					name => "fdf_".$self->model()->modelreactions()->[$i]->id(),
+				$self->create("Variable",{
+					name => "fdf_".$cpd->id(),
 					type => "fordrainflux",
 					upperBound => $posMax,
 					lowerBound => $posMin,
 					max => $posMax,
 					min => $posMin,
-					entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-				}));
-				push(@{$newVariables},ModelSEED::MS::Variable->new({
-					name => "rdf_".$self->model()->modelreactions()->[$i]->id(),
+					entity_uuid => $cpd->uuid()
+				});
+				$self->create("Variable",{
+					name => "rdf_".$cpd->id(),
 					type => "revdrainflux",
 					upperBound => $negMax,
 					lowerBound => $negMin,
 					max => $negMax,
 					min => $negMin,
-					entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
-				}));
+					entity_uuid => $cpd->uuid()
+				});
 			}
 		} else {
 			for (my $j=0; $j < @{$self->fbaFormulation()->fbaCompoundConstraints()}; $j++) {
@@ -444,7 +468,7 @@ sub createDrainFluxVariables {
 					my $maxFlux = $fbacpdconst->max();
 					my $minFlux = $fbacpdconst->min();
 					if ($self->decomposeReversibleDrainFlux() == 0) {
-						push(@{$newVariables},ModelSEED::MS::Variable->new({
+						$self->create("Variable",{
 							name => "df_".$cpd->id(),
 							type => "drainflux",
 							upperBound => $maxFlux,
@@ -452,7 +476,7 @@ sub createDrainFluxVariables {
 							max => $maxFlux,
 							min => $minFlux,
 							entity_uuid => $cpd->uuid()
-						}));
+						});
 					} else {
 						my $posMax = $maxFlux;
 						my $posMin = 0;
@@ -465,7 +489,7 @@ sub createDrainFluxVariables {
 							$posMin = -1*$negMax;
 							$negMax = 0;
 						}
-						push(@{$newVariables},ModelSEED::MS::Variable->new({
+						$self->create("Variable",{
 							name => "fdf_".$cpd->id(),
 							type => "fordrainflux",
 							upperBound => $posMax,
@@ -473,8 +497,8 @@ sub createDrainFluxVariables {
 							max => $posMax,
 							min => $posMin,
 							entity_uuid => $cpd->uuid()
-						}));
-						push(@{$newVariables},ModelSEED::MS::Variable->new({
+						});
+						$self->create("Variable",{
 							name => "rdf_".$cpd->id(),
 							type => "revdrainflux",
 							upperBound => $negMax,
@@ -482,17 +506,16 @@ sub createDrainFluxVariables {
 							max => $negMax,
 							min => $negMin,
 							entity_uuid => $cpd->uuid()
-						}));
+						});
 					}
 				}
 			}
 		}
 	}	
 	#Setting variables
-	for (my $i=0; $i < @{$newVariables}; $i++) {
-		$newVariables->[$i]->index($i);
+	for (my $i=0; $i < @{$self->variables()}; $i++) {
+		$self->variables()->[$i]->index($i);
 	}
-	$self->variables($newVariables);
 }
 
 =head3 createMassBalanceConstraints
@@ -511,12 +534,12 @@ sub createMassBalanceConstraints {
 		my $rxn = $self->model()->modelreactions()->[$i];
 		for (my $j=0; $j < @{$rxn->modelReactionReagents()}; $j++) {
 			my $rgt = $rxn->modelReactionReagents()->[$j];
-			my $const = $self->get_object("Constraint",{
+			my $const = $self->getObject("Constraint",{
 				entity_uuid => $rgt->modelcompound_uuid(),
 				type => "massbalance"
 			});
 			if (!defined($const)) {
-				$const = $self->create("Constaint",{
+				$const = $self->create("Constraint",{
 					entity_uuid => $rgt->modelcompound_uuid(),
 					name => "mb_".$rgt->modelcompound()->id(),
 					type => "massbalance",
@@ -526,8 +549,8 @@ sub createMassBalanceConstraints {
 			}
 			my $fluxtypes = ["flux","forflux","revflux"];
 			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
-				my $var = $self->get_object("Variable",{
-					entity_uuid => $rxn->[$j]->uuid(),
+				my $var = $self->getObject("Variable",{
+					entity_uuid => $rxn->uuid(),
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
@@ -541,14 +564,14 @@ sub createMassBalanceConstraints {
 	}
 	#Adding biomass stoichiometry
 	for (my $i=0; $i < @{$self->model()->biomasses()}; $i++) {
-		for (my $j=0; $j < @{$self->model()->biomasscompounds()}; $j++) {
-			my $biocpd = $self->model()->biomasscompounds()->[$j];
-			my $const = $self->get_object("Constraint",{
+		for (my $j=0; $j < @{$self->model()->biomasses()->[$i]->biomasscompounds()}; $j++) {
+			my $biocpd = $self->model()->biomasses()->[$i]->biomasscompounds()->[$j];
+			my $const = $self->getObject("Constraint",{
 				entity_uuid => $biocpd->modelcompound_uuid(),
 				type => "massbalance"
 			});
 			if (!defined($const)) {
-				$const = $self->create("Constaint",{
+				$const = $self->create("Constraint",{
 					entity_uuid => $biocpd->modelcompound_uuid(),
 					name => "mb_".$biocpd->modelcompound()->id(),
 					type => "massbalance",
@@ -556,18 +579,17 @@ sub createMassBalanceConstraints {
 					equalityType => "=",
 				});
 			}
-			my $fluxtypes = ["flux","forflux"];
-			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
-				my $var = $self->get_object("Variable",{
-					entity_uuid => $self->model()->biomasses()->[$i]->uuid(),
-					type => $fluxtypes->[$k]
+			my $var = $self->getObject("Variable",{
+				entity_uuid => $self->model()->biomasses()->[$i]->uuid(),
+				type => "biomassflux"
+			});
+			if (defined($var)) {
+				$const->create("ConstraintVariable",{
+					coefficient => $biocpd->coefficient(),
+					variable_uuid => $var->uuid()
 				});
-				if (defined($var)) {
-					$const->create("ConstraintVariable",{
-						coefficient => $biocpd->coefficient(),
-						variable_uuid => $var->uuid()
-					});
-				}
+			} else {
+				print "Variable ".$self->model()->biomasses()->[$i]->name()." not found!\n";	
 			}
 		}
 	}
@@ -581,14 +603,15 @@ sub createMassBalanceConstraints {
 			if ($self->variables()->[$i]->type() eq "revdrainflux") {
 				$coef = -1;
 			}
-			my $const = $self->get_object("Constraint",{
+			my $const = $self->getObject("Constraint",{
 				entity_uuid => $self->variables()->[$i]->entity_uuid(),
 				type => "massbalance"
 			});
 			if (!defined($const)) {
-				$const = $self->create("Constaint",{
+				my $numberOfConstraints = @{$self->constraints()};
+				$const = $self->create("Constraint",{
 					entity_uuid => $self->variables()->[$i]->entity_uuid(),
-#					name => "mb_".$rgt->modelcompound()->id(), # FIXME
+					name => "mb_".$numberOfConstraints,
 					type => "massbalance",
 					rightHandSide => 0,
 					equalityType => "=",
@@ -631,6 +654,7 @@ sub createFluxUseVariables {
 			$name =~ s/^f_/fu_/;
 			$name =~ s/^ff_/ffu_/;
 			$name =~ s/^rf_/rfu_/;
+			my $index = @{$newVariables};
 			push(@{$newVariables},ModelSEED::MS::Variable->new({
 				name => $name,
 				type => $self->variables()->[$i]->type()."use",
@@ -638,6 +662,7 @@ sub createFluxUseVariables {
 				lowerBound => 0,
 				max => 1,
 				min => 0,
+				"index" => $index,
 				entity_uuid => $self->variables()->[$i]->entity_uuid()
 			}));
 		}
@@ -721,7 +746,7 @@ sub createUseVariableConstraints {
 			my $type = $self->variables()->[$i]->type();
 			$type =~ s/use$//;
 			push(@{$newConstraints},$const);
-			my $fluxVar = $self->get_object("Variable",{
+			my $fluxVar = $self->getObject("Variable",{
 				entity_uuid => $self->variables()->[$i]->entity_uuid(),
 				type => $type,
 			});

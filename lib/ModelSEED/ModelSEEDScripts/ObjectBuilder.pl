@@ -90,7 +90,11 @@ foreach my $name (keys(%{$objects})) {
 			$suffix .= ", required => 1";
 		}
 		if (defined($attribute->{default})) {
-			$suffix .= ", default => '".$attribute->{default}."'";
+			if ($attribute->{default} =~ m/^sub\{.+\}$/) {
+				$suffix .= ", default => ".$attribute->{default};
+			} else {
+				$suffix .= ", default => '".$attribute->{default}."'";
+			}
 		}
 		if ($attribute->{name} eq "uuid") {
 			$suffix .= ", lazy => 1, builder => '_builduuid'";

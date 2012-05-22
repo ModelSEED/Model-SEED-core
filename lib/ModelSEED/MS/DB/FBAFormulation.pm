@@ -32,9 +32,8 @@ has expressionData_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attr
 has growthConstraint => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'none', printOrder => '0' );
 has thermodynamicConstraints => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'none', printOrder => '0' );
 has allReversible => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
-has uptakeLimits => ( is => 'rw', isa => 'HashRef', type => 'attribute', metaclass => 'Typed', default => 'sub{return {};}', printOrder => '0' );
-has numberOfSolutions => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1', printOrder => '0' );
-has geneKO => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => 'sub{return [];}', printOrder => '0' );
+has uptakeLimits => ( is => 'rw', isa => 'HashRef', type => 'attribute', metaclass => 'Typed', default => sub{return {};}, printOrder => '0' );
+has geneKO => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
 has defaultMaxFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1000', printOrder => '0' );
 has defaultMaxDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1000', printOrder => '0' );
 has defaultMinDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '-1000', printOrder => '0' );

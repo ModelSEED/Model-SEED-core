@@ -18,6 +18,7 @@ has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata'
 has equation => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
 has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has compartmentName => ( is => 'rw', isa => 'Str',printOrder => '5', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildcompartmentName' );
+has balanced => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbalanced' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -37,6 +38,10 @@ sub _buildequationcode {
 sub _buildcompartmentName {
 	my ($self,$args) = @_;
 	return $self->compartment()->name();
+}
+sub _buildbalanced {
+	my ($self,$args) = @_;
+	return $self->reaction()->balanced();
 }
 
 #***********************************************************************************************************

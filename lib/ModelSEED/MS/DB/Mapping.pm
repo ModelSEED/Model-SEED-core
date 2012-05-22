@@ -28,9 +28,9 @@ has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metacla
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
 has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
 has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
-has defaultNameSpace => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'SEED', printOrder => '0' );
-has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has defaultNameSpace => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'SEED', printOrder => '2' );
+has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '3' );
 
 
 # ANCESTOR:
@@ -38,11 +38,11 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has universalReactions => (is => 'bare', coerce => 1, handles => { universalReactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::UniversalReaction::Lazy', type => 'child(UniversalReaction)', metaclass => 'Typed');
-has biomassTemplates => (is => 'bare', coerce => 1, handles => { biomassTemplates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::BiomassTemplate::Lazy', type => 'child(BiomassTemplate)', metaclass => 'Typed');
-has roles => (is => 'bare', coerce => 1, handles => { roles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Role::Lazy', type => 'child(Role)', metaclass => 'Typed');
-has rolesets => (is => 'bare', coerce => 1, handles => { rolesets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSet::Lazy', type => 'child(RoleSet)', metaclass => 'Typed');
-has complexes => (is => 'bare', coerce => 1, handles => { complexes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Complex::Lazy', type => 'child(Complex)', metaclass => 'Typed');
+has universalReactions => (is => 'bare', coerce => 1, handles => { universalReactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::UniversalReaction::Lazy', type => 'child(UniversalReaction)', metaclass => 'Typed', printOrder => '0');
+has biomassTemplates => (is => 'bare', coerce => 1, handles => { biomassTemplates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::BiomassTemplate::Lazy', type => 'child(BiomassTemplate)', metaclass => 'Typed', printOrder => '1');
+has roles => (is => 'bare', coerce => 1, handles => { roles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Role::Lazy', type => 'child(Role)', metaclass => 'Typed', printOrder => '2');
+has rolesets => (is => 'bare', coerce => 1, handles => { rolesets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSet::Lazy', type => 'child(RoleSet)', metaclass => 'Typed', printOrder => '3');
+has complexes => (is => 'bare', coerce => 1, handles => { complexes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Complex::Lazy', type => 'child(Complex)', metaclass => 'Typed', printOrder => '4');
 has roleSetAliasSets => (is => 'bare', coerce => 1, handles => { roleSetAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSetAliasSet::Lazy', type => 'child(RoleSetAliasSet)', metaclass => 'Typed');
 has roleAliasSets => (is => 'bare', coerce => 1, handles => { roleAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleAliasSet::Lazy', type => 'child(RoleAliasSet)', metaclass => 'Typed');
 has complexAliasSets => (is => 'bare', coerce => 1, handles => { complexAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexAliasSet::Lazy', type => 'child(ComplexAliasSet)', metaclass => 'Typed');

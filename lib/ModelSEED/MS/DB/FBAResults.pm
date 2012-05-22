@@ -9,6 +9,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 use ModelSEED::MS::LazyHolder::FBACompoundVariable;
 use ModelSEED::MS::LazyHolder::FBAReactionVariable;
+use ModelSEED::MS::LazyHolder::FBABiomassVariable;
 extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
 
@@ -33,6 +34,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 # SUBOBJECTS:
 has fbaCompoundVariables => (is => 'bare', coerce => 1, handles => { fbaCompoundVariables => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBACompoundVariable::Lazy', type => 'encompassed(FBACompoundVariable)', metaclass => 'Typed');
 has fbaReactionVariables => (is => 'bare', coerce => 1, handles => { fbaReactionVariables => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAReactionVariable::Lazy', type => 'encompassed(FBAReactionVariable)', metaclass => 'Typed');
+has fbaBiomassVariables => (is => 'bare', coerce => 1, handles => { fbaBiomassVariables => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBABiomassVariable::Lazy', type => 'encompassed(FBABiomassVariable)', metaclass => 'Typed');
 
 
 # LINKS:
@@ -54,6 +56,7 @@ sub _typeToFunction {
 	return {
 		FBAReactionVariable => 'fbaReactionVariables',
 		FBACompoundVariable => 'fbaCompoundVariables',
+		FBABiomassVariable => 'fbaBiomassVariables',
 	};
 }
 

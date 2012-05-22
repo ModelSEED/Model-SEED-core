@@ -7,7 +7,7 @@
 package ModelSEED::MS::DB::ModelReaction;
 use Moose;
 use Moose::Util::TypeConstraints;
-use ModelSEED::MS::LazyHolder::ModelReactionRawGPR;
+use ModelSEED::MS::LazyHolder::ModelReactionProtein;
 use ModelSEED::MS::LazyHolder::ModelReactionReagent;
 extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
@@ -31,7 +31,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has gpr => (is => 'bare', coerce => 1, handles => { gpr => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionRawGPR::Lazy', type => 'encompassed(ModelReactionRawGPR)', metaclass => 'Typed');
+has modelReactionProteins => (is => 'bare', coerce => 1, handles => { modelReactionProteins => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionProtein::Lazy', type => 'encompassed(ModelReactionProtein)', metaclass => 'Typed');
 has modelReactionReagents => (is => 'bare', coerce => 1, handles => { modelReactionReagents => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionReagent::Lazy', type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed');
 
 
@@ -57,7 +57,7 @@ sub _buildmodelcompartment {
 sub _type { return 'ModelReaction'; }
 sub _typeToFunction {
 	return {
-		ModelReactionRawGPR => 'gpr',
+		ModelReactionProtein => 'modelReactionProteins',
 		ModelReactionReagent => 'modelReactionReagents',
 	};
 }

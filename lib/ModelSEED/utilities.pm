@@ -260,7 +260,26 @@ sub MODELSEEDCORE {
 	return $ENV{MODEL_SEED_CORE};
 }
 
+=head3 GLPK
+Definition:
+	string = ModelSEED::utilities::GLPK();
+Description:
+	Returns location of glpk executable
+Example:
+=cut
+sub GLPK {
+	return $ENV{GLPK};
+}
 
-
+=head3 CPLEX
+Definition:
+	string = ModelSEED::utilities::CPLEX();
+Description:
+	Returns location of cplex executable
+Example:
+=cut
+sub CPLEX {
+	return $ENV{CPLEX};
+}
 
 1;

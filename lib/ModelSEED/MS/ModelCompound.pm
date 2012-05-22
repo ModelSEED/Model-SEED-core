@@ -15,11 +15,16 @@ extends 'ModelSEED::MS::DB::ModelCompound';
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
 has name => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildname' );
+has id => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildid' );
 has modelCompartmentLabel => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmodelCompartmentLabel' );
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
+sub _buildid {
+	my ($self) = @_;
+	return $self->compound()->id()."_".$self->modelCompartmentLabel();
+}
 sub _buildname {
 	my ($self) = @_;
 	return $self->compound()->name();

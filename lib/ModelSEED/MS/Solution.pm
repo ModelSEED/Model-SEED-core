@@ -1,16 +1,16 @@
 ########################################################################
-# ModelSEED::MS::FBASolution - This is the moose object corresponding to the FBASolution object
+# ModelSEED::MS::Solution - This is the moose object corresponding to the Solution object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-05-16T20:55:14
+# Date of module creation: 2012-05-21T05:06:38
 ########################################################################
 use strict;
-use ModelSEED::MS::DB::FBASolution;
-package ModelSEED::MS::FBASolution;
+use ModelSEED::MS::DB::Solution;
+package ModelSEED::MS::Solution;
 use Moose;
 use namespace::autoclean;
-extends 'ModelSEED::MS::DB::FBASolution';
+extends 'ModelSEED::MS::DB::Solution';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
@@ -31,7 +31,7 @@ extends 'ModelSEED::MS::DB::FBASolution';
 #***********************************************************************************************************
 =head3 buildFromCPLEXFile
 Definition:
-	void ModelSEED::MS::FBASolution->buildFromCPLEXFile({
+	void ModelSEED::MS::Solution->buildFromCPLEXFile({
 		filename => string:file with cplex solution
 	});
 Description:
@@ -79,7 +79,7 @@ sub buildFromCPLEXFile {
 
 =head3 buildFromGLPKFile
 Definition:
-	void ModelSEED::MS::FBASolution->buildFromGLPKFile({
+	void ModelSEED::MS::Solution->buildFromGLPKFile({
 		filename => string:file with glpk solution
 	});
 Description:
@@ -91,7 +91,7 @@ sub buildFromGLPKFile {
 	if (!-e $args->{filename}) {
 		ModelSEED::utilities::ERROR("Solution file not found!");	
 	}
-	my $data = ModelSEED::utilities::LOADIFLE($args->{filename});
+	my $data = ModelSEED::utilities::LOADFILE($args->{filename});
 	$self->method("simplex");
 	$self->feasible(1);
 	my $constraints = 0;
@@ -107,7 +107,7 @@ sub buildFromGLPKFile {
 		} elsif ($data->[$i] =~ m/\sColumn\sname\s/) {
 			$variables = 1;
 			$constraints = 0;
-		} elsif ($constraints == 1 && $data->[$i] =~ m/\s+(\d+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
+		} elsif ($constraints == 1 && $data->[$i] =~ m/^\s+(\d+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
 			my $index = $1;
 			my $name = $2;
 			my $state = $3;
@@ -122,7 +122,7 @@ sub buildFromGLPKFile {
 					slack => $slack
 				});
 			}
-		} elsif ($variables == 1 && $data->[$i] =~ m/\s+(\d+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
+		} elsif ($variables == 1 && $data->[$i] =~ m/^\s+(\d+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
 			my $index = $1;
 			my $name = $2;
 			my $status = $3;
@@ -138,6 +138,7 @@ sub buildFromGLPKFile {
 		}
 	}
 }
+
 
 __PACKAGE__->meta->make_immutable;
 1;

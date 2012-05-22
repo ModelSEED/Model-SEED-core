@@ -31,6 +31,8 @@ my $mapping = ModelSEED::MS::Mapping->new($objectData);
 $mapping->setParents(undef);
 $mapping->biochemistry($biochem);
 print "Mapping loaded!\n";
+my $readable = $mapping->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.readable",$readable);
 #Retrieving annotation
 my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
 my $anno = $seedFactory->buildMooseAnnotation({
@@ -38,9 +40,10 @@ my $anno = $seedFactory->buildMooseAnnotation({
 	mapping => $mapping
 });
 print "Created annotation!\n";
-my $readable = $anno->createReadableStringArray();
+$readable = $anno->createReadableStringArray();
 ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/83333.1-annotation.readable",$readable); 
 #Building model
 my $mdl = $anno->createStandardFBAModel();
 $mdl->printJSONFile("c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.json");
-$mdl->createReadableStringArray();
+$readable = $mdl->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.readable",$readable);
