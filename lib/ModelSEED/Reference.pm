@@ -8,12 +8,13 @@
 #
 # Date of module creation: 2012-05-16
 ########################################################################
-package ModelSEED::RefParse;
+package ModelSEED::Reference;
 =pod
 
-=head1 ModelSEED::RefParse
+=head1 ModelSEED::Reference
 
 Get information about references.
+TODO : update docs
 
 =head2 Methods
 
@@ -41,6 +42,7 @@ use ModelSEED::MS::Metadata::Definitions;
 use Data::Dumper;
 use common::sense;
 
+has ref => ( is => 'ro', isa => 'Str', required => 1 );
 has delimiter => (is => 'ro', isa => 'Str', default => '/');
 has schema => (
     is => 'ro',
@@ -48,6 +50,25 @@ has schema => (
     builder => '_buildSchema',
     lazy => 1
 );
+has _parsed_ref => ( is => 'ro', isa => 'HashRef', lazy => 1, builder => '_build_parsed_ref' );
+
+has is_url => ( is => 'ro', isa => 'Bool', lazy => 1, builder => '_build_is_url' );
+has scheme => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_scheme' );
+has authority => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_authority');
+
+has type  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_type');
+has base  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_base');
+has id    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id');
+has class => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_class');
+
+has id_type    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id_type');
+has alias_type => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_type');
+has alias_username => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_username');
+has alias_string =>  (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_alias_string');
+
+has base_types => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_base_types');
+has parent_objects => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_objects');
+has parent_collections => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_collections');
 
 sub parse {
     my ($self, $ref) = @_;
@@ -108,10 +129,19 @@ sub parse {
         parent_collections => $parent_collections,
         parent_objects => $parent_objects,
     };
+    $rtv->{scheme} = $scheme if(defined($scheme));
+    $rtv->{authority} = $auth if(defined($auth));
     $rtv->{base_types} = $base_types;
     $rtv->{base} = join($delimiter, @$base) if(@$base);
     $rtv->{id} = join($delimiter, @$id) if(@$id);
     $rtv->{id_type} = $id_type if(@$id);
+    if($id_type eq 'alias') {
+        my $alias_type = $rtv->{parent_collections}->[0];
+        my ($alias_username, $alias_string) = @$id;
+        $rtv->{alias_type} = $alias_type;
+        $rtv->{alias_username} = $alias_username;
+        $rtv->{alias_string} = $alias_string;
+    }
     return $rtv;
 }
 
@@ -178,4 +208,68 @@ sub _uuid {
     return [$uuid] if($uuid =~ m/[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/);
     return [];
 }
+
+sub _build_parsed_ref {
+    my ($self) = @_;
+    return $self->parse($self->ref);
+}
+
+sub _build_ref {
+    my ($self) = @_;
+    my $query = $self->base . $self->delimiter . $self->id;
+    if ($self->is_url) {
+        return uri_join($self->scheme, $self->authority, $self->query);
+    } else {
+        return $query;
+    }
+}
+
+sub _build_is_url {
+    my ($self) = @_;
+    if (defined($self->scheme) && defined($self->authority)) {
+        return 1;
+    }
+    return 0;
+}
+
+sub _build_scheme {
+    return $_[0]->_parsed_ref->{scheme};
+}
+sub _build_authority {
+    return $_[0]->_parsed_ref->{authority};
+}
+sub _build_type {
+    return $_[0]->_parsed_ref->{type};
+}
+sub _build_base {
+    return $_[0]->_parsed_ref->{base};
+}
+sub _build_id {
+    return $_[0]->_parsed_ref->{id};
+}
+sub _build_id_type {
+    return $_[0]->_parsed_ref->{id_type};
+}
+sub _build_class {
+    return $_[0]->_parsed_ref->{class};
+}
+sub _build_base_types {
+    return $_[0]->_parsed_ref->{base_types};
+}
+sub _build_parent_objects {
+    return $_[0]->_parsed_ref->{parent_objects};
+}
+sub _build_parent_collections {
+    return $_[0]->_parsed_ref->{parent_collections};
+}
+sub _build_alias_type {
+    return $_[0]->_parsed_ref->{alias_type};
+}
+sub _build_alias_username {
+    return $_[0]->_parsed_ref->{alias_username};
+}
+sub _build_alias_string {
+    return $_[0]->_parsed_ref->{alias_string};
+}
+
 1;
