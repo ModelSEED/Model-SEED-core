@@ -16,7 +16,10 @@ use MongoDB;
 use MongoDB::Connection;
 use MongoDB::Database;
 use JSON::Path;
-use ModelSEED::RefParse;
+use ModelSEED::Reference;
+use ModelSEED::MS::Metadata::Definitions;
+use Data::Dumper;
+use Clone qw(clone);
 
 with 'ModelSEED::Database';
  
@@ -48,11 +51,11 @@ has _collectionMap => (
     lazy    => 1,
 );
 
-has refParse => (
-    is => 'ro',
-    isa => 'ModelSEED::RefParse',
-    builder => '_buildRefParse',
-    lazy => 1,
+has split_rules => (
+    is      => 'ro',
+    isa     => 'HashRef',
+    builder => '_build_split_rules',
+    lazy    => 1
 );
 
 
@@ -60,76 +63,173 @@ $ModelSEED::Database::MongoDB::aliasCollection = "aliases";
 
 sub has_data {
     my ($self, $ref, $auth) = @_;
-    my $refStruct = $self->refParse->parse($ref);
-    my $collection = $self->_get_collection($refStruct);
-    $query = $self->_mixin_auth_query($query, $auth->username, 'r');
-    my $id = $refStruct->{id};
-    my $username = $auth->username;
-    my $o = $self->db->$collection->find_one({ aliases => $id });
-    return 0 unless(defined($o->viewers->{$username}) || $o->{public});
+    my $uuid = $self->_get_uuid($ref, $auth);
+    # TODO : Do we return undef for collection references?
+    return 0 unless(defined($uuid));
+    my $collection = $self->_get_collection($ref);
+    my $o = $self->db->$collection->find_one({ uuid => $uuid });
     return (defined($o)) ? 1 : 0;
 }
 
 sub get_data {
     my ($self, $ref, $auth) = @_;
-    my $refStruct = $self->refParse->parse($ref);
-    # get the collection
-    my $collection = $self->_get_collection($refStruct);
-    # determine id type =>> query
-    my $query = $self->_mixin_id_query({}, $refStruct);
-    # determine ref => auth_type
-    # if auth_type on this, auth =>> query
-    # else: _get_auth(query)
-    my $id = $refStruct->{id};
-    my $username = $auth->username;
-    my $o = $self->db->$collection->find_one({ aliases => $id });
-    return (defined($o)) ? $o->{data} : undef;
+    my $uuid = $self->_get_uuid($ref, $auth);
+    return undef unless(defined($uuid));
+    my $collection = $self->_get_collection($ref);
+    my $o = $self->db->$collection->find_one({ uuid => $uuid });
+    return undef unless(defined($o));
+    delete $o->{_id};
+    return $self->_join_subobjects($ref, $o, $auth);
 }
 
 sub save_data {
-    my ($self, $type, $id, $object) = @_;
-    my $old = $self->db->$type->find_one({ aliases => "$id" });
-    # Remove old alias reference
-    if(defined($old)) {
-        $self->db->$type->update(
-            {aliases => $id},
-            {'$pull' => {aliases => "$id" }},
-            {safe    => 0}
-        );
-        my $errObj = $self->db->last_error();
-        unless (!defined($errObj->{err}) 
-            && $errObj->{ok} 
-            && $errObj->{n} == 1)
-        {
+    my ($self, $ref, $object, $auth) = @_;
+    my ($oldUUID, $update_alias);
+    $object = clone($object); # do this because we modify object
+    if ($ref->id_type eq 'alias') {
+        $oldUUID = $self->_get_uuid($ref, $auth);    
+        # cannot write to alias not owned by callee
+        return undef unless($auth->username eq $ref->alias_username);
+    } elsif($ref->id_type eq 'uuid') {
+        # cannot save to existing uuid
+        return undef if(defined($self->get_data($ref, $auth)));
+    }
+    if(defined($oldUUID)) {
+        # We have an existing alias, so must:
+        # - insert uuid in ancestors
+        if(defined($object->{ancestor_uuids})) {
+            my $found = 0;
+            foreach my $uuid (@{$object->{ancestor_uuids}}) {
+                if($uuid eq $oldUUID) {
+                    $found = 1;
+                    last;
+                }
+            }
+            if(!$found) {
+                push(@{$object->{ancestor_uuids}}, $oldUUID);
+            }
+        }
+        # - set to new UUID if that hasn't been done
+        if($object->{uuid} eq $oldUUID) {
+            $object->{uuid} = Data::UUID->new()->create_str();
+        }
+        # - update alias, but wait until after object write
+        $update_alias = 1;
+    }
+    # Now save object to collection
+    $self->_split_object_for_save($ref, $object);
+    if($update_alias) {
+        # update alias to new uuid
+        my $rtv = $self->update_alias($ref, $object->{uuid}, $auth);
+        return undef unless($rtv);
+    } elsif(!defined($oldUUID) && $ref->id_type eq 'alias') {
+        # alias is new, so create it
+        my $rtv = $self->create_alias($ref, $object->{uuid}, $auth);
+        return undef unless($rtv);
+    }
+    return $object->{uuid};
+}
+
+sub _base_object_save {
+    my ($self, $ref, $object) = @_;
+    my $collection = $self->_get_collection($ref);
+    $self->db->$collection->insert($object, {safe => 0});
+    return undef if($self->_error);
+    return 1;
+}
+
+sub _subobject_save {
+    my ($self, $subobject, $subobject_rule, $parent_uuid) = @_;
+    my $collection = $subobject_rule->{collection}; 
+    my $parent_tag = $subobject_rule->{parent_tag};
+    my $query =  {uuid => $subobject->{uuid}};
+    $self->db->$collection->update($query,
+        {'$addToSet' => {$parent_tag => $parent_uuid}},
+    );
+    if($self->_update_error(1)) {
+        # no update, need to upsert object
+        $subobject->{$parent_tag} = [$parent_uuid];
+        $self->db->$collection->update($query, $subobject, {upsert => 1});
+        if($self->_error) {
             return 0;
         }
-        # Push ancestry onto new object
-        push(@{$object->{parents}}, $old->{data}->{uuid});
+        return 1;
     }
-    # Insert into database
-    $self->db->$type->insert(
-        {   aliases => [$id],
-            data    => $object
-        },
-        {safe => 0}
-    );
-    my $errObj = $self->db->last_error();
-    #return (!defined($errObj->{err}) && $errObj->{ok}) ? $errObj->{n} : 0;
-    # For whatever reason $errObj->{n} is not correct
-    return (!defined($errObj->{err}) && $errObj->{ok}) ? 1 : 0;
+    return 1;
 }
 
-sub delete_object {
-    my ($self, $type, $id) = @_;
-    $self->db->$type->remove({ aliases => "$id" }, {safe => 0, just_one => 1});
-    my $errObj = $self->db->last_error();
-    return (!defined($errObj->{err}) && $errObj->{ok}) ? $errObj->{n} : 0;
+sub _subobject_get {
+    my ($self, $subobject_rule, $parent_uuid) = @_;
+    my $collection = $subobject_rule->{collection}; 
+    my $parent_tag = $subobject_rule->{parent_tag};
+    my $query =  { $parent_tag => $parent_uuid};
+    my @objs = $self->db->$collection->find($query)->all;
+    map { delete $_->{_id}; delete $_->{$parent_tag}; } @objs;
+    return [@objs];
 }
 
-sub find_objects {
+
+sub delete_data {
+    my ($self, $ref, $auth) = @_;
+    my $uuid = $self->_get_uuid($ref, $auth);
+    return undef unless(defined($uuid));
+    # TODO - do we actually want to delete objects?
+    return 1;
+}
+
+sub find_data {
     my ($self, $type, $query) = @_;
-    my $cursor = $self->db->$type->find($query);
-    return [ $cursor->all ];
+}
+
+
+sub _join_subobjects {
+    my ($self, $ref, $base_object, $auth) = @_;
+    # determine ref type
+    my $type = $ref->base_types->[scalar(@{$ref->base_types}) - 1];
+    my $rules = $self->split_rules->{$type};
+    if(!defined($rules)) {
+        die "Unknown type $type from ".$ref->ref;
+    }
+    my $parent_uuid = $base_object->{uuid};
+    foreach my $attr (keys %$rules) {
+        my $rule = $rules->{$attr};
+        $base_object->{$attr} = $self->_subobject_get($rule, $parent_uuid);
+    }
+    return $base_object;
+}
+
+sub _split_object_for_save {
+    my ($self, $ref, $object, $auth) = @_;
+    # determine ref type
+    my $type = $ref->base_types->[scalar(@{$ref->base_types}) - 1];
+    my $rules = $self->split_rules->{$type};
+    if(!defined($rules)) {
+        die "Unknown type $type from ".$ref->ref;
+    }
+    my $parent_uuid = $object->{uuid};
+    # split into subobjects
+    foreach my $attr (keys %$rules) {
+        my $rule = $rules->{$attr};
+        if ( $rule->{type} eq 'array' ) {
+            my $subobjects = $object->{$attr};
+            $subobjects ||= [];
+            foreach my $subobject (@$subobjects) {
+                my $success = $self->_subobject_save($subobject, $rule, $parent_uuid);
+                warn "Failed to save $attr : " . $subobject->{uuid} . "\n" unless($success);
+            }
+        }
+        delete $object->{$attr};
+    }
+    return $self->_base_object_save($ref, $object);
+}
+
+sub _get_uuid {
+    my ($self, $ref, $auth) = @_;
+    if($ref->id_type eq 'alias') {
+        return $self->alias_uuid($ref, $auth);
+    } else {
+        return $ref->id;
+    }
 }
 
 sub _buildConn {
@@ -178,21 +278,10 @@ sub _followPath {
     return ($object, $last);
 }
 
-sub _get_alias_permissions {
-    my ($self, $type, $alias) = @_;
-    my $aliasCollection = $ModelSEED::Database::MongoDB::aliasCollection;
-    my $o = $self->db->$aliasCollection->find_one({ type => $type, alias => $alias });
-    return $o;
-}
-
-sub _set_alias_permissions {
-    my ($self, $type, $alias) = @_;
-    
-}
 sub _get_collection {
-    my ($self, $refParseStruct) = @_;
+    my ($self, $ref) = @_;
     my $map = $self->_collectionMap;
-    my @base_types = @{$refParseStruct->{base_types}};
+    my @base_types = @{$ref->base_types};
     my $currentCollection = undef;
     while(@base_types) {
         my $type = shift @base_types;
@@ -218,19 +307,172 @@ sub _buildCollectionMap {
     };
 }
 
-sub _mixin_id_query {
-    my ($self, $query, $refStruct) = @_;
-    my ($id, $type) = ($refStruct->{id}, $refStruct->{id_type});
-    if($type eq 'uuid') {
-        return $query->{uuid} = $id;
-    } elsif($type eq 'alias') {
-        return $query->{aliases} = $id;
+## Alias functions
+
+sub _alias_update {
+    my ($self, $ref, $update, $auth) = @_;
+    # can only update ref that is an alias
+    return 0 unless($ref->id_type eq 'alias');
+    # can only update ref that is owned by caller
+    return 0 unless($ref->alias_username eq $auth->username);
+    my $aliasCollection = $ModelSEED::Database::MongoDB::aliasCollection;
+    my $o = $self->db->$aliasCollection->update(
+        {   alias => $ref->alias_string,
+            type  => $ref->alias_type,
+            owner => $auth->username,
+        },
+        # push viewer on viewers
+        $update,
+        {safe => 0}
+    );
+    return 0 if $self->_error;
+    return 1;
+}
+
+sub _alias_query {
+    my ($self, $ref, $attribute, $auth) = @_;
+    # can only update ref that is an alias
+    return undef unless($ref->id_type eq 'alias');
+    my $aliasCollection = $ModelSEED::Database::MongoDB::aliasCollection;
+    my $o = $self->db->$aliasCollection->find_one(
+        {   alias => $ref->alias_string,
+            type  => $ref->alias_type,
+            owner => $ref->alias_username,
+        }
+    );
+    # return undefined unless we are allowed to see alias
+    #     either because it is (1) public, (2) owned by us
+    #     or (3) we are in the list of viewers
+    return undef unless(defined($o));
+    unless($o->{public}
+        || $o->{owner} eq $auth->username)
+    {
+        my $authorized = 0;
+        foreach my $viewer (@{$o->{viewers}}) {
+            if($viewer eq $auth->username) {
+                $authorized = 1;
+                last;
+            }
+        }
+        return undef unless($authorized);
     }
+    return $o->{$attribute};
 }
 
-sub _buildRefParse {
-    return ModelSEED::RefParse->new();
+sub create_alias {
+    my ($self, $ref, $uuid, $auth) = @_;
+    my $type = $ref->parent_collections->[0];
+    my $validAliasTypes = {
+        biochemistry => 1,
+        model => 1,
+        mapping => 1,
+    };
+    return 0 unless(defined($validAliasTypes->{$type}));
+    return 0 unless($ref->id_type eq 'alias');
+    return 0 unless($ref->alias_username eq $auth->username);
+    my $obj = {
+        type => $type,
+        alias => $ref->alias_string,
+        owner => $auth->username,
+        public => 0,
+        uuid => $uuid,
+        viewers => [],
+    };
+    my $query = {
+        type => $type,
+        alias => $ref->alias_string,
+        owner => $auth->username,
+    };
+    my $aliasCollection = $ModelSEED::Database::MongoDB::aliasCollection;
+    $self->db->$aliasCollection->update($query, $obj, {upsert => 1});
+    # this is 'upsert', which inserts one document if nothing matches
+    return 0 if $self->_update_error(1);
+    return 1;
 }
 
+sub alias_uuid {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'uuid', $auth);
+}
+
+sub alias_viewers {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'viewers', $auth);
+}
+
+sub alias_public {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'public', $auth);
+}
+
+sub alias_owner {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'owner', $auth);
+}
+
+sub update_alias {
+    my ($self, $ref, $uuid, $auth) = @_;
+    my $update = { '$set' => { 'uuid' => $uuid }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+sub remove_viewer {
+    my ($self, $ref, $viewerName, $auth) = @_;
+    my $update = { '$pull' => { 'viewers' => $viewerName }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+sub set_public {
+    my ($self, $ref, $bool, $auth) = @_;
+    my $update = { '$set' => { 'public' => $bool }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+sub add_viewer {
+    my ($self, $ref, $viewerName, $auth) = @_;
+    my $update = { '$push' => { 'viewers' => $viewerName }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+## MongoDB error checking functions
+sub _error {
+    my ($self, $count) = @_;
+    my $errObj = $self->db->last_error();
+    unless (!defined($errObj->{err}) && $errObj->{ok}) {
+        return 1;
+    }
+    return 0;
+}
+sub _update_error {
+    my ($self, $count) = @_;
+    return 1 if $self->_error;
+    my $e = $self->db->last_error();
+    return 1 if $e->{n} != $count;
+    return 0;
+}
+sub _build_split_rules {
+    my ($self) = @_;
+    my $defs = ModelSEED::MS::Metadata::Definitions::objectDefinitions();
+    my $top_level_types = [
+        grep { $defs->{$_}->{parents}->[0] eq 'ModelSEED::Store' }
+            keys %$defs
+    ];
+    my $rules = {};
+    foreach my $type (@$top_level_types) {
+        my $lc_type = lc(substr($type,0,1)).substr($type,1);
+        $rules->{$lc_type} = {};
+        my $def = $defs->{$type};
+        foreach my $subObj (@{$def->{subobjects}}) {
+            my $sub_name = $subObj->{name};
+            $rules->{$lc_type}->{$sub_name} = {
+                collection => $sub_name,
+                parent_tag => "_parent_$lc_type",
+                type => "array"
+            };
+
+        }
+    }
+    return $rules;
+}
 
 1;
