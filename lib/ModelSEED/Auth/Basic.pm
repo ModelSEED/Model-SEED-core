@@ -35,7 +35,6 @@ use MIME::Base64;
 use Class::Autouse qw(
     HTTP::Request
 );
-with 'ModelSEED::Auth';
 
 has username => ( is => 'ro', isa => 'Str', required => 1);
 has password => ( is => 'ro', isa => 'Str', required => 1);
@@ -49,5 +48,6 @@ sub wrap_http_request {
     return 1;
 }
 
+with 'ModelSEED::Auth';
 __PACKAGE__->meta->make_immutable;
 1;
