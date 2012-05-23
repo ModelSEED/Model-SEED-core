@@ -87,6 +87,10 @@ In these functions:
 
     $bool = $db->create_alias(ref, arbitraryString, auth)
 
+=head3 update_alias
+
+    $bool = $db->update_alias(ref, uuid, auth)
+
 =head3 add_viewer
 
     $bool = $db->add_viewer(ref, viewerUsername, auth)
@@ -104,17 +108,21 @@ package ModelSEED::Database;
 use Moose::Role;
 requires 'has_data';
 requires 'get_data';
-requires 'get_data_collection';
-requires 'get_data_collection_iterator';
+#requires 'get_data_collection';
+#requires 'get_data_collection_iterator';
 requires 'save_data';
-requires 'save_data_collection';
+#requires 'save_data_collection';
 
 requires 'delete_data';
-requires 'delete_data_collection';
+#requires 'delete_data_collection';
 
 requires 'find_data';
 
 requires 'create_alias';
+requires 'update_alias';
+requires 'alias_viewers';
+requires 'alias_owner';
+requires 'alias_public';
 requires 'add_viewer';
 requires 'remove_viewer';
 requires 'set_public';
