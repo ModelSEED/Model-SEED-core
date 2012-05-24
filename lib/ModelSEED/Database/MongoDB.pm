@@ -19,7 +19,7 @@ use JSON::Path;
 use ModelSEED::Reference;
 use ModelSEED::MS::Metadata::Definitions;
 use Data::Dumper;
-use Clone qw(clone);
+use Data::UUID;
 
 with 'ModelSEED::Database';
  
@@ -34,14 +34,14 @@ has conn => (
     isa       => 'MongoDB::Connection',
     builder   => '_buildConn',
     lazy      => 1,
-#    init_args => undef
+    init_arg  => undef
 );
 has db => (
     is        => 'ro',
     isa       => 'MongoDB::Database',
     builder   => '_buildDb',
     lazy      => 1,
-#    init_args => undef
+    init_arg  => undef
 );
 
 has _collectionMap => (
@@ -58,8 +58,24 @@ has split_rules => (
     lazy    => 1
 );
 
-
 $ModelSEED::Database::MongoDB::aliasCollection = "aliases";
+
+# this initalizes collections, indexes in collections
+sub initialize {
+    my ($self) = @_;
+    my $split_rules   = $self->split_rules;
+    # right now we're only indexing the uuid and parent_tag fields
+    foreach my $base_collection_name (keys %$split_rules) {
+        $self->db->$base_collection_name->ensure_index({ uuid => 1 }, {unique => 1, safe => 1});
+        my $sub_rules = $split_rules->{$base_collection_name};
+        foreach my $rule (values %$sub_rules) {
+            my $collection = $rule->{collection};
+            my $parent_tag = $rule->{parent_tag};
+            $self->db->$collection->ensure_index({uuid => 1}, {unique => 1, safe => 1});
+            $self->db->$collection->ensure_index({$parent_tag => 1}, { safe => 1});
+        }
+    }
+}
 
 sub has_data {
     my ($self, $ref, $auth) = @_;
@@ -82,10 +98,28 @@ sub get_data {
     return $self->_join_subobjects($ref, $o, $auth);
 }
 
+sub get_data_collection {
+    my ($self, $ref, $auth) = @_;
+    return [] unless($ref->type eq 'collection');
+    my $coll_name = $self->_get_collection($ref);
+    my $objects = $self->db->$coll_name->find()->all;
+    return [] unless(@$objects);
+    return [map { $self->_join_subobjects($ref, $_, $auth) } @$objects];
+}
+
+sub get_data_collection_iterator {
+    my ($self, $ref, $auth) = @_;
+    return [] unless($ref->type eq 'collection');
+    my $coll_name = $self->_get_collection($ref);
+    my $cursor = $self->db->$coll_name->find();
+    return ModelSEED::Database::Iterator::WrappedMogoDBIterator->new(
+        base_iterator => $cursor, auth => $auth, ref => $ref
+    );
+}
+
 sub save_data {
     my ($self, $ref, $object, $auth) = @_;
     my ($oldUUID, $update_alias);
-    $object = clone($object); # do this because we modify object
     if ($ref->id_type eq 'alias') {
         $oldUUID = $self->_get_uuid($ref, $auth);    
         # cannot write to alias not owned by callee
@@ -97,17 +131,18 @@ sub save_data {
     if(defined($oldUUID)) {
         # We have an existing alias, so must:
         # - insert uuid in ancestors
-        if(defined($object->{ancestor_uuids})) {
-            my $found = 0;
-            foreach my $uuid (@{$object->{ancestor_uuids}}) {
-                if($uuid eq $oldUUID) {
-                    $found = 1;
-                    last;
-                }
+        if(!defined($object->{ancestor_uuids})) {
+            $object->{ancestor_uuids} = [];
+        }
+        my $found = 0;
+        foreach my $uuid (@{$object->{ancestor_uuids}}) {
+            if($uuid eq $oldUUID) {
+                $found = 1;
+                last;
             }
-            if(!$found) {
-                push(@{$object->{ancestor_uuids}}, $oldUUID);
-            }
+        }
+        if(!$found) {
+            push(@{$object->{ancestor_uuids}}, $oldUUID);
         }
         # - set to new UUID if that hasn't been done
         if($object->{uuid} eq $oldUUID) {
@@ -131,9 +166,10 @@ sub save_data {
 }
 
 sub _base_object_save {
-    my ($self, $ref, $object) = @_;
+    my ($self, $ref, $object, $attrs) = @_;
+    my $tmpObject = { map { $_ => $object->{$_} } @$attrs };
     my $collection = $self->_get_collection($ref);
-    $self->db->$collection->insert($object, {safe => 0});
+    $self->db->$collection->insert($tmpObject, {safe => 0});
     return undef if($self->_error);
     return 1;
 }
@@ -142,7 +178,7 @@ sub _subobject_save {
     my ($self, $subobject, $subobject_rule, $parent_uuid) = @_;
     my $collection = $subobject_rule->{collection}; 
     my $parent_tag = $subobject_rule->{parent_tag};
-    my $query =  {uuid => $subobject->{uuid}};
+    my $query = {uuid => $subobject->{uuid}};
     $self->db->$collection->update($query,
         {'$addToSet' => {$parent_tag => $parent_uuid}},
     );
@@ -154,6 +190,47 @@ sub _subobject_save {
             return 0;
         }
         return 1;
+    }
+    return 1;
+}
+
+sub _subobject_bulk_save {
+    my ($self, $subobjects, $subobject_rule, $parent_uuid) = @_;
+    my $collection_name = $subobject_rule->{collection}; 
+    my $parent_tag = $subobject_rule->{parent_tag};
+    my $collection = $self->db->$collection_name;
+    my $existing_uuids;
+    {
+        $existing_uuids = {map { $_->{uuid} => 1 }
+            $collection->find({}, {uuid => 1})->all};
+    }
+    my $all_uuids_array = [keys %$existing_uuids];
+    my ($justAddParentRef, $newObjects) = ([], []);
+    foreach my $subobject (@$subobjects) {
+        if(defined($existing_uuids->{$subobject->{uuid}})) {
+            push(@$justAddParentRef, $subobject->{uuid});
+        } else {
+            push(@$newObjects, $subobject);
+            push(@$all_uuids_array, $subobject->{uuid});
+        }
+    }
+    # create new objects if they don't already exist
+=cut
+    $collection->batch_insert($newObjects);
+=cut
+    foreach my $subobject (@$newObjects) {
+        my $query = {uuid => $subobject->{uuid}};
+        $collection->update($query, $subobject, {upsert => 1});
+        return 0 if($self->_update_error(1));
+    }
+    # now add the reference to all objects
+    my $query = {uuid => {'$in' => $all_uuids_array}};
+    $collection->update($query,
+        {'$addToSet' => {$parent_tag => $parent_uuid}},
+        { multiple => 1 }
+    );
+    if($self->_update_error(scalar(@$all_uuids_array))) {
+        return 0;
     }
     return 1;
 }
@@ -208,19 +285,17 @@ sub _split_object_for_save {
     }
     my $parent_uuid = $object->{uuid};
     # split into subobjects
+    my $attrs = { map { $_ => 1 } keys %$object };
     foreach my $attr (keys %$rules) {
         my $rule = $rules->{$attr};
         if ( $rule->{type} eq 'array' ) {
             my $subobjects = $object->{$attr};
             $subobjects ||= [];
-            foreach my $subobject (@$subobjects) {
-                my $success = $self->_subobject_save($subobject, $rule, $parent_uuid);
-                warn "Failed to save $attr : " . $subobject->{uuid} . "\n" unless($success);
-            }
+            my $success = $self->_subobject_bulk_save($subobjects, $rule, $parent_uuid);
         }
-        delete $object->{$attr};
+        delete $attrs->{$attr};
     }
-    return $self->_base_object_save($ref, $object);
+    return $self->_base_object_save($ref, $object, [keys %$attrs]);
 }
 
 sub _get_uuid {
