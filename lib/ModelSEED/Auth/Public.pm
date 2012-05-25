@@ -31,7 +31,6 @@ use namespace::autoclean;
 use Class::Autouse qw(
     HTTP::Request
 );
-with 'ModelSEED::Auth';
 
 sub wrap_http_request {
     my ($self, $req) = @_;
@@ -40,6 +39,7 @@ sub wrap_http_request {
 }
 sub username { return 'PUBLIC'; }
 
+with 'ModelSEED::Auth';
 __PACKAGE__->meta->make_immutable;
 1;
 
