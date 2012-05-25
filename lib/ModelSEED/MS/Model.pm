@@ -44,9 +44,33 @@ sub mergeModel {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["model"],{});
 	my $mdl = $args->{model};
-	my $uuidTranslation;
+	my $cpdTranslation;
+	my $cmpTranslation;
+	for (my $i = 0; $i < @{$mdl->modelcompartments()}; $i++) {
+		my $mdlcmp = $mdl->modelcompartments()->[$i];
+		my $cmp = $self->getObject("ModelCompartment",{
+			
+		});
+		if (!defined($cmp)) {
+			$cmp = $self->create("ModelCompartment",{
+				
+			});
+		}
+		$cmpTranslation->{$mdlcmp->uuid()} = $cmp->uuid();
+	}
 	for (my $i = 0; $i < @{$mdl->modelcompounds()}; $i++) {
-		
+		my $mdlcpd = $mdl->modelcompounds()->[$i];
+		my $cpd = $self->getObject("ModelCompound",{
+			compound_uuid => $mdl->modelcompounds()->compound_uuid(),
+			modelcompartment_uuid => $cmpTranslation->{$mdl->modelcompounds()->modelcompartment_uuid()},
+		});
+		if (!defined($cpd)) {
+			$cpd = $self->create("ModelCompound",{
+				compound_uuid => $mdl->modelcompounds()->compound_uuid(),
+				modelcompartment_uuid => $cmpTranslation->{$mdl->modelcompounds()->modelcompartment_uuid()},
+			});
+		}
+		$cpdTranslation->{$cpd->uuid()} = $mdlcpd->uuid();
 	}
 }
 =head3 buildModelFromAnnotation
