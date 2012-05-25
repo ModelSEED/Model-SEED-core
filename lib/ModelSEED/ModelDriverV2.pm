@@ -12,6 +12,7 @@ use Class::Autouse qw(
     ModelSEED::FIGMODEL
     ModelSEED::Configuration
     ModelSEED::Store
+    ModelSEED::Auth::Basic
 );
 use ModelSEED::Database::FileDB;
 use ModelSEED::Store::Private;
@@ -40,21 +41,14 @@ sub new {
     $self->environment($self->config->config);
     my $c = $self->config->config;
 	$self->figmodel(ModelSEED::FIGMODEL->new({
-        username => "chenry",#$c->{login}->{username},
-        password => "Ko3BA9yMnMj2k",#$c->{login}->{password},
+        username => $c->{login}->{username},
+        password => $c->{login}->{password},
     }));
-    my $filedb = ModelSEED::Database::FileDB->new({
-    	directory => ModelSEED::utilities::MODELSEEDCORE()."/data/filedb/"
-    });
-    my $privateStore = ModelSEED::Store::Private->new({
-    	db => $filedb
-    });
-    my $store = ModelSEED::Store->new({
-    	private => $privateStore,
-    	#username => "public",
-        #password => "public"
-    });
-    $self->store($store);
+    my $auth = ModelSEED::Auth::Basic->new(
+        username => $c->{login}->{username},
+        password => $c->{login}->{password},
+    );
+    $self->om(ModelSEED::Store->new( auth => $auth ));
     return $self;
 }
 =head3 figmodel
@@ -127,7 +121,7 @@ sub biochemistry {
     my $wanted = $self->environment()->{biochemistry};
     my $got = $self->{_biochemistry};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_biochemistry} = $self->store()->get_object("biochemistry", $wanted);
+        $self->{_biochemistry} = $self->om()->get_object("biochemistry/$wanted");
     }
 	return $self->{_biochemistry};
 }
@@ -142,7 +136,7 @@ sub mapping {
     my $wanted = $self->environment()->{mapping};
     my $got = $self->{_mapping};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_mapping} = $self->store()->get_object("mapping", $wanted);
+        $self->{_mapping} = $self->om()->get_object("mapping/$wanted");
     }
 	return $self->{_mapping};
 }

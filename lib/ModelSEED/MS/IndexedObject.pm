@@ -195,7 +195,8 @@ sub save {
     if (!defined($om)) {
         ModelSEED::utilities::ERROR("No Storage Object");
     }
-    $om->save_object($self->_type, $alias, $self);
+    my $refstring = lc(substr($self->_type,0,1)).substr($self->_type,1) . "/" . $alias;
+    $om->save_object($refstring, $self);
 }
 
 sub _buildindices { return {}; }

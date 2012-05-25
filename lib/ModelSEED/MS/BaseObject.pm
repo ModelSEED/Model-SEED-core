@@ -318,8 +318,9 @@ sub getLinkedObject {
     } elsif (defined($self->$sourceTypeLC())) {
         return $self->$sourceTypeLC()->getLinkedObject($sourceType, $type, $attribute, $value);;
     } elsif(ref($self->parent) eq 'ModelSEED::Store') {
+        my $typeLC = lc($type);
         if($attribute eq 'uuid') {
-            my $o = $self->parent->get_object_by_uuid($type, $value);
+            my $o = $self->parent->get_object("$typeLC/$value");
             warn "Getting object ".ref($o);
             return $o;
         } else {
