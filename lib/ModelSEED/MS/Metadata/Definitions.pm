@@ -3,6 +3,368 @@ package ModelSEED::MS::DB::Definitions;
 
 my $objectDefinitions = {};
 
+$objectDefinitions->{ModelAnalysis} = {
+	parents => ['ModelSEED::Store'],
+	class => 'indexed',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'defaultNameSpace',printOrder => 3,perm => 'rw',type => 'Str',len => 32,req => 0,default => "ModelSEED"},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'locked',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
+		{name => 'public',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
+	],
+	subobjects => [
+		{name => "modelAnalysisModels",printOrder => 0,class => "ModelAnalysisModel",type => "child"},
+		{name => "modelAnalysisMappings",printOrder => 0,class => "ModelAnalysisMapping",type => "child"},
+		{name => "modelAnalysisBiochemistries",printOrder => 0,class => "ModelAnalysisBiochemistry",type => "child"},
+		{name => "modelAnalysisAnnotations",printOrder => 0,class => "ModelAnalysisAnnotation",type => "child"},
+		{name => "fbaFormulations",printOrder => 0,class => "FBAFormulation",type => "child"},
+		{name => "gapfillingFormulations",printOrder => 1,class => "GapfillingFormulation",type => "child"},
+		{name => "fbaProblems",printOrder => 2,class => "FBAProblem",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",class => "Mapping",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ModelAnalysisModel} = {
+	parents => ['ModelAnalysis'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "model",attribute => "model_uuid",parent => "Store",class => "Model",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ModelAnalysisBiochemistry} = {
+	parents => ['ModelAnalysis'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",class => "Biochemistry",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ModelAnalysisAnnotation} = {
+	parents => ['ModelAnalysis'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "annotation",attribute => "annotation_uuid",parent => "Store",class => "Annotation",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ModelAnalysisMapping} = {
+	parents => ['ModelAnalysis'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'mapping_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "mapping",attribute => "mapping_uuid",parent => "Store",class => "Mapping",query => "uuid"},
+	]
+};
+
+
+$objectDefinitions->{FBAFormulation} = {
+	parents => ['ModelAnalysis'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
+		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'regulatorymodel_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'description',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'expressionData_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'growthConstraint',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
+		{name => 'thermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
+		{name => 'allReversible',printOrder => 0,perm => 'rw',type => 'Int',len => 255,req => 0,default => "0"},
+		{name => 'uptakeLimits',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
+		{name => 'geneKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'defaultMaxFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
+		{name => 'defaultMaxDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
+		{name => 'defaultMinDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => -1000},
+		{name => 'maximizeObjective',printOrder => 0,perm => 'rw',type => 'Bool',req => 1,default => 1},
+	],
+	subobjects => [
+		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
+		{name => "fbaCompoundConstraints",class => "FBACompoundConstraint",type => "encompassed"},
+		{name => "fbaReactionConstraints",class => "FBAReactionConstraint",type => "encompassed"},
+		{name => "fbaResults",class => "FBAResult",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "media",attribute => "media_uuid",parent => "Biochemistry",class => "Media",query => "uuid"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelAnalysis",class => "Biochemistry",query => "uuid"},
+		{name => "model",attribute => "model_uuid",parent => "ModelAnalysis",class => "Model",query => "uuid"},
+	]
+};
+	
+$objectDefinitions->{FBACompoundConstraint} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => [
+		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBAReactionConstraint} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'reaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => [
+		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBAObjectiveTerm} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',len => 1,req => 0},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'variable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(atom) ],
+	links => []
+};
+
+$objectDefinitions->{FBAResult} = {
+	parents => ['FBAFormulation'],
+	class => 'indexed',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',printOrder => 1,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'resultNotes',printOrder => 3,perm => 'rw',type => 'Str',req => 1,default => ""},
+		{name => 'objectiveValue',printOrder => 2,perm => 'rw',type => 'Num',req => 1,default => ""},
+	],
+	subobjects => [
+		{name => "fbaCompoundVariables",printOrder => 2,class => "FBACompoundVariable",type => "encompassed"},
+		{name => "fbaReactionVariables",printOrder => 1,class => "FBAReactionVariable",type => "encompassed"},
+		{name => "fbaBiomassVariables",printOrder => 0,class => "FBABiomassVariable",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "ModelAnalysis",class => "FBAFormulation",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{FBACompoundVariable} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'variableType',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'lowerBound',printOrder => 7,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'upperBound',printOrder => 8,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'min',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'max',printOrder => 6,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'value',printOrder => 4,perm => 'rw',type => 'Str',len => 1,req => 0},
+	],	
+	subobjects => [],
+	primarykeys => [ qw() ],
+	links => [
+		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{FBABiomassVariable} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'biomass_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'variableType',printOrder => 2,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'lowerBound',printOrder => 6,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'upperBound',printOrder => 7,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'min',printOrder => 4,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'max',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'value',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 0},
+	],	
+	subobjects => [],
+	primarykeys => [ qw() ],
+	links => [
+		{name => "biomass",attribute => "biomass_uuid",parent => "Model",class => "Biomass",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{FBAReactionVariable} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'variableType',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'lowerBound',printOrder => 7,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'upperBound',printOrder => 8,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'min',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'max',printOrder => 6,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'value',printOrder => 4,perm => 'rw',type => 'Str',len => 1,req => 0},
+	],	
+	subobjects => [],
+	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
+	links => [
+		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{GapfillingFormulation} = {
+	parents => ['ModelAnalysis'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
+		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => "1"},
+		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
+		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'drainFluxMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'directionalityMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'deltaGMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'noStructureMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'noDeltaGMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'biomassTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'singleTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'transporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'allowableUnbalancedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+	],
+	subobjects => [
+		{name => "gapfillingGeneCandidates",class => "GapfillingGeneCandidate",type => "encompassed"},
+		{name => "reactionSetMultipliers",class => "ReactionSetMultiplier",type => "encompassed"},
+		{name => "gapfillingSolutions",class => "GapfillingSolution",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "ModelAnalysis",class => "FBAFormulation",query => "uuid"},
+		{name => "annotation",attribute => "annotation_uuid",parent => "ModelAnalysis",class => "Annotation",query => "uuid"},
+		{name => "model",attribute => "model_uuid",parent => "ModelAnalysis",class => "Model",query => "uuid"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelAnalysis",class => "Biochemistry",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{GapfillingGeneCandidate} = {
+	parents => ['GapfillingFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'ortholog_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'orthogenome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'similarityScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
+		{name => 'distanceScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
+		{name => 'reactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "feature",attribute => "feature_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
+		{name => "ortholog",attribute => "ortholog_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
+		{name => "orthogenome",attribute => "orthogenome_uuid",parent => "Annotation",class => "Genome",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{ReactionSetMultiplier} = {
+	parents => ['GapfillingFormulation'],
+	class => 'indexed',
+	attributes => [
+		{name => 'reactionset_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'reactionsetType',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'multiplierType',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'description',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'multiplier',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "reactionset",attribute => "reactionset_uuid",parent => "Biochemistry",class => "Reactionset",query => "uuid"}
+	]
+};
+
+$objectDefinitions->{GapfillingSolution} = {
+	parents => ['GapfillingFormulation'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'solutionCost',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
+	],
+	subobjects => [
+		{name => "gapfillingSolutionReactions",class => "GapfillingSolutionReaction",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{GapfillingSolutionReaction} = {
+	parents => ['GapfillingSolution'],
+	class => 'child',
+	attributes => [
+		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'direction',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "1"},
+	],
+	subobjects => [
+		{name => "gfSolutionReactionGeneCandidates",class => "GfSolutionReactionGeneCandidate",type => "encompassed"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{GfSolutionReactionGeneCandidate} = {
+	parents => ['GapfillingSolutionReaction'],
+	class => 'child',
+	attributes => [
+		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "feature",attribute => "feature_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
+	]
+};
+
 $objectDefinitions->{FBAProblem} = {
 	parents => ['ModelSEED::Store'],
 	class => 'indexed',
@@ -60,7 +422,7 @@ $objectDefinitions->{Constraint} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
-		{name => "dualVariable",attribute => "dualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+		{name => "dualVariable",attribute => "dualVariable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"},
 	]
 };
 
@@ -89,9 +451,6 @@ $objectDefinitions->{Variable} = {
 		{name => 'start',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'entity_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'index',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => -1},
 		{name => 'primal',printOrder => 0,perm => 'rw',type => 'Bool',len => 1,req => 0,default => 1},	
@@ -99,14 +458,12 @@ $objectDefinitions->{Variable} = {
 		{name => 'upperBoundDualVariable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'lowerBoundDualVariable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0}
 	],
-	subobjects => [
-		{name => "constraintVariables",class => "ConstraintVariable",type => "child"},
-	],
+	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
-		{name => "upperBoundDualVariable",attribute => "upperBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
-		{name => "lowerBoundDualVariable",attribute => "lowerBoundDualVariable_uuid",parent => "FBAProblem",class => "Constraint",query => "uuid"},
+		{name => "upperBoundDualVariable",attribute => "upperBoundDualVariable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"},
+		{name => "lowerBoundDualVariable",attribute => "lowerBoundDualVariable_uuid",parent => "FBAProblem",class => "Variable",query => "uuid"},
 	]
 };
 
@@ -150,6 +507,8 @@ $objectDefinitions->{SolutionVariable} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'variable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'value',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
+		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => 0},
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
@@ -179,159 +538,7 @@ $objectDefinitions->{Genome} = {
 	links => []
 };
 
-$objectDefinitions->{Strain} = {
-	parents => ['Genome'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-		{name => 'source',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1},
-		{name => 'class',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
-	],
-	subobjects => [
-		{name => "deletions",class => "Deletion",type => "child"},
-		{name => "insertions",class => "Insertion",type => "child"},
-	],
-	primarykeys => [ qw(uuid) ],
-	links => []
-};
 
-$objectDefinitions->{Deletion} = {
-	parents => ['Genome'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'start',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
-		{name => 'stop',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => ""},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => []
-};
-
-$objectDefinitions->{Insertion} = {
-	parents => ['Genome'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'insertionTarget',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
-		{name => 'sequence',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => []
-};
-
-$objectDefinitions->{Experiment} = {
-	parents => ["ModelSEED::Store"],
-	class => 'indexed',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'genome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#I think this should be Strain.Right now, we’re linking an experiment to a single GenomeUUID here, but I think it makes more sense to link to a single StrainUUID, which is what we do in the Price DB.  
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'description',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'institution',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'source',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "genome",attribute => "genome_uuid",parent => "ModelSEED::Store",class => "Genome",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{ExperimentDataPoint} = {
-	parents => ["Experiment"],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'strain_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#Not needed if it’s in the experiment table? I think we need to be consistent in defining where in these tables to put e.g. genetic perturbations done in an experiment.
-		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'pH',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
-		{name => 'temperature',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
-		{name => 'buffers',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#There could be multiple buffers in a single media. Would this be listed in the Media table? Multiple buffers in single media isn’t something we’ve run across yet and seems like a rarity at best, since their purpose is maintaining pH.  We discussed just listing the buffer here, without amount, because the target pH should dictate the amount of buffer. 
-		{name => 'phenotype',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'notes',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'growthMeasurement',printOrder => 0,perm => 'rw',type => 'Num',req => 0},#Would these be better in their own table? IT’s just another type of measurement just like the flux, metabolite, etc... One reason to keep the growth measurements here is unit consistency; moving them to the other table with the other flux measurements would require a clear division between growth rates and secretion/uptake rates to distinguish between 1/h and mmol/gDW/h. Rather than do that, I think keeping them in separate tables makes for an easy, logical division. 
-		{name => 'growthMeasurementType',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#Would these be better in their own table?
-	],
-	subobjects => [
-		{name => "fluxMeasurements",class => "FluxMeasurement",type => "child"},
-		{name => "uptakeMeasurements",class => "UptakeMeasurement",type => "child"},
-		{name => "metaboliteMeasurements",class => "MetaboliteMeasurement",type => "child"},
-		{name => "geneMeasurements",class => "GeneMeasurement",type => "child"},
-	],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "strain",attribute => "strain_uuid",parent => "Genome",class => "Strain",query => "uuid"},
-		{name => "media",attribute => "media_uuid",parent => "Biochemistry",class => "Media",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{FluxMeasurement} = {
-	parents => ["ExperimentDataPoint"],
-	class => 'encompassed',
-	attributes => [
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#This could get confusing. Make sure the rate is defined relative to the way that the reaction itself is defined (i.e. even if the directionality of the reaction is <= we should define the rate relative to the forward direction, and if it is consistent with the directionality constraint it would be negative)
-		{name => 'reacton_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'compartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "reaction",attribute => "reacton_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
-		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{UptakeMeasurement} = {
-	parents => ["ExperimentDataPoint"],
-	class => 'encompassed',
-	attributes => [
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{MetaboliteMeasurement} = {
-	parents => ["ExperimentDataPoint"],
-	class => 'encompassed',
-	attributes => [
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#In metabolomic experiments it is often hard to measure precisely whether a metabolite is present or not. and (even more so) it’s concentration. However, I imagine it is possible to guess a “probability” of particular compounds being present or not. I wanted to talk to one of the guys at Argonne (The guy who was trying to schedule the workshop for KBase) about metabolomics but we ran out of time. We should consult with a metabolomics expert on what a realistic thing to put into this table would be.
-		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'compartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#I changed this from “extracellular [0/1]” since we could techincally measure them in any given compartment, not just cytosol vs. extracellular
-		{name => 'method',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
-		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{GeneMeasurement} = {
-	parents => ["ExperimentDataPoint"],
-	class => 'encompassed',
-	attributes => [
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'method',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "feature",attribute => "feature_uuid",parent => "Genome",class => "Feature",query => "uuid"},
-	]
-};
 
 $objectDefinitions->{User} = {
     parents => ["ModelSEED::Store"],
@@ -983,238 +1190,6 @@ $objectDefinitions->{ModelReactionProteinSubunitGene} = {
 	]
 };
 
-$objectDefinitions->{FBAFormulation} = {
-	parents => ['model_uuid','Model'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
-		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'regulatorymodel_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'description',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
-		{name => 'expressionData_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'growthConstraint',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
-		{name => 'thermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
-		{name => 'allReversible',printOrder => 0,perm => 'rw',type => 'Int',len => 255,req => 0,default => "0"},
-		{name => 'uptakeLimits',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
-		{name => 'geneKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'defaultMaxFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
-		{name => 'defaultMaxDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
-		{name => 'defaultMinDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => -1000},
-		{name => 'maximizeObjective',printOrder => 0,perm => 'rw',type => 'Bool',req => 1,default => 1},
-	],
-	subobjects => [
-		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
-		{name => "fbaCompoundConstraints",class => "FBACompoundConstraint",type => "encompassed"},
-		{name => "fbaReactionConstraints",class => "FBAReactionConstraint",type => "encompassed"},
-	],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "media",attribute => "media_uuid",parent => "Biochemistry",class => "Media",query => "uuid"},
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",class => "Biochemistry",query => "uuid"},
-		{name => "model",attribute => "model_uuid",parent => "ModelSEED::Store",class => "Model",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{GapfillingFormulation} = {
-	parents => ['ModelSEED::Store'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
-		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => "1"},
-		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
-		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
-		{name => 'drainFluxMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'directionalityMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'deltaGMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'noStructureMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'noDeltaGMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'biomassTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'singleTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'transporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'allowableUnbalancedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-	],
-	subobjects => [
-		{name => "gapfillingGeneCandidates",class => "GapfillingGeneCandidate",type => "encompassed"},
-		{name => "reactionSetMultipliers",class => "ReactionSetMultiplier",type => "encompassed"},
-	],
-	primarykeys => [ qw(uuid) ],
-	links => []
-};
-
-$objectDefinitions->{ReactionSetMultiplier} = {
-	parents => ['ModelSEED::Store'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'ortholog_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'orthogenome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'similarityScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
-		{name => 'distanceScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
-		{name => 'reactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "feature",attribute => "feature_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
-		{name => "ortholog",attribute => "ortholog_uuid",parent => "ObjectManager",class => "Feature",query => "uuid"},
-		{name => "orthogenome",attribute => "orthogenome_uuid",parent => "ObjectManager",class => "Genome",query => "uuid"}
-	]
-};
-
-$objectDefinitions->{GapfillingGeneCandidate} = {
-	parents => ['ModelSEED::Store'],
-	class => 'indexed',
-	attributes => [
-		{name => 'reactionset_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'reactionsetType',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'multiplierType',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'description',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'multiplier',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "reactionset",attribute => "reactionset_uuid",parent => "Biochemistry",class => "Reactionset",query => "uuid"}
-	]
-};
-	
-$objectDefinitions->{FBACompoundConstraint} = {
-	parents => ['fbaformulation_uuid','FBAFormulation'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
-	],
-	subobjects => [],
-	primarykeys => [ qw(atom) ],
-	links => [
-		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"}
-	]
-};
-
-$objectDefinitions->{FBAReactionConstraint} = {
-	parents => ['fbaformulation_uuid','FBAFormulation'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'reaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
-	],
-	subobjects => [],
-	primarykeys => [ qw(atom) ],
-	links => [
-		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"}
-	]
-};
-
-$objectDefinitions->{FBAObjectiveTerm} = {
-	parents => ['fbaformulation_uuid','FBAFormulation'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',len => 1,req => 0},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'variable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(atom) ],
-	links => []
-};
-
-$objectDefinitions->{FBAResults} = {
-	parents => ['model_uuid','Model'],
-	class => 'child',
-	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
-		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'resultNotes',printOrder => 0,perm => 'rw',type => 'Str',req => 1,default => ""},
-		{name => 'objectiveValue',printOrder => 0,perm => 'rw',type => 'Num',req => 1,default => ""},
-	],
-	subobjects => [
-		{name => "fbaCompoundVariables",class => "FBACompoundVariable",type => "encompassed"},
-		{name => "fbaReactionVariables",class => "FBAReactionVariable",type => "encompassed"},
-		{name => "fbaBiomassVariables",class => "FBABiomassVariable",type => "encompassed"},
-	],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "Model",class => "FBAFormulation",query => "uuid"}
-	]
-};
-
-$objectDefinitions->{FBACompoundVariable} = {
-	parents => ['FBAResults'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-	],	
-	subobjects => [],
-	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
-	links => [
-		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"},
-	]
-};
-
-$objectDefinitions->{FBABiomassVariable} = {
-	parents => ['FBAResults'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'biomass_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-	],	
-	subobjects => [],
-	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
-	links => [
-		{name => "biomass",attribute => "biomass_uuid",parent => "Model",class => "Biomass",query => "uuid"},
-	]
-};
-
-
-$objectDefinitions->{FBAReactionVariable} = {
-	parents => ['FBAResults'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-	],	
-	subobjects => [],
-	primarykeys => [ qw(modelfba_uuid modelcompound_uuid) ],
-	links => [
-		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"},
-	]
-};
-
 $objectDefinitions->{Annotation} = {
 	parents => ['ModelSEED::Store'],
 	class => 'indexed',
@@ -1560,6 +1535,161 @@ $objectDefinitions->{ComplexReactionInstance} = {
 	primarykeys => [ qw(complex_uuid role_uuid) ],
 	links => [
 		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",class => "ReactionInstance",query => "uuid"}
+	]
+};
+
+#ORPHANED OBJECTS THAT STILL NEED TO BE BUILT INTO AN OBJECT TREE
+$objectDefinitions->{Strain} = {
+	parents => ['Genome'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+		{name => 'source',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1},
+		{name => 'class',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
+	],
+	subobjects => [
+		{name => "deletions",class => "Deletion",type => "child"},
+		{name => "insertions",class => "Insertion",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{Deletion} = {
+	parents => ['Genome'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'start',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
+		{name => 'stop',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => ""},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{Insertion} = {
+	parents => ['Genome'],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'insertionTarget',printOrder => 0,perm => 'rw',type => 'Int',req => 0},
+		{name => 'sequence',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => []
+};
+
+$objectDefinitions->{Experiment} = {
+	parents => ["ModelSEED::Store"],
+	class => 'indexed',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'genome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#I think this should be Strain.Right now, we’re linking an experiment to a single GenomeUUID here, but I think it makes more sense to link to a single StrainUUID, which is what we do in the Price DB.  
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'description',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'institution',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'source',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "genome",attribute => "genome_uuid",parent => "ModelSEED::Store",class => "Genome",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{ExperimentDataPoint} = {
+	parents => ["Experiment"],
+	class => 'child',
+	attributes => [
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'strain_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#Not needed if it’s in the experiment table? I think we need to be consistent in defining where in these tables to put e.g. genetic perturbations done in an experiment.
+		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'pH',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+		{name => 'temperature',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+		{name => 'buffers',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#There could be multiple buffers in a single media. Would this be listed in the Media table? Multiple buffers in single media isn’t something we’ve run across yet and seems like a rarity at best, since their purpose is maintaining pH.  We discussed just listing the buffer here, without amount, because the target pH should dictate the amount of buffer. 
+		{name => 'phenotype',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'notes',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'growthMeasurement',printOrder => 0,perm => 'rw',type => 'Num',req => 0},#Would these be better in their own table? IT’s just another type of measurement just like the flux, metabolite, etc... One reason to keep the growth measurements here is unit consistency; moving them to the other table with the other flux measurements would require a clear division between growth rates and secretion/uptake rates to distinguish between 1/h and mmol/gDW/h. Rather than do that, I think keeping them in separate tables makes for an easy, logical division. 
+		{name => 'growthMeasurementType',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#Would these be better in their own table?
+	],
+	subobjects => [
+		{name => "fluxMeasurements",class => "FluxMeasurement",type => "child"},
+		{name => "uptakeMeasurements",class => "UptakeMeasurement",type => "child"},
+		{name => "metaboliteMeasurements",class => "MetaboliteMeasurement",type => "child"},
+		{name => "geneMeasurements",class => "GeneMeasurement",type => "child"},
+	],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "strain",attribute => "strain_uuid",parent => "Genome",class => "Strain",query => "uuid"},
+		{name => "media",attribute => "media_uuid",parent => "Biochemistry",class => "Media",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{FluxMeasurement} = {
+	parents => ["ExperimentDataPoint"],
+	class => 'encompassed',
+	attributes => [
+		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#This could get confusing. Make sure the rate is defined relative to the way that the reaction itself is defined (i.e. even if the directionality of the reaction is <= we should define the rate relative to the forward direction, and if it is consistent with the directionality constraint it would be negative)
+		{name => 'reacton_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'compartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "reaction",attribute => "reacton_uuid",parent => "Biochemistry",class => "Reaction",query => "uuid"},
+		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{UptakeMeasurement} = {
+	parents => ["ExperimentDataPoint"],
+	class => 'encompassed',
+	attributes => [
+		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{MetaboliteMeasurement} = {
+	parents => ["ExperimentDataPoint"],
+	class => 'encompassed',
+	attributes => [
+		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},#In metabolomic experiments it is often hard to measure precisely whether a metabolite is present or not. and (even more so) it’s concentration. However, I imagine it is possible to guess a “probability” of particular compounds being present or not. I wanted to talk to one of the guys at Argonne (The guy who was trying to schedule the workshop for KBase) about metabolomics but we ran out of time. We should consult with a metabolomics expert on what a realistic thing to put into this table would be.
+		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'compartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},#I changed this from “extracellular [0/1]” since we could techincally measure them in any given compartment, not just cytosol vs. extracellular
+		{name => 'method',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",class => "Compound",query => "uuid"},
+		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",class => "Compartment",query => "uuid"},
+	]
+};
+
+$objectDefinitions->{GeneMeasurement} = {
+	parents => ["ExperimentDataPoint"],
+	class => 'encompassed',
+	attributes => [
+		{name => 'value',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'method',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => [
+		{name => "feature",attribute => "feature_uuid",parent => "Genome",class => "Feature",query => "uuid"},
 	]
 };
 

@@ -38,19 +38,138 @@ Description:
 =cut
 sub runGapfilling {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["coefficient","modelcompound_uuid"],{});
-	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
-		if ($self->modelReactionReagents()->[$i]->modelcompound_uuid() eq $args->{modelcompound_uuid}) {
-			return $self->modelReactionReagents()->[$i];
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		"fbaformulation" => undef
+	});
+	if (defined($args->{fbaformulation})) {
+		$self->fbaformulation($args->{fbaformulation});
+		$self->fbaformulation_uuid($args->{fbaformulation}->uuid());
+	}
+	#Creating the database model
+	my $dbmodel = $self->biochemistry()->makeDBModel({
+		balancedOnly => $self->balancedReactionsOnly(),
+		allowableCompartments => $self->allowableCompartments(),
+		guaranteedReactions => $self->guaranteedReactions(),
+		forbiddenReactions => $self->blacklistedReactions()
+	});
+	#Merging in the model selected for gapfilling
+	my $model = $self->model();
+	$dbmodel->mergeModel({
+		model => $model
+	});
+	#Setting up the default FBAFormulation if none is provided
+	if ($self->fbaformulation_uuid() eq "00000000-0000-0000-0000-000000000000") {
+		my $newFormulation;
+		my $formulationData = {
+			name => "Default gapfilling formulation",
+			model_uuid => $self->model_uuid(),
+			type => "gapfilling",
+			biochemistry_uuid => $self->biochemistry_uuid(),
+			description => "Default gapfilling formulation",
+			growthConstraint => "forcedGrowth",
+			thermodynamicConstraints => 0,
+			allReversible => 1,
+			defaultMaxFlux => 1000,
+			defaultMaxDrainFlux => 10000,
+			defaultMinDrainFlux => -10000,
+		};
+		if (defined($self->parent())) {
+			$newFormulation = $self->parent()->create("FBAFormulation",$formulationData);	
+		} else {
+			$newFormulation = ModelSEED::MS::FBAFormulation->new($formulationData);
+		}
+		$self->fbaformulation_uuid($newFormulation->uuid());
+		$self->fbaformulation($newFormulation);
+	}
+	#Labeling all dbmodel reactions as candidates and creating objective terms
+	for (my $i=0; $i < @{$dbmodel->modelreactions()}; $i++) {
+		my $rxn = $dbmodel->modelreactions()->[$i];
+		if (!defined($rxn->modelReactionProteins()->[0])) {
+			$rxn->create("ModelReactionProtein",{
+				complex_uuid => "00000000-0000-0000-0000-000000000000",
+				note => "CANDIDATE"
+			});
+		}
+		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
+		if ($costs->{forwardDirection} != 0) {
+			$self->fbaformulation()->create("ObjectiveTerm",{
+				coefficient => $costs->{forwardDirection},
+				variableType => "forfluxuse",
+				variable_uuid => $rxn->uuid()
+			});
+		}
+		if ($costs->{reverseDirection} != 0) {
+			$self->fbaformulation()->create("ObjectiveTerm",{
+				coefficient => $costs->{reverseDirection},
+				variableType => "revfluxuse",
+				variable_uuid => $rxn->uuid()
+			});
 		}
 	}
-	my $mdlrxnrgt = $self->create("ModelReactionReagent",{
-		coefficient => $args->{coefficient},
-		modelcompound_uuid => $args->{modelcompound_uuid}
+	#Running the flux balance analysis for the gapfilling optimization problem
+	my $solution = $self->fbaformulation()->runFBA();
+	#Translating te solution into a gapfilling solution
+	my $gfsolution = $self->create("GapfillingSolution",{
+		solutionCost => $solution->objectiveValue()
 	});
-	return $mdlrxnrgt;
+	for (my $i=0; $i < @{$solution->fbaReactionVariables()}; $i++) {
+		my $var = $solution->fbaReactionVariables()->[$i];
+		if ($var->variableType() eq "flux") {
+			my $rxn = $var->modelreaction();
+			if ($var->value() < -0.0000001) {
+				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
+					my $direction = "<";
+					if ($rxn->direction() ne $direction) {
+						$direction = "=";
+					}
+					$gfsolution->create("GapfillingSolutionReaction",{
+						modelreaction_uuid => $rxn->uuid(),
+						modelreaction => $rxn,
+						direction => $direction
+					});
+				} elsif ($rxn->direction() eq ">") {
+					$gfsolution->create("GapfillingSolutionReaction",{
+						modelreaction_uuid => $rxn->uuid(),
+						modelreaction => $rxn,
+						direction => "="
+					});
+				}
+			} elsif ($var->value() > 0.0000001) {
+				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
+					my $direction = ">";
+					if ($rxn->direction() ne $direction) {
+						$direction = "=";
+					}
+					$gfsolution->create("GapfillingSolutionReaction",{
+						modelreaction_uuid => $rxn->uuid(),
+						modelreaction => $rxn,
+						direction => $direction
+					});
+				} elsif ($rxn->direction() eq "<") {
+					$gfsolution->create("GapfillingSolutionReaction",{
+						modelreaction_uuid => $rxn->uuid(),
+						modelreaction => $rxn,
+						direction => "="
+					});
+				}
+			}
+		}
+	}
+	return $gfsolution;
 }
-
+=head3 calculateReactionCosts
+Definition:
+	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->calculateReactionCosts({
+		modelreaction => ModelSEED::MS::ModelReaction
+	});
+Description:
+	Calculates the cost of adding or adjusting the reaction directionality in the model
+=cut
+sub calculateReactionCosts {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["modelreaction"],{});
+	return {forwardDirection => 1,reverseDirection => 1};
+}
 
 __PACKAGE__->meta->make_immutable;
 1;

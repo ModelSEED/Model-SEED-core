@@ -240,10 +240,10 @@ sub printLPfile {
 	push(@{$output},"Bounds");
 	for (my $i=0; $i < @{$self->variables()}; $i++) {
 		my $var = $self->variables()->[$i];
-		if ($var->min() == $var->max()) {
-			push(@{$output},$var->name()." = ".$var->min());
+		if ($var->lowerBound() == $var->upperBound()) {
+			push(@{$output},$var->name()." = ".$var->lowerBound());
 		} else {
-			push(@{$output},$var->min()." <= ".$var->name()." <= ".$var->max());
+			push(@{$output},$var->lowerBound()." <= ".$var->name()." <= ".$var->upperBound());
 		}
 	}
 	if ($self->milp() == 1) {

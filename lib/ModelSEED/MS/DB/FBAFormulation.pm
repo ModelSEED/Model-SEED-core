@@ -10,12 +10,13 @@ use Moose::Util::TypeConstraints;
 use ModelSEED::MS::LazyHolder::FBAObjectiveTerm;
 use ModelSEED::MS::LazyHolder::FBACompoundConstraint;
 use ModelSEED::MS::LazyHolder::FBAReactionConstraint;
+use ModelSEED::MS::LazyHolder::FBAResult;
 extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::model_uuid', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelAnalysis', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
@@ -48,12 +49,13 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 has fbaObjectiveTerms => (is => 'bare', coerce => 1, handles => { fbaObjectiveTerms => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAObjectiveTerm::Lazy', type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed');
 has fbaCompoundConstraints => (is => 'bare', coerce => 1, handles => { fbaCompoundConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBACompoundConstraint::Lazy', type => 'encompassed(FBACompoundConstraint)', metaclass => 'Typed');
 has fbaReactionConstraints => (is => 'bare', coerce => 1, handles => { fbaReactionConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAReactionConstraint::Lazy', type => 'encompassed(FBAReactionConstraint)', metaclass => 'Typed');
+has fbaResults => (is => 'bare', coerce => 1, handles => { fbaResults => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAResult::Lazy', type => 'encompassed(FBAResult)', metaclass => 'Typed');
 
 
 # LINKS:
 has media => (is => 'rw',lazy => 1,builder => '_buildmedia',isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,Media,uuid,media_uuid)', metaclass => 'Typed',weak_ref => 1);
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
-has model => (is => 'rw',lazy => 1,builder => '_buildmodel',isa => 'ModelSEED::MS::Model', type => 'link(ModelSEED::Store,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelAnalysis,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has model => (is => 'rw',lazy => 1,builder => '_buildmodel',isa => 'ModelSEED::MS::Model', type => 'link(ModelAnalysis,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -65,11 +67,11 @@ sub _buildmedia {
 }
 sub _buildbiochemistry {
 	my ($self) = @_;
-	return $self->getLinkedObject('ModelSEED::Store','Biochemistry','uuid',$self->biochemistry_uuid());
+	return $self->getLinkedObject('ModelAnalysis','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 sub _buildmodel {
 	my ($self) = @_;
-	return $self->getLinkedObject('ModelSEED::Store','Model','uuid',$self->model_uuid());
+	return $self->getLinkedObject('ModelAnalysis','Model','uuid',$self->model_uuid());
 }
 
 
@@ -78,6 +80,7 @@ sub _type { return 'FBAFormulation'; }
 sub _typeToFunction {
 	return {
 		FBAObjectiveTerm => 'fbaObjectiveTerms',
+		FBAResult => 'fbaResults',
 		FBAReactionConstraint => 'fbaReactionConstraints',
 		FBACompoundConstraint => 'fbaCompoundConstraints',
 	};

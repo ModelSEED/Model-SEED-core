@@ -39,7 +39,7 @@ has constraintVariables => (is => 'bare', coerce => 1, handles => { constraintVa
 
 # LINKS:
 has dualConstraint => (is => 'rw',lazy => 1,builder => '_builddualConstraint',isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,Constraint,uuid,dualConstraint_uuid)', metaclass => 'Typed',weak_ref => 1);
-has dualVariable => (is => 'rw',lazy => 1,builder => '_builddualVariable',isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,Constraint,uuid,dualVariable_uuid)', metaclass => 'Typed',weak_ref => 1);
+has dualVariable => (is => 'rw',lazy => 1,builder => '_builddualVariable',isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,Variable,uuid,dualVariable_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -50,7 +50,7 @@ sub _builddualConstraint {
 }
 sub _builddualVariable {
 	my ($self) = @_;
-	return $self->getLinkedObject('FBAProblem','Constraint','uuid',$self->dualVariable_uuid());
+	return $self->getLinkedObject('FBAProblem','Variable','uuid',$self->dualVariable_uuid());
 }
 
 

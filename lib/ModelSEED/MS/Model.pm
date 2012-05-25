@@ -32,6 +32,23 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
+=head3 mergeModel
+Definition:
+	void ModelSEED::MS::Model->mergeModel({
+		model => ModelSEED::MS::Model(REQ)
+	});
+Description:
+	Merges in the input model with the current model, combining namespace and eliminating redundant compounds and reactions
+=cut
+sub mergeModel {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["model"],{});
+	my $mdl = $args->{model};
+	my $uuidTranslation;
+	for (my $i = 0; $i < @{$mdl->modelcompounds()}; $i++) {
+		
+	}
+}
 =head3 buildModelFromAnnotation
 Definition:
 	ModelSEED::MS::ModelReaction = ModelSEED::MS::Model->buildModelFromAnnotation({

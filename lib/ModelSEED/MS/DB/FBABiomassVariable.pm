@@ -12,17 +12,17 @@ use namespace::autoclean;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAResults', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAResult', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:
 has biomass_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has lowerBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has upperBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has min => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has max => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has variableType => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '2' );
+has lowerBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '6' );
+has upperBound => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '7' );
+has min => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '4' );
+has max => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '5' );
+has value => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', printOrder => '3' );
 
 
 

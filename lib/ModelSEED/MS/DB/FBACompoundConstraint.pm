@@ -12,7 +12,7 @@ use namespace::autoclean;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::fbaformulation_uuid', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAFormulation', type => 'parent', metaclass => 'Typed',weak_ref => 1);
 
 
 # ATTRIBUTES:

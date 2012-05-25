@@ -47,7 +47,7 @@ sub runFBA {
 	$fba->buildProblem();
 	$fba->printLPfile();
 	my $solution = $fba->submitLPFile({solver => "cplex"});
-	my $results = ModelSEED::MS::FBAResults->new({
+	my $results = $self->create("FBAResult",{
 		name => $self->name()." results",
 		fbaformulation_uuid => $self->uuid(),
 		fbaformulation => $self,
