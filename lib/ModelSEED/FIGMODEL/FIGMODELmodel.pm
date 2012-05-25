@@ -6145,6 +6145,7 @@ sub PrintSBMLFile {
 	}
 
 	#Adding exchange fluxes based on input media formulation
+        $ExchangeHash->{cpd11416=>'c'};
 	my @ExchangeList = keys(%{$ExchangeHash});
 	foreach my $ExCompound (@ExchangeList) {
 		my $cpdObj;
