@@ -20,7 +20,7 @@ TODO : update docs
 
 =head3 parse
 
-    $rp->parse("biochemistry/chenry/main/reactions/:uuid");
+    ModelSEED::Reference->new( ref => "biochemistry/chenry/main/reactions/:uuid");
     {
         type => "collection" || "object",
         base => "biochemistry/chenry/main/reactions"
@@ -61,6 +61,9 @@ has base  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_base');
 has id    => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_id');
 has class => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_class');
 
+has has_owner => ( is => 'ro', isa => 'Bool', lazy => 1, builder => '_build_has_owner');
+has owner     => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_owner');
+    
 has id_type    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id_type');
 has alias_type => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_type');
 has alias_username => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_username');
@@ -77,7 +80,7 @@ sub parse {
     my $rtv = {};
     my @parts = split(/$delimiter/, $query);
     my $schema = $self->schema;
-    my ($id, $base, $base_types, $id_type) = ([], [], [], undef);
+    my ($id, $base, $base_types, $id_type, $owner) = ([], [], [], undef, undef);
     my ($parent_objects, $parent_collections) = ([], []);
     my $type = "collection";
     while (@parts) {
@@ -105,12 +108,23 @@ sub parse {
             my $result = $self->_validate($schema, @parts);
             my $idParts = $result->{parts};
             $id_type = $result->{type};
-            # and our id must validate
-            return undef unless(@$idParts);
-            $type = "object";
-            $id = $idParts;
-            # remove this many entries from the parts 
-            splice(@parts,0,scalar(@$idParts));
+            if(@$idParts) {
+                # if we got a complete id
+                $type = "object";
+                $id = $idParts;
+                # remove this many entries from the parts 
+                splice(@parts,0,scalar(@$idParts));
+                if($id_type eq 'alias') {
+                    my ($alias_username, $alias_string) = @$id;
+                    $owner = $alias_username;
+                }
+            } elsif (@parts == 1) {
+                # partial reference, username
+                $owner = shift @parts;
+                $type = 'collection';
+            } else {
+               return undef 
+            }
         }
     }
     # remove empty strings from id, base
@@ -130,6 +144,7 @@ sub parse {
     $rtv->{base} = join($delimiter, @$base) if(@$base);
     $rtv->{id} = join($delimiter, @$id) if(@$id);
     $rtv->{id_type} = $id_type if(@$id);
+    $rtv->{owner} = $owner if(defined($owner));
     if($id_type eq 'alias') {
         my $alias_type = $rtv->{parent_collections}->[0];
         my ($alias_username, $alias_string) = @$id;
@@ -165,7 +180,18 @@ sub _buildSchema {
                     },
                 }
             },
-            model   => {},
+            model   => {
+                type => "collection",
+                id_types => [ 'uuid', 'alias' ],
+                class => "ModelSEED::MS::Model",
+                children => {
+                    biomasses => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Biomass",
+                    }
+                }
+            },
             mapping => {},
             user    => {},
         }
@@ -195,7 +221,11 @@ sub _validate {
 sub _alias {
     my $username = shift @_;
     my $alias = shift @_;
-    return [$username, $alias];
+    if(defined($alias) && defined($username)) {
+        return [$username, $alias];
+    } else {
+        return [];
+    }
 }
 
 sub _uuid {
@@ -213,6 +243,9 @@ sub _build_ref {
     my ($self) = @_;
 
     my $query = $self->base;
+    if($self->type eq 'collection' && $self->has_owner) {
+        $query .= $self->delimiter . $self->owner;
+    }
     $query .= $self->delimiter . $self->id if($self->type eq 'object');
     if ($self->is_url) {
         return uri_join($self->scheme, $self->authority, $query);
@@ -249,6 +282,12 @@ sub _build_id_type {
 }
 sub _build_class {
     return $_[0]->_parsed_ref->{class};
+}
+sub _build_has_owner {
+    return (defined($_[0]->owner)) ? 1 : 0;
+}
+sub _build_owner {
+    return $_[0]->_parsed_ref->{owner};
 }
 sub _build_base_types {
     return $_[0]->_parsed_ref->{base_types};

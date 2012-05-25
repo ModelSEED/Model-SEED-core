@@ -18,15 +18,14 @@
 use strict;
 use warnings;
 use ModelSEED::Store;
-use ModelSEED::Store::Private;
+use ModelSEED::Auth::Basic;
 use Test::More tests => 4;                      # last test to print
 
 
-my $pvt = ModelSEED::Store::Private->new();
-
-my $store = ModelSEED::Store->new({ username => "sdevoid", password => "marcopolo", private => $pvt});
+my $auth  = ModelSEED::Auth::Basic->new(username => "bob", password => "password");
+my $store = ModelSEED::Store->new(auth => $auth);
 ok defined $store, "Should create class";
-ok defined $store->user, "Should create user object";
+ok defined $store->auth, "Should create auth object";
 
 my $bio = $store->create("Biochemistry");
 ok defined $bio, "Should create biochemistry object";

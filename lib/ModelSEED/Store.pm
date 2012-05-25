@@ -27,9 +27,9 @@ accepts one parameter:
 
 =over
 
-=item private
+=item db 
 
-A reference to a L<ModelSEED::Store::Private> object. This is the
+A reference to a L<ModelSEED::Database> object. This is the
 base storage interface that the Store will use. If this is not
 provided, it will be initialized based on the contents of the
 L<ModelSEED::Configuration> package.
@@ -53,6 +53,9 @@ dataset under the type "user". If no user is found, it will attempt
 to use the L<ModelSEED::ModelSEEDClients::MSSeedSupportClient>
 package to retrieve authentication information from the central
 servers.
+
+=item Public
+
 
 =back
 
@@ -93,75 +96,81 @@ object needs additional data.
 =cut
 package ModelSEED::Store;
 use Moose;
-use ModelSEED::Store::Private;
-use ModelSEED::ModelSEEDClients::MSSeedSupportClient;
-use ModelSEED::MS::User;
+use ModelSEED::Auth;
+use ModelSEED::Database;
+use Class::Autouse qw(
+    ModelSEED::Database::Composite
+    ModelSEED::Reference
+);
 use Try::Tiny;
 use Module::Load;
 use Carp qw(confess);
 
-has username => ( is => 'rw', isa => 'Str', required => 1 );
-has user => ( is => 'rw', isa => 'ModelSEED::MS::User');
-has private => ( is => 'ro', isa => 'ModelSEED::Store::Private');
-
-around BUILDARGS => sub {
-    my ($orig, $class, $args) = @_;
-    my $authorized = 0;
-    my $private = $args->{private};
-    unless (defined($private)) {
-        $args->{private} = $private = ModelSEED::Store::Private->new();
-    }
-    # Handle Authentication methods
-    if(defined($args->{username}) && defined($args->{password})) {
-        my $user = $private->get_user($args->{username});
-        unless(defined($user)) {
-            # Try to get the user from SEED - LEGACY
-            # and create the object
-            my $svr = MSSeedSupportClient->new();
-            my $info = $svr->get_user_info({
-                username => $args->{username},
-                password => $args->{password}
-            });
-            if(defined($info->{username})) {
-                $user = ModelSEED::MS::User->new({
-                        login => $info->{username},
-                        password => $info->{password},
-                        firstname => $info->{firstname},
-                        lastname => $info->{lastname},
-                        email => $info->{email},
-                    });
-                $private->create_user($user);
-            }
-        }
-        # Check if plaintext password passed
-        if($user->check_password($args->{password})) {
-            $authorized = 1;
-        # Check if crypt + salted password passed
-        } elsif($user->password eq $args->{password}) {
-            $authorized = 1;
-        }
-        $args->{user} = $user;
-    } else {
-        $args->{username} = "PUBLIC";
-        $authorized = 1;
-    }
-    die "Unauthorized" unless($authorized);
-    return $class->$orig($args);
-};
+has auth => ( is => 'ro', isa => 'ModelSEED::Auth', required => 1);
+has db   => ( is => 'ro', isa => 'ModelSEED::Database', lazy => 1, builder => '_build_db');
 
 sub create {
     my ($self, $type, $base_hash) = @_;
     $base_hash = {} unless(defined($base_hash));
     my $className = uc(substr($type,0,1)).substr($type,1);
     $className = "ModelSEED::MS::".$className;
-    try {
-        load $className;
-    } catch {
-        die "Unknown class for $type";
-    };
+    $self->_load_class($className);
     $base_hash->{parent} = $self unless(defined($base_hash->{parent}));
     return $className->new($base_hash);
 }
+
+sub has_object {
+    my ($self, $ref) = @_;
+    return $self->has_data($ref);
+}
+
+sub get_object {
+    my ($self, $ref) = @_;
+    $ref = $self->_coerce_ref($ref);
+    my $o = $self->get_data($ref);
+    my $class = $self->_get_class($ref);
+    $self->_load_class($class);
+    return $class->new($o);
+}
+
+sub save_object {
+    my ($self, $ref, $object) = @_;
+    my $data = $object->serializeToDB(); 
+    return $self->save_data($ref, $data);
+}
+
+sub find_objects {
+    my ($self, $query) = @_;
+
+}
+
+# Helpers and Builders
+
+sub _get_class {
+    my ($self, $ref) = @_;
+    return $ref->{class};
+}
+
+sub _coerce_ref {
+    my ($self, $ref) = @_;
+    if(ref($ref) && $ref->isa('ModelSEED::Reference')) {
+        return $ref;
+    }
+    return ModelSEED::Reference->new(ref => $ref);
+}
+
+sub _load_class {
+    my ($self, $class) = @_;
+    try {
+        load $class;
+    } catch {
+        die "Unable to load $class : $_";
+    };
+}
+
+sub _build_db {
+    return ModelSEED::Database::Composite->new({use_config => 1});
+};
 
 sub AUTOLOAD {
     my $self = shift @_;
@@ -169,10 +178,10 @@ sub AUTOLOAD {
     return if $AUTOLOAD =~ /::DESTROY$/;
     $call =~ s/.*://;
     my $rtv;
-    unshift(@_, $self->username);
+    push(@_, $self->auth);
     my @args = @_;
     try {
-        $rtv = $self->private->$call(@args);
+        $rtv = $self->db->$call(@args);
     } catch {
         confess $_;
     };
