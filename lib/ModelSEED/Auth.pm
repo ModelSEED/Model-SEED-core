@@ -48,6 +48,7 @@ use common::sense;
 use namespace::autoclean;
 
 requires 'wrap_http_request';
+
 requires 'username';
 
 1;

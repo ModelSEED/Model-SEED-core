@@ -61,7 +61,7 @@ around 'BUILDARGS' => sub {
 
 sub wrap_http_request {
     my ($self, $req) = @_;
-    die "Not an HTTP::Request" unless($req->isa("HTTP::Request"));
+    die "Not a HTTP::Request" unless($req->isa("HTTP::Request"));
     my ($username, $password) = ($self->username, $self->password);
     my $base64 = encode_base64("$username:$password");
     $req->header( "Authorization" => "Basic: $base64" ); 
