@@ -61,20 +61,29 @@ in the composite.
 
 List of "read" functions:
 
-    has_object *
-    get_object *
-    get_metadata *
-    find_objects
+    has_data *
+    get_data *
+    get_data *
+    find_data
+    get_aliases 
+    alias_viewers *
+    alias_owner   *
+    alias_public  *
+    
 
 Note that any function with a (*) stops searching after it finds
 results.  So, for example C<has_object> may not query all databases.
 
 List of "write" functions:
 
-    save_object
-    delete_object
-    set_metadata
-    remove_metadata
+    save_data
+    delete_data
+
+    create_alias
+    update_alias
+    add_viewer
+    remove_viewer
+    set_public
 
 =head2 Methods
 
@@ -87,16 +96,26 @@ use Moose::Util::TypeConstraints;
 use Class::Autouse qw(
     ModelSEED::Configuration
     ModelSEED::Database::FileDB
+    ModelSEED::Database::MongoDB
+    ModelSEED::Database::MongoDBSimple
 );
 with 'ModelSEED::Database';
 
 role_type 'DB', { role => 'ModelSEED::Database' };
 has databases => ( is => 'ro', isa => 'ArrayRef[DB]', required => 1 );
+has primary   => ( is => 'ro', isa => 'DB', builder => '_build_primary', lazy => 1);
 
 around BUILDARGS => sub {
     my $orig  = shift @_;
     my $class = shift @_;
-    my $args  = shift @_;
+    my $args;
+    # get the arguments passed into constructor 
+    if(ref($_[0]) eq 'HASH') {
+        $args = shift @_;
+    } else {
+        $args = { @_ };
+    }
+    # use configuration if that's what we want
     if(defined($args->{use_config}) && $args->{use_config}) {
         my $Config = ModelSEED::Configuration->new();
         $args->{databases} = [ @{$Config->config->{stores}} ];
@@ -114,76 +133,129 @@ around BUILDARGS => sub {
     return $class->$orig($args);
 };
 
-sub has_object {
+sub has_data {
     my $self = shift @_;
     my $val = 0;
     foreach my $db (@{$self->databases}) {
-        $val = $db->has_object(@_); 
+        $val = $db->has_data(@_); 
         last if $val;
     }
     return $val;
 }
 
-sub get_object {
+sub get_data {
     my $self = shift @_;
     my $obj = undef;
     foreach my $db (@{$self->databases}) {
-        $obj = $db->get_object(@_);
+        $obj = $db->get_data(@_);
         last if $obj;
     }
     return $obj;
 }
 
-sub save_object {
+sub save_data {
     my $self = shift @_;
     my $rtv;
     foreach my $db (@{$self->databases}) {
-        $rtv = $db->save_object(@_);
+        $rtv = $db->save_data(@_);
     }
     return $rtv;
 }
 
-sub delete_object {
+sub delete_data {
     my $self = shift @_;
     my $deleteCount = 0;
     foreach my $db (@{$self->databases}) {
-        $deleteCount += $db->delete_object(@_);
+        $deleteCount += $db->delete_data(@_);
     }
     return $deleteCount;
 }
 
-sub get_metadata {
-    my $self = shift @_;
-    my $meta = undef;
-    foreach my $db (@{$self->databases}) {
-        $meta = $db->get_metadata(@_);
-        last if $meta;
-    }
-    return $meta;
-}
-
-sub set_metadata {
-    my $self = shift @_;
-    return $self->databases->[0]->set_metadata(@_);
-}
-
-sub remove_metadata {
-    my $self = shift @_;
-    my $removeCount = 0;
-    foreach my $db (@{$self->databases}) {
-        $removeCount += $db->remove_metadata(@_);
-    }
-    return $removeCount;
-}
-
-sub find_objects {
+sub find_data {
     my $self = shift @_;
     my $found = [];
     foreach my $db (@{$self->databases}) {
         my @args = @_;
-        push(@$found, @{$db->find_objects(@args)});
+        push(@$found, @{$db->find_data(@args)});
     }
     return $found;
+}
+
+# Alias Functions
+
+sub get_aliases {
+    my $self = shift @_;
+    my $aliases = [];
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        push(@$aliases, @{$db->get_aliases(@args)});
+    }
+}
+
+sub update_alias {
+    my $self = shift @_;
+    return $self->primary->update_alias(@_);
+}
+
+sub alias_viewers {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->get_viewers(@args);
+        return $val if(defined($val));
+    }
+}
+sub alias_owner {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->get_owner(@args);
+        return $val if(defined($val));
+    }
+}
+sub alias_public {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->get_public(@args);
+        return $val if(defined($val));
+    }
+}
+
+sub add_viewer {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->add_viewer(@args);
+        return $val if($val);
+    }
+    return 0;
+}
+
+sub remove_viewer {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->remove_viewer(@args);
+        return $val if($val);
+    }
+    return 0;
+}
+
+sub set_public {
+    my $self = shift @_;
+    foreach my $db (@{$self->databases}) {
+        my @args = @_;
+        my $val = $db->set_public(@args);
+        return $val if($val);
+    }
+    return 0;
+}
+
+
+sub _build_primary {
+    my $self = shift @_;
+    return $self->databases->[0];
 }
 
 1;

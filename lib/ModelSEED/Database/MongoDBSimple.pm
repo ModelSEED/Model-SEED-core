@@ -70,8 +70,8 @@ sub initialize {
 
 sub has_data {
     my ($self, $ref, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     my $uuid = $self->_get_uuid($ref, $auth);
-    # TODO : Do we return undef for collection references?
     return 0 unless(defined($uuid));
     my $fh = $self->db->get_gridfs->find_one({ uuid => $uuid });
     return (defined($fh)) ? 1 : 0;
@@ -79,6 +79,7 @@ sub has_data {
 
 sub get_data {
     my ($self, $ref, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     my $uuid = $self->_get_uuid($ref, $auth);
     return undef unless(defined($uuid));
     my $fh = $self->db->get_gridfs->find_one({ uuid => $uuid });
@@ -89,6 +90,7 @@ sub get_data {
 
 sub save_data {
     my ($self, $ref, $object, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     my ($oldUUID, $update_alias);
     if ($ref->id_type eq 'alias') {
         $oldUUID = $self->_get_uuid($ref, $auth);    
@@ -131,7 +133,7 @@ sub save_data {
         return undef unless($rtv);
     } elsif(!defined($oldUUID) && $ref->id_type eq 'alias') {
         # alias is new, so create it
-        my $rtv = $self->create_alias($ref, $object->{uuid}, $auth);
+        my $rtv = $self->update_alias($ref, $object->{uuid}, $auth);
         return undef unless($rtv);
     }
     return $object->{uuid};
@@ -139,6 +141,7 @@ sub save_data {
 
 sub delete_data {
     my ($self, $ref, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     my $uuid = $self->_get_uuid($ref, $auth);
     return undef unless(defined($uuid));
     # TODO - do we actually want to delete objects?
@@ -151,58 +154,87 @@ sub find_data {
 
 ## Alias functions
 
-sub _alias_update {
-    my ($self, $ref, $update, $auth) = @_;
-    # can only update ref that is an alias
-    return 0 unless($ref->id_type eq 'alias');
-    # can only update ref that is owned by caller
-    return 0 unless($ref->alias_username eq $auth->username);
-    my $aliasCollection = $ModelSEED::Database::MongoDBSimple::aliasCollection;
-    my $o = $self->db->$aliasCollection->update(
-        {   alias => $ref->alias_string,
-            type  => $ref->alias_type,
-            owner => $auth->username,
-        },
-        # push viewer on viewers
-        $update,
-        {safe => 0}
-    );
-    return 0 if $self->_error;
-    return 1;
-}
-
-sub _alias_query {
-    my ($self, $ref, $attribute, $auth) = @_;
-    # can only update ref that is an alias
-    return undef unless($ref->id_type eq 'alias');
-    my $aliasCollection = $ModelSEED::Database::MongoDBSimple::aliasCollection;
-    my $o = $self->db->$aliasCollection->find_one(
-        {   alias => $ref->alias_string,
-            type  => $ref->alias_type,
-            owner => $ref->alias_username,
-        }
-    );
-    # return undefined unless we are allowed to see alias
-    #     either because it is (1) public, (2) owned by us
-    #     or (3) we are in the list of viewers
-    return undef unless(defined($o));
-    unless($o->{public}
-        || $o->{owner} eq $auth->username)
-    {
-        my $authorized = 0;
-        foreach my $viewer (@{$o->{viewers}}) {
-            if($viewer eq $auth->username) {
-                $authorized = 1;
-                last;
+sub get_aliases {
+    my ($self, $ref, $auth) = @_;
+    my $query = {};
+    if(defined($ref)) {
+        $ref = $self->_cast_ref($ref);
+        #$self->_die_if_bad_ref($ref);
+        if($ref->type eq 'collection') {
+            if(defined $ref->base_types->[0]) {
+                $query->{type} = $ref->base_types->[0];
+            }
+            if($ref->has_owner) {
+                $query->{owner} = $ref->owner;
+            }
+        } else {
+            if ($ref->id_type eq 'uuid') {
+                $query->{uuid} = $ref->id;
+            }
+            if ($ref->id_type eq 'alias') {
+                $query->{alias} = $ref->alias_string;
+                $query->{owner} = $ref->alias_username;
             }
         }
-        return undef unless($authorized);
     }
-    return $o->{$attribute};
+    return $self->_aliases_query($query, $auth);
 }
 
-sub create_alias {
+
+sub alias_uuid {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'uuid', $auth);
+}
+
+sub alias_viewers {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'viewers', $auth);
+}
+
+sub alias_public {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'public', $auth);
+}
+
+sub alias_owner {
+    my ($self, $ref, $auth) = @_;
+    return $self->_alias_query($ref, 'owner', $auth);
+}
+
+sub update_alias {
     my ($self, $ref, $uuid, $auth) = @_;
+    my $update = { '$set' => { 'uuid' => $uuid }};
+    my $val = $self->_alias_update($ref, $update, $auth);
+    if($val == -1) {
+        # create alias if it alias doesn't exist
+        return $self->_alias_create($ref, $uuid, $auth);
+    }
+    return $val;
+}
+
+sub remove_viewer {
+    my ($self, $ref, $viewerName, $auth) = @_;
+    my $update = { '$pull' => { 'viewers' => $viewerName }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+sub set_public {
+    my ($self, $ref, $bool, $auth) = @_;
+    my $update = { '$set' => { 'public' => $bool }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+sub add_viewer {
+    my ($self, $ref, $viewerName, $auth) = @_;
+    my $update = { '$push' => { 'viewers' => $viewerName }};
+    return $self->_alias_update($ref, $update, $auth);
+}
+
+## Helper Functions
+
+sub _alias_create {
+    my ($self, $ref, $uuid, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     my $type = $ref->parent_collections->[0];
     my $validAliasTypes = {
         biochemistry => 1,
@@ -232,54 +264,88 @@ sub create_alias {
     return 1;
 }
 
-sub alias_uuid {
-    my ($self, $ref, $auth) = @_;
-    return $self->_alias_query($ref, 'uuid', $auth);
+sub _alias_update {
+    my ($self, $ref, $update, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
+    # can only update ref that is an alias
+    return 0 unless($ref->id_type eq 'alias');
+    # can only update ref that is owned by caller
+    return 0 unless($ref->alias_username eq $auth->username);
+    my $aliasCollection = $ModelSEED::Database::MongoDBSimple::aliasCollection;
+    my $o = $self->db->$aliasCollection->update(
+        {   alias => $ref->alias_string,
+            type  => $ref->alias_type,
+            owner => $auth->username,
+        },
+        # push viewer on viewers
+        $update,
+        {safe => 0}
+    );
+    return -1 if $self->_update_error(1);
+    return 1;
 }
 
-sub alias_viewers {
-    my ($self, $ref, $auth) = @_;
-    return $self->_alias_query($ref, 'viewers', $auth);
+sub _aliases_query {
+    my ($self, $query, $auth) = @_;
+    my $permission_query = {
+        '$and' => [
+            $query,
+            {   '$or' => [
+                    {'owner'   => $auth->username},
+                    {'viewers' => $auth->username},
+                    {'public'  => 1}
+                ]
+            }
+        ]
+    };
+    my $aliasCollection = $ModelSEED::Database::MongoDBSimple::aliasCollection;
+    my @objs = $self->db->$aliasCollection->find($permission_query)->all;
+    return [
+        map {
+            {   type  => $_->{type},
+                owner => $_->{owner},
+                alias => $_->{alias},
+                uuid  => $_->{uuid}
+            }
+            } @objs
+
+    ];
 }
 
-sub alias_public {
-    my ($self, $ref, $auth) = @_;
-    return $self->_alias_query($ref, 'public', $auth);
+sub _alias_query {
+    my ($self, $ref, $attribute, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
+    # can only update ref that is an alias
+    return undef unless($ref->id_type eq 'alias');
+    my $aliasCollection = $ModelSEED::Database::MongoDBSimple::aliasCollection;
+    my $o = $self->db->$aliasCollection->find_one(
+        {   alias => $ref->alias_string,
+            type  => $ref->alias_type,
+            owner => $ref->alias_username,
+        }
+    );
+    # return undefined unless we are allowed to see alias
+    #     either because it is (1) public, (2) owned by us
+    #     or (3) we are in the list of viewers
+    return undef unless(defined($o));
+    unless($o->{public}
+        || $o->{owner} eq $auth->username)
+    {
+        my $authorized = 0;
+        foreach my $viewer (@{$o->{viewers}}) {
+            if($viewer eq $auth->username) {
+                $authorized = 1;
+                last;
+            }
+        }
+        return undef unless($authorized);
+    }
+    return $o->{$attribute};
 }
-
-sub alias_owner {
-    my ($self, $ref, $auth) = @_;
-    return $self->_alias_query($ref, 'owner', $auth);
-}
-
-sub update_alias {
-    my ($self, $ref, $uuid, $auth) = @_;
-    my $update = { '$set' => { 'uuid' => $uuid }};
-    return $self->_alias_update($ref, $update, $auth);
-}
-
-sub remove_viewer {
-    my ($self, $ref, $viewerName, $auth) = @_;
-    my $update = { '$pull' => { 'viewers' => $viewerName }};
-    return $self->_alias_update($ref, $update, $auth);
-}
-
-sub set_public {
-    my ($self, $ref, $bool, $auth) = @_;
-    my $update = { '$set' => { 'public' => $bool }};
-    return $self->_alias_update($ref, $update, $auth);
-}
-
-sub add_viewer {
-    my ($self, $ref, $viewerName, $auth) = @_;
-    my $update = { '$push' => { 'viewers' => $viewerName }};
-    return $self->_alias_update($ref, $update, $auth);
-}
-
-## Helper Functions
 
 sub _get_uuid {
     my ($self, $ref, $auth) = @_;
+    $ref = $self->_cast_ref($ref);
     if($ref->id_type eq 'alias') {
         return $self->alias_uuid($ref, $auth);
     } else {
@@ -316,6 +382,15 @@ sub _gfs_fh_to_object {
     my ($self, $gfs_fh) = @_;
     my $string = $gfs_fh->slurp();
     return $self->JSON->decode($string);
+}
+
+sub _cast_ref {
+    my ($self, $ref) = @_;
+    if(ref($ref) && $ref->isa("ModelSEED::Reference")) {
+        return $ref;
+    } else {
+        return ModelSEED::Reference->new(ref => $ref);
+    }
 }
 
 ## Builders

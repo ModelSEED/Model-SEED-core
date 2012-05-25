@@ -83,9 +83,20 @@ In these functions:
 
 =back
 
-=head3 create_alias
+=head3 get_aliases
 
-    $bool = $db->create_alias(ref, arbitraryString, auth)
+    $arrayRef = $db->get_aliases(query, auth)
+
+Query for aliases. The query object is a HashRef that may contain
+the following keys: type, owner, alias, uuid.  The return value is
+an array ref of alias objects that have the following structure:
+
+    {
+        type  => $string,
+        owner => $string,
+        alias => $string,
+        uuid  => $uuid,
+    }
 
 =head3 update_alias
 
@@ -106,19 +117,14 @@ In these functions:
 =cut
 package ModelSEED::Database;
 use Moose::Role;
+# Data access functions
 requires 'has_data';
 requires 'get_data';
-#requires 'get_data_collection';
-#requires 'get_data_collection_iterator';
 requires 'save_data';
-#requires 'save_data_collection';
-
-requires 'delete_data';
-#requires 'delete_data_collection';
-
+#requires 'delete_data';
 requires 'find_data';
-
-requires 'create_alias';
+# Alias functions
+requires 'get_aliases';
 requires 'update_alias';
 requires 'alias_viewers';
 requires 'alias_owner';
@@ -127,12 +133,4 @@ requires 'add_viewer';
 requires 'remove_viewer';
 requires 'set_public';
 
-
-=cut
-requires 'has_object';
-requires 'get_object';
-requires 'save_object';
-requires 'delete_object';
-requires 'find_objects';
-=cut
 1;
