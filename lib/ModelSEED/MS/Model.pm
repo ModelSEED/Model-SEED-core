@@ -170,6 +170,102 @@ sub buildModelFromAnnotation {
 	});
 }
 
+=head3 buildModelByLayers
+Definition:
+	void ModelSEED::MS::Model->buildModelByLayers({
+		
+	});
+Description:
+	
+=cut
+sub buildModelByLayers {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		annotation => $self->annotation(),
+		mapping => $self->mapping(),
+	});
+	my $mapping = $args->{mapping};
+	my $annotaton = $args->{annotation};
+	my $biochem = $mapping->biochemistry();
+	my $type = "Singlegenome";
+	if (@{$annotaton->genomes()} > 0) {
+		$type = "Metagenome";
+	}
+	my $roleFeatures;
+	for (my $i=0; $i < @{$annotaton->features()}; $i++) {
+		my $ftr = $annotaton->features()->[$i];
+		for (my $j=0; $j < @{$ftr->featureroles()}; $j++) {
+			push(@{$roleFeatures->{$ftr->featureroles()->[$j]->role_uuid()}->{$ftr->featureroles()->[$j]->compartment()}},$ftr);
+		}
+	}
+	for (my $i=0; $i < @{$mapping->complexes()};$i++) {
+		my $cpx = $mapping->complexes()->[$i];
+		my $compartments;
+		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
+			$compartments->{$cpx->complexreactioninstances()->[$j]->compartment()} = {present => 0,subunits => {}};
+		}
+		for (my $j=0; $j < @{$cpx->complexroles()}; $j++) {
+			my $cpxrole = $cpx->complexroles()->[$j];
+			if (defined($roleFeatures->{$cpxrole->role_uuid()})) {
+				foreach my $compartment (keys(%{$roleFeatures->{$cpxrole->role_uuid()}})) {
+					if ($compartment eq "u") {
+						foreach my $rxncomp (keys(%{$compartments})) {
+							if ($cpxrole->triggering() == 1) {
+								$compartments->{$rxncomp}->{present} = 1;
+							}
+							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+							foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
+								$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
+							}
+						}
+					} elsif (defined($compartments->{$compartment})) {
+						if ($cpxrole->triggering() == 1) {
+							$compartments->{$compartment}->{present} = 1;
+						}
+						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+						foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
+							$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
+						}
+					}
+				}
+			} elsif ($cpxrole->optional() == 0) {
+				foreach my $rxncomp (keys(%{$compartments})) {
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
+					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{note} = "Complex-based-gapfilling";
+				}
+			}
+		}
+		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
+			my $cpxrxninst = $cpx->complexreactioninstances()->[$j];
+			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
+				my $mdlrxn = $self->addReactionInstanceToModel({
+					reactionInstance => $cpxrxninst->reactioninstance(),
+				});
+				$mdlrxn->addModelReactionProtein({
+					proteinDataTree => $compartments->{$cpxrxninst->compartment()},
+					complex_uuid => $cpx->uuid()
+				});
+			}
+		}
+	}
+	foreach my $universalRxn (@{$mapping->universalReactions()}) {
+		my $mdlrxn = $self->addReactionInstanceToModel({
+			reactionInstance => $universalRxn->reactioninstance(),
+		});
+		$mdlrxn->addModelReactionProtein({
+			proteinDataTree => {note => "Universal reaction"},
+			complex_uuid => "00000000-0000-0000-0000-000000000000"
+		});
+	}
+	my $bio = $self->createStandardFBABiomass({
+		annotation => $self->annotation(),
+		mapping => $self->mapping(),
+	});
+}
+
 =head3 createStandardFBABiomass
 Definition:
 	ModelSEED::MS::Biomass = ModelSEED::MS::Annotation->createStandardFBABiomass({
