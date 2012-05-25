@@ -108,4 +108,97 @@ sub _uuid {
     $test_count += 5;
 }
 
+## Testing alias listing
+{
+    my $db = ModelSEED::Database::MongoDBSimple->new( db_name => 'test',);
+    my $type = "biochemistry";
+    # Delete the database to get it clean and fresh
+    $db->db->drop();
+    my $alice = ModelSEED::Auth::Basic->new(
+        username => "alice",
+        password => "password",
+    );
+    my $pub = ModelSEED::Auth::Public->new();
+    my $bob = ModelSEED::Auth::Basic->new(
+        username => "bob",
+        password => "password"
+    );
+    # Set up permissions:
+    # alias  type          owner  viewers  public
+    # one    biochemistry  alice           1
+    # two    biochemistry  alice  bob      1
+    # three  biochemistry  alice
+    # four   model         bob    alice    
+    # five   model         alice  bob      1
+    # six    biochemistry  bob    alice     
+    my $ref1 = ModelSEED::Reference->new(ref => "biochemistry/alice/one");
+    my $ref2 = ModelSEED::Reference->new(ref => "biochemistry/alice/two");
+    my $ref3 = ModelSEED::Reference->new(ref => "biochemistry/alice/three");
+    my $ref4 = ModelSEED::Reference->new(ref => "model/bob/four");
+    my $ref5 = ModelSEED::Reference->new(ref => "model/alice/five");
+    my $ref6 = ModelSEED::Reference->new(ref => "biochemistry/bob/six");
+    my $obj1 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj2 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj3 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj4 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj5 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj6 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    $db->save_data($ref1, $obj1, $alice);
+    $db->save_data($ref2, $obj2, $alice);
+    $db->save_data($ref3, $obj3, $alice);
+    {
+        $db->add_viewer($ref2, "bob", $alice);
+        $db->set_public($ref1, 1, $alice);
+        $db->set_public($ref2, 1, $alice);
+    }
+    $db->save_data($ref4, $obj4, $bob);
+    $db->save_data($ref5, $obj5, $alice);
+    $db->save_data($ref6, $obj6, $bob);
+    {
+        $db->add_viewer($ref4, "alice", $bob);
+        $db->add_viewer($ref5, "bob", $alice);
+        $db->set_public($ref5, 1, $alice);
+        $db->add_viewer($ref6, "alice", $bob);
+    }
+   
+    # Now test get_aliases for alice
+    {
+        my $all = $db->get_aliases(undef, $alice);
+        my $bio = $db->get_aliases("biochemistry", $alice);
+        my $hers = $db->get_aliases("biochemistry/alice", $alice);
+        is scalar(@$all), 6, "Should get 6 aliases for alice, undef";
+        is scalar(@$bio), 4, "Should get 4 aliases for alice, 'biochemistry'";
+        is scalar(@$hers), 3, "Should get 3 aliases for alice, 'biochemistry/alice'";
+    }
+    # And for bob
+    {
+        my $all  = $db->get_aliases(undef, $bob);
+        my $bio  = $db->get_aliases("biochemistry", $bob);
+        my $hers = $db->get_aliases("biochemistry/alice", $bob);
+        my $his  = $db->get_aliases("model/bob", $bob);
+        is scalar(@$all), 5, "Should get 5 aliases for bob, undef";
+        is scalar(@$bio), 3, "Should get 3 aliases for bob, 'biochemistry'";
+        is scalar(@$hers), 2, "Should get 2 aliases for bob, 'biochemistry/alice'";
+        is scalar(@$his), 1, "Should get 1 aliases for bob, 'model/bob'";
+    }
+    # And for public
+    {
+        my $all  = $db->get_aliases(undef, $pub);
+        my $bio  = $db->get_aliases("biochemistry", $pub);
+        my $model  = $db->get_aliases("model", $pub);
+        my $b_hers = $db->get_aliases("biochemistry/alice", $pub);
+        my $b_his = $db->get_aliases("biochemistry/bob", $pub);
+        my $m_hers = $db->get_aliases("model/alice", $pub);
+        my $m_his = $db->get_aliases("model/bob", $pub);
+
+        is scalar(@$all), 3, "Should get 3 aliases for pub, undef";
+        is scalar(@$bio), 2, "Should get 2 aliases for pub, 'biochemistry'";
+        is scalar(@$model), 1, "Should get 1 aliases for pub, 'model'";
+        is scalar(@$b_hers), 2, "Should get 2 aliases for pub, 'biochemistry/alice'";
+        is scalar(@$b_his), 0, "Should get 0 aliases for pub, 'biochemistry/bob'";
+        is scalar(@$m_hers), 1, "Should get 1 aliases for pub, 'model/alice'";
+        is scalar(@$m_his), 0, "Should get 0 aliases for pub, 'model/bob'";
+    }
+    $test_count += 14;
+}
 done_testing($test_count);
