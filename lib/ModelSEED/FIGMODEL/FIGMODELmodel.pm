@@ -6145,17 +6145,19 @@ sub PrintSBMLFile {
 	}
 
 	#Adding exchange fluxes based on input media formulation
-        $ExchangeHash->{cpd11416=>'c'};
+        $ExchangeHash->{cpd11416}='c' if $biomassDrainB;
 	my @ExchangeList = keys(%{$ExchangeHash});
 	foreach my $ExCompound (@ExchangeList) {
 		my $cpdObj;
 		if (defined($cpdHash->{$ExCompound})) {
 			$cpdObj = $cpdHash->{$ExCompound}->[0];
 		}
-		if (!defined($cpdObj)) {
-			next;	
+		if ($ExCompound ne "cpd11416" && !defined($cpdObj)) {
+		    print STDERR "Skipping $ExCompound\n";
+		    next;	
 		}
-		my $ExCompoundName = $cpdObj->name();
+		my $ExCompoundName = $cpdObj->name() if defined($cpdObj);
+		$ExCompoundName = "Biomass" if $ExCompound eq "cpd11416";
 		$ExCompoundName =~ s/[<>;&]//g;
 		$ObjectiveCoef = "0.0";
 		my $min = -10000;
