@@ -1,9 +1,11 @@
 package ModelSEED::App::stores::Command::add;
 use Class::Autouse qw(ModelSEED::Configuration);
+use Data::Dumper;
 use base 'App::Cmd::Command';
 
 $typeToClass = $ModelSEED::App::stores::typeToClass;
 $typeToArgs = $ModelSEED::App::stores::typeToArgs;
+$defaultArgValues = $ModelSEED::App::stores::defaultArgValues;
 
 sub abstract { "Add another store interface" }
 sub usage_desc { "stores add name --type type ..." }
@@ -59,9 +61,17 @@ sub _buildConfig {
     # Check the args
     return "unknown type $type" unless(defined($typeToArgs->{$type}));
     my $requiredArgs = $typeToArgs->{$type};
+    my $defaults = $defaultArgValues->{$type};
+
     foreach my $arg (keys %$requiredArgs) {
-        return "--$arg required for $type" unless(defined($opt->{$arg}));
-        $config->{$arg} = $opt->{$arg};
+        my $spec = $requiredArgs->{$arg};
+        if (defined($opt->{$arg})) {
+            $config->{$arg} = $opt->{$arg};
+        } elsif (defined($defaults->{$arg})) {
+            $config->{$arg} = $defaults->{$arg};
+        } elsif ($spec->[0] =~ /=/) {
+            return "--$arg required for $type" unless (defined($opt->{$arg}));
+        }
     }
     return $config;    
 }

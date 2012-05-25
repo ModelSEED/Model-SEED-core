@@ -1,8 +1,8 @@
-# Unit tests for ModelSEED::Database::MongoDB
+# Unit tests for ModelSEED::Database::MongoDBSimple
 use strict;
 use warnings;
 use Test::More;
-use ModelSEED::Database::MongoDB;
+use ModelSEED::Database::MongoDBSimple;
 use ModelSEED::Auth::Basic;
 use ModelSEED::Auth::Public;
 use ModelSEED::Reference;
@@ -16,7 +16,7 @@ sub _uuid {
 
 # Basic object initialization
 {
-    my $mongo = ModelSEED::Database::MongoDB->new({ db_name => 'test' });
+    my $mongo = ModelSEED::Database::MongoDBSimple->new({ db_name => 'test' });
     ok defined($mongo), "Should create a class instance";
     ok defined($mongo->conn), "Should have connection to database";
     ok defined($mongo->db), "Should have database object";
@@ -24,16 +24,7 @@ sub _uuid {
 }
 
 {
-    my $rules = {
-        biochemistry => {
-            "compounds" => {
-                collection => "compounds",
-                parent_tag => "_parent_biochemistry",
-                type       => "array"
-            }
-        }
-    };
-    my $db = ModelSEED::Database::MongoDB->new( db_name => 'test', split_rules => $rules);
+    my $db = ModelSEED::Database::MongoDBSimple->new( db_name => 'test',);
     my $type = "biochemistry";
     # Delete the database to get it clean and fresh
     $db->db->drop();
@@ -116,58 +107,98 @@ sub _uuid {
 
     $test_count += 5;
 }
-=cut
-    # now test multiple saves/deletes
-    my $large_id = 'obj3';
-    my $large_obj = {};
-    my $num = 100;
-    for (my $i=0; $i<$num; $i++) {
-        my $obj = { test => "test$i" x 10 };
-        $large_obj->{"test$i"} = int(rand(100000)) x 10;
-        $db->save_object($type, "$i", $obj);
+
+## Testing alias listing
+{
+    my $db = ModelSEED::Database::MongoDBSimple->new( db_name => 'test',);
+    my $type = "biochemistry";
+    # Delete the database to get it clean and fresh
+    $db->db->drop();
+    my $alice = ModelSEED::Auth::Basic->new(
+        username => "alice",
+        password => "password",
+    );
+    my $pub = ModelSEED::Auth::Public->new();
+    my $bob = ModelSEED::Auth::Basic->new(
+        username => "bob",
+        password => "password"
+    );
+    # Set up permissions:
+    # alias  type          owner  viewers  public
+    # one    biochemistry  alice           1
+    # two    biochemistry  alice  bob      1
+    # three  biochemistry  alice
+    # four   model         bob    alice    
+    # five   model         alice  bob      1
+    # six    biochemistry  bob    alice     
+    my $ref1 = ModelSEED::Reference->new(ref => "biochemistry/alice/one");
+    my $ref2 = ModelSEED::Reference->new(ref => "biochemistry/alice/two");
+    my $ref3 = ModelSEED::Reference->new(ref => "biochemistry/alice/three");
+    my $ref4 = ModelSEED::Reference->new(ref => "model/bob/four");
+    my $ref5 = ModelSEED::Reference->new(ref => "model/alice/five");
+    my $ref6 = ModelSEED::Reference->new(ref => "biochemistry/bob/six");
+    my $obj1 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj2 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj3 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj4 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj5 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj6 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    $db->save_data($ref1, $obj1, $alice);
+    $db->save_data($ref2, $obj2, $alice);
+    $db->save_data($ref3, $obj3, $alice);
+    {
+        $db->add_viewer($ref2, "bob", $alice);
+        $db->set_public($ref1, 1, $alice);
+        $db->set_public($ref2, 1, $alice);
     }
-
-    $db->save_object($type, $large_id, $large_obj);
-    is_deeply $large_obj, $db->get_object($type, $large_id), "Large object saved and read from database";
-
-    for (my $i=1; $i<$num-1; $i++) {
-        $db->delete_object($type, $i);
+    $db->save_data($ref4, $obj4, $bob);
+    $db->save_data($ref5, $obj5, $alice);
+    $db->save_data($ref6, $obj6, $bob);
+    {
+        $db->add_viewer($ref4, "alice", $bob);
+        $db->add_viewer($ref5, "bob", $alice);
+        $db->set_public($ref5, 1, $alice);
+        $db->add_viewer($ref6, "alice", $bob);
     }
+   
+    # Now test get_aliases for alice
+    {
+        my $all = $db->get_aliases(undef, $alice);
+        my $bio = $db->get_aliases("biochemistry", $alice);
+        my $hers = $db->get_aliases("biochemistry/alice", $alice);
+        is scalar(@$all), 6, "Should get 6 aliases for alice, undef";
+        is scalar(@$bio), 4, "Should get 4 aliases for alice, 'biochemistry'";
+        is scalar(@$hers), 3, "Should get 3 aliases for alice, 'biochemistry/alice'";
+    }
+    # And for bob
+    {
+        my $all  = $db->get_aliases(undef, $bob);
+        my $bio  = $db->get_aliases("biochemistry", $bob);
+        my $hers = $db->get_aliases("biochemistry/alice", $bob);
+        my $his  = $db->get_aliases("model/bob", $bob);
+        is scalar(@$all), 5, "Should get 5 aliases for bob, undef";
+        is scalar(@$bio), 3, "Should get 3 aliases for bob, 'biochemistry'";
+        is scalar(@$hers), 2, "Should get 2 aliases for bob, 'biochemistry/alice'";
+        is scalar(@$his), 1, "Should get 1 aliases for bob, 'model/bob'";
+    }
+    # And for public
+    {
+        my $all  = $db->get_aliases(undef, $pub);
+        my $bio  = $db->get_aliases("biochemistry", $pub);
+        my $model  = $db->get_aliases("model", $pub);
+        my $b_hers = $db->get_aliases("biochemistry/alice", $pub);
+        my $b_his = $db->get_aliases("biochemistry/bob", $pub);
+        my $m_hers = $db->get_aliases("model/alice", $pub);
+        my $m_his = $db->get_aliases("model/bob", $pub);
 
-    is_deeply { test => "test0" x 10 }, $db->get_object($type, "0"), "Object ok after add/remove";
-    my $test = "test" . ($num-1);
-    is_deeply { test => "$test" x 10 }, $db->get_object($type, $num-1), "Object ok after add/remove";
-    is undef, $db->get_object($type, 1), "Object gone after delete";
-
-    # now testing metadata
-    $db->save_object($type, $id2, $o2);
-
-    $db->set_metadata($type, $id2, '', {foo => 'bar'});
-    is_deeply {foo => 'bar'}, $db->get_metadata($type, $id2), "Simple metadata test";
-
-    $db->set_metadata($type, $id2, 'foo2', 'bar2');
-    is_deeply {foo => 'bar', foo2 => 'bar2'}, $db->get_metadata($type, $id2), "Added to existing metadata";
-    is undef, $db->get_metadata($type, $id2, 'none'), "Non-existant metadata";
-
-    $db->set_metadata($type, $id2, 'foo', {hello => 'world!'});
-    is_deeply {hello => 'world!'}, $db->get_metadata($type, $id2, 'foo'),
-	       "Overwrite existing metadata and get with selection";
-
-    ok !$db->set_metadata($type, $id2, '', 'scalar'), "Overwrite whole metadata must provide hash";
-
-    $db->remove_metadata($type, $id2, 'foo2');
-    is undef, $db->get_metadata($type, $id2, 'foo2'), "Removed metadata successfully";
-
-    $db->remove_metadata($type, $id2);
-    is_deeply {}, $db->get_metadata($type, $id2), "Removed all metadata";
-
-    $db->set_metadata($type, $id2, 'this.is.a', 'test');
-    is_deeply {this => {is => {a => 'test'}}}, $db->get_metadata($type, $id2), "Saved nested metadata";
-    is_deeply {a => 'test'}, $db->get_metadata($type, $id2, 'this.is'), "Got nested metadata";
-
-    $test_count += 23;
+        is scalar(@$all), 3, "Should get 3 aliases for pub, undef";
+        is scalar(@$bio), 2, "Should get 2 aliases for pub, 'biochemistry'";
+        is scalar(@$model), 1, "Should get 1 aliases for pub, 'model'";
+        is scalar(@$b_hers), 2, "Should get 2 aliases for pub, 'biochemistry/alice'";
+        is scalar(@$b_his), 0, "Should get 0 aliases for pub, 'biochemistry/bob'";
+        is scalar(@$m_hers), 1, "Should get 1 aliases for pub, 'model/alice'";
+        is scalar(@$m_his), 0, "Should get 0 aliases for pub, 'model/bob'";
+    }
+    $test_count += 14;
 }
-=cut
-
-
 done_testing($test_count);

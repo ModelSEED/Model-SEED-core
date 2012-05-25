@@ -14,68 +14,43 @@
 
 An abstract role / interface for database drivers.
 
-=head1 Methods
+=head2 Methods
 
-=head2 has_object
+=head3 has_data
 
-    $bool = $db->has_object(type, id);
+    $bool = $db->has_data(ref, auth);
 
-=head2 get_object
+=head3 get_data
 
-    $obj  = $db->get_object(type, id);
+    $obj = $db->get_data(ref, auth);
 
-=head2 save_object
+=head3 get_data_collection
 
-    $bool = $db->save_object(type, id, object);
+    $collection = $db->get_data_collection(ref, auth);
 
-Object can be hash/array ref or an already encoded JSON string
+=head3 get_data_collection_iterator
 
+    $iterator = $db->get_data_collection_itorator(ref, auth);
 
-=head2 delete_object
+=head3 save_data
 
-    $count = $db->delete_object(type, id);
+    $ref = $db->save_data(ref, data, auth);
 
-=head2 get_metadata
+=head3 save_data_collection
 
-    $meta = $db->get_metadata(type, id, selection);
+    $bool = save_data_collection(ref, collection, auth);
 
-Selection can be specified to return specific meta-data and uses dot
-notation to select inside sub-objects
+=head3 delete_data
 
-    meta: {name => 'foo', users => {paul => 'bar', zedd => 'test'}}
+    $count = $db->delete_object(ref, auth);
 
-    $db->get_metadata('type', '0123', 'users.paul');
-    returns: 'bar'
+=head3 delete_collection
 
-    $db->get_metadata('type', '0123', 'users');
-    returns: { paul => 'bar', zedd => 'test' }
+    $count = $db->delete_object(ref, auth);
 
-=head2 set_metadata
+=head3 find_objects
 
-    $bool = $db->set_metadata(type, id, selection, metadata);
-
-Selection specifies where to save metadata (uses dot notation) if
-selection is C<undef> or the empty string, will set the whole metadata
-to data (in this case data has to be a hash)
-
-    $db->set_metadata('type', '0123', 'users', {paul => 'bar'});
-    or
-    $db->set_metadata('type', '0123', 'users.paul', 'bar');
-
-    difference here is that the first will replace 'users',
-    while the second adds the user named 'paul'
-
-=head2 remove_metadata
-
-    $bool = $db->remove_metadata(type, id, selection);
-
-Deletes the data at selection (uses dot notation)
-
-    $db->remove_metadata('type', '0123', 'users.paul');
-
-=head2 find_objects
-
-    ([ids]) = $db->find_objects(type, query);
+    ([ids]) = $db->find_objects(ref, query, auth);
 
 Allows you to query for objects based on the metadata will use query
 syntax similar to MongoDB.
@@ -84,16 +59,78 @@ Uses MongoDB syntax like here:
 L<http://search.cpan.org/~kristina/MongoDB/lib/MongoDB/Tutorial.pod#Queries>
 L<http://www.mongodb.org/display/DOCS/Advanced+Queries>
 
+=head2 Alias Functions
+
+These functions manage aliases, which are special pointers to
+objects. These pointers have viewing permissions and can only be
+moved to a different object by their owner. Alias strings have the
+form of "username/arbitraryString" and are used in place of uuids
+in some specific objects (biochemistry, mapping and model for now).
+So a reference to a biochemistry would look like
+C<biochemistry/chenry/main>.
+
+In these functions:
+
+=over 4
+
+=item C<ref> is a L<ModelSEED::Reference>
+
+=item C<auth> is a L<ModelSEED::Auth>
+
+=item C<arbitraryString> is the free-form portion of the alias
+
+=item C<viewerUsername> is a username
+
+=back
+
+=head3 get_aliases
+
+    $arrayRef = $db->get_aliases(query, auth)
+
+Query for aliases. The query object is a HashRef that may contain
+the following keys: type, owner, alias, uuid.  The return value is
+an array ref of alias objects that have the following structure:
+
+    {
+        type  => $string,
+        owner => $string,
+        alias => $string,
+        uuid  => $uuid,
+    }
+
+=head3 update_alias
+
+    $bool = $db->update_alias(ref, uuid, auth)
+
+=head3 add_viewer
+
+    $bool = $db->add_viewer(ref, viewerUsername, auth)
+
+=head3 remove_viewer
+
+    $bool = $db->remove_viewer(ref, viewerUsername, auth)
+
+=head3 set_public
+
+    $bool = $db->set_public(ref, boolean, auth)
+
 =cut
 package ModelSEED::Database;
 use Moose::Role;
+# Data access functions
+requires 'has_data';
+requires 'get_data';
+requires 'save_data';
+#requires 'delete_data';
+requires 'find_data';
+# Alias functions
+requires 'get_aliases';
+requires 'update_alias';
+requires 'alias_viewers';
+requires 'alias_owner';
+requires 'alias_public';
+requires 'add_viewer';
+requires 'remove_viewer';
+requires 'set_public';
 
-requires 'has_object';
-requires 'get_object';
-requires 'save_object';
-requires 'delete_object';
-requires 'get_metadata';
-requires 'set_metadata';
-requires 'remove_metadata';
-requires 'find_objects';
 1;
