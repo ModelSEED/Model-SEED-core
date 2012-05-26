@@ -16,7 +16,7 @@ my $db = ModelSEED::Database::MongoDBSimple->new({db_name => "modelObjectStore",
 print "test2\n";
 my $auth = ModelSEED::Auth::Basic->new({username => "kbase",password => "kbase"});
 print "test3\n";
-my $store = ModelSEED::Store->new({auth => $auth,db => $db});
+my $store = ModelSEED::Store->new({auth => $auth,database => $db});
 print "test4\n";
 $store->save_data("biochemistry/kbase/test", { uuid => _uuid() });
 print "test5\n";
