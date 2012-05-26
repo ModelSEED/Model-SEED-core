@@ -148,7 +148,7 @@ sub find_objects {
 
 sub _get_class {
     my ($self, $ref) = @_;
-    return $ref->{class};
+    return $ref->class();
 }
 
 sub _coerce_ref {

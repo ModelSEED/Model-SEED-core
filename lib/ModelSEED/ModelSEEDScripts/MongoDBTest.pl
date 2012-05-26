@@ -11,13 +11,9 @@ sub _uuid {
 	return Data::UUID->new()->create_str();
 }
 
-print "test1\n";
 my $db = ModelSEED::Database::MongoDBSimple->new({db_name => "modelObjectStore",host => "birch.mcs.anl.gov"});
-print "test2\n";
 my $auth = ModelSEED::Auth::Basic->new({username => "kbase",password => "kbase"});
-print "test3\n";
 my $store = ModelSEED::Store->new({auth => $auth,database => $db});
-print "test4\n";
 $store->save_data("biochemistry/kbase/test", { uuid => _uuid() });
 print "test5\n";
 my $biochem = $store->get_object("biochemistry/kbase/test");
