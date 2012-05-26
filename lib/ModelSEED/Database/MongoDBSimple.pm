@@ -157,7 +157,9 @@ sub find_data {
 sub get_aliases {
     my ($self, $ref, $auth) = @_;
     my $query = {};
-    if(defined($ref)) {
+    if(defined($ref) && ref($ref) eq 'HASH') {
+        $query = $ref;
+    } elsif(defined($ref)) {
         $ref = $self->_cast_ref($ref);
         #$self->_die_if_bad_ref($ref);
         if($ref->type eq 'collection') {
@@ -176,7 +178,7 @@ sub get_aliases {
                 $query->{owner} = $ref->alias_username;
             }
         }
-    }
+    } 
     return $self->_aliases_query($query, $auth);
 }
 
