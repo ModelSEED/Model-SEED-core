@@ -27,7 +27,7 @@ accepts one parameter:
 
 =over
 
-=item db 
+=item database
 
 A reference to a L<ModelSEED::Database> object. This is the
 base storage interface that the Store will use. If this is not
@@ -107,7 +107,7 @@ use Module::Load;
 use Carp qw(confess);
 
 has auth => ( is => 'ro', isa => 'ModelSEED::Auth', required => 1);
-has db   => ( is => 'ro', isa => 'ModelSEED::Database', lazy => 1, builder => '_build_db');
+has database => ( is => 'ro', isa => 'ModelSEED::Database', lazy => 1, builder => '_build_db');
 
 sub create {
     my ($self, $type, $base_hash) = @_;
