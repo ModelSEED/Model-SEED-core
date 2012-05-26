@@ -169,7 +169,7 @@ sub _load_class {
 }
 
 sub _build_database {
-    return ModelSEED::Database::Composite->new({use_config => 1});
+    return ModelSEED::Database::Composite->new({use_config => 0});
 };
 
 sub AUTOLOAD {
