@@ -3,7 +3,7 @@ use strict;
 use Data::Dumper;
 use URI;
 use ModelSEED::Database::MongoDBSimple;
-use ModelSEED::Auth::Public;
+use ModelSEED::Auth::Basic;
 use ModelSEED::Store;
 use Data::UUID;
 
