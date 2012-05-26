@@ -2,7 +2,6 @@ use JSON::RPC::Client;
 use strict;
 use Data::Dumper;
 use URI;
-use ModelSEEDbootstrap;
 use ModelSEED::Database::MongoDBSimple;
 use ModelSEED::Auth::Public;
 use ModelSEED::Store;
