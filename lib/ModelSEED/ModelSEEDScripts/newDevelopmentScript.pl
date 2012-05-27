@@ -1,7 +1,6 @@
 use JSON::Any;
 use strict;
-use lib "";
-#use Bio::KBase::Exceptions;
+use Bio::KBase::Exceptions;
 
 use URI;
 use ModelSEED::Database::MongoDBSimple;
