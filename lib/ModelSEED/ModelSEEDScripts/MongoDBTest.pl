@@ -17,7 +17,7 @@ print "Loading the biochemistry!\n";
 my $string;
 my $gzipString;
 open BIOCHEM, "</home/chenry/public_html/exampleObjects/FullBiochemistry.json.zip";#Check that this path works
-read BIOCHEM,$gzipString,10000000;#Note, I oversized the buffer to ensure we get the whole file
+read BIOCHEM,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
 close BIOCHEM;
 gunzip \$gzipString => \$string;#Unzipping the data
 my $objectData = JSON::Any->decode($string);#Decoding the json
@@ -28,7 +28,7 @@ $store->set_public("biochemistry/kbase/default",1);
 
 print "Loading the mapping!\n";
 open MAPPING, "</home/chenry/public_html/exampleObjects/FullMapping.json.zip";#Check that this path works
-read MAPPING,$gzipString,10000000;#Note, I oversized the buffer to ensure we get the whole file
+read MAPPING,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
 close MAPPING;
 gunzip \$gzipString => \$string;#Unzipping the data
 $objectData = JSON::Any->decode($string);#Decoding the json
