@@ -16,10 +16,11 @@ my $store = ModelSEED::Store->new({auth => $auth,database => $db});
 print "Loading the biochemistry!\n";
 my $string;
 my $gzipString;
-open BIOCHEM, "</home/chenry/public_html/exampleObjects/FullBiochemistry.json.zip";#Check that this path works
-read BIOCHEM,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
+open BIOCHEM, "</home/chenry/public_html/exampleObjects/FullBiochemistry.json";#Check that this path works
+$string = <BIOCHEM>;
+#read BIOCHEM,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
 close BIOCHEM;
-gunzip \$gzipString => \$string;#Unzipping the data
+#gunzip \$gzipString => \$string;#Unzipping the data
 my $objectData = JSON::Any->decode($string);#Decoding the json
 
 print "Saving the biochemistry!\n";
@@ -27,10 +28,11 @@ $store->save_data("biochemistry/kbase/default",$objectData);
 $store->set_public("biochemistry/kbase/default",1);
 
 print "Loading the mapping!\n";
-open MAPPING, "</home/chenry/public_html/exampleObjects/FullMapping.json.zip";#Check that this path works
-read MAPPING,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
+open MAPPING, "</home/chenry/public_html/exampleObjects/FullMapping.json";#Check that this path works
+$string = <MAPPING>;
+#read MAPPING,$gzipString,1000000000;#Note, I oversized the buffer to ensure we get the whole file
 close MAPPING;
-gunzip \$gzipString => \$string;#Unzipping the data
+#gunzip \$gzipString => \$string;#Unzipping the data
 $objectData = JSON::Any->decode($string);#Decoding the json
 
 print "Saving the mapping!\n";
