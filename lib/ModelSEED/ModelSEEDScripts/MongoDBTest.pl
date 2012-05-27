@@ -5,6 +5,8 @@ use URI;
 use ModelSEED::Database::MongoDBSimple;
 use ModelSEED::Auth::Basic;
 use ModelSEED::Store;
+use IO::Compress::Gzip qw(gzip);
+use IO::Uncompress::Gunzip qw(gunzip);
 
 print "Connecting to the database!\n";
 my $db = ModelSEED::Database::MongoDBSimple->new({db_name => "modelObjectStore",host => "birch.mcs.anl.gov"});
