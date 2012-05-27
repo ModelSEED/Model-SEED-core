@@ -1,6 +1,7 @@
 use JSON::Any;
 use strict;
-use Bio::KBase::Exceptions;
+use lib "";
+#use Bio::KBase::Exceptions;
 
 use URI;
 use ModelSEED::Database::MongoDBSimple;
@@ -14,7 +15,7 @@ use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 
 open GENOME, "</home/chenry/public_html/exampleObjects/KBaseGenome.json";
-$string = <GENOME>;
+my $string = <GENOME>;
 close GENOME;
 my $in_genome = JSON::Any->decode($string);#Decoding the json
 
@@ -122,14 +123,14 @@ $mdl->defaultNameSpace("KBase");
 #Saving the model to the mongodb document store
 my $out_model = $mdl->serializeToDB();
 $self->{_store}->save_data( "model/kbase/" . $mdl->id(), $out_model );
-$store->set_public( "model/kbase/" . $mdl->id(), 1 );
+$self->{_store}->set_public( "model/kbase/" . $mdl->id(), 1 );
 
 #Saving the annotation to the mongodb document store
 $self->{_store}->save_data( "annotation/kbase/" . $annotation->uuid(),
 							$annotation->serializeToDB() );
-$store->set_public( "annotation/kbase/" . $annotation->uuid(), 1 );
+$self->{_store}->set_public( "annotation/kbase/" . $annotation->uuid(), 1 );
 
 #Saving the mapping to the mongodb document store
 $self->{_store}
   ->save_data( "mapping/kbase/" . $mapping->uuid(), $mapping->serializeToDB() );
-$store->set_public( "mapping/kbase/" . $mapping->uuid(), 1 );
+$self->{_store}->set_public( "mapping/kbase/" . $mapping->uuid(), 1 );
