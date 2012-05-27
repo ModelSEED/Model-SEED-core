@@ -1,4 +1,4 @@
-use JSON::RPC::Client;
+use JSON::Any;
 use strict;
 use Data::Dumper;
 use URI;
