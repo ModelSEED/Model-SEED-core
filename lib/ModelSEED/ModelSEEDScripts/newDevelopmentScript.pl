@@ -13,6 +13,11 @@ use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 
+open GENOME, "</home/chenry/public_html/exampleObjects/KBaseGenome.json";
+$string = <GENOME>;
+close GENOME;
+my $in_genome = JSON::Any->decode($string);#Decoding the json
+
 my $self;
 $self->{_db} =
   ModelSEED::Database::MongoDBSimple->new(
