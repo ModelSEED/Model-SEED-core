@@ -192,7 +192,50 @@ sub _buildSchema {
                     }
                 }
             },
-            mapping => {},
+            mapping =>   => {
+                type => "collection",
+                id_types => [ 'uuid', 'alias' ],
+                class => "ModelSEED::MS::Mapping",
+                children => {
+                    roles => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Role",
+                    },
+                    rolesets => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::RoleSet",
+                    },
+                    complexes => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Complex",
+                    },
+                    biomassTemplates => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::BiomassTemplate",
+                    }
+                }
+            },
+            annotation =>   => {
+                type => "collection",
+                id_types => [ 'uuid', 'alias' ],
+                class => "ModelSEED::MS::Annotation",
+                children => {
+                    features => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Feature",
+                    },
+                    genomes => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Genome",
+                    }
+                }
+            },
             user    => {},
         }
     };
