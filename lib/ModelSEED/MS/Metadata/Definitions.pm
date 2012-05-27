@@ -538,8 +538,6 @@ $objectDefinitions->{Genome} = {
 	links => []
 };
 
-
-
 $objectDefinitions->{User} = {
     parents => ["ModelSEED::Store"],
     class => 'child',
@@ -1238,19 +1236,6 @@ $objectDefinitions->{Feature} = {
 	]
 };
 
-$objectDefinitions->{SubsystemState} = {
-	parents => ['Annotation'],
-	class => 'child',
-	attributes => [
-		{name => 'roleset_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
-		{name => 'variant',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""}
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => []
-};
-
 $objectDefinitions->{FeatureRole} = {
 	parents => ['Feature'],
 	class => 'encompassed',
@@ -1265,6 +1250,19 @@ $objectDefinitions->{FeatureRole} = {
 	links => [
 		{name => "role",attribute => "role_uuid",parent => "Mapping",class => "Role",query => "uuid"},
 	]
+};
+
+$objectDefinitions->{SubsystemState} = {
+	parents => ['Annotation'],
+	class => 'child',
+	attributes => [
+		{name => 'roleset_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 0},
+		{name => 'variant',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""}
+	],
+	subobjects => [],
+	primarykeys => [ qw(uuid) ],
+	links => []
 };
 
 $objectDefinitions->{Mapping} = {

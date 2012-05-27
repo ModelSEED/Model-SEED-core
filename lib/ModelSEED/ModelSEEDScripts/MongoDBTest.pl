@@ -5,21 +5,32 @@ use URI;
 use ModelSEED::Database::MongoDBSimple;
 use ModelSEED::Auth::Basic;
 use ModelSEED::Store;
-use Data::UUID;
 
-sub _uuid {
-	return Data::UUID->new()->create_str();
-}
-
+print "Connecting to the database!\n";
 my $db = ModelSEED::Database::MongoDBSimple->new({db_name => "modelObjectStore",host => "birch.mcs.anl.gov"});
 my $auth = ModelSEED::Auth::Basic->new({username => "kbase",password => "kbase"});
 my $store = ModelSEED::Store->new({auth => $auth,database => $db});
-$store->save_data("biochemistry/kbase/test", { uuid => _uuid() });
-print "test5\n";
-my $biochem = $store->get_object("biochemistry/kbase/test");
-print "test6\n";
-print Dumper($biochem);
-#my $mapping = $store->get_object("mapping/kbase/default");
-#my $db = ModelSEED::Database::MongoDBSimple->new({db_name => "modelObjectStore",host => "mongodb.kbase.us"});
-#$biochem->save("kbase/default",$store);
-#$store->set_public("biochemistry/kbase/default",1);
+
+print "Loading the biochemistry!\n";
+my $string;
+my $gzipString;
+open BIOCHEM, "</home/chenry/public_html/exampleObjects/FullBiochemistry.json.zip";#Check that this path works
+read BIOCHEM,$gzipString,10000000;#Note, I oversized the buffer to ensure we get the whole file
+close BIOCHEM;
+gunzip \$gzipString => \$string;#Unzipping the data
+my $objectData = JSON::Any->decode($string);#Decoding the json
+
+print "Saving the biochemistry!\n";
+$store->save_data("biochemistry/kbase/default",$objectData);
+$store->set_public("biochemistry/kbase/default",1);
+
+print "Loading the mapping!\n";
+open MAPPING, "</home/chenry/public_html/exampleObjects/FullMapping.json.zip";#Check that this path works
+read MAPPING,$gzipString,10000000;#Note, I oversized the buffer to ensure we get the whole file
+close MAPPING;
+gunzip \$gzipString => \$string;#Unzipping the data
+$objectData = JSON::Any->decode($string);#Decoding the json
+
+print "Saving the mapping!\n";
+$store->save_data("mapping/kbase/default",$objectData);
+$store->set_public("mapping/kbase/default",1);
