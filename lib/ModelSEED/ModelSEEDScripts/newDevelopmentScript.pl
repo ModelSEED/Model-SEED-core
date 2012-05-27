@@ -14,7 +14,7 @@ use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 
 open GENOME, "</home/chenry/public_html/exampleObjects/KBaseGenome.json";
-my $string = join("", <FILE>);
+my $string = join("", <GENOME>);
 close GENOME;
 my $in_genome = JSON::Any->decode($string);#Decoding the json
 
