@@ -40,9 +40,9 @@ my $size = 0;
 my $gc   = 0;
 for ( my $i = 0 ; $i < @{ $in_genome->{contigs} } ; $i++ ) {
 	my $dna = $in_genome->{contigs}->[$i]->{dna};
-	my $size += length($dna);
+	$size += length($dna);
 	for ( my $j = 0 ; $j < length($dna) ; $j++ ) {
-		if ( substr( $dna, $j, 1 ) =~ m/[gc]/ ) {
+		if ( substr( $dna, $j, 1 ) =~ m/[gcGC]/ ) {
 			$gc++;
 		}
 	}
