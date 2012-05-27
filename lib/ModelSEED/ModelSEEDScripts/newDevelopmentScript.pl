@@ -57,7 +57,7 @@ my $annotation = ModelSEED::MS::Annotation->new(
 									   {
 										 name => $in_genome->{scientific_name},
 										 source   => $in_genome->{source},
-										 id       => $in_genome->{genome_id},
+										 id       => $in_genome->{id},
 										 cksum    => "unknown",
 										 class    => "unknown",
 										 taxonomy => $in_genome->{domain},
