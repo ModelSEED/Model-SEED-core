@@ -1,4 +1,7 @@
 #!/usr/bin/perl -w
+use strict;
+
+#!/usr/bin/perl -w
 #
 #	This is a SAS Component.
 #
@@ -21,14 +24,14 @@
 package ClientThing;
 
     use strict;
-    use YAML::XS;
+    use YAML;
     use ErrorMessage;
     use Carp;
     no warnings qw(once);
     use POSIX;
     use HTTP::Message;
 
-    use constant AGENT_NAME => "SAS client";
+    use constant AGENT_NAME => "myRAST version 36";
 
 =head1 Base Class for Server Helper Objects
 
@@ -73,13 +76,13 @@ is the entire Sapling server.
     package SAPserver;
     use strict;
     use base qw(ClientThing);
-
+    
     sub new {
         my ($class, %options) = @_;
         $options{url} = 'http://servers.nmpdr.org/sapling/server.cgi' if ! defined $options{url};
         return $class->SUPER::new('SAP', %options);
     }
-
+    
     1;
 
 Most methods that the server will support are then handled automatically by the
@@ -147,18 +150,11 @@ sub new {
         require LWP::UserAgent;
         $ua = LWP::UserAgent->new();
 	$ua->agent(AGENT_NAME . " ($^O $^V)");
-        # Set the default timeout to 20 minutes.
-	my $timeout = 20 * 60;
-	if (exists($ENV{SAS_TIMEOUT}))
-	{
-	    $timeout = $ENV{SAS_TIMEOUT};
-	}
-        $ua->timeout($timeout);
+        # Set the timeout to 20 minutes.
+        $ua->timeout(20 * 60);
     } else {
         # Get access to the server package.
-	my $package = $type;
-        $package =~ s/::/\//g;
-        require "$package.pm";
+        require "$type.pm";
         # Create a service object.
         $ua = eval("$type->new(\$options{sapDB})");
         if ($@) {
@@ -172,7 +168,7 @@ sub new {
     };
 
     # Create the server object.
-    my $retVal = {
+    my $retVal = { 
                     server_url => $server_url,
                     ua => $ua,
                     singleton => $singleton,
@@ -313,13 +309,9 @@ the following values.
 Use direct calls to the server without going through HTTP (only works for the
 Sapling and FBAMODEL servers).
 
-=item PUBSEED (default)
+=item SEED (default)
 
-Use the main servers for the public SEED data.
-
-=item SEED
-
-Use the annotator SEED data. This is much more restricted.
+Use the main servers for the Annotator SEED data.
 
 =item PSEED
 
@@ -371,8 +363,6 @@ sub ComputeURL {
             $retVal = "http://servers.nmpdr.org/pseed/$name/server.cgi";
         } elsif ($envParm eq 'PUBSEED') {
             $retVal = "http://pubseed.theseed.org/$name/server.cgi";
-        } elsif ($envParm eq 'PUBSEED_TEST') {
-            $retVal = "http://pubseed.theseed.org/saptest/$name/server.cgi";
         } elsif ($envParm eq 'localhost') {
             $retVal = 'localhost';
         } else {
@@ -476,12 +466,12 @@ sub _call_method {
     # Determine the type.
     if (ref $ua eq 'LWP::UserAgent') {
         # Here we're going to a server. Compute the argument document.
-        my $argString = YAML::XS::Dump($args);
+        my $argString = YAML::Dump($args);
         # Request the function from the server.
         my $content = $self->_send_request(function => $method, args => $argString,
-                                           source => __PACKAGE__, encoding => 'yaml2',
+                                           source => __PACKAGE__,
                                            dbName => $self->{dbName});
-        $retVal = YAML::XS::Load($content);
+        $retVal = YAML::Load($content);
     } else {
         # Here we're calling a local method.
         $retVal = eval("\$ua->$method(\$args)");
@@ -657,7 +647,7 @@ Returns the string returned by the server in response to the request.
 
 sub _send_request {
     # Get the parameters.
-    my ($self, @parms) = @_;
+    my ($self, %parms) = @_;
     # Get the user agent.
     my $ua = $self->{ua};
     # Request the function from the server. Note that the hash is actually passed
@@ -668,21 +658,11 @@ sub _send_request {
     #
 
     my @retries = (1, 2, 5, 10, 20, 60, 60, 60, 60, 60, 60);
-    my %codes_to_retry =  map { $_ => 1 } qw(110 408 502 503 504 200) ;
+    my %codes_to_retry =  map { $_ => 1 } qw(110 408 502 503 504 200 500) ;
     my $response;
 
-    my $parms;
-    if (@parms == 1 && ref($parms[0]))
-    {
-	$parms = $parms[0];
-    }
-    else
-    {
-	$parms = [@parms];
-    }
-
     while (1) {
-        $response = $ua->post($self->{server_url}, $parms,
+        $response = $ua->post($self->{server_url}, [ %parms ],
 			      @{$self->{accept_encoding}},
 			     );
         if ($response->is_success) {
@@ -694,31 +674,8 @@ sub _send_request {
         # If this is not one of the error codes we retry for, or if we
         # are out of retries, fail immediately
         #
-
         my $code = $response->code;
-	my $msg = $response->message;
-	my $want_retry = 0;
-	if ($codes_to_retry{$code})
-	{
-	    $want_retry = 1;
-	}
-	elsif ($code eq 500 && $response->header('client-warning') eq 'Internal response')
-	{
-	    #
-	    # Handle errors that were not thrown by the web
-	    # server but rather picked up by the client library.
-	    #
-	    # If we got a client timeout or connection refused, let us retry.
-	    #
-
-	    if ($msg =~ /timeout|connection refused/i)
-	    {
-		$want_retry = 1;
-	    }
-
-	}
-
-        if (!$want_retry || @retries == 0) {
+        if (!$codes_to_retry{$code} || @retries == 0) {
             if ($ENV{SAS_DEBUG}) {
                 my $content = $response->content;
                 if (! $content) {
@@ -729,12 +686,12 @@ sub _send_request {
                 confess $response->status_line;
             }
         }
-
+        
         #
         # otherwise, sleep & loop.
         #
         my $retry_time = shift(@retries);
-        print STDERR strftime("%F %T", localtime), ": Request failed with code=$code msg=$msg, sleeping $retry_time and retrying\n";
+        print STDERR strftime("%F %T", localtime), ": Request failed with code=$code, sleeping $retry_time and retrying\n";
         sleep($retry_time);
 
     }

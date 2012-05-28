@@ -3,30 +3,28 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::ObjectManager;
-use ModelSEED::MS::Genome;
-use ModelSEED::MS::Feature;
-use ModelSEED::MS::Mapping;
 package ModelSEED::MS::DB::Annotation;
 use Moose;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::Genome;
+use ModelSEED::MS::LazyHolder::Feature;
+use ModelSEED::MS::LazyHolder::SubsystemState;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has mapping_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has defaultNameSpace => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'SEED', printOrder => '3' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has mapping_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '2' );
 
 
 # ANCESTOR:
@@ -34,12 +32,13 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has genomes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child(Genome)', metaclass => 'Typed');
-has features => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child(Feature)', metaclass => 'Typed');
+has genomes => (is => 'bare', coerce => 1, handles => { genomes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Genome::Lazy', type => 'child(Genome)', metaclass => 'Typed', printOrder => '0');
+has features => (is => 'bare', coerce => 1, handles => { features => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Feature::Lazy', type => 'child(Feature)', metaclass => 'Typed', printOrder => '1');
+has subsystemStates => (is => 'bare', coerce => 1, handles => { subsystemStates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::SubsystemState::Lazy', type => 'child(SubsystemState)', metaclass => 'Typed', printOrder => '2');
 
 
 # LINKS:
-has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ObjectManager,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -47,7 +46,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildmapping {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Mapping','uuid',$self->mapping_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Mapping','uuid',$self->mapping_uuid());
 }
 
 
@@ -56,6 +55,7 @@ sub _type { return 'Annotation'; }
 sub _typeToFunction {
 	return {
 		Genome => 'genomes',
+		SubsystemState => 'subsystemStates',
 		Feature => 'features',
 	};
 }

@@ -734,7 +734,7 @@ sub doModels {
             push(@$mdls_rxns, $mdl->model_reactions);
         }
         my $a = {
-            'from-link' => sub { return $_[0]->model_compartment_uuid },
+            'from-link' => sub { return $_[0]->modelcompartment_uuid },
             'to-link' => sub { return $_[0]->model_uuid . $_[0]->reaction_uuid },
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;

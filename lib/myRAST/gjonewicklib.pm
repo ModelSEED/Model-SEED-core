@@ -1,7 +1,7 @@
 # This is a SAS component.
 
 #
-# Copyright (c) 2003-2011 University of Chicago and Fellowship
+# Copyright (c) 2003-2010 University of Chicago and Fellowship
 # for Interpretations of Genomes. All Rights Reserved.
 #
 # This file is part of the SEED Toolkit.
@@ -204,21 +204,15 @@ package gjonewicklib;
 #
 #  Modify labels:
 #
-#  $newtree = newick_relabel_nodes( $tree, \%new_name )
-#  $newtree = newick_relabel_nodes_i( $tree, \%new_name )
-#  $newtree = newick_relabel_tips( $tree, \%new_name )
-#  $newtree = newick_relabel_tips_i( $tree, \%new_name )
-#
-#    $newtree              = newick_remove_duplicate_tips( $tree )
-#  ( $newtree, \@removed ) = newick_remove_duplicate_tips( $tree )
-#
-#    $newtree                 = newick_disambiguate_tips( $tree )
-#  ( $newtree, \%duplicates ) = newick_disambiguate_tips( $tree )
+#  $newtree = newick_relabel_nodes( $node, \%new_name )
+#  $newtree = newick_relabel_nodes_i( $node, \%new_name )
+#  $newtree = newick_relabel_tips( $node, \%new_name )
+#  $newtree = newick_relabel_tips_i( $node, \%new_name )
 #
 #  Modify branches:
 #
-#  $n_changed = newick_set_undefined_branches( $tree, $x )
-#  $n_changed = newick_set_all_branches( $tree, $x )
+#  $n_changed = newick_set_undefined_branches( $node, $x )
+#  $n_changed = newick_set_all_branches( $node, $x )
 #  $n_changed = newick_fix_negative_branches( $tree )
 #  $node      = newick_rescale_branches( $node, $factor )
 #  $node      = newick_random_branch_lengths( $node, $x1, $x2 )
@@ -232,12 +226,10 @@ package gjonewicklib;
 #  Modify rooting and/or order:
 #
 #  $nrmtree = normalize_newick_tree( $tree )
-#  $newtree = make_tip_first_branch( $tree, $tip )
 #  $revtree = reverse_newick_tree( $tree )
 #  $stdtree = std_unrooted_newick( $tree )
 #  $newtree = aesthetic_newick_tree( $tree, $direction )
 #  $rndtree = random_order_newick_tree( $tree )
-#
 #  $newtree - reroot_tree( $tree, \%options )
 #  $newtree = reroot_newick_by_path( @path )
 #  $newtree = reroot_newick_to_tip( $tree, $tip )
@@ -356,7 +348,6 @@ our @EXPORT = qw(
 
         newick_tree_length
         newick_tip_distances
-        newick_distances_from_tip
         newick_max_X
         newick_most_distant_tip_ref
         newick_most_distant_tip_name
@@ -391,7 +382,6 @@ our @EXPORT = qw(
         newick_strip_comments
 
         normalize_newick_tree
-        make_tip_first_branch
         reverse_newick_tree
         std_unrooted_newick
         aesthetic_newick_tree
@@ -540,14 +530,14 @@ sub gjonewick_to_overbeek
 #
 #-------------------------------------------------------------------------------
 
-sub newick_desc_ref { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[0] : Carp::confess() }
-sub newick_lbl      { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[1] : Carp::confess() }
-sub newick_x        { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[2] : Carp::confess() }
-sub newick_c1       { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[3] : Carp::confess() }
-sub newick_c2       { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[4] : Carp::confess() }
-sub newick_c3       { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[5] : Carp::confess() }
-sub newick_c4       { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[6] : Carp::confess() }
-sub newick_c5       { $_[0] && ref($_[0]) eq 'ARRAY' ? $_[0]->[7] : Carp::confess() }
+sub newick_desc_ref { ref($_[0]) ? $_[0]->[0] : Carp::confess() }
+sub newick_lbl      { ref($_[0]) ? $_[0]->[1] : Carp::confess() }
+sub newick_x        { ref($_[0]) ? $_[0]->[2] : Carp::confess() }
+sub newick_c1       { ref($_[0]) ? $_[0]->[3] : Carp::confess() }
+sub newick_c2       { ref($_[0]) ? $_[0]->[4] : Carp::confess() }
+sub newick_c3       { ref($_[0]) ? $_[0]->[5] : Carp::confess() }
+sub newick_c4       { ref($_[0]) ? $_[0]->[6] : Carp::confess() }
+sub newick_c5       { ref($_[0]) ? $_[0]->[7] : Carp::confess() }
 
 sub newick_desc_list
 {
@@ -582,33 +572,23 @@ sub node_is_valid      #  An array ref with nonempty descend list or a label
     array_ref( $_ ) && ( array_ref( $_->[0] ) && @{ $_->[0] } || defined( $_->[1] ) )
 }
 
-sub node_has_lbl
-{
-    array_ref( $_[0] ) or return undef;
-    local $_ = $_[0]->[1];
-    defined( $_ ) && ( $_ ne '' );
-}
+sub node_has_lbl { local $_ = $_[0]->[1]; defined( $_ ) && ( $_ ne '' ) }
 
-sub node_lbl_is
-{
-    array_ref( $_[0] ) or return undef;
-    local $_ = $_[0]->[1];
-    defined( $_ ) && ( $_ eq $_[1] );
-}
+sub node_lbl_is { local $_ = $_[0]->[1]; defined( $_ ) && ( $_ eq $_[1] ) }
 
 
 #-------------------------------------------------------------------------------
 #  Set tree structure values
 #-------------------------------------------------------------------------------
 
-sub set_newick_desc_ref { $_[0]->[0] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_lbl      { $_[0]->[1] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_x        { $_[0]->[2] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_c1       { $_[0]->[3] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_c2       { $_[0]->[4] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_c3       { $_[0]->[5] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_c4       { $_[0]->[6] = $_[1] if array_ref( $_[0] ) }
-sub set_newick_c5       { $_[0]->[7] = $_[1] if array_ref( $_[0] ) }
+sub set_newick_desc_ref { $_[0]->[0] = $_[1] }
+sub set_newick_lbl      { $_[0]->[1] = $_[1] }
+sub set_newick_x        { $_[0]->[2] = $_[1] }
+sub set_newick_c1       { $_[0]->[3] = $_[1] }
+sub set_newick_c2       { $_[0]->[4] = $_[1] }
+sub set_newick_c3       { $_[0]->[5] = $_[1] }
+sub set_newick_c4       { $_[0]->[6] = $_[1] }
+sub set_newick_c5       { $_[0]->[7] = $_[1] }
 
 sub set_newick_desc_list
 {
@@ -620,10 +600,10 @@ sub set_newick_desc_list
 
 sub set_newick_desc_i
 {
-    my ( $node, $i, $node_i ) = @_;
-    array_ref( $node ) && array_ref( $node_i ) || return;
-    array_ref( $node->[0] ) or ( $node->[0] = [] );
-    $node->[0]->[$i-1] = $node_i;
+    my ( $node1, $i, $node2 ) = @_;
+    array_ref( $node1 ) && array_ref( $node2 ) || return;
+    if ( array_ref( $node1->[0] ) ) { $node1->[0]->[$i-1] =   $node2   }
+    else                            { $node1->[0]         = [ $node2 ] }
 }
 
 
@@ -636,50 +616,45 @@ sub set_newick_desc_i
 #-------------------------------------------------------------------------------
 sub newick_is_valid
 {
-    my ( $node, $verbose ) = @_;
+    my $node = shift;
 
     if ( ! array_ref( $node ) )
     {
-        print STDERR "Node is not array reference\n" if $verbose;
+        print STDERR "Node is not array reference\n" if $_[0];
         return 0;
     }
 
-    if ( ! @$node )
+    my @node = @$node;
+    if ( ! @node )
     {
-        print STDERR "Node is empty array reference\n" if $verbose;
+        print STDERR "Node is empty array reference\n" if $_[0];
         return 0;
     }
 
     # Must have descendant or label:
 
-    my $dl_ref = $node->[0];
-    if ( ! ( array_ref( $dl_ref ) && @{ $dl_ref } ) && ! $node->[1] )
+    if ( ! ( array_ref( $node[0] ) && @{ $node[0] } ) && ! $node[2] )
     {
-        print STDERR "Node has neither descendant nor label\n" if $verbose;
+        print STDERR "Node has neither descendant nor label\n" if $_[0];
         return 0;
     }
 
     #  If comments are present, they must be array references
 
-    if ( @$node > 3 )
+    foreach ( ( @node > 3 ) ? @node[ 3 .. $#node ] : () )
     {
-        my $n = @$node - 2;
-        for ( my $i = 1; $i <= $n; $i++ )
+        if ( defined( $_ ) && ! array_ref( $_ ) )
         {
-            local $_ = $node->[ $i+2 ];
-            if ( defined( $_ ) && ! array_ref( $_ ) )
-            {
-                print STDERR "Comment $i is not an array reference\n" if $verbose;
-                return 0;
-            }
+            print STDERR "Node has neither descendant or label\n" if $_[0];
+            return 0;
         }
     }
 
     #  Inspect the descendants:
 
-    foreach ( array_ref( $dl_ref ) ? @{ $dl_ref } : () )
+    foreach ( array_ref( $node[0] ) ? @{ $node[0] } : () )
     {
-        newick_is_valid( $_, $verbose ) || return 0
+        newick_is_valid( $_, @_ ) || return 0
     }
 
     return 1;
@@ -954,53 +929,6 @@ sub newick_tip_distances
     foreach ( newick_desc_list( $node ) ) { newick_tip_distances( $_, $x, $hash ) }
 
     wantarray ? %$hash : $hash;
-}
-
-
-#-------------------------------------------------------------------------------
-#  Hash of tip nodes and corresponding distances from named tip:
-#
-#   %tip_distances = newick_distances_from_tip( $node, $tip )
-#  \%tip_distances = newick_distances_from_tip( $node, $tip )
-#-------------------------------------------------------------------------------
-sub newick_distances_from_tip
-{
-    my ( $node, $tip ) = @_;
-    my %dists;
-    $node && ref( $node ) eq 'ARRAY' && defined $tip or return wantarray ? () : {};
-    my $reordered = make_tip_first_branch( $node, $tip ) or return wantarray ? () : {};
-
-    my $dists = {};
-    find_dists_to_first_tip( $reordered, $dists, undef );
-
-    wantarray ? %$dists : $dists;
-}
-
-
-sub find_dists_to_first_tip
-{
-    my ( $node, $distsH, $dist ) = @_;
-
-    my @dl    = newick_desc_list( $node );
-    my $x     = newick_x( $node ) || 0;
-    my $dist2 = defined $dist ? $dist + $x : undef;
-
-    if ( @dl )
-    {
-    	foreach ( @dl ) { $dist2 = find_dists_to_first_tip( $_, $distsH, $dist2 ) }
-    	$dist = $dist2 + $x if ! defined $dist;
-    }
-    elsif ( defined $dist2 )
-    {
-        $distsH->{ newick_lbl( $node ) } = $dist2;
-    }
-    else
-    {
-        # $distsH->{ newick_lbl( $node ) } = 0;   # First tip to self?
-        $dist = $x;
-    }
-
-    $dist;
 }
 
 
@@ -1705,65 +1633,6 @@ sub newick_relabel_tips_i2
 
 
 #-------------------------------------------------------------------------------
-#  If a newick tree has multiple tips of same name, they cannot be altered.
-#  This routine relabels them, returning a list of mapped nodes:
-#
-#    $newtree                = newick_disambiguate_tips( $node )
-#  ( $newtree, \%relabeled ) = newick_disambiguate_tips( $node );
-#
-#-------------------------------------------------------------------------------
-sub newick_disambiguate_tips
-{
-    my ( $node, $tipcnt, $relabeled ) = @_;
-    $tipcnt    ||= {};
-    $relabeled ||= {};
-
-    my @desc = newick_desc_list( $node );
-    if ( @desc )
-    {
-        foreach my $n ( @desc ) { newick_disambiguate_tips( $n, $tipcnt, $relabeled ) }
-    }
-    else
-    {
-        my $tip = newick_lbl( $node ) || '';
-        my $cnt = $tipcnt->{ $tip }++;
-        if ( $cnt )
-        {
-            my $newlbl = "$tip-$cnt";
-            set_newick_lbl( $node, $newlbl );
-            push @{ $relabeled->{ $tip } }, $newlbl;
-            $tipcnt->{ $newlbl }++;
-        }
-    }
-
-    wantarray ? ( $node, $relabeled ) : $node;
-}
-
-
-#-------------------------------------------------------------------------------
-#  If a newick tree has multiple tips of same name, they cannot be altered.
-#  This routine relabels them, returning a list of mapped nodes:
-#
-#    $newtree              = newick_remove_duplicate_tips( $node )
-#  ( $newtree, \@removed ) = newick_remove_duplicate_tips( $node );
-#
-#-------------------------------------------------------------------------------
-sub newick_remove_duplicate_tips
-{
-    my ( $tree, $relabeled ) = newick_disambiguate_tips( $_[0] );
-    my %duplicates = map { $_ => 1 } map { @$_ } values %$relabeled;
-
-    if ( keys %duplicates )
-    {
-        my @keep = grep { ! $duplicates{ $_ } } newick_tip_list( $tree );
-        $tree = newick_subtree( $tree, \@keep );
-    }
-
-    wantarray ? ( $tree, [ sort keys %duplicates ] ) : $tree;
-}
-
-
-#-------------------------------------------------------------------------------
 #  Set undefined branch lenghts (except root) to length x.
 #
 #  $n_changed = newick_set_undefined_branches( $node, $x )
@@ -1934,7 +1803,6 @@ sub newick_strip_comments
 #-------------------------------------------------------------------------------
 #  Normalize tree order (in place).
 #
-#    $tree            = normalize_newick_tree( $tree )
 #  ( $tree, $label1 ) = normalize_newick_tree( $tree )
 #
 #-------------------------------------------------------------------------------
@@ -1949,44 +1817,7 @@ sub normalize_newick_tree
     my @keylist = sort { $a cmp $b } keys %hash;
     set_newick_desc_list( $node, map { $hash{$_} } @keylist );
 
-    wantarray ? ( $node, $keylist[0] ) : $node;
-}
-
-
-#-------------------------------------------------------------------------------
-#  Make the named tip the first tip in the tree (the first branch at each fork).
-#  This function does not change original tree, but rewrites an absolute
-#  minimum of data to create the new tree.
-#
-#    $tree             = make_tip_first_branch( $tree, $tip )
-#  ( $tree, $has_tip ) = make_tip_first_branch( $tree, $tip )
-#
-#  The first form returns undef if the tip is not found
-#-------------------------------------------------------------------------------
-sub make_tip_first_branch
-{
-    my ( $node, $tip ) = @_;
-
-    my @descends = newick_desc_list( $node );
-    if ( @descends == 0 )
-    {
-        return wantarray ? ( $node, newick_lbl( $node ) eq $tip ) : $node;
-    }
-
-    for ( my $i = 0; $i < @descends; $i++ )
-    {
-        my ( $node2, $has_tip ) = make_tip_first_branch( $descends[$i], $tip );
-        if ( $has_tip )
-        {
-            $descends[$i] = $node2;
-            @descends = ( @descends[$i..@descends-1], @descends[0..$i-1] ) if $i > 0;
-            my $new = [ @$node ];
-            set_newick_desc_list( $new, @descends );
-            return wantarray ? ( $new, 1 ) : $new;
-        }
-    }
-
-    wantarray ? ( $node, 0 ) : undef;  # Fall-through in means tip not found
+    ( $node, $keylist[0] );
 }
 
 
@@ -2001,8 +1832,7 @@ sub reverse_newick_tree
     my ( $node ) = @_;
 
     my @descends = newick_desc_list( $node );
-    if ( @descends )
-    {
+    if ( @descends ) {
         set_newick_desc_list( $node, reverse @descends );
         foreach ( @descends ) { reverse_newick_tree( $_ ) }
     }
@@ -2021,7 +1851,7 @@ sub std_unrooted_newick
     my ( $tree ) = @_;
 
     my ( $mintip ) = sort { lc $a cmp lc $b } newick_tip_list( $tree );
-    scalar normalize_newick_tree( reroot_newick_next_to_tip( $tree, $mintip ) );
+    ( normalize_newick_tree( reroot_newick_next_to_tip( $tree, $mintip ) ) )[0];
 }
 
 
@@ -2035,12 +1865,11 @@ sub std_tree_name
 {
     my ( $tree ) = @_;
     my ( $mintip ) = sort { lc $a cmp lc $b } newick_tip_list( $tree );
-    scalar std_tree_name_2( reroot_newick_next_to_tip( copy_newick_tree( $tree ), $mintip ) );
+    ( std_tree_name_2( reroot_newick_next_to_tip( copy_newick_tree( $tree ), $mintip ) ) )[0];
 }
 
 
 #
-#    $name            = std_tree_name_2( $node )
 #  ( $name, $mintip ) = std_tree_name_2( $node )
 #
 sub std_tree_name_2
@@ -2060,7 +1889,7 @@ sub std_tree_name_2
     my $mintip = $list[0]->[1];
     my $name   = '(' . join( "\t", map { $_->[0] } @list ) . ')';
 
-    wantarray ? ( $name, $mintip ) : $name;
+    return ( $name, $mintip );
 }
 
 
@@ -3381,7 +3210,7 @@ sub newick_covering_subtree
 
     #  Return smallest covering node, if any:
 
-    ( newick_covering_subtree_1( $tree, \%tips ) )[ 0 ];
+    ( newick_covering_subtree( $tree, \%tips ) )[ 0 ];
 }
 
 

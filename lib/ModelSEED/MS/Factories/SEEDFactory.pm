@@ -8,7 +8,7 @@
 use strict;
 use namespace::autoclean;
 use ModelSEED::utilities;
-use ModelSEED::MS::ObjectManager;
+use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Utilities::GlobalFunctions;
 package ModelSEED::MS::Factories::SEEDFactory;
@@ -19,7 +19,7 @@ use MSSeedSupportClient;
 # ATTRIBUTES:
 has sapsvr => ( is => 'rw', isa => 'SAPserver', lazy => 1, builder => '_buildsapsvr' );
 has msseedsvr => ( is => 'rw', isa => 'MSSeedSupportClient', lazy => 1, builder => '_buildmsseedsvr' );
-has om => ( is => 'rw', isa => 'ModelSEED::MS::ObjectManager',weak_ref => 1);
+has om => ( is => 'rw', isa => 'ModelSEED::Store');
 
 
 # BUILDERS:
@@ -46,7 +46,15 @@ sub buildMooseAnnotation {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $genomeObj = ModelSEED::MS::Genome->new({
+	my $annoationObj;
+	if (defined($self->om())) {
+		$annoationObj = $self->om()->create("Annotation");
+	} else {
+		$annoationObj = ModelSEED::MS::Annotation->new({
+			name => $genomeData->{name}
+		});
+	}
+	my $genomeObj = $annoationObj->create("Genome",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},
 		source => $args->{source},
@@ -54,34 +62,31 @@ sub buildMooseAnnotation {
 		size => $genomeData->{size},
 		gc => $genomeData->{gc},
 	});
-	my $annoationObj = $self->om()->create("Annotation");
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
-	$annoationObj->add("Genome", $genomeObj);
+	$annoationObj->mapping($args->{mapping});
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}
 	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
 		my $row = $genomeData->{features}->[$i]; 
 		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
-			my $featureObj = ModelSEED::MS::Feature->new({
+			my $featureObj = $annoationObj->create("Feature",{
 				id => $row->{ID}->[0],
 				genome_uuid => $genomeObj->uuid(),
 				start => $row->{START}->[0],
 				stop => $row->{STOP}->[0],
 				contig => $row->{CONTIG}->[0]
 			});
-			$annoationObj->add($featureObj);
 			if (defined($row->{ROLES}->[0])) {
 				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
 					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
-					my $ftrRoleObj = ModelSEED::MS::FeatureRole->new({
+					my $ftrRoleObj =$featureObj->create("FeatureRole",{
 						feature_uuid => $featureObj->uuid(),
 						role_uuid => $roleObj->uuid(),
 						compartment => join("|",@{$row->{COMPARTMENT}}),
 						comment => $row->{COMMENT}->[0],
 						delimiter => $row->{DELIMITER}->[0]
 					});
-					push(@{$featureObj->featureroles()},$ftrRoleObj);
 				}
 			}
 		}
@@ -102,12 +107,10 @@ sub getRoleObject {
 	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
 	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
 	if (!defined($roleObj)) {
-		$roleObj = ModelSEED::MS::Role->new({
+		$roleObj = $args->{mapping}->create("Role",{
 			name => $args->{roleString},
-			searchname => $searchName
 		});
 	}
-	$args->{mapping}->add("Role", $roleObj);			
 	return $roleObj;
 }
 
@@ -118,7 +121,7 @@ sub getMappingObject {
 	});
 	my $mappingObj;
 	if (defined($args->{mapping_uuid})) {
-		$mappingObj = $self->om()->get($args->{mapping_uuid});
+		$mappingObj = $self->om()->get("Mapping",$args->{mapping_uuid});
 		if (!defined($mappingObj)) {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}

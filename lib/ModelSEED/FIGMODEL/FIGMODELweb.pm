@@ -186,9 +186,13 @@ sub display_reaction_roles {
 	if (!defined($roleHash->{$rxn})) {
 		return "None";
 	}
-	my $list;
+	my $list = [];
 	foreach my $role (keys(%{$roleHash->{$rxn}})) {
-		push(@{$list},$roleHash->{$rxn}->{$role}->name());
+		if (defined($roleHash->{$rxn}->{$role})) {
+			push(@{$list},$roleHash->{$rxn}->{$role}->name());
+		} else {
+			print STDERR "Could not find ".$rxn."->".$role."\n";
+		}
 	}
 	return join("<br><br>",@{$list});
 }
@@ -899,14 +903,14 @@ sub create_feature_link {
 		$id = $2;
 	}
 	my $genomeObj = $self->figmodel()->get_genome($genome);
-	if (defined($genomeObj) && $genomeObj->source() =~ m/RAST/) {
-		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Annotation&feature='.$feature->{ID}->[0].'" title="'.join("<br>",@{$feature->{ROLES}}).'" target="_blank">'.$id."</a>";
-	}
 	my $roles = "No roles";
 	if (defined($feature->{ROLES})) {
 		$roles = join("<br>",@{$feature->{ROLES}});
 	}
-	return '<a href="http://www.theseed.org/linkin.cgi?id='.$feature->{ID}->[0].'" title="'.$roles.'" target="_blank">'.$id."</a>";
+	if (defined($genomeObj) && $genomeObj->source() =~ m/RAST/) {
+		return '<a href="http://rast.nmpdr.org/seedviewer.cgi?page=Annotation&feature=fig|'.$genome.".".$id.'" title="'.$roles.'" target="_blank">'.$id."</a>";
+	}
+	return '<a href="http://www.theseed.org/linkin.cgi?id=fig|'.$genome.".".$id.'" title="'.$roles.'" target="_blank">'.$id."</a>";
 }
 
 sub gene_link {
@@ -934,7 +938,7 @@ sub create_sbml_link {
 	if (!defined($name)) {
 		$name = "SBML format";
 	}
-	my $Link = '<a  href="ModelSEEDdownload.cgi?model='.$id.'&file='.$type.'" title="'.$title.'">'.$name.'</a>';
+	my $Link = '<a  href="http://bioseed.mcs.anl.gov/~chenry/FIG/CGI/ModelSEEDdownload.cgi?model='.$id.'&file='.$type.'" title="'.$title.'">'.$name.'</a>';
 	return $Link;
 }
 

@@ -140,10 +140,4 @@ sub num_matching_functions
     return $_[0]->[18];
 }
 
-# Column-20
-sub clear_bbh
-{
-    return $_[0]->[19];
-}
-
 1;

@@ -3,13 +3,13 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-21T23:35:48
+# Date of module creation: 2012-03-26T23:22:35
 ########################################################################
 use strict;
-use namespace::autoclean;
 use ModelSEED::MS::DB::ReactionAliasSet;
 package ModelSEED::MS::ReactionAliasSet;
 use Moose;
+use namespace::autoclean;
 extends 'ModelSEED::MS::DB::ReactionAliasSet';
 # CONSTANTS:
 #TODO

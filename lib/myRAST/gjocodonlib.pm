@@ -55,12 +55,6 @@ package gjocodonlib;
 #    @labeled_packages = entry_labeled_codon_count_package( @seq_entrys )
 #    @labeled_packages = entry_labeled_codon_count_package_20( @seq_entrys )
 #
-#  Count the total codons in a gene.
-#
-#     $n_codon = n_codon(   \@counts )
-#     $n_codon = n_codon( [ \@counts, $id ] )
-#     $n_codon = n_codon(   \%counts )
-#
 #  Sum count packages:
 #
 #   \@total_counts  = sum_counts( \@per_gene_count_arrays )
@@ -76,9 +70,6 @@ package gjocodonlib;
 #     report_counts( \*FH, \@packaged_counts )
 #     report_counts( \*FH, \@packaged_counts, $id )
 #
-#-------------------------------------------------------------------------------
-# Functions that deal with codon usage frequencies.
-#-------------------------------------------------------------------------------
 #  Codon usage frequencies (always 18 amino acids):
 #
 #    \@freqs = count_to_freq( \@counts )
@@ -130,9 +121,6 @@ package gjocodonlib;
 #  ( $freq, $scr, $descr ) = read_next_frequencies( )       # D = STDIN
 #  ( $freq, $scr, $descr ) = read_next_frequencies( $fh )
 #
-#-------------------------------------------------------------------------------
-# Evaluating counts versus frequencies.
-#-------------------------------------------------------------------------------
 #  Evaluating a set of counts versus frequencies:
 #
 #    @chisqr_df_n       = codon_usage_chi_sqr( \%freqs, \%cnt1 [ , ... ] )
@@ -170,15 +158,9 @@ package gjocodonlib;
 #
 #   @per_gene_codon_cnt = simulate_genome( \@packaged_freqs, @per_gene_aa_cnt )
 #
-#-------------------------------------------------------------------------------
-# Modal codon usage.
-#-------------------------------------------------------------------------------
 #            \@modal_freqs   = modal_codon_usage( \@gene_cnt_pkgs, \%options )
 #  ( $score, \@modal_freqs ) = modal_codon_usage( \@gene_cnt_pkgs, \%options )
 #
-#-------------------------------------------------------------------------------
-# Distances between codon usage frequencies.
-#-------------------------------------------------------------------------------
 #   $distance = codon_freq_distance( \@freq1, \@freq2, $type ) # D = type 2
 #   $distance = codon_freq_distance_1( \@freq1, \@freq2 ) # Euclidian over all codons
 #   $distance = codon_freq_distance_2( \@freq1, \@freq2 ) # Manhattan within aa, and Euclidian over aas (recommended)
@@ -225,15 +207,20 @@ package gjocodonlib;
 # chi-square. The line is not straight; as the projection coordinate goes
 # to minus or plus infinity, frequencies remain between 0 and 1.
 #
-#   @projections = project_on_axis_by_chi_sqr( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
-#   @projections = project_on_axis_by_chi_sqr( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
+#   @projections = project_freq_on_axis_by_chi_sqr( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
+#   @projections = project_freq_on_axis_by_chi_sqr( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
+#
+# Old name:
+#
+#   @projections = project_on_freq_vector_by_chi_sqr_2( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
+#   @projections = project_on_freq_vector_by_chi_sqr_2( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
 #
 # Each projection is:
 #
 #     [ $pos_along_axis, $chi_sqr, $df, $ncodon ]
 #
 #-------------------------------------------------------------------------------
-# Evaluate codon usages in terms of p-value of chi square match to an axis.
+# Evaluate codon usages in terms of match to an axis.
 #
 #   @x_p = codon_counts_x_and_p( $f0, $f1, \%opts,   $cnt, $cnt, ... );
 #  \@x_p = codon_counts_x_and_p( $f0, $f1, \%opts,   $cnt, $cnt, ... );
@@ -248,9 +235,6 @@ package gjocodonlib;
 # ( $chisqr, $df, $n ) = codon_usage_pairwise_chi_sqr( \%cnt1, \%cnt2 )
 # ( $chisqr, $df, $n ) = count_package_chi_sqr( \@cnt_pkg1, \@cnt_pkg2 )
 # ( $chisqr, $df, $n ) = packaged_codon_usage_chi_sqr( \@freqs, \@cnt )
-#
-#   @projections = project_on_freq_vector_by_chi_sqr_2( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
-#   @projections = project_on_freq_vector_by_chi_sqr_2( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
 #
 #===============================================================================
 
@@ -319,13 +303,12 @@ our @EXPORT = qw(
         entry_labeled_codon_count_package
         entry_labeled_codon_count_package_20
 
-        n_codon
-        sum_counts
-
         count_vs_count_chi_sqr
         count_vs_freq_chi_sqr
         count_vs_freq_p_value
         codon_usage_chi_sqr
+        n_codon
+        sum_counts
         count_to_freq
         average_freq
         codon_usage_p_values
@@ -351,15 +334,14 @@ our @EXPORT = qw(
         project_on_freq_vector_by_chi_sqr
 
         project_freq_on_axis_by_dist
-        project_on_axis_by_chi_sqr
-        codon_counts_x_and_p
+        project_freq_on_axis_by_chi_sqr
+        project_on_freq_vector_by_chi_sqr_2
 
         packaged_count_to_freq
         sum_packaged_counts
         codon_usage_pairwise_chi_sqr
         count_package_chi_sqr
         packaged_codon_usage_chi_sqr
-        project_on_freq_vector_by_chi_sqr_2
         );
 
 our @EXPORT_OK = qw(
@@ -373,9 +355,9 @@ our @EXPORT_OK = qw(
         );
 
 
-#===============================================================================
-#  Codon usage counts routines
-#===============================================================================
+#-----------------------------------------------------------------------------
+#  Codon counts:
+#-----------------------------------------------------------------------------
 #  Compile codon usage of one or more sequence entries.  Skip initiator, and
 #  the last codon, if it is a terminator.  If the routine is passed a hash,
 #  add to it.  If it is not, create a new hash.  This is cumulative over
@@ -395,6 +377,64 @@ sub entry_codon_count
     }
 
     return $cnt;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequence entries.
+#  M and W are skipped.
+#
+#     @count_packages = entry_codon_count_package( @seq_entrys )
+#
+#-----------------------------------------------------------------------------
+sub entry_codon_count_package
+{
+    map { ref $_ eq 'ARRAY' ? codon_count_package( seq_codon_count( $_->[2] ) ) : undef } @_;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequence entries.
+#  M and W are skipped.
+#
+#     @labeled_count_packages = entry_labeled_codon_count_package( @seq_entrys )
+#
+#  To make a hash of the counts:
+#
+#     %count_package = map { @$_ } entry_labeled_codon_count_package( @seq_entrys );
+#
+#-----------------------------------------------------------------------------
+sub entry_labeled_codon_count_package
+{
+    map { ref $_ eq 'ARRAY' ? [ $_->[0], codon_count_package( seq_codon_count( $_->[2] ) ) ] : () } @_;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequence entries.
+#
+#     @count_packages = entry_codon_count_package_20( @seq_entrys )
+#
+#-----------------------------------------------------------------------------
+sub entry_codon_count_package_20
+{
+    map { ref $_ eq 'ARRAY' ? codon_count_package_20( seq_codon_count( $_->[2] ) ) : undef } @_;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequence entries.
+#
+#     @labeled_count_packages = entry_labeled_codon_count_package_20( @seq_entrys )
+#
+#  To make a hash of the counts:
+#
+#     %count_package_20 = map { @$_ } entry_labeled_codon_count_package_20( @seq_entrys );
+#
+#-----------------------------------------------------------------------------
+sub entry_labeled_codon_count_package_20
+{
+    map { ref $_ eq 'ARRAY' ? [ $_->[0], codon_count_package_20( seq_codon_count( $_->[2] ) ) ] : () } @_;
 }
 
 
@@ -434,6 +474,31 @@ sub seq_codon_count
     foreach ( @codons ) { $cnt->{ $_ }++ }
 
     return $cnt;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequences.
+#  M and W are skipped.
+#
+#     @count_packages = seq_codon_count_package( @seqs )
+#
+#-----------------------------------------------------------------------------
+sub seq_codon_count_package
+{
+    map { codon_count_package( seq_codon_count( $_ ) ) } @_;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compile and package codon usage of one or more sequences.
+#
+#     @count_packages = seq_codon_count_package_20( @seqs )
+#
+#-----------------------------------------------------------------------------
+sub seq_codon_count_package_20
+{
+    map { codon_count_package_20( seq_codon_count( $_ ) ) } @_;
 }
 
 
@@ -519,105 +584,65 @@ sub codon_count_package_20
 
 
 #-----------------------------------------------------------------------------
-#  Split counts with amino acids separated by 2 spaces, and codons within the
-#  amino acid separated by 1 space.  If an id is present, it is separated by a
-#  tab.
+#  Compare two codon usages by chi-square.
 #
-#       \@counts        = split_counts( $codon_count_string )
-#     ( \@counts, $id ) = split_counts( $codon_count_string )
+#     ( $chisqr, $df, $n ) = codon_usage_pairwise_chi_sqr( \%cnt1, \%cnt2 )
 #
 #-----------------------------------------------------------------------------
-sub split_counts
-{   my ( $string ) = shift;
-    chomp $string;
-    my ( $data, $id ) = split /\t/, $string;
+sub codon_usage_pairwise_chi_sqr
+{
+    my ( $cnt1, $cnt2 ) = @_;
+    ref( $cnt1 ) eq 'HASH' && ref( $cnt2 ) eq 'HASH'
+        || die "codon_usage_2_chi_sqr requires two HASH references\n";
 
-    my $cnts = [ map { [ map { $_ + 0 } split / / ] } split /  /, $data ];
+    my ( $chisqr, $df, $total ) = (0, 0, 0);
 
-    wantarray ? ( $cnts, $id ) : $cnts;
+    foreach my $aa ( @aa_package_order )
+    {
+        my @codons = @{ $amino_acid_codons_DNA{ $aa } };
+        my ($c, $d, $n) = contingency_chi_sqr_2( [ map { $cnt1->{ $_ } } @codons ],
+                                                 [ map { $cnt2->{ $_ } } @codons ]
+                                               );
+        if ( $d > 0 ) { $chisqr += $c; $df += $d; $total += $n }
+    }
+
+    ( $chisqr, $df, $total )
 }
 
 
 #-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequence entries.
-#  M and W are skipped.
+#  Compare codon usage(s) to expected frequencies by chi-square.
 #
-#     @count_packages = entry_codon_count_package( @seq_entrys )
+#     @[ $chisqr, $df, $n ] = codon_usage_chi_sqr( \%freqs, \%cnt1 [ , ... ] )
 #
 #-----------------------------------------------------------------------------
-sub entry_codon_count_package
+sub codon_usage_chi_sqr
 {
-    map { ref $_ eq 'ARRAY' ? codon_count_package( seq_codon_count( $_->[2] ) ) : undef } @_;
-}
+    ( @_ > 1 ) || die "Usage: codon_usage_chi_sqr( \%freqs, \%cnts ... )\n";
+    my $freqs = shift;
+    ref( $freqs ) eq 'HASH'
+        || die "codon_usage_chi_sqr args must be HASH references\n";
 
+    my @out = ();
 
-#-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequence entries.
-#
-#     @count_packages = entry_codon_count_package_20( @seq_entrys )
-#
-#-----------------------------------------------------------------------------
-sub entry_codon_count_package_20
-{
-    map { ref $_ eq 'ARRAY' ? codon_count_package_20( seq_codon_count( $_->[2] ) ) : undef } @_;
-}
+    foreach my $cnts ( @_ ) {
+        ref( $cnts ) eq 'HASH'
+            || die "codon_usage_chi_sqr args must be HASH references\n";
+        my ( $chisqr, $df, $total ) = (0, 0, 0);
 
+        foreach my $aa ( @aa_package_order )
+        {
+            my @codons = @{ $amino_acid_codons_DNA{ $aa } };
+            my ($c, $d, $n) = gjostat::chi_square( [ map { $freqs->{ $_ } } @codons ],
+                                                   [ map { $cnts->{ $_ }  } @codons ]
+                                                 );
+            if ( $d > 0 ) { $chisqr += $c; $df += $d; $total += $n }
+        }
 
-#-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequences.
-#  M and W are skipped.
-#
-#     @count_packages = seq_codon_count_package( @seqs )
-#
-#-----------------------------------------------------------------------------
-sub seq_codon_count_package
-{
-    map { codon_count_package( seq_codon_count( $_ ) ) } @_;
-}
+        push @out, [ $chisqr, $df, $total ];
+    }
 
-
-#-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequences.
-#
-#     @count_packages = seq_codon_count_package_20( @seqs )
-#
-#-----------------------------------------------------------------------------
-sub seq_codon_count_package_20
-{
-    map { codon_count_package_20( seq_codon_count( $_ ) ) } @_;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequence entries.
-#  M and W are skipped.
-#
-#     @labeled_count_packages = entry_labeled_codon_count_package( @seq_entrys )
-#
-#  To make a hash of the counts:
-#
-#     %count_package = map { @$_ } entry_labeled_codon_count_package( @seq_entrys );
-#
-#-----------------------------------------------------------------------------
-sub entry_labeled_codon_count_package
-{
-    map { ref $_ eq 'ARRAY' ? [ $_->[0], codon_count_package( seq_codon_count( $_->[2] ) ) ] : () } @_;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Compile and package codon usage of one or more sequence entries.
-#
-#     @labeled_count_packages = entry_labeled_codon_count_package_20( @seq_entrys )
-#
-#  To make a hash of the counts:
-#
-#     %count_package_20 = map { @$_ } entry_labeled_codon_count_package_20( @seq_entrys );
-#
-#-----------------------------------------------------------------------------
-sub entry_labeled_codon_count_package_20
-{
-    map { ref $_ eq 'ARRAY' ? [ $_->[0], codon_count_package_20( seq_codon_count( $_->[2] ) ) ] : () } @_;
+    @out
 }
 
 
@@ -638,6 +663,42 @@ sub n_codon
     my $n = 0; foreach ( @$cnts ) { foreach ( @$_ ) { $n += $_ } }
 
     $n;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Sum codon counts across genes.  Handles any nested arrays of counts.
+#
+#     \@total_counts = sum_packaged_counts( \@per_gene_pakaged_counts )
+#
+#-----------------------------------------------------------------------------
+sub sum_packaged_counts
+{
+    my $gene_counts = shift;
+    ref( $gene_counts ) eq 'ARRAY'                     # array of genes
+        and ref( $gene_counts->[0] ) eq 'ARRAY'        # array of amino acids
+        and ref( $gene_counts->[0]->[0] ) eq 'ARRAY'   # array of codons
+        or return undef;
+
+    my @ttl_cnt;
+    my $gene_data;
+    foreach $gene_data ( @$gene_counts )
+    {
+        my $i = 0;
+        my $gene_aa_data;
+        foreach $gene_aa_data ( @$gene_data )
+        {
+             my $ttl_aa_cnts = $ttl_cnt[ $i++ ] ||= [];
+             my $j = 0;
+             my $gene_codon_cnt;
+             foreach $gene_codon_cnt ( @$gene_aa_data )
+             {
+                 $ttl_aa_cnts->[ $j++ ] += $gene_codon_cnt;
+             }
+        }
+    }
+
+    \@ttl_cnt;
 }
 
 
@@ -695,378 +756,24 @@ sub sum_counts
 
 
 #-----------------------------------------------------------------------------
-#---------------------------- Use sum_counts() -------------------------------
-#-----------------------------------------------------------------------------
+#  Compare two codon usages by chi-square.
 #
-#  Sum codon counts across genes.  Handles any nested arrays of counts.
-#
-#     \@total_counts = sum_packaged_counts( \@per_gene_pakaged_counts )
+#     ( $chisqr, $df, $n ) = count_package_chi_sqr( \@cnt_pkg1, \@cnt_pkg2 )
 #
 #-----------------------------------------------------------------------------
-sub sum_packaged_counts
+sub count_package_chi_sqr
 {
-    my $gene_counts = shift;
-    ref( $gene_counts ) eq 'ARRAY'                     # array of genes
-        and ref( $gene_counts->[0] ) eq 'ARRAY'        # array of amino acids
-        and ref( $gene_counts->[0]->[0] ) eq 'ARRAY'   # array of codons
-        or return undef;
+    my ( $cnt1, $cnt2 ) = @_;
+    ref( $cnt1 ) eq 'ARRAY' && ref( $cnt2 ) eq 'ARRAY'
+        || die "count_package_chi_sqr requires two ARRAY references\n";
+    ( @$cnt1 == @$cnt2 ) or die "count_package_chi_sqr requires arrays of equal size\n";
 
-    my @ttl_cnt;
-    my $gene_data;
-    foreach $gene_data ( @$gene_counts )
-    {
-        my $i = 0;
-        my $gene_aa_data;
-        foreach $gene_aa_data ( @$gene_data )
-        {
-             my $ttl_aa_cnts = $ttl_cnt[ $i++ ] ||= [];
-             my $j = 0;
-             my $gene_codon_cnt;
-             foreach $gene_codon_cnt ( @$gene_aa_data )
-             {
-                 $ttl_aa_cnts->[ $j++ ] += $gene_codon_cnt;
-             }
-        }
-    }
-
-    \@ttl_cnt;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Format counts with amino acids separated by 2 spaces, and codons within the
-#  amino acid separated by 1 space.  If an id is present, it is separated by a
-#  tab.
-#
-#  naa1c1 naa1c2 naa1c3 naa1c4  naa2c1 naa2c2 ...  naa3c1 naa3c2 ...
-#
-#     report_counts(       \@packaged_counts )
-#     report_counts(       \@packaged_counts, $id )
-#     report_counts( \*FH, \@packaged_counts )
-#     report_counts( \*FH, \@packaged_counts, $id )
-#
-#-----------------------------------------------------------------------------
-sub report_counts
-{
-    my $fh = ( ref( $_[0] ) eq 'GLOB' ) ? shift : \*STDOUT;
-    my ( $cnts, $id ) = @_;
-    print $fh join( '  ', map { join( ' ', map { $_ || 0 } @$_ ) } @$cnts ),
-              ( $id ? "\t$id" : () ),
-              "\n";
-}
-
-
-#===============================================================================
-#  Codon usage frequencies routines
-#===============================================================================
-#  Convert counts to packaged frequencies.  
-#  Optionally add a pseudocount (e.g., 1) to each group.
-#  The number of amino acids is trimmed to 18.
-#
-#     \@freqs = count_to_freq( \@counts [, $pseudocount ] )
-#     \@freqs = count_to_freq( \%counts [, $pseudocount ] )
-#
-#        \@counts = [ [ n1, n2, n3, n4 ], [ n5, n6 ], ... [ nn1, nn2 ] ]
-#        \%counts = { codon => count, ... }
-#        \@freqs  = [ [ f1, f2, f3, f4 ], [ nf, f6 ], ... [ fn1, fn2 ] ]
-#-----------------------------------------------------------------------------
-sub count_to_freq
-{
-    my ( $cnts, $pseudocnt ) = @_;
-    $cnts = codon_count_package( $cnts ) if ref $cnts eq 'HASH';
-    return undef if ref $cnts  ne 'ARRAY';
-    $pseudocnt ||= 0;
-
-    [ map { my $i = 0;                          # elements in group
-            my $n = $pseudocnt;
-            foreach ( @$_ ) { $n += $_ ; $i++ } # total count in group
-            $n ||= 1;                           #   or 1
-            my $pci = $i ? $pseudocnt / $i : 0; # and per element pseudocount
-            [ map { ( $_ + $pci ) / $n } @$_ ]  # used to make frequencies
-          }
-      @$cnts[ 0 .. 17 ]                         # for each group of counts
-    ]
-}
-
-
-#-----------------------------------------------------------------------------
-#--------------------------- Use count_to_freq() -----------------------------
-#-----------------------------------------------------------------------------
-#
-#  Convert packaged counts to packaged frequencies.
-#  Optionally add a pseudocount (e.g., 1) to each amino acid.
-#  The number of amino acids is trimmed to 18.
-#
-#     \@freqs = packaged_count_to_freq( \@counts [, $pseudocount ] )
-#
-#     \@counts = [ [ n1, n2, n3, n4 ], [ n5, n6 ], ... [ nn1, nn2 ] ];
-#     \@freqs  = [ [ f1, f2, f3, f4 ], [ nf, f6 ], ... [ fn1, fn2 ] ];
-#-----------------------------------------------------------------------------
-sub packaged_count_to_freq
-{
-    my $cnts = shift;
-    ref( $cnts ) eq 'ARRAY' or return undef;
-    my $pseudocnt = ( shift ) || 0;
-
-    [ map { my $i = 0;                          # elements in group
-            my $n = $pseudocnt;
-            foreach ( @$_ ) { $n += $_ ; $i++ } # total count in group
-            $n ||= 1;                           #   or 1
-            my $pci = $i ? $pseudocnt / $i : 0; # and per element pseudocount
-            [ map { ( $_ + $pci ) / $n } @$_ ]  # used to make frequencies
-          } @$cnts[ 0 .. 17 ]                   # for each group of counts
-    ]
-}
-
-
-#-----------------------------------------------------------------------------
-#  Sum codon counts and find average codon usage frequencies.
-#
-#     \@freqs = average_freq( [ \@counts, ... ] )
-#     \@freqs = average_freq( [ \@counts, ... ], $pseudocount )
-#     \@freqs = average_freq( [ \%counts, ... ] )
-#     \@freqs = average_freq( [ \%counts, ... ], $pseudocount )
-#
-#-----------------------------------------------------------------------------
-sub average_freq
-{
-    my ( $cnts_sets, $pseudocnt ) = @_;
-    return undef unless $cnts_sets && ref $cnts_sets  eq 'ARRAY' && @$cnts_sets;
-
-    my $sum = sum_counts( $cnts_sets );
-    $sum ? count_to_freq( $sum, $pseudocnt ) : undef;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Split frequencies with amino acids separated by vertical bars, and
-#  codons within the amino acid separated by commas:
-#
-#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
-#
-#      \@freqs                         = split_frequencies( $codon_freq_string )
-#    ( \@freqs, $score, $description ) = split_frequencies( $codon_freq_string )
-#
-#-----------------------------------------------------------------------------
-sub split_frequencies
-{
-    local $_ = shift;
-    s/\s+$//;
-    s/^\s+//;
-    my ( undef, $scr, $freq, undef, $descr ) = m/^(([\d.]*)\t)?(\d[\d.]*,\d[^\t]*)(\t([^\t]*))?$/;
-    return wantarray ? ( undef, undef, undef ) : undef if ! $freq;
-    my $freq2 = [ map { [ map { $_ + 0 } split /,/ ] } split /\|/, $freq ];
-    wantarray ? ( $freq2, $scr, $descr ) : $freq2
-}
-
-
-#-----------------------------------------------------------------------------
-#  Normalize codon usage frequencies in place
-#
-#      normalize_freq( $freq )
-#      normalize_freq( $freq, $min_freq )
-#
-#   $freq can be \@freq or [ \@freq, description, ... ]
-#-----------------------------------------------------------------------------
-sub normalize_freq
-{
-    my $freq = ref $_[0]->[1] ? $_[0] : $_[0]->[0];
-    my $min_freq = $_[1] || 0;
-
-    for ( @$freq )
-    {
-        my $sum = 0;
-        foreach ( @$_ ) { $_ = $min_freq if $_ < $min_freq; $sum += $_ }
-        if ( $sum && $sum != 1 ) { foreach ( @$_ ) { $_ /= $sum } }
-    }
-
-    $_[0];
-}
-
-
-#-----------------------------------------------------------------------------
-#  Copy a set of codon usage frequencies, enforcing a minimum frequency value.
-#
-#       $freq = set_minimum_frequency( $freq, $min_codon_frequency )
-#
-#   $freq can be \@freq or [ \@freq, description, ... ]
-#   Output form matches input form.
-#
-#-----------------------------------------------------------------------------
-sub set_minimum_frequency
-{
-    my ( $infreq, $min_f ) = @_;
-    $min_f = 0.0001 if ! defined $min_f;
-    my $freq = ( ref $infreq->[1] ) ? $infreq : $infreq->[0];
-    my @f = ();
-    for ( @$freq )
-    {
-        my @fi = @$_;  #  Work on a copy
-        my $sum_fi = 0;
-        foreach ( @fi ) { $_ = $min_f if $_ < $min_f; $sum_fi += $_ }
-        if ( $sum_fi && $sum_fi != 1 ) { foreach ( @fi ) { $_ /= $sum_fi } }
-        push @f, \@fi;
-    }
-
-    ref $infreq->[1] ? \@f : [ \@f, @$infreq[ 1 .. (@$infreq-1) ] ];
-}
-
-
-#-----------------------------------------------------------------------------
-#  Format frequencies with amino acids separated by vertical bars, and
-#  codons within the amino acid separated by commas:
-#
-#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
-#
-#   $codon_freq_string = frequencies_as_string( \@freqs )
-#
-#-----------------------------------------------------------------------------
-sub frequencies_as_string
-{
-    join( "|", map { join( ",", map { sprintf "%7.5f", $_ } @$_ ) } @{$_[0]} );
-}
-
-
-#-----------------------------------------------------------------------------
-#  Format frequencies with amino acids separated by vertical bars, and
-#  codons within the amino acid separated by commas:
-#
-#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
-#
-#     report_frequencies(               \@freqs [, $title] )
-#     report_frequencies( \*FH,         \@freqs [, $title] )
-#     report_frequencies(       $score, \@freqs [, $title] )
-#     report_frequencies( \*FH, $score, \@freqs [, $title] )
-#
-#-----------------------------------------------------------------------------
-sub report_frequencies
-{
-    my $fh    = ( ref( $_[0] ) eq 'GLOB' ) ? shift : \*STDOUT;
-
-    my @parts = ( ( ! ref( $_[0] ) ? shift : () ),
-                  frequencies_as_string( shift ),
-                  ( $_[0]          ? shift : () )
-                );
-    print $fh join( "\t", @parts ), "\n";
-}
-
-
-#-------------------------------------------------------------------------------
-#  Read all frequencies from a file:
-#
-#     @$freq = read_frequencies( )        # D = STDIN
-#     @$freq = read_frequencies( $file )
-#     @$freq = read_frequencies( \*FH )
-#    \@$freq = read_frequencies( )        # D = STDIN
-#    \@$freq = read_frequencies( $file )
-#    \@$freq = read_frequencies( \*FH )
-#-------------------------------------------------------------------------------
-sub read_frequencies
-{
-    my ( $fh, $close ) = input_handle( @_ );
-    $fh or print STDERR "gjocodonlib::read_frequencies called with bad file: '$_[0]'\n"
-           and return undef;
-    my @freq = map { scalar split_frequencies( $_ ) } <$fh>;
-    close $fh if $close;
-    wantarray ? @freq : \@freq;
-}
-
-
-#-------------------------------------------------------------------------------
-#  Read all frequencies with scores and labels from a file:
-#
-#     @$freq_scr_lbl = read_frequencies_scr_label( )        # D = STDIN
-#     @$freq_scr_lbl = read_frequencies_scr_label( $file )
-#     @$freq_scr_lbl = read_frequencies_scr_label( \*FH )
-#    \@$freq_scr_lbl = read_frequencies_scr_label( )        # D = STDIN
-#    \@$freq_scr_lbl = read_frequencies_scr_label( $file )
-#    \@$freq_scr_lbl = read_frequencies_scr_label( \*FH )
-#-------------------------------------------------------------------------------
-sub read_frequencies_scr_label
-{
-    my ( $fh, $close ) = input_handle( @_ );
-    $fh or print STDERR "gjocodonlib::read_frequencies_scr_label called with bad file: '$_[0]'\n"
-           and return undef;
-    my @freq = map { [ split_frequencies( $_ ) ] } <$fh>;
-    close $fh if $close;
-    wantarray ? @freq : \@freq;
-}
-
-
-#-------------------------------------------------------------------------------
-#  Read one set of frequencies from an open file handle:
-#
-#      $freq                 = read_next_frequencies( )       # D = STDIN
-#      $freq                 = read_next_frequencies( $fh )
-#    ( $freq, $scr, $descr ) = read_next_frequencies( )       # D = STDIN
-#    ( $freq, $scr, $descr ) = read_next_frequencies( $fh )
-#-------------------------------------------------------------------------------
-sub read_next_frequencies
-{
-    my ( $fh ) = @_;
-    $fh ||= \*STDIN;
-    split_frequencies( scalar <$fh> );
-}
-
-
-#===============================================================================
-#  Chi square based evaluation of counts
-#===============================================================================
-#  Compare codon usage(s) to expected frequencies by chi-square.
-#
-#     @[ $chisqr, $df, $n ] = codon_usage_chi_sqr( \%freqs, \%cnt1 [ , ... ] )
-#
-#-----------------------------------------------------------------------------
-sub codon_usage_chi_sqr
-{
-    ( @_ > 1 ) || die "Usage: codon_usage_chi_sqr( \%freqs, \%cnts ... )\n";
-    my $freqs = shift;
-    ref( $freqs ) eq 'HASH'
-        || die "codon_usage_chi_sqr args must be HASH references\n";
-
-    my @out = ();
-
-    foreach my $cnts ( @_ ) {
-        ref( $cnts ) eq 'HASH'
-            || die "codon_usage_chi_sqr args must be HASH references\n";
-        my ( $chisqr, $df, $total ) = (0, 0, 0);
-
-        foreach my $aa ( @aa_package_order )
-        {
-            my @codons = @{ $amino_acid_codons_DNA{ $aa } };
-            my ($c, $d, $n) = gjostat::chi_square( [ map { $freqs->{ $_ } } @codons ],
-                                                   [ map { $cnts->{ $_ }  } @codons ]
-                                                 );
-            if ( $d > 0 ) { $chisqr += $c; $df += $d; $total += $n }
-        }
-
-        push @out, [ $chisqr, $df, $total ];
-    }
-
-    @out
-}
-
-
-#-----------------------------------------------------------------------------
-#------------------------ Use codon_usage_chi_sqr() --------------------------
-#-----------------------------------------------------------------------------
-#  Compare packaged codon usage(s) to expected frequencies by chi-square.
-#
-#     ( $chisqr, $df, $n ) = packaged_codon_usage_chi_sqr( \@freqs, \@cnt )
-#
-#-----------------------------------------------------------------------------
-sub packaged_codon_usage_chi_sqr
-{
-    my ( $freq, $cnt ) = @_;
-    ref( $freq ) eq 'ARRAY' && ref( $cnt ) eq 'ARRAY'
-        || die "packaged_codon_usage_chi_sqr requires two ARRAY references\n";
-
-    my @c2 = @$cnt[ 0 .. 17 ];
+    my @c2 = @$cnt2[ 0 .. 17 ];
     my ( $chisqr, $df, $total ) = (0, 0, 0);
 
-    foreach my $fr ( @$freq )
+    foreach my $c1 ( @$cnt1[0 .. 17] )
     {
-        my ($c, $d, $n) = gjostat::chi_square( $fr, shift @c2 );
+        my ($c, $d, $n) = contingency_chi_sqr_2( $c1, shift @c2 );
         if ( $d && $n ) { $chisqr += $c; $df += $d; $total += $n }
     }
 
@@ -1102,55 +809,100 @@ sub count_vs_count_chi_sqr
 
 
 #-----------------------------------------------------------------------------
-#----------------------- Use count_vs_count_chi_sqr() ------------------------
-#-----------------------------------------------------------------------------
-#  Compare two codon usages by chi-square.
+#  Convert packaged counts to packaged frequencies.
+#  Optionally add a pseudocount (e.g., 1) to each amino acid.
+#  The number of amino acids is trimmed to 18.
 #
-#     ( $chisqr, $df, $n ) = codon_usage_pairwise_chi_sqr( \%cnt1, \%cnt2 )
+#     \@freqs = packaged_count_to_freq( \@counts [, $pseudocount ] )
 #
+#     \@counts = [ [ n1, n2, n3, n4 ], [ n5, n6 ], ... [ nn1, nn2 ] ];
+#     \@freqs  = [ [ f1, f2, f3, f4 ], [ nf, f6 ], ... [ fn1, fn2 ] ];
 #-----------------------------------------------------------------------------
-sub codon_usage_pairwise_chi_sqr
+sub packaged_count_to_freq
 {
-    my ( $cnt1, $cnt2 ) = @_;
-    ref( $cnt1 ) eq 'HASH' && ref( $cnt2 ) eq 'HASH'
-        || die "codon_usage_2_chi_sqr requires two HASH references\n";
+    my $cnts = shift;
+    ref( $cnts ) eq 'ARRAY' or return undef;
+    my $pseudocnt = ( shift ) || 0;
 
-    my ( $chisqr, $df, $total ) = (0, 0, 0);
-
-    foreach my $aa ( @aa_package_order )
-    {
-        my @codons = @{ $amino_acid_codons_DNA{ $aa } };
-        my ($c, $d, $n) = contingency_chi_sqr_2( [ map { $cnt1->{ $_ } } @codons ],
-                                                 [ map { $cnt2->{ $_ } } @codons ]
-                                               );
-        if ( $d > 0 ) { $chisqr += $c; $df += $d; $total += $n }
-    }
-
-    ( $chisqr, $df, $total )
+    [ map { my $i = 0;                          # elements in group
+            my $n = $pseudocnt;
+            foreach ( @$_ ) { $n += $_ ; $i++ } # total count in group
+            $n ||= 1;                           #   or 1
+            my $pci = $i ? $pseudocnt / $i : 0; # and per element pseudocount
+            [ map { ( $_ + $pci ) / $n } @$_ ]  # used to make frequencies
+          } @$cnts[ 0 .. 17 ]                   # for each group of counts
+    ]
 }
 
 
 #-----------------------------------------------------------------------------
-#----------------------- Use count_vs_count_chi_sqr() ------------------------
-#-----------------------------------------------------------------------------
-#  Compare two codon usages by chi-square.
+#  Convert counts to packaged frequencies.  
+#  Optionally add a pseudocount (e.g., 1) to each group.
+#  The number of amino acids is trimmed to 18.
 #
-#     ( $chisqr, $df, $n ) = count_package_chi_sqr( \@cnt_pkg1, \@cnt_pkg2 )
+#     \@freqs = count_to_freq( \@counts [, $pseudocount ] )
+#     \@freqs = count_to_freq( \%counts [, $pseudocount ] )
 #
+#        \@counts = [ [ n1, n2, n3, n4 ], [ n5, n6 ], ... [ nn1, nn2 ] ]
+#        \%counts = { codon => count, ... }
+#        \@freqs  = [ [ f1, f2, f3, f4 ], [ nf, f6 ], ... [ fn1, fn2 ] ]
 #-----------------------------------------------------------------------------
-sub count_package_chi_sqr
+sub count_to_freq
 {
-    my ( $cnt1, $cnt2 ) = @_;
-    ref( $cnt1 ) eq 'ARRAY' && ref( $cnt2 ) eq 'ARRAY'
-        || die "count_package_chi_sqr requires two ARRAY references\n";
-    ( @$cnt1 == @$cnt2 ) or die "count_package_chi_sqr requires arrays of equal size\n";
+    my ( $cnts, $pseudocnt ) = @_;
+    $cnts = codon_count_package( $cnts ) if ref $cnts eq 'HASH';
+    return undef if ref $cnts  ne 'ARRAY';
+    $pseudocnt ||= 0;
 
-    my @c2 = @$cnt2[ 0 .. 17 ];
+    [ map { my $i = 0;                          # elements in group
+            my $n = $pseudocnt;
+            foreach ( @$_ ) { $n += $_ ; $i++ } # total count in group
+            $n ||= 1;                           #   or 1
+            my $pci = $i ? $pseudocnt / $i : 0; # and per element pseudocount
+            [ map { ( $_ + $pci ) / $n } @$_ ]  # used to make frequencies
+          }
+      @$cnts[ 0 .. 17 ]                         # for each group of counts
+    ]
+}
+
+
+#-----------------------------------------------------------------------------
+#  Sum codon counts and find average codon usage frequencies.
+#
+#     \@freqs = average_freq( [ \@counts, ... ] )
+#     \@freqs = average_freq( [ \@counts, ... ], $pseudocount )
+#     \@freqs = average_freq( [ \%counts, ... ] )
+#     \@freqs = average_freq( [ \%counts, ... ], $pseudocount )
+#
+#-----------------------------------------------------------------------------
+sub average_freq
+{
+    my ( $cnts_sets, $pseudocnt ) = @_;
+    return undef unless $cnts_sets && ref $cnts_sets  eq 'ARRAY' && @$cnts_sets;
+
+    my $sum = sum_counts( $cnts_sets );
+    $sum ? count_to_freq( $sum, $pseudocnt ) : undef;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Compare packaged codon usage(s) to expected frequencies by chi-square.
+#
+#     ( $chisqr, $df, $n ) = packaged_codon_usage_chi_sqr( \@freqs, \@cnt )
+#
+#-----------------------------------------------------------------------------
+sub packaged_codon_usage_chi_sqr
+{
+    my ( $freq, $cnt ) = @_;
+    ref( $freq ) eq 'ARRAY' && ref( $cnt ) eq 'ARRAY'
+        || die "packaged_codon_usage_chi_sqr requires two ARRAY references\n";
+
+    my @c2 = @$cnt[ 0 .. 17 ];
     my ( $chisqr, $df, $total ) = (0, 0, 0);
 
-    foreach my $c1 ( @$cnt1[0 .. 17] )
+    foreach my $fr ( @$freq )
     {
-        my ($c, $d, $n) = contingency_chi_sqr_2( $c1, shift @c2 );
+        my ($c, $d, $n) = gjostat::chi_square( $fr, shift @c2 );
         if ( $d && $n ) { $chisqr += $c; $df += $d; $total += $n }
     }
 
@@ -1213,7 +965,7 @@ sub codon_usage_p_values
 {
     my ( $cnts, $freq_sets, $max_len ) = @_;
     $max_len ||= 1e99;
-    $freq_sets = [ $freq_sets ] if ! ref $freq_sets->[0]->[0];  #  Allow one set of frequencies
+    $freq_sets = [ $freq_sets ] if ! ref $freq_sets->[0]->[0];  #  Allow one set of frequences
 
     map { count_vs_freq_p_value( $cnts, $_, $max_len ) } @$freq_sets;
 }
@@ -1221,8 +973,8 @@ sub codon_usage_p_values
 
 #-----------------------------------------------------------------------------
 #  Score one frequency against a set of counts.
-#  A score based on the sum of the p-values (or log likelihoods) for all gene
-#  counts compared of a set of relative codon usage frequencies:
+#  A score based on the sum of the p-values for all gene counts compared
+#  of a set of relative codon usage frequencies:
 #
 #     $score = codon_freq_score( \@freq, \@per_gene_counts, \%options )
 #     $score = codon_freq_score( \@freq, \%per_gene_counts, \%options )
@@ -1231,12 +983,12 @@ sub codon_usage_p_values
 #
 #     expon      => exponent  #  Return sum of P**exponent
 #     exponent   => exponent  #  Same as expon
-#     likelihood => boolean   #  Score by log likelihood
 #     max_len    => max_len   #  Max codons in calculating P-values (D = unlim)
 #     max_length => max_len   #  Same as max_len
 #     p_val      => P-value   #  Return the count of genes with P >= P-value
 #     p_value    => P-value   #  Same as p_val
 #-----------------------------------------------------------------------------
+
 sub codon_freq_score
 {
     my ( $freq, $cnts, $opts ) = @_;
@@ -1246,12 +998,10 @@ sub codon_freq_score
 
     $opts ||= {};
     my $expon = option_by_regexp( $opts, qr/^expon/i, undef );
-    my $like  = option_by_regexp( $opts, qr/like/i,   undef );
     my $max_l = option_by_regexp( $opts, qr/len/i,    undef );
     my $p_val = option_by_regexp( $opts, qr/^p_val/i, undef );
 
-    $like ? codon_freq_score_lnL( $freq, $cnts, $max_l )
-          : codon_freq_score_0( $freq, $cnts, $p_val, $expon, $max_l );
+    codon_freq_score_0( $freq, $cnts, $p_val, $expon, $max_l );
 }
 
 
@@ -1268,6 +1018,7 @@ sub codon_freq_score
 #     $max_len  #  Max codons in calculating P-values (D = unlim)
 #     $expon    #  Return sum of P**exponent (D = 0.3)
 #-----------------------------------------------------------------------------
+
 sub codon_freq_score_0
 {
     my ( $freq, $cnts, $p_val, $expon, $max_l ) = @_;
@@ -1290,6 +1041,400 @@ sub codon_freq_score_0
     }
 
     return $score;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Format counts with amino acids separated by 2 spaces, and codons within the
+#  amino acid separated by 1 space.  If an id is present, it is separated by a
+#  tab.
+#
+#  naa1c1 naa1c2 naa1c3 naa1c4  naa2c1 naa2c2 ...  naa3c1 naa3c2 ...
+#
+#     report_counts(       \@packaged_counts )
+#     report_counts(       \@packaged_counts, $id )
+#     report_counts( \*FH, \@packaged_counts )
+#     report_counts( \*FH, \@packaged_counts, $id )
+#
+#-----------------------------------------------------------------------------
+
+sub report_counts
+{
+    my $fh = ( ref( $_[0] ) eq 'GLOB' ) ? shift : \*STDOUT;
+    my ( $cnts, $id ) = @_;
+    print $fh join( '  ', map { join( ' ', map { $_ || 0 } @$_ ) } @$cnts ),
+              ( $id ? "\t$id" : () ),
+              "\n";
+}
+
+
+#-----------------------------------------------------------------------------
+#  Split counts with amino acids separated by 2 spaces, and codons within the
+#  amino acid separated by 1 space.  If an id is present, it is separated by a
+#  tab.
+#
+#       \@counts        = split_counts( $codon_count_string )
+#     ( \@counts, $id ) = split_counts( $codon_count_string )
+#
+#-----------------------------------------------------------------------------
+
+sub split_counts
+{   my ( $string ) = shift;
+    chomp $string;
+    my ( $data, $id ) = split /\t/, $string;
+
+    my $cnts = [ map { [ map { $_ + 0 } split / / ] } split /  /, $data ];
+
+    wantarray ? ( $cnts, $id ) : $cnts;
+}
+
+
+#-----------------------------------------------------------------------------
+#  Format frequences with amino acids separated by vertical bars, and
+#  codons within the amino acid separated by commas:
+#
+#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
+#
+#     report_frequencies(               \@freqs [, $title] )
+#     report_frequencies( \*FH,         \@freqs [, $title] )
+#     report_frequencies(       $score, \@freqs [, $title] )
+#     report_frequencies( \*FH, $score, \@freqs [, $title] )
+#
+#-----------------------------------------------------------------------------
+
+sub report_frequencies
+{
+    my $fh    = ( ref( $_[0] ) eq 'GLOB' ) ? shift : \*STDOUT;
+
+    my @parts = ( ( ! ref( $_[0] ) ? shift : () ),
+                  frequencies_as_string( shift ),
+                  ( $_[0]          ? shift : () )
+                );
+    print $fh join( "\t", @parts ), "\n";
+}
+
+
+#-----------------------------------------------------------------------------
+#  Format frequences with amino acids separated by vertical bars, and
+#  codons within the amino acid separated by commas:
+#
+#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
+#
+#   $codon_freq_string = frequencies_as_string( \@freqs )
+#
+#-----------------------------------------------------------------------------
+
+sub frequencies_as_string
+{
+    join( "|", map { join( ",", map { sprintf "%7.5f", $_ } @$_ ) } @{$_[0]} );
+}
+
+
+#-------------------------------------------------------------------------------
+#  Read all frequencies from a file:
+#
+#     @$freq = read_frequencies( )        # D = STDIN
+#     @$freq = read_frequencies( $file )
+#     @$freq = read_frequencies( \*FH )
+#    \@$freq = read_frequencies( )        # D = STDIN
+#    \@$freq = read_frequencies( $file )
+#    \@$freq = read_frequencies( \*FH )
+#-------------------------------------------------------------------------------
+sub read_frequencies
+{
+    my ( $fh, $close ) = input_handle( @_ );
+    $fh or print STDERR "gjocodonlib::read_frequencies called with bad file: '$_[0]'\n"
+           and return undef;
+    my @freq = map { scalar split_frequencies( $_ ) } <$fh>;
+    close $fh if $close;
+    wantarray ? @freq : \@freq;
+}
+
+
+#-------------------------------------------------------------------------------
+#  Read all frequencies with scores and labels from a file:
+#
+#     @$freq_scr_lbl = read_frequencies_scr_label( )        # D = STDIN
+#     @$freq_scr_lbl = read_frequencies_scr_label( $file )
+#     @$freq_scr_lbl = read_frequencies_scr_label( \*FH )
+#    \@$freq_scr_lbl = read_frequencies_scr_label( )        # D = STDIN
+#    \@$freq_scr_lbl = read_frequencies_scr_label( $file )
+#    \@$freq_scr_lbl = read_frequencies_scr_label( \*FH )
+#-------------------------------------------------------------------------------
+sub read_frequencies_scr_label
+{
+    my ( $fh, $close ) = input_handle( @_ );
+    $fh or print STDERR "gjocodonlib::read_frequencies_scr_label called with bad file: '$_[0]'\n"
+           and return undef;
+    my @freq = map { [ split_frequencies( $_ ) ] } <$fh>;
+    close $fh if $close;
+    wantarray ? @freq : \@freq;
+}
+
+
+#-------------------------------------------------------------------------------
+#  Read one set of frequencies from an open file handle:
+#
+#      $freq                 = read_next_frequencies( )       # D = STDIN
+#      $freq                 = read_next_frequencies( $fh )
+#    ( $freq, $scr, $descr ) = read_next_frequencies( )       # D = STDIN
+#    ( $freq, $scr, $descr ) = read_next_frequencies( $fh )
+#-------------------------------------------------------------------------------
+sub read_next_frequencies
+{
+    my ( $fh ) = @_;
+    $fh ||= \*STDIN;
+    split_frequencies( scalar <$fh> );
+}
+
+
+#-----------------------------------------------------------------------------
+#  Split frequences with amino acids separated by vertical bars, and
+#  codons within the amino acid separated by commas:
+#
+#  faa1c1,faa1c2,faa1c3,faa1c4|faa2c1,faa2c2,...|faa3c1,faa3c2,...
+#
+#      \@freqs                         = split_frequencies( $codon_freq_string )
+#    ( \@freqs, $score, $description ) = split_frequencies( $codon_freq_string )
+#
+#-----------------------------------------------------------------------------
+
+sub split_frequencies
+{
+    local $_ = shift;
+    s/\s+$//;
+    s/^\s+//;
+    my ( undef, $scr, $freq, undef, $descr ) = m/^(([\d.]*)\t)?(\d[\d.]*,\d[^\t]*)(\t([^\t]*))?$/;
+    return wantarray ? ( undef, undef, undef ) : undef if ! $freq;
+    my $freq2 = [ map { [ map { $_ + 0 } split /,/ ] } split /\|/, $freq ];
+    wantarray ? ( $freq2, $scr, $descr ) : $freq2
+}
+
+
+#-----------------------------------------------------------------------------
+#
+#   $freq = set_minimum_frequency( $freq, $min_codon_frequency )
+#
+#   $freq can be \@freq or [ \@freq, description, ... ]
+#   Output form matches input form.
+#
+#-----------------------------------------------------------------------------
+sub set_minimum_frequency
+{
+    my ( $infreq, $min_f ) = @_;
+    $min_f = 0.0001 if ! defined $min_f;
+    my $freq = ( ref $infreq->[1] ) ? $infreq : $infreq->[0];
+    my @f = ();
+    for ( @$freq )
+    {
+        my @fi = @$_;  #  Work on a copy
+        my $sum_fi = 0;
+        foreach ( @fi ) { $_ = $min_f if $_ < $min_f; $sum_fi += $_ }
+        if ( $sum_fi && $sum_fi != 1 ) { foreach ( @fi ) { $_ /= $sum_fi } }
+        push @f, \@fi;
+    }
+
+    ref $infreq->[1] ? \@f : [ \@f, @$infreq[ 1 .. (@$infreq-1) ] ];
+}
+
+
+#===============================================================================
+#  Convert packaged codon counts into an array of amino acid counts, for one
+#  or more genes:
+#
+#      @per_gene_aa_cnts = codon_counts_2_aa_counts( @per_gene_codon_cnts )
+#
+#===============================================================================
+sub codon_counts_2_aa_counts
+{
+    map { [ map { my $ttl = 0; foreach ( @$_ ) { $ttl += $_ } $ttl } @$_ ] } @_
+}
+
+
+#===============================================================================
+#  Produce a simulated set of codon counts matched to the length and amino
+#  acid composition of the genes:
+#
+#    @per_gene_codon_cnt = simulate_genome( \@packaged_freqs, @per_gene_aa_cnt )
+#
+#===============================================================================
+
+sub simulate_genome
+{
+    my $have_seglib;
+    eval { require 'gjosegmentlib'; $have_seglib = 1; };
+    return () if ! $have_seglib;
+
+    my $freqs = shift;
+    ref $freqs eq 'ARRAY'
+        and ref $freqs->[0] eq 'ARRAY'
+        or return undef;
+
+    #  Encapsulate the codon frequencies at covering segments on the
+    #  interval between 0 and 1.  This will allow efficient access to
+    #  codons with the desired frequencies.
+
+    my @aa_info;
+    my @extra = ( [1] ) x ( 20 - @$freqs );
+    foreach my $aa_freq ( @$freqs, @extra )
+    {
+        #  Ensure that the frequencies are normalized:
+
+        my $ttl = 0;
+        foreach ( @$aa_freq ) { $ttl += $_ }
+        my @aa_freq = $ttl ? map { $_ / $ttl      } @$aa_freq
+                           : map { 1  / @$aa_freq } @$aa_freq;
+
+        #  Create a tree of the intervals:
+
+        my $i = 0;
+        my @pairs = map { [ $i++, $_ ] } @aa_freq;
+
+        push @aa_info, [ gjosegmentlib::segment_new_tree( @pairs ), scalar @aa_freq ];
+    }
+
+    #  Process each gene:
+
+    map { my $gene = $_;
+          my @gene_data;
+          my $aa_num = 0;
+          foreach my $aa_cnt ( @$gene )
+          {
+              #  Initialize the codon counts so that we alwoys get a list
+              #  of the correctl length:
+
+              my ( $tree, $n_codon ) = @{ $aa_info[ $aa_num++ ] };
+              my @aa_data = ( 0 ) x $n_codon;
+              for ( my $i = 0; $i < $aa_cnt; $i++ )
+              {
+                  $aa_data[ gjosegmentlib::segment_by_coord( rand(), $tree ) ]++;
+              }
+
+              push @gene_data, \@aa_data;
+          }
+          \@gene_data
+        } @_
+}
+
+
+#===============================================================================
+#  Modal codon usage of a set of genes.  If fewer than 6 sets of counts are
+#  supplied, the average codon usage is returned.
+#
+#            \@modal_freqs   = modal_codon_usage( \@gene_cnt_pkgs, \%options )
+#  ( $score, \@modal_freqs ) = modal_codon_usage( \@gene_cnt_pkgs, \%options )
+#
+#  Options:
+#
+#      average    => boolean   #  include average as seed vertex
+#      count_file => cnt_file  #  file with (or for) codon counts
+#      exponent   => float     #  P-value exponent in optimization (D = 0.3)
+#      max_steps  => max_step  #  max simplex steps in optimization (D = 1e6)
+#      n_top      => n         #  maximum vertices in simplex optimization (D = 75)
+#      pipes      => n_pipe    #  number of processes to use in evaluation (D = 4)
+#      pseudo     => float     #  per aa pseudo count in codon frequencies (D = 1)
+#      root       => temp_file #  root name for count_file
+#      verbose    => int       #  reporting interval for opt steps (D = never)
+#      vertices   => int       #  minimum vertices in simplex optimization (D = 50)
+#
+#  If count_file exists, it is not deleted. If it has data, they are assumed
+#  to be valid (they must not conflict with \@gene_cnt_pkgs).
+#===============================================================================
+sub modal_codon_usage
+{
+    my ( $counts, $options ) = @_;
+    $options ||= {};
+    my $quiet = $options->{ quiet };
+
+    if ( ! ( $counts && ref( $counts ) eq 'ARRAY' && @$counts ) )
+    {
+        return () if $quiet;
+        croak "gjocodonlib::modal_codon_usage() called with bad counts.\n";
+    }
+
+    my $dfl_pipe = @$counts > 192 ? 4
+                 : @$counts > 128 ? 3
+                 : @$counts >  64 ? 2
+                 :                  1;
+    my $average   = option_by_regexp( $options, qr/^av/i,          0 );
+    my $cnt_file  = option_by_regexp( $options, qr/file/i,     undef );
+    my $expon     = option_by_regexp( $options, qr/exp/i,          0.3 );
+    my $extra     = option_by_regexp( $options, qr/extra/i,        0 );
+    my $maxstep   = option_by_regexp( $options, qr/step/i,   1000000 );
+    my $n_top     = option_by_regexp( $options, qr/top/i,         75 );
+    my $pipes     = option_by_regexp( $options, qr/pipe/i, $dfl_pipe );
+    my $pseudo    = option_by_regexp( $options, qr/^pseudo/i,      1 );
+    my $root_name = option_by_regexp( $options, qr/root/i,     undef );
+    my $verbose   = option_by_regexp( $options, qr/^verb/i,    undef );
+    my $vertices  = option_by_regexp( $options, qr/vert/i,        50 );
+    $n_top = $vertices if $n_top < $vertices;
+
+    if ( ! defined( $cnt_file ) )
+    {
+        if ( $root_name )
+        {
+            $cnt_file = "$root_name.counts";
+        }
+        else
+        {
+            my $tmp   = SeedAware::location_of_tmp( $options );
+            $cnt_file = SeedAware::new_file_name( "$tmp/modal_codon_usage_tmp", 'counts' );
+        }
+    }
+    my $save_cnt_file = -f $cnt_file;
+
+    #  The mode optimization needs a counts file
+
+    if ( ( ( @$counts >= 6 ) || $save_cnt_file ) && ! -s $cnt_file )
+    {
+        open( CNT, ">$cnt_file" )
+            or print STDERR "modal_codon_usage() could not open '$cnt_file' for writing.\n"
+               and exit;
+        foreach ( @$counts ) { report_counts( \*CNT, $_ ) }
+        close CNT;
+    }
+
+    $average = 1 if ( @$counts < 6 );
+
+    my @freqs;
+    push @freqs, count_to_freq( sum_counts( $counts ), $pseudo ) if $average;
+
+    if ( @$counts < 6 )
+    {
+        print STDERR "gjocodonlib::modal_codon_usage() called with less than 6 sets of counts.\n",
+                     "   Returning average codon usage.\n"
+                     if ! $quiet;
+        return wantarray() ? ( 0, $freqs[0] ) : $freqs[0];
+    }
+
+    push @freqs, map { count_to_freq( $_, $pseudo ) } @$counts;
+
+    my $scr_opts = { count_file => $cnt_file,
+                     exponent   => $expon,
+                     pipes      => $pipes
+                   };
+
+    @freqs = sort { $b->[0] <=> $a->[0] }
+             score_codon_frequencies( \@freqs, $scr_opts );
+
+    splice @freqs, $n_top if @freqs > $n_top;
+
+    #  n_top is number of actual to keep
+    #  extra is number above min_vertices to explore
+
+    my $opt_opts = { count_file => $cnt_file,
+                     exponent   => $expon,
+                     extra      => $extra,
+                     pipes      => $pipes,
+                     verbose    => $verbose,
+                     vertices   => $vertices
+                   };
+
+    my ( $score, $modal_freqs ) = optimize_frequencies( \@freqs, $opt_opts );
+
+    unlink $cnt_file if ! $save_cnt_file;
+
+    wantarray() ? ( $score, $modal_freqs ) : $modal_freqs
 }
 
 
@@ -1463,7 +1608,7 @@ sub score_codon_frequencies
 }
 
 
-#-------------------------------------------------------------------------------
+#===============================================================================
 #  The idea is to open one or more pipelines for evaluating codon usage
 #  frequencies against a set of codon usages. This will allow a general
 #  interface for using C or perl external programs, or (the ultimage fall
@@ -1493,7 +1638,7 @@ sub score_codon_frequencies
 #      rd       => \@rd       #  file handle for reading scores
 #      wr       => \@wr       #  file handle for writing freqs to evaluate
 #
-#-------------------------------------------------------------------------------
+#===============================================================================
 #  \%descriptor = open_codon_freq_eval( \%options )
 #-------------------------------------------------------------------------------
 sub open_codon_freq_eval
@@ -1719,318 +1864,6 @@ sub sysctl
     my %data = map { chomp; /^(\S+):\s(.*)$/ ? ( $1, $2 ) : () }
                SeedAware::run_gathering_output( qw( sysctl -n hw.ncpu ) );
     \%data;
-}
-
-
-#===============================================================================
-#  Likelihood-based scores
-#===============================================================================
-#  Compare codon counts to expected frequencies by log-likelihood.
-#
-#     $lnL = count_vs_freq_lnL( \@cnt, \@freq )
-#     $lnL = count_vs_freq_lnL( \@cnt, \@freq, $max_len )
-#
-#-------------------------------------------------------------------------------
-sub count_vs_freq_lnL
-{
-    my ( $cnt, $freq, $max_len ) = @_;
-
-    my $min_fr = 1e-6;
-    my $n_cdn  = 0;
-    my $lnL    = 0;
-    for ( my $aa = 0; $aa < 18; $aa++ )
-    {
-        my $cdn_fr  = $freq->[ $aa ];
-        my $cdn_cnt = $cnt->[ $aa ];
-        for ( my $j = 0; $j < @$cdn_fr; $j++ )
-        {
-            my $nj  = $cdn_cnt->[ $j ] or next;
-            my $fr  = $cdn_fr->[ $nj ];
-            $fr     = $min_fr if $fr < $min_fr;
-            $lnL   += $nj * log( $fr );
-            $n_cdn += $nj;
-        }
-    }
-
-    $lnL *= ( $max_len / $n_cdn ) if $max_len && ( $n_cdn > $max_len );
-
-    $lnL;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Compare codon counts to log expected frequencies by log-likelihood.
-#
-#     $lnL = count_vs_ln_freq_lnL( \@cnt, \@freq )
-#     $lnL = count_vs_ln_freq_lnL( \@cnt, \@freq, $max_len )
-#
-#-------------------------------------------------------------------------------
-sub count_vs_ln_freq_lnL
-{
-    my ( $cnt, $ln_freq, $max_len ) = @_;
-
-    my $n_cdn = 0;
-    my $lnL   = 0;
-    for ( my $aa = 0; $aa < 18; $aa++ )
-    {
-        my $cdn_fr  = $ln_freq->[ $aa ];
-        my $cdn_cnt = $cnt->[ $aa ];
-        for ( my $j = 0; $j < @$cdn_fr; $j++ )
-        {
-            my $nj  = $cdn_cnt->[ $j ] or next;
-            $lnL   += $nj * $cdn_fr->[ $nj ];
-            $n_cdn += $nj;
-        }
-    }
-
-    $lnL *= ( $max_len / $n_cdn ) if $max_len && ( $n_cdn > $max_len );
-
-    $lnL;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Score a gene's codon usage against one or more sets of frequencies:
-#
-#     @lnL = codon_usage_lnL( \@codon_counts, \@freq_sets )
-#     @lnL = codon_usage_lnL( \@codon_counts, \@freq_sets, $max_len )
-#
-#-----------------------------------------------------------------------------
-sub codon_usage_lnL
-{
-    my ( $cnts, $freq_sets, $max_len ) = @_;
-    $freq_sets = [ $freq_sets ] if ! ref $freq_sets->[0]->[0];  #  Allow one set of frequencies
-
-    map { count_vs_freq_lnL( $cnts, $_, $max_len ) } @$freq_sets;
-}
-
-
-#-----------------------------------------------------------------------------
-#  Score one frequency against a set of counts.
-#  A score based on the sum of log likelihoods for all gene counts compared
-#  of a set of relative codon usage frequencies:
-#
-#     $score = codon_freq_score_lnL( \@freq, \@per_gene_counts, $max_l )
-#
-#  Params:
-#
-#     $max_len  #  Max codons in calculating P-values (D = unlim)
-#-----------------------------------------------------------------------------
-sub codon_freq_score_lnL
-{
-    my ( $freq, $cnts, $max_l ) = @_;
-    croak if ! $freq;
-
-    my $min_fr = 1e-6;
-    my $ln_freq = [ map { [ map { my $ln_fr = $_ >= $min_fr ? log( $_ ) : log( $min_fr ) } @$_ ] } @$freq ];
-
-    my $lnL = 0;
-    foreach ( @$cnts )
-    {
-        $lnL += count_vs_ln_freq_lnL( $_, $freq, $max_l );
-    }
-
-    $lnL;
-}
-
-
-#===============================================================================
-#  Convert packaged codon counts into an array of amino acid counts, for one
-#  or more genes:
-#
-#      @per_gene_aa_cnts = codon_counts_2_aa_counts( @per_gene_codon_cnts )
-#
-#===============================================================================
-sub codon_counts_2_aa_counts
-{
-    map { [ map { my $ttl = 0; foreach ( @$_ ) { $ttl += $_ } $ttl } @$_ ] } @_
-}
-
-
-#===============================================================================
-#  Produce a simulated set of codon counts matched to the length and amino
-#  acid composition of the genes:
-#
-#    @per_gene_codon_cnt = simulate_genome( \@packaged_freqs, @per_gene_aa_cnt )
-#
-#===============================================================================
-
-sub simulate_genome
-{
-    my $have_seglib;
-    eval { require 'gjosegmentlib'; $have_seglib = 1; };
-    return () if ! $have_seglib;
-
-    my $freqs = shift;
-    ref $freqs eq 'ARRAY'
-        and ref $freqs->[0] eq 'ARRAY'
-        or return undef;
-
-    #  Encapsulate the codon frequencies at covering segments on the
-    #  interval between 0 and 1.  This will allow efficient access to
-    #  codons with the desired frequencies.
-
-    my @aa_info;
-    my @extra = ( [1] ) x ( 20 - @$freqs );
-    foreach my $aa_freq ( @$freqs, @extra )
-    {
-        #  Ensure that the frequencies are normalized:
-
-        my $ttl = 0;
-        foreach ( @$aa_freq ) { $ttl += $_ }
-        my @aa_freq = $ttl ? map { $_ / $ttl      } @$aa_freq
-                           : map { 1  / @$aa_freq } @$aa_freq;
-
-        #  Create a tree of the intervals:
-
-        my $i = 0;
-        my @pairs = map { [ $i++, $_ ] } @aa_freq;
-
-        push @aa_info, [ gjosegmentlib::segment_new_tree( @pairs ), scalar @aa_freq ];
-    }
-
-    #  Process each gene:
-
-    map { my $gene = $_;
-          my @gene_data;
-          my $aa_num = 0;
-          foreach my $aa_cnt ( @$gene )
-          {
-              #  Initialize the codon counts so that we alwoys get a list
-              #  of the correctl length:
-
-              my ( $tree, $n_codon ) = @{ $aa_info[ $aa_num++ ] };
-              my @aa_data = ( 0 ) x $n_codon;
-              for ( my $i = 0; $i < $aa_cnt; $i++ )
-              {
-                  $aa_data[ gjosegmentlib::segment_by_coord( rand(), $tree ) ]++;
-              }
-
-              push @gene_data, \@aa_data;
-          }
-          \@gene_data
-        } @_
-}
-
-
-#===============================================================================
-#  Modal codon usage of a set of genes.  If fewer than 6 sets of counts are
-#  supplied, the average codon usage is returned.
-#
-#            \@modal_freqs   = modal_codon_usage( \@gene_cnt_pkgs, \%options )
-#  ( $score, \@modal_freqs ) = modal_codon_usage( \@gene_cnt_pkgs, \%options )
-#
-#  Options:
-#
-#      average    => boolean   #  include average as seed vertex
-#      count_file => cnt_file  #  file with (or for) codon counts
-#      exponent   => float     #  P-value exponent in optimization (D = 0.3)
-#      max_steps  => max_step  #  max simplex steps in optimization (D = 1e6)
-#      n_top      => n         #  maximum vertices in simplex optimization (D = 75)
-#      pipes      => n_pipe    #  number of processes to use in evaluation (D = 4)
-#      pseudo     => float     #  per aa pseudo count in codon frequencies (D = 1)
-#      root       => temp_file #  root name for count_file
-#      verbose    => int       #  reporting interval for opt steps (D = never)
-#      vertices   => int       #  minimum vertices in simplex optimization (D = 50)
-#
-#  If count_file exists, it is not deleted. If it has data, they are assumed
-#  to be valid (they must not conflict with \@gene_cnt_pkgs).
-#===============================================================================
-sub modal_codon_usage
-{
-    my ( $counts, $options ) = @_;
-    $options ||= {};
-    my $quiet = $options->{ quiet };
-
-    if ( ! ( $counts && ref( $counts ) eq 'ARRAY' && @$counts ) )
-    {
-        return () if $quiet;
-        croak "gjocodonlib::modal_codon_usage() called with bad counts.\n";
-    }
-
-    my $dfl_pipe = @$counts > 192 ? 4
-                 : @$counts > 128 ? 3
-                 : @$counts >  64 ? 2
-                 :                  1;
-    my $average   = option_by_regexp( $options, qr/^av/i,          0 );
-    my $cnt_file  = option_by_regexp( $options, qr/file/i,     undef );
-    my $expon     = option_by_regexp( $options, qr/exp/i,          0.3 );
-    my $extra     = option_by_regexp( $options, qr/extra/i,        0 );
-    my $maxstep   = option_by_regexp( $options, qr/step/i,   1000000 );
-    my $n_top     = option_by_regexp( $options, qr/top/i,         75 );
-    my $pipes     = option_by_regexp( $options, qr/pipe/i, $dfl_pipe );
-    my $pseudo    = option_by_regexp( $options, qr/^pseudo/i,      1 );
-    my $root_name = option_by_regexp( $options, qr/root/i,     undef );
-    my $verbose   = option_by_regexp( $options, qr/^verb/i,    undef );
-    my $vertices  = option_by_regexp( $options, qr/vert/i,        50 );
-    $n_top = $vertices if $n_top < $vertices;
-
-    if ( ! defined( $cnt_file ) )
-    {
-        if ( $root_name )
-        {
-            $cnt_file = "$root_name.counts";
-        }
-        else
-        {
-            my $tmp   = SeedAware::location_of_tmp( $options );
-            $cnt_file = SeedAware::new_file_name( "$tmp/modal_codon_usage_tmp", 'counts' );
-        }
-    }
-    my $save_cnt_file = -f $cnt_file;
-
-    #  The mode optimization needs a counts file
-
-    if ( ( ( @$counts >= 6 ) || $save_cnt_file ) && ! -s $cnt_file )
-    {
-        open( CNT, ">$cnt_file" )
-            or print STDERR "modal_codon_usage() could not open '$cnt_file' for writing.\n"
-               and exit;
-        foreach ( @$counts ) { report_counts( \*CNT, $_ ) }
-        close CNT;
-    }
-
-    $average = 1 if ( @$counts < 6 );
-
-    my @freqs;
-    push @freqs, count_to_freq( sum_counts( $counts ), $pseudo ) if $average;
-
-    if ( @$counts < 6 )
-    {
-        print STDERR "gjocodonlib::modal_codon_usage() called with less than 6 sets of counts.\n",
-                     "   Returning average codon usage.\n"
-                     if ! $quiet;
-        return wantarray() ? ( 0, $freqs[0] ) : $freqs[0];
-    }
-
-    push @freqs, map { count_to_freq( $_, $pseudo ) } @$counts;
-
-    my $scr_opts = { count_file => $cnt_file,
-                     exponent   => $expon,
-                     pipes      => $pipes
-                   };
-
-    @freqs = sort { $b->[0] <=> $a->[0] }
-             score_codon_frequencies( \@freqs, $scr_opts );
-
-    splice @freqs, $n_top if @freqs > $n_top;
-
-    #  n_top is number of actual to keep
-    #  extra is number above min_vertices to explore
-
-    my $opt_opts = { count_file => $cnt_file,
-                     exponent   => $expon,
-                     extra      => $extra,
-                     pipes      => $pipes,
-                     verbose    => $verbose,
-                     vertices   => $vertices
-                   };
-
-    my ( $score, $modal_freqs ) = optimize_frequencies( \@freqs, $opt_opts );
-
-    unlink $cnt_file if ! $save_cnt_file;
-
-    wantarray() ? ( $score, $modal_freqs ) : $modal_freqs
 }
 
 
@@ -3064,7 +2897,7 @@ sub project_on_freq_vector_by_dist
     my $freq_1 = shift;  #  Frequencies at point 1
     return () if ! @_;
     my $d_freq_d_x = subtract_points( $freq_1, $freq_0 );
-    return undef if is_zero_vector( $d_freq_d_x );
+    return undef if zero_vector( $d_freq_d_x );
 
     #  Find the lower and upper bounds of x for each frequency:
 
@@ -3138,13 +2971,14 @@ sub project_by_min_distance
 #  the chi square value, the degrees of freedom and the number of different
 #  amino acids.
 #===============================================================================
+
 sub project_on_freq_vector_by_chi_sqr
 {
     my $freq_0 = shift;  #  Frequencies at point 0
     my $freq_1 = shift;  #  Frequencies at point 1
     return () if ! @_;
     my $d_freq_d_x = subtract_points( $freq_1, $freq_0 );
-    return undef if is_zero_vector( $d_freq_d_x );
+    return undef if zero_vector( $d_freq_d_x );
 
     #  Find the lower and upper bounds of x for each frequency:
 
@@ -3173,14 +3007,6 @@ sub project_on_freq_vector_by_chi_sqr
 }
 
 
-#-------------------------------------------------------------------------------
-#  Find the point on an axis defined by $f0 & $k for which the chi square is
-#  minimized:
-#
-#    ( $x, $chi_sqr, $df, $ncdn ) = project_by_min_chi_sqr( $freq_0, $d_freq_d_x, $counts, $min_x, $max_x )
-#    [ $x, $chi_sqr, $df, $ncdn ] = project_by_min_chi_sqr( $freq_0, $d_freq_d_x, $counts, $min_x, $max_x )
-#
-#-------------------------------------------------------------------------------
 sub project_by_min_chi_sqr
 {
     my ( $freq_0, $d_freq_d_x, $counts, $min_x, $max_x ) = @_;
@@ -3209,7 +3035,7 @@ sub project_by_min_chi_sqr
         $x_and_chi_sqr = ( sort { $a->[1] <=> $b->[1] } @chi_sqrs )[0];
     }
 
-    wantarray ? @$x_and_chi_sqr : $x_and_chi_sqr;
+    $x_and_chi_sqr
 }
 
 
@@ -3249,7 +3075,7 @@ sub projection_confidence_interval
 }
 
 
-sub is_zero_vector
+sub zero_vector
 {
     foreach ( @{ shift @_ }[ 0 .. 17 ] ) { foreach ( @$_ ) { return 0 if $_ } }
     return 1;
@@ -3341,7 +3167,7 @@ sub project_freq_on_axis_by_dist
 {
     my $f0 = shift;                               #  Frequencies at x = 0
     my $f1 = shift;                               #  Frequencies at x = 1
-    return( undef ) if is_zero_vector( subtract_points( $f1, $f0 ) );
+    return( undef ) if zero_vector( subtract_points( $f1, $f0 ) );
 
     #  No options are currently supported, but distance measure is an obvious
     #  choice.
@@ -3422,8 +3248,8 @@ sub project_freq_by_min_distance
 #  Coordinates along vector are measured with $freq0 being 0, and $freq1
 #  being 1.
 #
-#   @projections = project_on_axis_by_chi_sqr( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
-#   @projections = project_on_axis_by_chi_sqr( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
+#   @projections = project_freq_on_axis_by_chi_sqr( \@freq_0, \@freq_1,   \@cnts1, \@cnts2, ...   )
+#   @projections = project_freq_on_axis_by_chi_sqr( \@freq_0, \@freq_1, [ \@cnts1, \@cnts2, ... ] )
 #
 # Old name:
 #
@@ -3436,17 +3262,18 @@ sub project_freq_by_min_distance
 #     [ $projection_on_f0_f1_axis, $chi_square, $deg_of_freedom, $n_codon, $id ]
 #
 #-------------------------------------------------------------------------------
-sub project_on_freq_vector_by_chi_sqr_2 { project_on_axis_by_chi_sqr( @_ ) }
+
+sub project_on_freq_vector_by_chi_sqr_2 { project_freq_on_axis_by_chi_sqr( @_ ) }
 
 
-sub project_on_axis_by_chi_sqr
+sub project_freq_on_axis_by_chi_sqr
 {
     my $f0 = shift;                               #  Frequencies at x = 0
     my $f1 = shift;                               #  Frequencies at x = 1
     my $opts = ref $_[0] eq 'HASH' ? shift : {};  #  Options
     return () if ! @_;
 
-    return undef if is_zero_vector( subtract_points( $f1, $f0 ) );
+    return undef if zero_vector( subtract_points( $f1, $f0 ) );
 
     #  Compute exponential coeficient k for each codon for each amino acid:
 
@@ -3464,7 +3291,7 @@ sub project_on_axis_by_chi_sqr
                  :                                      @{$_[0]}
                  );
 
-    my @projections = map { scalar project_by_min_chi_sqr_2( $f0, $k, $_ ) }
+    my @projections = map { project_by_min_chi_sqr_2( $f0, $k, $_ ) }
                       @counts;
 
     wantarray ? @projections : \@projections
@@ -3474,13 +3301,11 @@ sub project_on_axis_by_chi_sqr
 #-------------------------------------------------------------------------------
 #  If $counts includes an id, i.e., $counts = [ [ [ ... ], ... ], $id ]:
 #
-#      ( $x, $chisqr, $df, $ncodon, $id ) = project_by_min_chi_sqr_2( $f0, $k, $counts )
-#      [ $x, $chisqr, $df, $ncodon, $id ] = project_by_min_chi_sqr_2( $f0, $k, $counts )
+#  [ $x, $chisqr, $df, $ncodon, $id ] = project_by_min_chi_sqr_2( $f0, $k, $counts )
 #
 #  If $counts does not include an id, i.e., $counts = [ [ ... ], ... ]:
 #
-#      ( $x, $chisqr, $df, $ncodon )      = project_by_min_chi_sqr_2( $f0, $k, $counts )
-#      [ $x, $chisqr, $df, $ncodon ]      = project_by_min_chi_sqr_2( $f0, $k, $counts )
+#  [ $x, $chisqr, $df, $ncodon ]      = project_by_min_chi_sqr_2( $f0, $k, $counts )
 #-------------------------------------------------------------------------------
 sub project_by_min_chi_sqr_2
 {
@@ -3512,16 +3337,14 @@ sub project_by_min_chi_sqr_2
         ( $x_and_chi_sqr ) = sort { $a->[1] <=> $b->[1] } @chi_sqrs;
     }
 
-    push @$x_and_chi_sqr, $id if defined $id;
-
-    wantarray ? @$x_and_chi_sqr : $x_and_chi_sqr;
+    push @$x_and_chi_sqr, $id if $id;
+    $x_and_chi_sqr
 }
 
 
-#-------------------------------------------------------------------------------
 #  Compute the exponential coeficient k for each codon for each amino acid:
 #  (does not check than frequencies are greater than 0)
-#-------------------------------------------------------------------------------
+
 sub k_from_f0_and_f1
 {
     my ( $f0, $f1 ) = @_;
@@ -3542,14 +3365,10 @@ sub k_from_f0_and_f1
 }
 
 
-#-------------------------------------------------------------------------------
 #  For a given point $x along the (extrapolated) line from $f0 to $f1, find
 #  the codon frequencies.  The exponential coeficients $k can be computed
 #  from $f0 and $f1 with k_from_f0_and_f1( $f0, $f1 ).
-#
-#     $freq = freqs_at_x( $f0, $k, $x )
-#
-#-------------------------------------------------------------------------------
+
 sub freqs_at_x
 {
     my ( $f0, $k, $x ) = @_;
@@ -3591,14 +3410,17 @@ sub freqs_at_x
 }
 
 
-#-------------------------------------------------------------------------------
+sub chi_sqr_at_x
+{
+    my ( $counts, $f0, $k, $x ) = @_;
+    count_vs_freq_chi_sqr( $counts, scalar freqs_at_x( $f0, $k, $x ) )
+}
+
+
 #  For a given point x along the (extrapolated) line from f0 to f1, find
 #  the codon frequencies.  ( When used multiple times for the same $f0 and
 #  $f1, it is more efficient to save the exponentical coeficients $k.)
-#
-#     $freq = freqs_at_x_given_f0_and_f1( $f0, $f1, $x )
-#
-#-------------------------------------------------------------------------------
+
 sub freqs_at_x_given_f0_and_f1
 {
     my ( $f0, $f1, $x ) = @_;
@@ -3606,17 +3428,20 @@ sub freqs_at_x_given_f0_and_f1
 }
 
 
-#-------------------------------------------------------------------------------
-#  This is used in the search for the value of x that will optimize the
-#  chi square p value, since the lowest chi square maximizes the P-value
-#
-#     $freq = freqs_at_x_given_f0_and_f1( $f0, $f1, $x )
-#
-#-------------------------------------------------------------------------------
-sub chi_sqr_at_x
+sub option_by_regexp
 {
-    my ( $counts, $f0, $k, $x ) = @_;
-    count_vs_freq_chi_sqr( $counts, scalar freqs_at_x( $f0, $k, $x ) )
+    my ( $opts, $regexp, $default ) = @_;
+    return $default if ! $opts || ref $opts ne 'HASH' || ! $regexp;
+    my ( $key ) = grep { $_ =~ $regexp } keys %$opts;
+    $key && defined( $opts->{ $key } ) ? $opts->{ $key } : $default
+}
+
+
+sub option_value
+{
+    my ( $opts, $key, $default ) = @_;
+    $opts && ref( $opts ) eq 'HASH'
+          && $key && defined( $opts->{ $key } ) ? $opts->{ $key } : $default
 }
 
 
@@ -3636,7 +3461,7 @@ sub codon_counts_x_and_p
     $f1   && ref( $f1 )   eq 'ARRAY' && @$f0 or return ();
     $opts && ref( $opts ) eq 'HASH' or $opts = {};
 
-    my $max_len = $opts->{ max_len };
+    my $max_len = $opts->{ max_len } || 1e99;
     my $genome  = $opts->{ genome  } || 0;
 
     my @cnts = is_array_of_cnts_or_freqs( $_[0] ) ? @{$_[0]} : @_;
@@ -3682,7 +3507,8 @@ sub codon_counts_x_and_p
 
         foreach my $cnt ( @cnts )
         {
-            my ( $x, $chisqr, $df, $n ) = project_by_min_chi_sqr_2( $f0, $k, $cnt );
+            my ( $proj ) = &project_by_min_chi_sqr_2( $f0, $k, $cnt );
+            my ( $x, $chisqr, $df, $n ) = @$proj;
             my $p;
             if ( $genome && $x < 0 )
             {
@@ -3692,7 +3518,7 @@ sub codon_counts_x_and_p
             }
             else
             {
-                $chisqr *= ( $max_len / $n ) if ( $max_len && $n > $max_len );
+                $chisqr *= ( $max_len / $n ) if ( $n > $max_len );
                 $p = ( $df > 1 ) ? gjostat::chisqr_prob( $chisqr, $df ) : 1;
             }
             push @x_p, [ $x, $p ];
@@ -3700,150 +3526,6 @@ sub codon_counts_x_and_p
     }
 
     wantarray ? @x_p : \@x_p;
-}
-
-
-#===============================================================================
-#  Evaluate a batch of codon usages for match on an axis defined by $f0 and $f1.
-#-------------------------------------------------------------------------------
-#   @x_lnL = codon_counts_x_and_lnL( $f0, $f1, \%opts,   $cnt, $cnt, ... );
-#  \@x_lnL = codon_counts_x_and_lnL( $f0, $f1, \%opts,   $cnt, $cnt, ... );
-#   @x_lnL = codon_counts_x_and_lnL( $f0, $f1, \%opts, \@$cnts );
-#  \@x_lnL = codon_counts_x_and_lnL( $f0, $f1, \%opts, \@$cnts );
-#-------------------------------------------------------------------------------
-sub codon_counts_x_and_lnL
-{
-    my ( $f0, $f1, $opts ) = splice @_, 0, 3;
-
-    $f0   && ref( $f0 )   eq 'ARRAY' && @$f0 or return ();
-    $f1   && ref( $f1 )   eq 'ARRAY' && @$f0 or return ();
-    $opts && ref( $opts ) eq 'HASH' or $opts = {};
-
-    my $max_len = $opts->{ max_len };
-    my $genome  = $opts->{ genome  } || 0;
-
-    my @cnts = is_array_of_cnts_or_freqs( $_[0] ) ? @{$_[0]} : @_;
-
-    my @x_lnL;
-
-    #  If there are more than 100 counts to evaluate, try a pipe.
-    #  This is not yet converted from p value to lnL
-
-    if ( 0 && @cnts > 100 && &version( 'codon_counts_x_and_p' ) )
-    {
-        my @eval_cmd = ( 'codon_counts_x_and_p',
-                         ( $max_len ? ( '-l', $max_len ) : () )
-                       );
-        my ( $rd, $wr );
-        my $pid = open2( $rd, $wr, @eval_cmd );
-        { my $old = select $wr; $| = 1; select $old; }  #  Autoflush the write pipe
-        &report_frequencies( $wr, $f0 );
-        &report_frequencies( $wr, $f1 );
-
-        foreach my $cnt ( @cnts )
-        {
-            report_counts( $wr, $cnt );
-            my ( $x, $lnL ) = map { chomp; split /\t/ } scalar <$rd>;
-            if ( $genome && $x < 0 )
-            {
-                $x   = 0;
-                $lnL = count_vs_freq_lnL( $cnt, $f0, $max_len )
-
-            }
-            push @x_lnL, [ $x, $lnL ];
-        }
-
-        close $wr if $wr;
-        close $rd if $rd;
-        waitpid( $pid, 0 ) if $pid;
-    }
-
-    #  Otherwise, do it in perl
-
-    else
-    {
-        my $k = &k_from_f0_and_f1( $f0, $f1 );
-
-        foreach my $cnt ( @cnts )
-        {
-            my ( $x, $lnL ) = project_by_max_lnL( $f0, $k, $cnt );
-            if ( $genome && $x < 0 )
-            {
-                $x   = 0;
-                $lnL = count_vs_freq_lnL( $cnt, $f0, $max_len )
-
-            }
-            elsif ( $max_len )
-            {
-                my $n = n_codon( $cnt );
-                $lnL *= ( $max_len / $n ) if ( $n > $max_len );
-            }
-            push @x_lnL, [ $x, $lnL ];
-        }
-    }
-
-    wantarray ? @x_lnL : \@x_lnL;
-}
-
-
-#-------------------------------------------------------------------------------
-#  Divide and conquer search for x value with maximum log( likelihood ).
-#
-#  If $counts includes an id, i.e., $counts = [ [ [ ... ], ... ], $id ]:
-#
-#      ( $x, $lnL, $id ) = project_by_max_lnL( $f0, $k, $counts )
-#      [ $x, $lnL, $id ] = project_by_max_lnL( $f0, $k, $counts )
-#
-#  If $counts does not include an id, i.e., $counts = [ [ ... ], ... ]:
-#
-#      ( $x, $lnL )      = project_by_max_lnL( $f0, $k, $counts )
-#      [ $x, $lnL ]      = project_by_max_lnL( $f0, $k, $counts )
-#-------------------------------------------------------------------------------
-sub project_by_max_lnL
-{
-    my ( $f0, $k, $counts ) = @_;
-
-    #  Allow $counts = [ [ ... ], ... ] or [ [ [ ... ], ... ], $id ]
-
-    my $id;
-    ( $counts, $id ) = @$counts if ( ! ref $counts->[1] );
-    my ( $min_x, $max_x ) = ( -5, 5 );
-    my $n_step = 20;
-    my $inc = ( $max_x - $min_x ) / $n_step;
-
-    my @x_and_lnL = map { [ $_, lnL_at_x( $counts, $f0, $k, $_ ) ] }
-                    map { $inc * $_ + $min_x }    # Convert counter value to x
-                    ( 1 .. ($n_step-1) );         # Leave empty space at ends
-
-    my ( $x_and_lnL ) = sort { $b->[1] <=> $a->[1] } @x_and_lnL;
-
-    #  Divide and conquer search centered on current best point
-
-    while ( $inc > 0.0005 )
-    {
-        $inc *= 0.5;
-        my $x0 = $x_and_lnL->[0];
-        @x_and_lnL = ( $x_and_lnL,
-                       map { [ $_, lnL_at_x( $counts, $f0, $k, $_ ) ] } ( $x0-$inc, $x0+$inc )
-                     );
-        ( $x_and_lnL ) = sort { $b->[1] <=> $a->[1] } @x_and_lnL;
-    }
-
-    push @$x_and_lnL, $id if defined $id;
-
-    wantarray ? @$x_and_lnL : $x_and_lnL;
-}
-
-
-#------------------------------------------------------------------------------
-#  Given counts, $f0, $k and $x, what is the log( likelihood )?
-#
-#     $lnL = lnL_at_x( $counts, $f0, $k, $x )
-#------------------------------------------------------------------------------
-sub lnL_at_x
-{
-    my ( $counts, $f0, $k, $x ) = @_;
-    count_vs_freq_lnL( $counts, scalar freqs_at_x( $f0, $k, $x ) )
 }
 
 
@@ -3901,29 +3583,6 @@ sub is_array_of_cnts_or_freqs
 {
     local $_ = shift;
     ( $_ && ref $_ eq 'ARRAY' && @$_ ) ? is_cnts_or_freqs( $_->[0] ) : 0;
-}
-
-
-#------------------------------------------------------------------------------
-#   $value = option_by_regexp( $opts, $regexp, $default )
-#------------------------------------------------------------------------------
-sub option_by_regexp
-{
-    my ( $opts, $regexp, $default ) = @_;
-    return $default if ! $opts || ref $opts ne 'HASH' || ! $regexp;
-    my ( $key ) = grep { $_ =~ $regexp } keys %$opts;
-    $key && defined( $opts->{ $key } ) ? $opts->{ $key } : $default
-}
-
-
-#------------------------------------------------------------------------------
-#   $value = option_value( $opts, $regexp, $default )
-#------------------------------------------------------------------------------
-sub option_value
-{
-    my ( $opts, $key, $default ) = @_;
-    $opts && ref( $opts ) eq 'HASH'
-          && $key && defined( $opts->{ $key } ) ? $opts->{ $key } : $default
 }
 
 

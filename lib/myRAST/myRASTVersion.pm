@@ -6,7 +6,7 @@ sub new
 {
     my($class) = @_;
     my $self = {
-	release => "39",
+	release => "36",
     };
     return bless $self, $class;
 }

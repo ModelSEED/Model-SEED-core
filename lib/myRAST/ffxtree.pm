@@ -841,7 +841,6 @@ sub read_set {
 #     nc            => $n                     # maximum number of colors (D = 10)
 #     popup         => \%id_to_popup          # mouseovers for tips:             
 #                                               to appear in 'Description' field of tip popup window
-#     popup_field   => $str                   # popup field name (D = 'Description')
 #     raw           => bool                   # paint the original tree
 #     title         => $str                   # title for HTML page
 #
@@ -1337,7 +1336,7 @@ sub fix_tip_links {
         my $peg  = $opts->{fig}->{$_} or next;
         my $link = peg_link($peg, $opts->{anno});
         $link ||= SeedUtils::id_url($opts->{alias}->{$_}) || SeedUtils::id_url($_);
-        $opts->{link}->{$_} ||= $link;
+        $opts->{link}->{$_} = $link;
     }
 }
 
@@ -1354,17 +1353,13 @@ sub fix_tip_popups {
     my ($tree, $opts) = @_;
 
     my $spc = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-    my $field = $opts->{popup_field} || 'Description';
 
     for my $tip (newick_tip_list($tree)) {
         my ($feature, $html);
         # $feature->{'Alias'}       = [ $opts->{alias}->{$tip} ]                if $opts->{alias}->{$tip};
+        $feature->{'Description'} = [ $opts->{popup}->{$tip} ]                if $opts->{popup}->{$tip};
         $feature->{'Taxonomy'}    = [ reverse @{$opts->{tax}->{$tip}}[0..5] ] if $opts->{tax}->{$tip};
         $feature->{'Function'}    = [ split(/@\s*/, $opts->{role}->{$tip})  ] if $opts->{role}->{$tip};
-
-        if ($opts->{popup}->{$tip}) {
-            $feature->{$field}    = ref($opts->{popup}->{$tip}) eq 'ARRAY' ? $opts->{popup}->{$tip} : [ $opts->{popup}->{$tip} ];
-        }
         
         my @lines;
         for my $k (sort keys %$feature) {
@@ -1432,13 +1427,13 @@ sub html_tree_body {
         my $text  = $opts->{text_link}->{$_};
 
         my @words = split(/\s+/, $id);
-        if (int($gray) > 0) {
+        if ($gray > 0) {
             $id   = join(" ", @words[0..$gray-1]);
             $desc = join(" ", @words[$gray..$#words]);
         }
 
         $id    = $id . " (duplicate)" if $opts->{dup}->{$_};
-        $id    = span_description($id, $opts->{desc}->{$_});
+        $id    = $id . " (". $opts->{desc}->{$_} .")" if $opts->{desc}->{$_};
         $id    = add_link($id, $opts->{link}->{$_});
         $id    = span_css($id, "bold") if $opts->{focus_set}->{$_};
         $id    = span_css($id, $opts->{color}->{$_});
@@ -1536,13 +1531,6 @@ sub span_identical_seqs {
                 map { join(" ", $_, $opts->{name}->{$_}) } @$idents;
 
     return span_mouseover($text, $title, join('<br/>', @names));
-}
-
-sub span_description {
-    my ($id, $desc) = @_;
-    return $id unless $desc;
-    my @txts = ref $desc eq 'ARRAY' ? @$desc : $desc;
-    return $id . " ". join(" ", map { "(". $_ .")" } @txts);
 }
 
 sub span_collapsed_subtree {

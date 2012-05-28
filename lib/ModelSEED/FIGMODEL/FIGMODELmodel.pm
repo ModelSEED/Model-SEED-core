@@ -1,5 +1,6 @@
 use strict;
 package ModelSEED::FIGMODEL::FIGMODELmodel;
+use XML::LibXML;
 use Scalar::Util qw(weaken);
 use Carp qw(cluck);
 
@@ -25,7 +26,7 @@ sub new {
 	});
 	my $self = {_figmodel => $args->{figmodel},_mainfigmodel => $args->{figmodel}};
 	# weaken figmodel even though it should disappear quickly, replaced by a private figmodel
-	Scalar::Util::weaken($self->{_figmodel});
+	#Scalar::Util::weaken($self->{_figmodel});
 	Scalar::Util::weaken($self->{_mainfigmodel});
 	bless $self;
 	#If the init argument is provided, we attempt to build a new model
@@ -973,20 +974,18 @@ Description:
 =cut
 sub get_reaction_equation {
 	my ($self,$args) = @_;
-	my $rxnData = $self->get_reaction_data($args);
+	if (!defined($args->{-data}) && defined($args->{-id})) {
+		$args->{-data} = $self->get_reaction_data($args);
+	}
+	my $rxnData = $args->{-data};
 	if (!defined($rxnData)) {
 		return undef;
 	}
 	my $obj;
 	if ($rxnData->{LOAD}->[0] =~ m/(rxn\d\d\d\d\d)/) {
 		my $rxnID = $1;
-		my $rxnHash = $self->figmodel()->database()->get_object_hash({type=>"reaction",attribute=>"id",-onlyIfCached=>1});
-		if (defined($rxnHash)) {
-			if (defined($rxnHash->{$rxnID})) {
-				$obj = $rxnHash->{$rxnID}->[0];
-			}
-		} else {
-			$obj = $self->figmodel()->database()->get_object("reaction",{id => $rxnID});
+		if (defined($args->{-rxnhash}->{$rxnID})) {
+			$obj = $args->{-rxnhash}->{$rxnID}->[0];
 		}
 	} elsif ($rxnData->{LOAD}->[0] =~ m/(bio\d\d\d\d\d)/) {
 		$obj = $self->figmodel()->database()->get_object("bof",{id => $1});
@@ -994,7 +993,6 @@ sub get_reaction_equation {
 	if (!defined($obj)) {
 		ModelSEED::utilities::ERROR("can't find reaction ".$rxnData->{LOAD}->[0]." in database!");
 	}
-	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $equation = $obj->equation();
 	my $direction = $rxnData->{DIRECTIONALITY}->[0];
 	#Setting reaction directionality
@@ -1007,12 +1005,12 @@ sub get_reaction_equation {
 			my $origCpd = $reactants[$i];
 			my $cpd = $origCpd;
 			if (defined($args->{-style}) && $args->{-style} eq "NAME") {
-				if (defined($cpdHash->{$origCpd}) && defined($cpdHash->{$origCpd}->[0]->name()) && length($cpdHash->{$origCpd}->[0]->name()) > 0) {
-					$cpd = $cpdHash->{$origCpd}->[0]->name();
+				if (defined($args->{-cpdhash}->{$origCpd}) && defined($args->{-cpdhash}->{$origCpd}->[0]->name()) && length($args->{-cpdhash}->{$origCpd}->[0]->name()) > 0) {
+					$cpd = $args->{-cpdhash}->{$origCpd}->[0]->name();
 				}
 			} elsif (defined($args->{-style}) && $args->{-style} eq "ABBREV") {
-				if (defined($cpdHash->{$origCpd}) && defined($cpdHash->{$origCpd}->[0]->abbrev()) && length($cpdHash->{$origCpd}->[0]->abbrev()) > 0) {
-					$cpd = $cpdHash->{$origCpd}->[0]->abbrev();
+				if (defined($args->{-cpdhash}->{$origCpd}) && defined($args->{-cpdhash}->{$origCpd}->[0]->abbrev()) && length($args->{-cpdhash}->{$origCpd}->[0]->abbrev()) > 0) {
+					$cpd = $args->{-cpdhash}->{$origCpd}->[0]->abbrev();
 				}
 			}
 			if ($rxnData->{COMPARTMENT}->[0] ne "c") {
@@ -1658,25 +1656,21 @@ sub biomassReaction {
 		if (!defined($bioobj)) {
 			ModelSEED::utilities::ERROR("Could not find new biomass reaction ".$newBiomass." in database!");
 		}
-		my $oldBiomass = $self->ppo()->biomassReaction();
-		my $found = 0;
+		#Deleting all existing biomass reactions
 		my $rxnmdl = $self->rxnmdl();
 		for (my $i=0; $i < @{$rxnmdl}; $i++) {
-			if ($rxnmdl->[$i]->REACTION() eq $oldBiomass) {
-				$found = 1;
-				$rxnmdl->[$i]->REACTION($newBiomass);
+			if ($rxnmdl->[$i]->REACTION() =~ m/bio\d+/) {
+				$rxnmdl->[$i]->delete();
 			}
 		}
-		if ($found == 0) {
-			$self->db()->create_object("rxnmdl",{
-				MODEL=>$self->id(),
-				REACTION=>$newBiomass,
-				compartment=>"c",
-				confidence=>1,
-				pegs=>"SPONTANEOUS",
-				directionality=>"=>"
-			})
-		}
+		$self->db()->create_object("rxnmdl",{
+			MODEL=>$self->id(),
+			REACTION=>$newBiomass,
+			compartment=>"c",
+			confidence=>1,
+			pegs=>"SPONTANEOUS",
+			directionality=>"=>"
+		});
 		$self->ppo()->biomassReaction($newBiomass);
 	}
 	return $self->ppo()->biomassReaction();
@@ -2110,18 +2104,18 @@ sub completeGapfilling {
 		});
 	}
 	#Assessing the gapfilling solution
-	if ($args->{testsolution} == 1) {
-		$results = $self->fbaTestGapfillingSolution({
-			fbaStartParameters => {
-				media => "Complete",
-				drnRxn => $args->{drnRxn}	
-			},
-			problemDirectory => $self->id()."GFT"
-		});
-		if (defined($results->{fbaObj})) {
-			$results->{fbaObj}->clearOutput();
-		}
-	}
+#	if ($args->{testsolution} == 1) {
+#		$results = $self->fbaTestGapfillingSolution({
+#			fbaStartParameters => {
+#				media => "Complete",
+#				drnRxn => $args->{drnRxn}	
+#			},
+#			problemDirectory => $self->id()."GFT"
+#		});
+#		if (defined($results->{fbaObj})) {
+#			$results->{fbaObj}->clearOutput();
+#		}
+#	}
 	$self->set_status(2,"New gapfilling complete");
 	$self->update_model_stats();
 	#$self->update_stats_for_gap_filling(time() - $start);
@@ -2230,8 +2224,12 @@ sub integrateGapfillingSolution {
 				$output->{gaps}++;
 			}
 		} else {
-			print "Deleting reaction ".$rxnObjs->[$i]->REACTION()."\n";
-			$rxnObjs->[$i]->delete();	
+		    if($rxnObjs->[$i]->pegs() eq "AUTOCOMPLETION"){
+			print "Deleting previously auto-completed reaction: ".$rxnObjs->[$i]->REACTION()."\n";
+		    }else{
+			print "Deleting reaction in database that is not found in model file: ".$rxnObjs->[$i]->REACTION()."\n";
+		    }
+		    $rxnObjs->[$i]->delete();	
 		}
 	}
 	for (my $i=0; $i < $rxns->size(); $i++) {
@@ -2996,7 +2994,7 @@ sub reconstruction {
 		checkpoint => 1,
 		autocompletion => 1,
 		biochemSource => undef
-	});	
+		});
 	#Getting genome data and feature table
 	$self->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
@@ -3155,41 +3153,16 @@ sub reconstruction {
 		ModelSEED::utilities::ERROR("Could not find biomass reaction ".$biomassID);
 	}
 	#Getting the list of essential reactions for biomass reaction
-	my $ReactionList;
-	my $essentialReactions = $bioRxn->essentialRxn();
-	if (defined($essentialReactions) && $essentialReactions =~ m/rxn\d\d\d\d\d/) {
-		push(@{$ReactionList},split(/\|/,$essentialReactions));
-		if ($essentialReactions !~ m/$biomassID/) {
-			push(@{$ReactionList},$biomassID);
-		}
-	} else {
-		push(@{$ReactionList},$biomassID);
-	}
-	#Adding biomass reactions to the model table
-	foreach my $BOFReaction (@{$ReactionList}) {
-		if (!defined($newRxnRowHash->{$BOFReaction})) {
-			my ($direction,$pegs,$confidence);
-			if ($BOFReaction =~ m/bio/) {
-				$direction = "=>";
-				$pegs = "BIOMASS";
-				$confidence = 1;
-			} else {
-				$direction = $rxnRevHash->{$BOFReaction};
-				$pegs = "BIOMASS AUTOCOMPLETION";
-				$confidence = 5;
-			}
-			$newRxnRowHash->{$BOFReaction} = {
-				MODEL => $self->id(),
-				REACTION => $BOFReaction,
-				directionality => $direction,
-				compartment => "c",
-				pegs => "UNIVERSAL",
-				reference => "SEED",
-				notes => "NONE",
-				confidence => $confidence
-			};
-		}
-	}
+	$newRxnRowHash->{$biomassID} = {
+		MODEL => $self->id(),
+		REACTION => $biomassID,
+		directionality => "=>",
+		compartment => "c",
+		pegs => "UNIVERSAL",
+		reference => "SEED",
+		notes => "NONE",
+		confidence => 3
+	};
    	#If a model already exists, we checkpoint
 	my $rxnMdl = $self->rxnmdl({clearCache => 1});
 	my $checkpointed = 0;
@@ -5827,40 +5800,57 @@ Description:
 	Printing file with model data in SBML format
 =cut
 sub PrintSBMLFile {
-	my($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,[],{media => "Complete"});
-	if (-e $self->directory().$self->id().".xml") {
-		unlink($self->directory().$self->id().".xml");	
+    my($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{media => "Complete"});
+    if (-e $self->directory().$self->id().".xml") {
+	unlink($self->directory().$self->id().".xml");	
+    }
+    # convert ids to SIds
+    my $idToSId = sub {
+        my $id = shift @_;
+        my $cpy = $id;
+        # SIds must begin with a letter
+        $cpy =~ s/^([^a-zA-Z])/A_$1/;
+        # SIDs must only contain letters numbers or '_'
+        $cpy =~ s/[^a-zA-Z0-9_]/_/g;
+        return $cpy;
+    };
+
+    #clean names
+    my $stringToString = sub {
+	my ($name,$value) = @_;
+	#SNames cannot contain angle brackets
+	my $cpy = XML::LibXML::Attr->new($name,$value)->toString();
+	return $cpy;
+    };
+
+    #Handling media formulation for SBML file
+    my $mediaCpd;
+    if ($args->{media} ne "Complete") {
+	$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
+    }
+    if (!defined($args->{media})) {
+	$args->{media} = "Complete";
+    }
+    if ($args->{media} ne "Complete") {
+	for (my $i=0; $i < @{$args->{media}->mediaCompounds()}; $i++) {
+	    $mediaCpd->{$args->{media}->mediaCompounds()->[$i]->entity()} = $args->{media}->mediaCompounds()->[$i];
 	}
+    }
 	
-	#Handling media formulation for SBML file
-	my $mediaCpd;
-	if ($args->{media} ne "Complete") {
-		$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
-	}
-	if (!defined($args->{media})) {
-		$args->{media} = "Complete";
-	}
-	if ($args->{media} ne "Complete") {
-		for (my $i=0; $i < @{$args->{media}->mediaCompounds()}; $i++) {
-			$mediaCpd->{$args->{media}->mediaCompounds()->[$i]->entity()} = $args->{media}->mediaCompounds()->[$i];
-		}
-	}
-	
-	#Adding intracellular metabolites that also need exchange fluxes to the exchange hash
-	my $ExchangeHash = {"cpd11416" => "c"};
-	my %CompartmentsPresent;
-	$CompartmentsPresent{"c"} = 1;
-	my %CompoundList;
-	my @ReactionList;
-	my $rxnDBHash = $self->figmodel()->database()->get_object_hash({
-		type => "reaction",
-		attribute => "id",
-		useCache => 1
-	});
-	my $rxnmdl = $self->rxnmdl();
-	my $rxnHash;
-	my $reactionCompartments;
+    #Adding intracellular metabolites that also need exchange fluxes to the exchange hash
+    my $ExchangeHash = {};
+    my %CompartmentsPresent = ("c"=>1,"e"=>1);
+    my %CompoundList;
+    my @ReactionList;
+    my $rxnDBHash = $self->figmodel()->database()->get_object_hash({
+	type => "reaction",
+	attribute => "id",
+	useCache => 1
+    });
+    my $rxnmdl = $self->rxnmdl();
+    my $rxnHash;
+    my $reactionCompartments;
 	for (my $i=0; $i < @{$rxnmdl}; $i++) {
 		if (defined($rxnmdl->[$i])) {
 			$rxnHash->{$rxnmdl->[$i]->REACTION()}->{$rxnmdl->[$i]->compartment()} = $rxnmdl->[$i];
@@ -5894,8 +5884,7 @@ sub PrintSBMLFile {
 	}
 
 	#Printing header to SBML file
-	my $ModelName = $self->fullId();
-	$ModelName =~ s/\./_/g;
+	my $ModelName = $idToSId->($self->id());
 	my $output;
 	push(@{$output},'<?xml version="1.0" encoding="UTF-8"?>');
 	push(@{$output},'<sbml xmlns="http://www.sbml.org/sbml/level2" level="2" version="1" xmlns:html="http://www.w3.org/1999/xhtml">');
@@ -5927,14 +5916,14 @@ sub PrintSBMLFile {
 			if (defined($CompartmentsPresent{$Outside})) {
 				my $newObj = $self->figmodel()->database()->get_object("compartment",{id => $Outside});
 				if (defined($newObj)) {
-					push(@{$output},'<compartment id="'.$cmpObj->name().'" outside="'.$newObj->name().'"/>');
+					push(@{$output},'<compartment '.$stringToString->("id",$cmpObj->id()).' '.$stringToString->("name",$cmpObj->name()).' '.$stringToString->("outside",$newObj->id()).'/>');
 					$Printed = 1;
 					last;
 				}
 			}
 		}
 		if ($Printed eq 0) {
-			push(@{$output},'<compartment id="'.$cmpObj->name().'"/>');
+			push(@{$output},'<compartment '.$stringToString->("id",$cmpObj->id()).' '.$stringToString->("name",$cmpObj->name()).'/>');
 		}
 	}
 	push(@{$output},'</listOfCompartments>');
@@ -5946,8 +5935,12 @@ sub PrintSBMLFile {
 		attribute => "id",
 		useCache => 1
 	});
+    my $biomassDrainC = 1;
+    my $biomassDrainB = 1;
+
 	foreach my $Compound (keys(%CompoundList)) {
 		my $cpdObj;
+        $biomassDrainC = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -5972,13 +5965,14 @@ sub PrintSBMLFile {
 			}
 			my $cmpObj = $self->figmodel()->database()->get_object("compartment",{id => $Compartment});
 			#print STDERR $Compartment,"\t",$cmpObj,"\t",$cmpObj->name(),"\n";
-			push(@{$output},'<species id="'.$Compound.'_'.$Compartment.'" name="'.$Name.'" compartment="'.$cmpObj->id().'" charge="'.$Charge.'" boundaryCondition="false"/>');
+			push(@{$output},'<species '.$stringToString->("id",$Compound.'_'.$Compartment).' '.$stringToString->("name",$Name).' '.$stringToString->("compartment",$cmpObj->id()).' '.$stringToString->("charge",$Charge).' boundaryCondition="false"/>');
 		}
 	}
 	
 	#Printing the boundary species
 	foreach my $Compound (keys(%{$ExchangeHash})) {
 		my $cpdObj;
+        $biomassDrainB = 0 if ($Compound eq "cpd11416");
 		if (defined($cpdHash->{$Compound})) {
 			$cpdObj = $cpdHash->{$Compound}->[0];
 		}
@@ -5997,8 +5991,17 @@ sub PrintSBMLFile {
 		if (defined($cpdObj->charge())) {
 			$Charge = $cpdObj->charge();
 		}
-		push(@{$output},'<species id="'.$Compound.'_b" name="'.$Name.'" compartment="Extracellular" charge="'.$Charge.'" boundaryCondition="true"/>');
+		push(@{$output},'<species '.$stringToString->("id",$Compound."_b").' '.$stringToString->("name",$Name).' compartment="e" '.$stringToString->("charge",$Charge).' boundaryCondition="true"/>');
 	}
+
+	#Add compounds for specific biomass drain if we haven't added them already
+    if($biomassDrainC) {
+        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+    }
+    if($biomassDrainB) {
+        push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
+    }
+
 	push(@{$output},'</listOfSpecies>');
 
 	#Printing the list of reactions involved in the model
@@ -6014,6 +6017,13 @@ sub PrintSBMLFile {
 	});
 	for (my $i=0; $i < @ReactionList; $i++) {
 	   	my $rxnObj = $ReactionList[$i];
+
+		my ($Reactants,$Products) = $self->figmodel()->get_reaction("rxn00001")->substrates_from_equation({equation=>$rxnObj->equation()});
+
+		if ((!defined($Reactants) || @{$Reactants} == 0) && (!defined($Products) || @{$Products} == 0)) {
+		    next;
+		}
+
 		$ObjectiveCoef = "0.0";
 		my $mdlObj = $rxnHash->{$rxnObj->id()}->{$reactionCompartments->[$i]};
 		if ($rxnObj->id() =~ m/^bio/) {
@@ -6021,7 +6031,6 @@ sub PrintSBMLFile {
 		}
 		my $LowerBound = -10000;
 		my $UpperBound = 10000;
-		my ($Reactants,$Products) = $self->figmodel()->get_reaction("rxn00001")->substrates_from_equation({equation=>$rxnObj->equation()});
 		my $Name = $rxnObj->name();
 		$Name =~ s/[<>;:&\*]//g;
 		my $Reversibility = "true";
@@ -6034,7 +6043,7 @@ sub PrintSBMLFile {
 			$Products = $Reactants;
 			$Reactants = $Temp;
 		}
-		 push(@{$output},'<reaction id="'.$rxnObj->id().'" name="'.$Name.'" reversible="'.$Reversibility.'">');
+		 push(@{$output},'<reaction '.$stringToString->("id",$rxnObj->id()).' '.$stringToString->("name",$Name).' '.$stringToString->("reversible",$Reversibility).'>');
 		 push(@{$output},"<notes>");
 		my $ECData = "";
 		if ($rxnObj->id() !~ m/^bio/) {
@@ -6100,14 +6109,14 @@ sub PrintSBMLFile {
 		 if (defined($Reactants) && @{$Reactants} > 0) {
 			 push(@{$output},"<listOfReactants>");
 			 foreach my $Reactant (@{$Reactants}) {
-				 push(@{$output},'<speciesReference species="'.$Reactant->{"DATABASE"}->[0]."_".$Reactant->{"COMPARTMENT"}->[0].'" stoichiometry="'.$Reactant->{"COEFFICIENT"}->[0].'"/>');
+			     push(@{$output},'<speciesReference '.$stringToString->("species",$Reactant->{"DATABASE"}->[0]."_".$Reactant->{"COMPARTMENT"}->[0]).' '.$stringToString->("stoichiometry",$Reactant->{"COEFFICIENT"}->[0]).'/>');
 			 }
 			 push(@{$output},"</listOfReactants>");
 		 }
 		 if (defined($Products) && @{$Products} > 0) {
 			 push(@{$output},"<listOfProducts>");
 			foreach my $Product (@{$Products}) {
-				 push(@{$output},'<speciesReference species="'.$Product->{"DATABASE"}->[0]."_".$Product->{"COMPARTMENT"}->[0].'" stoichiometry="'.$Product->{"COEFFICIENT"}->[0].'"/>');
+				 push(@{$output},'<speciesReference '.$stringToString->("species",$Product->{"DATABASE"}->[0]."_".$Product->{"COMPARTMENT"}->[0]).' '.$stringToString->("stoichiometry",$Product->{"COEFFICIENT"}->[0]).'/>');
 			 }
 			push(@{$output},"</listOfProducts>");
 		 }
@@ -6116,10 +6125,10 @@ sub PrintSBMLFile {
 		push(@{$output},"\t\t\t<ci> FLUX_VALUE </ci>");
 		push(@{$output},"\t</math>");
 		push(@{$output},"\t<listOfParameters>");
-		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"".$LowerBound."\" units=\"mmol_per_gDW_per_hr\"/>");
-		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"".$UpperBound."\" units=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"".$LowerBound."\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"".$UpperBound."\" name=\"mmol_per_gDW_per_hr\"/>");
 		push(@{$output},"\t\t<parameter id=\"OBJECTIVE_COEFFICIENT\" value=\"".$ObjectiveCoef."\"/>");
-		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" units=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" name=\"mmol_per_gDW_per_hr\"/>");
 		push(@{$output},"\t</listOfParameters>");
 		push(@{$output},"</kineticLaw>");
 		push(@{$output},'</reaction>');
@@ -6146,7 +6155,7 @@ sub PrintSBMLFile {
 				$min = -10000;
 			}
 		}
-		push(@{$output},'<reaction id="EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}.'" name="EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}.'" reversible="true">');
+		push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("name",'EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}).' reversible="true">');
 		push(@{$output},"\t".'<notes>');
 		push(@{$output},"\t\t".'<html:p>GENE_ASSOCIATION: </html:p>');
 		push(@{$output},"\t\t".'<html:p>PROTEIN_ASSOCIATION: </html:p>');
@@ -6154,10 +6163,10 @@ sub PrintSBMLFile {
 		push(@{$output},"\t\t".'<html:p>PROTEIN_CLASS: </html:p>');
 		push(@{$output},"\t".'</notes>');
 		push(@{$output},"\t".'<listOfReactants>');
-		push(@{$output},"\t\t".'<speciesReference species="'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}.'" stoichiometry="1.000000"/>');
+		push(@{$output},"\t\t".'<speciesReference '.$stringToString->("species",$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' stoichiometry="1.000000"/>');
 		push(@{$output},"\t".'</listOfReactants>');
 		push(@{$output},"\t".'<listOfProducts>');
-		push(@{$output},"\t\t".'<speciesReference species="'.$ExCompound.'_b" stoichiometry="1.000000"/>');
+		push(@{$output},"\t\t".'<speciesReference '.$stringToString->("species",$ExCompound."_b").' stoichiometry="1.000000"/>');
 		push(@{$output},"\t".'</listOfProducts>');
 		push(@{$output},"\t".'<kineticLaw>');
 		push(@{$output},"\t\t".'<math xmlns="http://www.w3.org/1998/Math/MathML">');
@@ -6373,6 +6382,7 @@ sub generate_reaction_data_table {
 	my $roleHash = $self->figmodel()->mapping()->get_role_rxn_hash();
 	my $keggHash = $self->figmodel()->database()->get_object_hash({type=>"rxnals",attribute=>"REACTION",parameters=>{type=>"KEGG"},useCache=>1});
 	my $rxnHash = $self->figmodel()->database()->get_object_hash({type=>"reaction",attribute=>"id",useCache=>1});
+	my $cpdHash = $self->figmodel()->database()->get_object_hash({type=>"compound",attribute=>"id",useCache=>1});
 	my $rxntbl = $self->reaction_table();
 	my $outputTbl = ModelSEED::FIGMODEL::FIGMODELTable->new($headings,$self->directory()."ReactionTable-".$self->id().".tbl",undef,"\t","|",undef);	
 	for (my $i=0; $i < $rxntbl->size();$i++) {
@@ -6404,11 +6414,11 @@ sub generate_reaction_data_table {
 				} elsif ($headings->[$j] eq "REFERENCE") {
 					$newRow->{$headings->[$j]} = $row->{REFERENCE};	
 				} elsif ($headings->[$j] eq "EQUATION") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ID"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"ID"});
 				} elsif ($headings->[$j] eq "ABBREVIATION EQ") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"ABBREV"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"ABBREV"});
 				} elsif ($headings->[$j] eq "NAME EQ") {
-					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-id=>$row->{LOAD}->[0],-style=>"NAME"});
+					$newRow->{$headings->[$j]}->[0] = $self->get_reaction_equation({-cpdhash => $cpdHash,-rxnhash => $rxnHash,-data => $row,-style=>"NAME"});
 				} elsif ($headings->[$j] eq "KEGG ID(S)" && defined($keggHash->{$obj->id()})) {
 					for (my $k=0; $k < @{$keggHash->{$obj->id()}}; $k++) {
 						push(@{$newRow->{$headings->[$j]}},$keggHash->{$obj->id()}->[$k]->alias());

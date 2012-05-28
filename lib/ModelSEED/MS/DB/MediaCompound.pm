@@ -3,16 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Media;
-use ModelSEED::MS::Compound;
 package ModelSEED::MS::DB::MediaCompound;
 use Moose;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -20,11 +16,10 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Media', type => 'parent', metac
 
 
 # ATTRIBUTES:
-has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has concentration => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.001' );
-has maxFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '100' );
-has minFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '-100' );
+has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has concentration => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0.001', printOrder => '0' );
+has maxFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '100', printOrder => '0' );
+has minFlux => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '-100', printOrder => '0' );
 
 
 

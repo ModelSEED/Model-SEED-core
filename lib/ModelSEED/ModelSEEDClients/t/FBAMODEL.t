@@ -10,47 +10,47 @@ my $fbamodel = FBAMODELClient->new();
 #Testing each server function
 {
     my $pubmodel = "iJR904";
-    my $privatemodel = "iJR904.796";
+    my $privatemodel = "Seed6666666.15610.63452";
     my $media = "Carbon-D-Glucose";
     my $genome = "83333.1";	
 	#Testing printing of all roles
-	my $output = $fbamodel->modelseed_roles();
-	ok defined($output->{roles}->[0]), "FBAMODEL->modelseed_roles function is returning at least one functional role.";
-	my $roleHash;
-	for (my $i=0; $i < @{$output->{roles}}; $i++) {
-		$roleHash->{$output->{roles}->[$i]} = 1;
-	}
-	ok defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "Light-dependent protochlorophyllide reductase (EC 1.3.1.33) role exists.";
-	#Testing name change of a role
-	$output = $fbamodel->changeModelRole({
-        oldRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
-        newRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
-        syntaxOnly  => 1,
-        user        => "chenry" 
-	});
-	$output = $fbamodel->modelseed_roles();
-	$roleHash = {};
-	for (my $i=0; $i < @{$output->{roles}}; $i++) {
-		$roleHash->{$output->{roles}->[$i]} = 1;
-	}
-	ok defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "FBAMODEL->changeModelRole function works to change role name.";
-	#Restoring previous name
-	$output = $fbamodel->changeModelRole({
-        oldRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
-        newRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
-        syntaxOnly  => 1,
-        user        => "chenry" 
-	});
-	exit();
-	$output = $fbamodel->get_reaction_id_list({id => ["ALL",$pubmodel]});
-    my $rxn = $output->{$pubmodel}->[0];
-	ok defined($rxn), "get_reaction_id_list for public model ".$pubmodel.
-        " should return at least 1 reaction, got ". scalar(@{$output->{$pubmodel}});
-    $rxn = $output->{"ALL"}->[0];
-    ok defined($rxn), "get_reaction_id_list for entire database".
-        " should return at least 1 reaction, got ". scalar(@{$output->{"ALL"}});
-	$output = $fbamodel->get_reaction_id_list({id => [$privatemodel],user => "chenry",password => "Ko3BA9yMnMj2k"});
-	$rxn = $output->{$privatemodel}->[0];
+#	my $output = $fbamodel->modelseed_roles();
+#	ok defined($output->{roles}->[0]), "FBAMODEL->modelseed_roles function is returning at least one functional role.";
+#	my $roleHash;
+#	for (my $i=0; $i < @{$output->{roles}}; $i++) {
+#		$roleHash->{$output->{roles}->[$i]} = 1;
+#	}
+#	ok defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "Light-dependent protochlorophyllide reductase (EC 1.3.1.33) role exists.";
+#	#Testing name change of a role
+#	$output = $fbamodel->changeModelRole({
+#        oldRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+#        newRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+#        syntaxOnly  => 1,
+#        user        => "chenry" 
+#	});
+#	$output = $fbamodel->modelseed_roles();
+#	$roleHash = {};
+#	for (my $i=0; $i < @{$output->{roles}}; $i++) {
+#		$roleHash->{$output->{roles}->[$i]} = 1;
+#	}
+#	ok defined($roleHash->{"New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}) && !defined($roleHash->{"Light-dependent protochlorophyllide reductase (EC 1.3.1.33)"}), "FBAMODEL->changeModelRole function works to change role name.";
+#	#Restoring previous name
+#	$output = $fbamodel->changeModelRole({
+#        oldRole     => "New Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+#        newRole     => "Light-dependent protochlorophyllide reductase (EC 1.3.1.33)",
+#        syntaxOnly  => 1,
+#        user        => "chenry" 
+#	});
+#	exit();
+#	$output = $fbamodel->get_reaction_id_list({id => ["ALL",$pubmodel]});
+#    my $rxn = $output->{$pubmodel}->[0];
+#	ok defined($rxn), "get_reaction_id_list for public model ".$pubmodel.
+#        " should return at least 1 reaction, got ". scalar(@{$output->{$pubmodel}});
+#    $rxn = $output->{"ALL"}->[0];
+#    ok defined($rxn), "get_reaction_id_list for entire database".
+#        " should return at least 1 reaction, got ". scalar(@{$output->{"ALL"}});
+	my $output = $fbamodel->get_reaction_id_list({id => [$privatemodel],user => "chenry",password => "Ko3BA9yMnMj2k"});
+	my $rxn = $output->{$privatemodel}->[0];
 	ok defined($rxn), "get_reaction_id_list for private model ".$privatemodel.
         " should return at least 1 reaction, got ". scalar(@{$output->{$privatemodel}});
 	$output = $fbamodel->get_reaction_data({id => $output->{$privatemodel},model => [$privatemodel],user => "chenry",password => "Ko3BA9yMnMj2k"});
@@ -59,6 +59,7 @@ my $fbamodel = FBAMODELClient->new();
         " should return model data for rxn00781 , got ". $rxn->{$privatemodel}->{"ASSOCIATED PEG"}->[0];
 	ok defined($rxn->{EQUATION}->[0]), "get_reaction_data for private model ".$privatemodel.
         " should return equation for rxn00781 , got ". $rxn->{EQUATION}->[0];
+	exit();
 	$output = $fbamodel->get_biomass_reaction_data({model => [$pubmodel]});
 	$rxn = $output->{$pubmodel};
 	exit();

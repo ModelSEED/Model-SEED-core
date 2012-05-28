@@ -3,16 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Complex;
-use ModelSEED::MS::Role;
 package ModelSEED::MS::DB::ComplexRole;
 use Moose;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -20,10 +16,10 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Complex', type => 'parent', met
 
 
 # ATTRIBUTES:
-has complex_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has optional => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'G' );
+has role_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has optional => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'G', printOrder => '0' );
+has triggering => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 
 
 

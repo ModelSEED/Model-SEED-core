@@ -1,0 +1,53 @@
+At5g14760	AO	GRMZM2G139689	L-Aspartate oxidase (EC 1.4.3.16)	# plastidial (experimental evidence in Arabidopsis)	Plastid - E [PMID:16698895] 	 	Aspartate oxidase activity shown by expression in nadB- E. coli mutants. Disruption of AO gene is lethal during embryo development [PMID:16698895]. Functional green fluorescent protein fusions and in vitro assays showed plastidial targeting [PMID:16698895].	 
+								
+At5g50210	OLD5, QS, SUFE3	GRMZM2G142836 	Quinolinate synthase (EC 2.5.1.72)	# plastidial (experimental evidence in Arabidopsis)	Plastid - E [PMID:16698895] [PMID:17452319]	 	Quinolinate synthase activity shown by expression of OLD5 gene in nadA- E. coli mutants [PMID:16698895]. Functional green fluorescent protein fusions and in vitro assays showed plastidial targeting [PMID:16698895]. Disruption of the OLD5 gene is lethal during embryo development [PMID:16698895] [PMID:17452319]. An OLD5 lesion decreased the SufE activity of the protein but not the quinolinate synthase activity [PMID:18978034].	The GRMZM2G142836 gene model lacks the SufE domain but EST evidence indicates that it is present. 
+		GRMZM2G061732						The GRMZM2G061732 gene model lacks the SufE domain and part of the NadA (quinolinate synthase) domain. EST evidence indicates that the gene is transcribed.
+								
+At2g01350	QPT	GRMZM5G887647 	Quinolinate phoshoribosyltransferase/ nicotinate-nucleotide pyrophosphorylase (carboxylating) (EC 2.4.2.19)	# plastidial (experimental evidence in Arabidopsis)	Plastid - E [PMID:16698895] [PPDB in-house data]	 	Quinolinate phosphoribosyltransferase activity shown by complementation of a QPT-deficient (nadC) E. coli strain with plasmids containing cDNAs from Nicotiana tabacum and N. rustica [PMID:11198422]. For various plants, in vivo radiotracer data and enzyme assays of extracts also support the presence of QPT e.g. [Ashihara et al., 2005. Plant Sci. 169, 107-14].	QPT activity not demonstrated for the Arabidopsis or maize proteins.
+								
+At5g55810	"NMNAT
+"	GRMZM2G402319	Nicotinamide-nucleotide adenylyltransferase (EC 2.7.7.1) and nicotinate-nucleotide adenylyltransferase (EC 2.7.7.18)	# cytosolic (bioinformatics evidence in Arabidopsis) # mitochondrial (experimental evidence in Arabidopsis)	Cytosol - P (no predicted targeting signals) Mitochondrion - E [PMID:21598001]	 	Nicotinamide-nucleotide adenylyltransferase activityand and nicotinate-nucleotide adenylyltransferase shown in purified recombinant Arabidopsis NMNAT protein fused at the C terminus of glutathione S-transferase  [PMID:17270012]. 	Subcellular location is unclear. Absence of targeting signals indicates (by default) a cytosolic location; NNAT activity has been detected in potato mitochondria [PMID:21598001]. Human NNAT has nuclear, Golgi, and mitochondrial isoforms [PMID:16118205].
+								
+At1g55090		GRMZM2G049588	"NAD synthase (glutamine-hydrolyzing) (EC 6.3.5.1)
+"	# cytosolic (experimental evidence in Arabidopsis)	Cytosol - E [PMID:21166475]	 	NAD synthase gene validated genetically in Chlamydomonas reinhardtii [PMID:20838591].	NADS activity not demonstrated for the Arabidopsis or maize proteins. Indirect evidence indicates that mitochondria have NAD kinase activity [PMID:21598001].
+								
+At4g36940*	NAPRT1		Probable nicotinate phosphoribosyltransferase (EC 2.4.2.11)	# cytosolic (bioinformatics evidence in Arabidopsis) 	Cytosol - P (no predicted targeting signals)		Nicotinate phosphoribosyltransferase activity of plant NaPRT genes has not been demonstrated directly. For various plants, in vivo radiotracer data and enzyme assays of extracts support the presence of NaPRT e.g. [PMID:4311439] [Ashihara et al., 2005. Plant Sci. 169, 107-14].	NaPRT activity not demonstrated for any of the Arabidopsis or maize proteins.
+At2g23420*	NAPRT2							
+		GRMZM5G862488*				 		
+		GRMZM2G046583* 				 		
+		GRMZM2G391511						
+								
+At5g47650*	NUDX2		NAD diphosphatase (EC 3.6.1.22)	# cytosolic (bioinformatic evidence in Arabidopsis) 	Cytosol - P [PMID:15878881]	 	NADH diphosphatase activity shown by recombinant NUDX2, NUDX6, NUDX7 [PMID:15878881] [PMID:16328543].	Various Nudix hydrolases, predicted or shown to be cytosolic or organellar, can hydrolyze NAD(P)H to mononucleotides [PMID:15878881] [PMID:19656905]. These enzymes are generally not highly substrate-specific. The GRMZM2G404897 gene model includes a long N-terminal extension that has no cDNA or EST support and is likely a gene-calling error.
+At2g04450*	NUDX6							
+At4g12720*	NUDX7, GFG1	 		# cytosolic (experimental evidence in Arabidopsis)	Cytosol - E [PMID:21166475]	 		
+		GRMZM2G162605*						
+		GRMZM2G101693*						
+		GRMZM2G175816*						
+At5g20070	NUDX19	GRMZM2G404897		# plastidial (experimental evidence in Arabidopsis)	Plastid - E [PMID:18815383]	 	NAD(P)H diphosphatase activity shown by recombinant Arabidopsis NUDX19 [PMID:18815383].	
+								
+At3g21070	NADK1	GRMZM2G138342	NAD kinase (EC 2.7.1.23)	# cytosolic (experimental evidence in Arabidopsis)	Cytosol - E [PMID:19921251]	 	NAD but not NADH phosphorylation activity was shown by recombinant Arabidopsis NADK-1 expressed in E. coli [PMID:15247403].	 
+		GRMZM2G059073				 		
+At1g21640	NADK2	GRMZM2G046498		# plastidial (experimental evidence in Arabidopsis and maize)	Plastid - E [PMID:19921251]	Plastid - E [PPDB in-house data]	NAD but not NADH phosphorylation activity was shown by recombinant Arabidopsis NADK-2 expressed in E. coli [PMID:15247403].	NADK-2 has a large N-terminal that is unique to plants and contains a calcium-dependent calmodulin-binding domain [PMID:15247403]. Indirect evidence indicates that mitochondria have NAD kinase activity [PMID:21598001].
+		GRMZM2G106119				Plastid - E [PPDB in-house data]	 	
+At1g78590	NADK3	GRMZM2G006678		# peroxisome (experimental evidence in Arabidopsis)	Peroxisome - E [PMID:19921251]	 	Recombinant Arabidopsis NADK3 expressed in E. coli showed kinase activity 100-fold higher for NADH than for NAD [PMID:15347288].	  
+								
+At2g22570	NIC1	GRMZM2G128880	 Nicotinamidase  (EC 3.5.1.19)	# cytosolic (bioinformatics evidence in Arabidopsis)	Cytosol - P (no predicted targeting signals)	 	Nicotinamidase acivity shown by recombinant Arabidopsis NIC1 expressed in E. coli. Crude extracts of nic1-1 Arabidopsis mutants lack nicotinamidase activity, and transgenic plants overexpressing NIC1 have elevated nicotinamidase activity [PMID:17335512].	At3g16190 is homologous to bacterial and yeast nicotinamidase, but the recombinant protein showed no nicotinamidase activity [PMID:17587307] [PMID:17335512].
+		GRMZM2G138624						
+At5g23230*	NIC2			# cytosolic (bioinformatics evidence in Arabidopsis)	Cytosol - P (no predicted targeting signals)		Nicotinamidase activity shown by recombinant NIC2 protein expressed  in E. coli BL21. The activity was specific for nicotinamide, and no activity was found for NAD or NADP. T-DNA insertion Arabidopsis mutants nic2-1 had delayed germination and reduced germination potential, and a two fold decrease in nicotinamidase activity but were not lethal [PMID:17587307].	 
+At5g23220*	NIC3						Nicotinamidase activity shown by recombinant NIC3 protein expressed  in E. coli. This activity was specific for nicotinamide, and no activity was found for NAD or NADP [PMID: 17587307].	 
+		GRMZM2G362413*						
+								
+			NMN nucleosidase (EC 3.2.2.14)	n/a	Cytosol - P (inference from cytosolic location of other salvage enzymes)	 	NMN nucleosidase activity has been partially characterized in tobacco [Wagner et al., 1986. Planta 167, 226-32].	This gene has not yet been identified in plants or any other organism.
+								
+At5g19150		GRMZM5G840928	NAD(P)H hydrate dehydratase	# plastidial (experimental evidence in  maize)	 	Non-photosynthetic plastid - E [PPDB in-house data]	Arabidopsis At5g19150 has 35% identity to Saccharomyces cerevisiae YKL151C and 46% identity to mouse Carkd, which have been experimentally identified as NADH(P)X dehydratases [PMID:21994945]. Neither the Arabidopsis nor any other plant homolog has been uncharacterized.	If Arabidopsis At5g19150 and its plant homologs catalyze the dehydration of NAD(P)H hydrate they most probably attack only on the S form and so act in tandem with an epimerase comparable to YjeF [PMID:21994945].
+								
+At5g49970	PDX3, PPOX	GRMZM2G061988	Fusion of pyridoxine (pyridoxamine) 5’-phosphate oxidase (EC 1.4.3.5) with YjeF (NAD(P)H hydrate epimerase) domain	# plastidial (experimental evidence in Arabidopsis and maize) and # cytosolic (experimental evidence in Arabidopsis)	Plastid - E [PMID:21051239] Cytosol - E [PMID:21166475]	Non-photosynthetic plastid - E [PPDB in-house data]	Arabidopsis At5g49970 and its homologs in other plants are fusion proteins containing a YjeF (COG0062) N-teminal domain of unknown function, and a pyridoxine/pyridoxamine phosphate oxidase domain [PMID:17224143] [PMID:21051239]. In other organisms, the YjeF domain has been identified as NAD(P)H hydrate epimerase; it occurs as a stand-alone protein in yeast and mammals, and fused to NAD(P)H hydrate dehydratase in many bacteria [PMID:21994945].   	The Arabidopsis At5g49970 YjeF domain has 43% identity to yeast YNL200C, which is an NAD(P)H hydrate epimerase. The GRMZM2G061988 gene model has a long N terminal extension that is not suported by cDNAs or ESTs and is likely a gene-calling error.
+								
+			NADP phosphatase	n/a				
+								
+			UDP-glucose:nicotinic acid-N-glucosyltransferase  (EC 2.4.1.196)	n/a			Nicotinic acid-N-glucoside is widespread in plants e.g. [PMID:18251891] [PMID:21251843]. UDP-glucose:nicotinic acid-N-glucosyltransferase activity has been partially characterized from various plants e.g. [Taguchi et al., 1997. Biosci. Biotechnol. Biochem. 61, 720-2]. 	This protein and gene have not yet been characterized in plants.
+								
+			Nicotinate N-methyltransferase (EC 2.1.1.7)	n/a			Trigonelline (N-methylnicotinate) is very widespread in plants e.g. [PMID:22312719] [PMID:18251891]. Nicotinate N-methyltransferase activity has been characterized from several plants e.g. [Chen, X. and Wood, A.J. 2004. Biol. Plant. 48, 531-5]. 	This gene has not yet been identified in plants.
+								
+			Trigonelline demethylase	n/a			A trigonelline-demethylating enzyme or enzyme system has been detected in germinating coffee seeds [Shimizu and Mazzafera, 2000. Plant Biol. 2, 605-11].	This protein and gene have not yet been characterized in plants.
+								

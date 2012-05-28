@@ -3,33 +3,34 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::ObjectManager;
-use ModelSEED::MS::Role;
-use ModelSEED::MS::Roleset;
-use ModelSEED::MS::ReactionRule;
-use ModelSEED::MS::Complex;
-use ModelSEED::MS::Biochemistry;
 package ModelSEED::MS::DB::Mapping;
 use Moose;
+use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::UniversalReaction;
+use ModelSEED::MS::LazyHolder::BiomassTemplate;
+use ModelSEED::MS::LazyHolder::Role;
+use ModelSEED::MS::LazyHolder::RoleSet;
+use ModelSEED::MS::LazyHolder::Complex;
+use ModelSEED::MS::LazyHolder::RoleSetAliasSet;
+use ModelSEED::MS::LazyHolder::RoleAliasSet;
+use ModelSEED::MS::LazyHolder::ComplexAliasSet;
 extends 'ModelSEED::MS::IndexedObject';
+use namespace::autoclean;
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ObjectManager', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
+has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
+has public => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
+has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has defaultNameSpace => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => 'SEED', printOrder => '2' );
+has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '3' );
 
 
 # ANCESTOR:
@@ -37,14 +38,18 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
-has roles => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Role]', type => 'child(Role)', metaclass => 'Typed');
-has rolesets => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Roleset]', type => 'child(Roleset)', metaclass => 'Typed');
-has reactionrules => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionRule]', type => 'child(ReactionRule)', metaclass => 'Typed');
-has complexes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Complex]', type => 'child(Complex)', metaclass => 'Typed');
+has universalReactions => (is => 'bare', coerce => 1, handles => { universalReactions => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::UniversalReaction::Lazy', type => 'child(UniversalReaction)', metaclass => 'Typed', printOrder => '0');
+has biomassTemplates => (is => 'bare', coerce => 1, handles => { biomassTemplates => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::BiomassTemplate::Lazy', type => 'child(BiomassTemplate)', metaclass => 'Typed', printOrder => '1');
+has roles => (is => 'bare', coerce => 1, handles => { roles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Role::Lazy', type => 'child(Role)', metaclass => 'Typed', printOrder => '2');
+has rolesets => (is => 'bare', coerce => 1, handles => { rolesets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSet::Lazy', type => 'child(RoleSet)', metaclass => 'Typed', printOrder => '3');
+has complexes => (is => 'bare', coerce => 1, handles => { complexes => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Complex::Lazy', type => 'child(Complex)', metaclass => 'Typed', printOrder => '4');
+has roleSetAliasSets => (is => 'bare', coerce => 1, handles => { roleSetAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleSetAliasSet::Lazy', type => 'child(RoleSetAliasSet)', metaclass => 'Typed');
+has roleAliasSets => (is => 'bare', coerce => 1, handles => { roleAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::RoleAliasSet::Lazy', type => 'child(RoleAliasSet)', metaclass => 'Typed');
+has complexAliasSets => (is => 'bare', coerce => 1, handles => { complexAliasSets => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexAliasSet::Lazy', type => 'child(ComplexAliasSet)', metaclass => 'Typed');
 
 
 # LINKS:
-has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ObjectManager,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
+has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -52,7 +57,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
 	my ($self) = @_;
-	return $self->getLinkedObject('ObjectManager','Biochemistry','uuid',$self->biochemistry_uuid());
+	return $self->getLinkedObject('ModelSEED::Store','Biochemistry','uuid',$self->biochemistry_uuid());
 }
 
 
@@ -60,10 +65,14 @@ sub _buildbiochemistry {
 sub _type { return 'Mapping'; }
 sub _typeToFunction {
 	return {
-		Roleset => 'rolesets',
+		RoleSet => 'rolesets',
+		UniversalReaction => 'universalReactions',
 		Complex => 'complexes',
 		Role => 'roles',
-		ReactionRule => 'reactionrules',
+		BiomassTemplate => 'biomassTemplates',
+		RoleAliasSet => 'roleAliasSets',
+		RoleSetAliasSet => 'roleSetAliasSets',
+		ComplexAliasSet => 'complexAliasSets',
 	};
 }
 

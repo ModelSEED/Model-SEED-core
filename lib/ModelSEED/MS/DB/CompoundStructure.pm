@@ -3,15 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Compound;
 package ModelSEED::MS::DB::CompoundStructure;
 use Moose;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -19,12 +16,14 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Compound', type => 'parent', me
 
 
 # ATTRIBUTES:
-has compound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has structure => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has structure => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
+has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
+
+
+# LINKS:
 
 
 # BUILDERS:

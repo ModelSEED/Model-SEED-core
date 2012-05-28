@@ -16,15 +16,13 @@ use Cwd;
 $|=1;
 #First checking to see if at least one argument has been provided
 my $driv;
-ModelSEED::Interface::interface::LOADENVIRONMENT();
 try {
-	$driv = ModelSEED::ModelDriverV2->new();
+	$driv = ModelSEED::ModelDriverV2->new({});
 } catch {
-	printErrorLog($_);
-    exit(1);
+	print $_;
 };
 if (!defined($ARGV[0]) || $ARGV[0] eq "help" || $ARGV[0] eq "-man" || $ARGV[0] eq "-help") {
-    print "Welcome to the Model SEED! You are currently logged in as: ".ModelSEED::Interface::interface::USERNAME().".\n";
+    print "Welcome to the Model SEED! You are currently logged in as: ".$driv->environment()->{login}->{username}.".\n";
     print "ModelDriver is the primary executable for the Model SEED.\n\n";
     print "Possible usage:\n\n";
     print "1.) ModelDriver usage \"name of function\"\n";
@@ -105,9 +103,9 @@ for (my $i=0; $i < @ARGV; $i++) {
 			argList => []	
 		};
 	} else {
-		if ($lastKeyType eq "argHash") {
+		if (defined($lastKeyType) && $lastKeyType eq "argHash") {
 			$currentFunction->{argHash}->{$lastKey} .= " ".$ARGV[$i];
-		}  elsif ($lastKeyType eq "argList") {
+		}  elsif (defined($lastKeyType) && $lastKeyType eq "argList") {
 			$currentFunction->{argList}->[$lastKey] .= " ".$ARGV[$i];
 		} else {
 			push(@{$currentFunction->{argList}},$ARGV[$i]);	
@@ -157,12 +155,10 @@ sub printErrorLog {
     }
     
     chomp $gitSha;
-    my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
+    my $errorDir= $driv->environment()->{'error_dir'};
     mkdir $errorDir unless(-d $errorDir);
     my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
     $errorFilename =~ s/\\/\//g;
-    ModelSEED::Interface::interface::LASTERROR($errorFilename);
-    ModelSEED::Interface::interface::SAVEENVIRONMENT();
     print $errorFH <<MSG;
 > ModelDriver encountered an unrecoverable error:
 
@@ -179,7 +175,7 @@ MSG
     }
     $viewerMessage .= <<MSG;
 
-View error using the "ms-lasterror" command.
+View error using the "ms error" command.
 
 Have you updated recently? ( git pull )
 Have you changed your configuration? ( ms-config )

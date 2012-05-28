@@ -138,6 +138,7 @@ int StringDB::loadDatabase(string INfilename) {
 		return FAIL;
 	}
 	for (int i=0; i < this->get_table("DATABASESPECS")->number_of_objects(); i++) {
+	  cout << "Loading Database File\t"<<this->get_table("DATABASESPECS")->get_object(i)->get("Filename")<<endl;
 		this->loadDatabaseTable(this->get_table("DATABASESPECS")->get_object(i));
 	}
 	return SUCCESS;

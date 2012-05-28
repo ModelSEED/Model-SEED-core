@@ -3,16 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::ReactionAliasSet;
-use ModelSEED::MS::Reaction;
 package ModelSEED::MS::DB::ReactionAlias;
 use Moose;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -20,8 +16,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ReactionAliasSet', type => 'par
 
 
 # ATTRIBUTES:
-has reaction_uuid => ( is => 'rw', isa => 'uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has alias => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 

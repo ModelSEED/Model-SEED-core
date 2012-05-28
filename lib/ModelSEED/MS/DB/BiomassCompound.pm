@@ -3,16 +3,12 @@
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-22T03:57:15
 ########################################################################
-use strict;
-use namespace::autoclean;
-use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::Biomass;
-use ModelSEED::MS::ModelCompound;
 package ModelSEED::MS::DB::BiomassCompound;
 use Moose;
+use Moose::Util::TypeConstraints;
 extends 'ModelSEED::MS::BaseObject';
+use namespace::autoclean;
 
 
 # PARENT:
@@ -20,9 +16,8 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::Biomass', type => 'parent', met
 
 
 # ATTRIBUTES:
-has biomass_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1 );
+has modelcompound_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has coefficient => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 
