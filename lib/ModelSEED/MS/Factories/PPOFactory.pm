@@ -461,7 +461,7 @@ sub createMapping {
 		name => $self->namespace()."/primary.mapping",
 		database => $self->figmodel()->database()
 	});
-	my $mapping = ModelSEED::MS::Mapping->({
+	my $mapping = ModelSEED::MS::Mapping->new({
 		name=>$args->{name},
 		biochemistry_uuid => $args->{biochemistry}->uuid()
 	});
