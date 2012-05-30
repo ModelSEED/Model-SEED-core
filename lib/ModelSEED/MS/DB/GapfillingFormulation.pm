@@ -20,14 +20,12 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelAnalysis', type => 'parent
 
 # ATTRIBUTES:
 has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', required => 1, default => '', printOrder => '0' );
-has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has model_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has fbaformulation_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has annotation_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has guaranteedReactions => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has blacklistedReactions => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has allowableCompartments => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
 has numberOfSolutions => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
-has balancedReactionsOnly => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
+has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 has reactionActivationBonus => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
 has drainFluxMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has directionalityMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
@@ -37,10 +35,8 @@ has noDeltaGMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metac
 has biomassTransporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has singleTransporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has transporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
-has blacklistedReactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
-has allowableUnbalancedReactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
-has allowableCompartments => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
-has guaranteedReactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
+has annotation_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 
 
 # ANCESTOR:
@@ -54,26 +50,21 @@ has gapfillingSolutions => (is => 'bare', coerce => 1, handles => { gapfillingSo
 
 
 # LINKS:
-has fbaformulation => (is => 'rw',lazy => 1,builder => '_buildfbaformulation',isa => 'ModelSEED::MS::FBAFormulation', type => 'link(ModelAnalysis,FBAFormulation,uuid,fbaformulation_uuid)', metaclass => 'Typed',weak_ref => 1);
+has media => (is => 'rw',lazy => 1,builder => '_buildmedia',isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,Media,uuid,media_uuid)', metaclass => 'Typed',weak_ref => 1);
 has annotation => (is => 'rw',lazy => 1,builder => '_buildannotation',isa => 'ModelSEED::MS::Annotation', type => 'link(ModelAnalysis,Annotation,uuid,annotation_uuid)', metaclass => 'Typed',weak_ref => 1);
-has model => (is => 'rw',lazy => 1,builder => '_buildmodel',isa => 'ModelSEED::MS::Model', type => 'link(ModelAnalysis,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
 has biochemistry => (is => 'rw',lazy => 1,builder => '_buildbiochemistry',isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelAnalysis,Biochemistry,uuid,biochemistry_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
 sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildfbaformulation {
+sub _buildmedia {
 	my ($self) = @_;
-	return $self->getLinkedObject('ModelAnalysis','FBAFormulation','uuid',$self->fbaformulation_uuid());
+	return $self->getLinkedObject('Biochemistry','Media','uuid',$self->media_uuid());
 }
 sub _buildannotation {
 	my ($self) = @_;
 	return $self->getLinkedObject('ModelAnalysis','Annotation','uuid',$self->annotation_uuid());
-}
-sub _buildmodel {
-	my ($self) = @_;
-	return $self->getLinkedObject('ModelAnalysis','Model','uuid',$self->model_uuid());
 }
 sub _buildbiochemistry {
 	my ($self) = @_;

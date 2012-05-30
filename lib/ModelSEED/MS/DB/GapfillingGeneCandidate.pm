@@ -18,7 +18,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::GapfillingFormulation', type =>
 # ATTRIBUTES:
 has feature_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 has ortholog_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has orthogenome_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
+has orthologGenome_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 has similarityScore => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '-1' );
 has distanceScore => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', printOrder => '-1' );
 has reactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
@@ -29,7 +29,7 @@ has reactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass
 # LINKS:
 has feature => (is => 'rw',lazy => 1,builder => '_buildfeature',isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,Feature,uuid,feature_uuid)', metaclass => 'Typed',weak_ref => 1);
 has ortholog => (is => 'rw',lazy => 1,builder => '_buildortholog',isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,Feature,uuid,ortholog_uuid)', metaclass => 'Typed',weak_ref => 1);
-has orthogenome => (is => 'rw',lazy => 1,builder => '_buildorthogenome',isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,Genome,uuid,orthogenome_uuid)', metaclass => 'Typed',weak_ref => 1);
+has orthologGenome => (is => 'rw',lazy => 1,builder => '_buildorthologGenome',isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,Genome,uuid,orthogenome_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
@@ -41,7 +41,7 @@ sub _buildortholog {
 	my ($self) = @_;
 	return $self->getLinkedObject('Annotation','Feature','uuid',$self->ortholog_uuid());
 }
-sub _buildorthogenome {
+sub _buildorthologGenome {
 	my ($self) = @_;
 	return $self->getLinkedObject('Annotation','Genome','uuid',$self->orthogenome_uuid());
 }

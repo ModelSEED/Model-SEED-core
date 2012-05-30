@@ -98,6 +98,7 @@ $objectDefinitions->{FBAFormulation} = {
 		{name => 'growthConstraint',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
 		{name => 'thermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
 		{name => 'allReversible',printOrder => 0,perm => 'rw',type => 'Int',len => 255,req => 0,default => "0"},
+		{name => 'dilutionConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "0"},
 		{name => 'uptakeLimits',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
 		{name => 'geneKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 		{name => 'defaultMaxFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},

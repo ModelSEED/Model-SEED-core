@@ -17,7 +17,7 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::GapfillingSolution', type => 'p
 
 
 # ATTRIBUTES:
-has reactioninstance_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has modelreaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 
 
@@ -28,13 +28,13 @@ has gfSolutionReactionGeneCandidates => (is => 'bare', coerce => 1, handles => {
 
 
 # LINKS:
-has reactioninstance => (is => 'rw',lazy => 1,builder => '_buildreactioninstance',isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,ReactionInstance,uuid,reactioninstance_uuid)', metaclass => 'Typed',weak_ref => 1);
+has modelreaction => (is => 'rw',lazy => 1,builder => '_buildmodelreaction',isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,ModelReaction,uuid,modelreaction_uuid)', metaclass => 'Typed',weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildreactioninstance {
+sub _buildmodelreaction {
 	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','ReactionInstance','uuid',$self->reactioninstance_uuid());
+	return $self->getLinkedObject('Model','ModelReaction','uuid',$self->modelreaction_uuid());
 }
 
 
