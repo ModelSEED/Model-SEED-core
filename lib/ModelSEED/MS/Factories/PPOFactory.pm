@@ -7,7 +7,6 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-use ModelSEED::Store;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Utilities::GlobalFunctions;
 use ModelSEED::MS::Factories::SEEDFactory;
@@ -17,24 +16,12 @@ use namespace::autoclean;
 
 
 # ATTRIBUTES:
-has username => ( is => 'rw', isa => 'Str', required => 1 );
-has password => ( is => 'rw', isa => 'Str', required => 1 );
-has figmodel => ( is => 'rw', isa => 'ModelSEED::FIGMODEL', lazy => 1, builder => '_buildfigmodel' );
-has om => ( is => 'rw', isa => 'ModelSEED::Store', lazy => 1, builder => '_buildom' );
+has namespace => ( is => 'rw', isa => 'Str', required => 1 );
+has figmodel => ( is => 'rw', isa => 'ModelSEED::FIGMODEL', required => 1 );
 
 
 # BUILDERS:
-sub _buildom {
-	my ($self) = @_;
-    return ModelSEED::Store->new(
-        username => $self->username,
-        password => $self->password
-    );
-}
-sub _buildfigmodel {
-	my ($self) = @_;
-	return ModelSEED::FIGMODEL->new({username => $self->username(),password => $self->password()}); 
-}
+
 
 # FUNCTIONS:
 sub createModel {
@@ -46,13 +33,13 @@ sub createModel {
 	});
 	#Retrieving model data
 	my $mdl = $self->figmodel()->get_model($args->{model});
-	my $id = $self->username()."/".$args->{model};
+	my $id = $self->namespace()."/".$args->{model};
 	if ($args->{model} =~ m/^Seed\d+\.\d+/) {
 		if ($args->{model} =~ m/(Seed\d+\.\d+)\.\d+$/) {
-			$id = $self->username()."/".$1;
+			$id = $self->namespace()."/".$1;
 		}
 	} elsif ($args->{model} =~ m/(.+)\.\d+$/) {
-		$id = $self->username()."/".$1;
+		$id = $self->namespace()."/".$1;
 	}
 	#Creating provenance objects
 	if (!defined($args->{biochemistry})) {
@@ -77,7 +64,7 @@ sub createModel {
 		});
 	}
 	#Creating the model
-	my $model = $self->om()->create("Model",{
+	my $model = ModelSEED::MS::Model->new({
 		locked => 0,
 		public => $mdl->ppo()->public(),
 		id => $id.".model",
@@ -132,11 +119,11 @@ sub createModel {
 sub createBiochemistry {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
-		name => $self->username()."/primary.biochemistry",
+		name => $self->namespace()."/primary.biochemistry",
 		database => $self->figmodel()->database()
 	});
 	#Creating the biochemistry
-	my $biochemistry = $self->om()->create("Biochemistry",{
+	my $biochemistry = ModelSEED::MS::Biochemistry->new({
 		name=>$args->{name},
 		public => 1,
 		locked => 0
@@ -471,10 +458,10 @@ sub createBiochemistry {
 sub createMapping {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
-		name => $self->username()."/primary.mapping",
+		name => $self->namespace()."/primary.mapping",
 		database => $self->figmodel()->database()
 	});
-	my $mapping = $self->om()->create("Mapping",{
+	my $mapping = ModelSEED::MS::Mapping->({
 		name=>$args->{name},
 		biochemistry_uuid => $args->{biochemistry}->uuid()
 	});
@@ -784,11 +771,9 @@ sub createAnnotation {
 		name => undef
 	});
 	if (!defined($args->{name})) {
-		$args->{name} = $self->username()."/".$args->{genome}.".annotation";
+		$args->{name} = $self->namespace()."/".$args->{genome}.".annotation";
 	}
-	my $factory = ModelSEED::MS::Factories::SEEDFactory->new({
-		om => $self->om()
-	});
+	my $factory = ModelSEED::MS::Factories::SEEDFactory->new();
 	return $factory->buildMooseAnnotation({
 		genome_id => $args->{genome},
 		mapping => $args->{mapping}
