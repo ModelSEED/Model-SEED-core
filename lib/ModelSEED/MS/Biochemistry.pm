@@ -143,7 +143,7 @@ Description:
 sub findCreateEquivalentCompound {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["compound"],{create => 1});
-	my $incpd = $args->{compartment};
+	my $incpd = $args->{compound};
 	my $outcpd = $self->getObject("Compound",{
 		name => $incpd->name()
 	});
@@ -158,9 +158,61 @@ sub findCreateEquivalentCompound {
 			deltaG => $incpd->deltaG(),
 			deltaGErr => $incpd->deltaGErr(),
 		});
+		for (my $i=0; $i < @{$incpd->structures()}; $i++) {
+			my $cpdstruct = $incpd->structures()->[$i];
+			$outcpd->create("CompoundStructure",$cpdstruct->serializeToDB());
+		}
+		for (my $i=0; $i < @{$incpd->pks()}; $i++) {
+			my $cpdpk = $incpd->pks()->[$i];
+			$outcpd->create("CompoundPk",$cpdpk->serializeToDB());
+		}
 	}
 	$incpd->id($outcpd->uuid());
 	return $outcpd;
+}
+=head3 findCreateEquivalentReaction
+Definition:
+	void ModelSEED::MS::Biochemistry->findCreateEquivalentReaction({
+		reaction => ModelSEED::MS::Reaction(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent reaction for the input biochemistry reaction
+=cut
+sub findCreateEquivalentReaction {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["reaction"],{create => 1});
+	my $inrxn = $args->{reaction};
+	my $outrxn = $self->getObject("Reaction",{
+		definition => $inrxn->definition()
+	});
+	if (!defined($outrxn) && $args->{create} == 1) {
+		$outrxn = $self->biochemistry()->create("Reaction",{
+			name => $inrxn->name(),
+			abbreviation => $inrxn->abbreviation(),
+			reversibility => $inrxn->reversibility(),
+			thermoReversibility => $inrxn->thermoReversibility(),
+			defaultProtons => $inrxn->defaultProtons(),
+			status => $inrxn->status(),
+			deltaG => $inrxn->deltaG(),
+			deltaGErr => $inrxn->deltaGErr(),
+		});
+		for (my $i=0; $i < @{$inrxn->reagents()}; $i++) {
+			my $rgt = $inrxn->reagents()->[$i];
+			my $cpd = $self->biochemistry()->findCreateEquivalentCompound({
+				compound => $rgt->compound(),
+				create => 1
+			});
+			$outrxn->create("Reagent",{
+				compound_uuid => $cpd->uuid(),
+				coefficient => $rgt->coefficient(),
+				cofactor => $rgt->cofactor(),
+				compartmentIndex => $rgt->compartmentIndex(),
+			});
+		}
+	}
+	$inrxn->id($outrxn->uuid());
+	return $outrxn;
 }
 
 __PACKAGE__->meta->make_immutable;

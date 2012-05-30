@@ -330,13 +330,13 @@ sub createFluxVariables {
 		}
 		if ($self->decomposeReversibleFlux() == 0) {
 			$self->create("Variable",{
-				name => "f_".$self->model()->modelreactions()->[$i]->id(),
+				name => "f_".$rxn->id(),
 				type => "flux",
 				upperBound => $maxFlux,
 				lowerBound => $minFlux,
 				max => $maxFlux,
 				min => $minFlux,
-				entity_uuid => $self->model()->modelreactions()->[$i]->uuid()
+				entity_uuid => $rxn->uuid()
 			});
 		} else {
 			my $posMax = $maxFlux;
@@ -585,7 +585,7 @@ sub createMassBalanceConstraints {
 			});
 			if (defined($var)) {
 				$const->create("ConstraintVariable",{
-					coefficient => $biocpd->coefficient(),
+					coefficient => $biocpd->(),
 					variable_uuid => $var->uuid()
 				});
 			} else {

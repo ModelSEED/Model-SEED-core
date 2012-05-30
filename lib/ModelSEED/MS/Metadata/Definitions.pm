@@ -248,14 +248,12 @@ $objectDefinitions->{GapfillingFormulation} = {
 	class => 'child',
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
-		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
+		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
+		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
 		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => "1"},
-		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
+		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
 		{name => 'drainFluxMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'directionalityMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
@@ -265,10 +263,8 @@ $objectDefinitions->{GapfillingFormulation} = {
 		{name => 'biomassTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'singleTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'transporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
-		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'allowableUnbalancedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
-		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
+		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 	],
 	subobjects => [
 		{name => "gapfillingGeneCandidates",class => "GapfillingGeneCandidate",type => "encompassed"},
@@ -277,9 +273,8 @@ $objectDefinitions->{GapfillingFormulation} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "ModelAnalysis",class => "FBAFormulation",query => "uuid"},
+		{name => "media",attribute => "media_uuid",parent => "Biochemistry",class => "Media",query => "uuid"},
 		{name => "annotation",attribute => "annotation_uuid",parent => "ModelAnalysis",class => "Annotation",query => "uuid"},
-		{name => "model",attribute => "model_uuid",parent => "ModelAnalysis",class => "Model",query => "uuid"},
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelAnalysis",class => "Biochemistry",query => "uuid"}
 	]
 };
@@ -290,7 +285,7 @@ $objectDefinitions->{GapfillingGeneCandidate} = {
 	attributes => [
 		{name => 'feature_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'ortholog_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'orthogenome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'orthologGenome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'similarityScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
 		{name => 'distanceScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
 		{name => 'reactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
@@ -300,7 +295,7 @@ $objectDefinitions->{GapfillingGeneCandidate} = {
 	links => [
 		{name => "feature",attribute => "feature_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
 		{name => "ortholog",attribute => "ortholog_uuid",parent => "Annotation",class => "Feature",query => "uuid"},
-		{name => "orthogenome",attribute => "orthogenome_uuid",parent => "Annotation",class => "Genome",query => "uuid"}
+		{name => "orthologGenome",attribute => "orthogenome_uuid",parent => "Annotation",class => "Genome",query => "uuid"}
 	]
 };
 
