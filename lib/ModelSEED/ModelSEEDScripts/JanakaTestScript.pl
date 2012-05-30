@@ -9,23 +9,23 @@ use ModelSEED::MS::Factories::SEEDFactory;
 use Time::HiRes qw(time);
 use IO::Compress::Gzip qw(gzip);
 use IO::Uncompress::Gunzip qw(gunzip);
+use ModelSEEDbootstrap;
+use ModelSEED::FIGMODEL;
 
 #Loading biochemistry
 my $string;
-my $gzipString;
-open BIOCHEM, "<c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.json.zip";
-read BIOCHEM,$gzipString,10000000;
+my $directory = $figmodel->config("database root directory")->[0]."exampleObjects/";
+open BIOCHEM, "<".$directory."biochemistry.json";
+$string = join("\n",<BIOCHEM>);
 close BIOCHEM;
-gunzip \$gzipString => \$string;
 my $objectData = JSON::Any->decode($string);
 my $biochem = ModelSEED::MS::Biochemistry->new($objectData);
 $biochem->setParents(undef);
 print "Biochemistry loaded!\n";
 #Loading mapping
-open MAPPING, "<c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json.zip";
-read MAPPING,$gzipString,10000000;
+open MAPPING, "<".$directory."mapping.json";
+$string = join("\n",<MAPPING>);
 close MAPPING;
-gunzip \$gzipString => \$string;
 $objectData = JSON::Any->decode($string);
 my $mapping = ModelSEED::MS::Mapping->new($objectData);
 $mapping->setParents(undef);
