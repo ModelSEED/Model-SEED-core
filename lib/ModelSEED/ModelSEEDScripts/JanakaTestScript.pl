@@ -14,6 +14,7 @@ use ModelSEED::FIGMODEL;
 
 #Loading biochemistry
 my $string;
+my $figmodel = ModelSEED::FIGMODEL->new({username => "public",password => "public"});
 my $directory = $figmodel->config("database root directory")->[0]."exampleObjects/";
 open BIOCHEM, "<".$directory."biochemistry.json";
 $string = join("\n",<BIOCHEM>);
