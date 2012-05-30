@@ -105,6 +105,63 @@ sub makeDBModel {
 	}
 	return $mdl;
 }
+=head3 findCreateEquivalentCompartment
+Definition:
+	void ModelSEED::MS::Biochemistry->findCreateEquivalentCompartment({
+		compartment => ModelSEED::MS::Compartment(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent comparment for the input biochemistry compartment
+=cut
+sub findCreateEquivalentCompartment {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["compartment"],{create => 1});
+	my $incomp = $args->{compartment};
+	my $outcomp = $self->getObject("Compartment",{
+		name => $incomp->name()
+	});
+	if (!defined($outcomp) && $args->{create} == 1) {
+		$outcomp = $self->biochemistry()->create("Compartment",{
+			id => $incomp->id(),
+			name => $incomp->name(),
+			hierarchy => $incomp->hierarchy()
+		});
+	}
+	#$incomp->id($outcomp->uuid());
+	return $outcomp;
+}
+=head3 findCreateEquivalentCompound
+Definition:
+	void ModelSEED::MS::Biochemistry->findCreateEquivalentCompound({
+		compound => ModelSEED::MS::Compound(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent compound for the input biochemistry compound
+=cut
+sub findCreateEquivalentCompound {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["compound"],{create => 1});
+	my $incpd = $args->{compartment};
+	my $outcpd = $self->getObject("Compound",{
+		name => $incpd->name()
+	});
+	if (!defined($outcpd) && $args->{create} == 1) {
+		$outcpd = $self->biochemistry()->create("Compound",{
+			name => $incpd->name(),
+			abbreviation => $incpd->abbreviation(),
+			unchargedFormula => $incpd->unchargedFormula(),
+			formula => $incpd->formula(),
+			mass => $incpd->mass(),
+			defaultCharge => $incpd->defaultCharge(),
+			deltaG => $incpd->deltaG(),
+			deltaGErr => $incpd->deltaGErr(),
+		});
+	}
+	$incpd->id($outcpd->uuid());
+	return $outcpd;
+}
 
 __PACKAGE__->meta->make_immutable;
 1;

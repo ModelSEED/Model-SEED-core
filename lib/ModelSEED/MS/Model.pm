@@ -32,6 +32,162 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
+=head3 findCreateEquivalentCompartment
+Definition:
+	void ModelSEED::MS::Model->findCreateEquivalentCompartment({
+		modelcompartment => ModelSEED::MS::ModelCompartment(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent comparment for the input model compartment
+=cut
+sub findCreateEquivalentCompartment {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["modelcompartment"],{create => 1});
+	my $mdlcmp = $args->{modelcompartment};
+	my $cmp = $self->getObject("ModelCompartment",{
+		label => $mdlcmp->label()
+	});
+	if (!defined($cmp) && $args->{create} == 1) {
+		my $biocmp = $self->biochemistry()->findCreateEquivalentCompartment({
+			compartment => $mdlcmp->compartment(),
+			create => 1
+		});
+		$cmp = $self->addCompartmentToModel({
+			compartment => $biocmp,
+			pH => $cmp->pH(),
+			potential => $cmp->potential(),
+			compartmentIndex => $cmp->compartmentIndex(),
+		});
+	}
+	$cmp->id($mdlcmp->uuid());
+	return $cmp;
+}
+=head3 findCreateEquivalentCompound
+Definition:
+	void ModelSEED::MS::Model->findCreateEquivalentCompound({
+		modelcompound => ModelSEED::MS::ModelCompound(REQ),
+		modelcompartment => ModelSEED::MS::ModelCompartment(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent compound for the input model compound
+=cut
+sub findCreateEquivalentCompound {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["modelcompound"],{create => 1});
+	my $inmdlcpd = $args->{modelcompound};
+	my $outcpd = $self->getObject("ModelCompound",{
+		name => $inmdlcpd->name(),
+		modelCompartmentLabel => $inmdlcpd->modelCompartmentLabel()
+	});
+	if (!defined($outcpd) && $args->{create} == 1) {
+		my $mdlcmp = $self->findEquivalentCompartment({
+			modelcompartment => $inmdlcpd->modelcompartment(),
+			create => 1
+		});
+		my $cpd = $self->biochemistry()->findCreateEquivalentCompound({
+			compound => $inmdlcpd->compound(),
+			create => 1
+		});
+		$outcpd = $self->addCompoundToModel({
+			compound => $cpd,
+			modelCompartment => $mdlcmp,
+			charge => $inmdlcpd->charge(),
+			formula => $inmdlcpd->formula()
+		});
+	}
+	$outcpd->id($inmdlcpd->uuid());
+	return $outcpd;
+}
+=head3 findCreateEquivalentReaction
+Definition:
+	void ModelSEED::MS::Model->findCreateEquivalentReaction({
+		modelreaction => ModelSEED::MS::ModelReaction(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent reaction for the input model reaction
+=cut
+sub findCreateEquivalentReaction {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["modelreaction"],{create => 1});
+	my $inmdlrxn = $args->{modelreaction};
+	my $outrxn = $self->getObject("ModelReaction",{
+		definition => $inmdlrxn->definition(),
+	});
+	if (!defined($outrxn) && $args->{create} == 1) {
+		my $biorxn = $self->biochemistry()->findCreateEquivalentReaction({
+			reaction => $inmdlrxn->reaction,
+			create => 1
+		});
+		my $mdlcmp = $self->findCreateEquivalentCompartment({
+			modelcompartment => $inmdlrxn->modelcompartment()
+		});
+		$outrxn = $self->create("ModelReaction",{
+			reaction_uuid => $biorxn->uuid(),
+			direction => $inmdlrxn->direction(),
+			protons => $inmdlrxn->protons(),
+			modelcompartment_uuid => $mdlcmp->uuid()
+		});
+		for (my $i=0; $i < @{$inmdlrxn->modelReactionReagents()}; $i++) {
+			my $rgt = $inmdlrxn->modelReactionReagents()->[$i];
+			my $mdlcpd = $self->findCreateEquivalentCompound({
+				modelcompound => $rgt->modelcompound()
+			});
+			$outrxn->create("ModelReactionReagent",{
+				modelcompound_uuid => $mdlcpd->uuid(),
+				coefficient => $rgt->coefficient()
+			});
+		}
+		for (my $i=0; $i < @{$inmdlrxn->modelReactionProteins()}; $i++) {
+			my $prot = $inmdlrxn->modelReactionProteins()->[$i];
+			$outrxn->create("ModelReactionReagent",$prot->serializeToDB());
+		}
+	}
+	$outrxn->id($inmdlrxn->uuid());
+	return $outrxn;
+}
+=head3 findCreateEquivalentBiomass
+Definition:
+	void ModelSEED::MS::Model->findCreateEquivalentBiomass({
+		biomass => ModelSEED::MS::Biomass(REQ),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent biomass for the input model biomass
+=cut
+sub findCreateEquivalentBiomass {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["biomass"],{create => 1});
+	my $inmdlbio = $args->{biomass};
+	my $outbio = $self->getObject("Biomass",{
+		definition => $inmdlbio->definition()
+	});
+	if (!defined($outbio) && $args->{create} == 1) {
+		$outbio = $self->create("Biomass",{
+			name => $inmdlbio->name(),
+			dna => $inmdlbio->dna(),
+			rna => $inmdlbio->rna(),
+			protein => $inmdlbio->protein(),
+			cellwall => $inmdlbio->cellwall(),
+			lipid => $inmdlbio->lipid(),
+			cofactor => $inmdlbio->cofactor(),
+			energy => $inmdlbio->energy()
+		});
+		for (my $i=0; $i < @{$inmdlbio->biomasscompounds()}; $i++) {
+			my $rgt = $inmdlbio->biomasscompounds()->[$i];
+			my $mdlcpd = $self->findCreateEquivalentCompound({
+				modelcompound => $rgt->modelcompound()
+			});
+			$outbio->create("BiomassCompound",{
+				modelcompound_uuid => $mdlcpd->uuid(),
+				coefficient => $rgt->coefficient()
+			});
+		}
+	}
+	return $outbio;
+}
 =head3 mergeModel
 Definition:
 	void ModelSEED::MS::Model->mergeModel({
@@ -44,33 +200,21 @@ sub mergeModel {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["model"],{});
 	my $mdl = $args->{model};
-	my $cpdTranslation;
-	my $cmpTranslation;
 	for (my $i = 0; $i < @{$mdl->modelcompartments()}; $i++) {
 		my $mdlcmp = $mdl->modelcompartments()->[$i];
-		my $cmp = $self->getObject("ModelCompartment",{
-			
-		});
-		if (!defined($cmp)) {
-			$cmp = $self->create("ModelCompartment",{
-				
-			});
-		}
-		$cmpTranslation->{$mdlcmp->uuid()} = $cmp->uuid();
+		my $cmp = $self->findCreateEquivalentCompartment({modelcompartment => $mdlcmp,create => 1});
 	}
 	for (my $i = 0; $i < @{$mdl->modelcompounds()}; $i++) {
 		my $mdlcpd = $mdl->modelcompounds()->[$i];
-		my $cpd = $self->getObject("ModelCompound",{
-			compound_uuid => $mdl->modelcompounds()->compound_uuid(),
-			modelcompartment_uuid => $cmpTranslation->{$mdl->modelcompounds()->modelcompartment_uuid()},
-		});
-		if (!defined($cpd)) {
-			$cpd = $self->create("ModelCompound",{
-				compound_uuid => $mdl->modelcompounds()->compound_uuid(),
-				modelcompartment_uuid => $cmpTranslation->{$mdl->modelcompounds()->modelcompartment_uuid()},
-			});
-		}
-		$cpdTranslation->{$cpd->uuid()} = $mdlcpd->uuid();
+		my $cpd = $self->findCreateEquivalentCompound({modelcompound => $mdlcpd,create => 1});
+	}
+	for (my $i = 0; $i < @{$mdl->modelreactions()}; $i++) {
+		my $mdlrxn = $mdl->modelreactions()->[$i];
+		my $rxn = $self->findCreateEquivalentReaction({modelreaction => $mdlrxn,create => 1});
+	}
+	for (my $i = 0; $i < @{$mdl->biomasses()}; $i++) {
+		my $mdlbio = $mdl->biomasses()->[$i];
+		my $bio = $self->findCreateEquivalentBiomass({biomass => $mdlbio,create => 1});
 	}
 }
 =head3 buildModelFromAnnotation
