@@ -935,7 +935,8 @@ sub get_model_data {
 	my $ids;
 	#Checking that at least one id was input
 	if (!defined($args->{id}) || scalar(@{$args->{id}}) == 0) {
-        $ids = map { $_->id() } $figmodel->database()->get_object("model");
+		my $mdl = $figmodel->database()->get_object("model");
+        $ids = [$mdl->id()];
 	} elsif(ref($args->{id}) ne "ARRAY") {
 		$ids = [$args->{id}];
 	} else {

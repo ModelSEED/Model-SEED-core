@@ -33,3 +33,4 @@ $mapping->setParents(undef);
 $mapping->biochemistry($biochem);
 print "Mapping loaded!\n";
 $mapping->buildSubsystemReactionSets();
+$biochem->printJSONFile($directory."biochemistry.json");
