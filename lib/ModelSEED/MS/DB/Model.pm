@@ -7,6 +7,7 @@
 package ModelSEED::MS::DB::Model;
 use Moose;
 use Moose::Util::TypeConstraints;
+use ModelSEED::MS::LazyHolder::GapfillingFormulation;
 use ModelSEED::MS::LazyHolder::Biomass;
 use ModelSEED::MS::LazyHolder::ModelCompartment;
 use ModelSEED::MS::LazyHolder::ModelCompound;
@@ -42,6 +43,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 
 # SUBOBJECTS:
+has gapfillingformulations => (is => 'bare', coerce => 1, handles => { gapfillingformulations => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::GapfillingFormulation::Lazy', type => 'child(GapfillingFormulation)', metaclass => 'Typed', printOrder => '4');
 has biomasses => (is => 'bare', coerce => 1, handles => { biomasses => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::Biomass::Lazy', type => 'child(Biomass)', metaclass => 'Typed', printOrder => '0');
 has modelcompartments => (is => 'bare', coerce => 1, handles => { modelcompartments => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelCompartment::Lazy', type => 'child(ModelCompartment)', metaclass => 'Typed', printOrder => '1');
 has modelcompounds => (is => 'bare', coerce => 1, handles => { modelcompounds => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelCompound::Lazy', type => 'child(ModelCompound)', metaclass => 'Typed', printOrder => '2');
@@ -79,6 +81,7 @@ sub _typeToFunction {
 		ModelReaction => 'modelreactions',
 		ModelCompound => 'modelcompounds',
 		ModelCompartment => 'modelcompartments',
+		GapfillingFormulation => 'gapfillingformulations',
 	};
 }
 

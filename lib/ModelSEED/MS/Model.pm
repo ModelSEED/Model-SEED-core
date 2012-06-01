@@ -60,7 +60,8 @@ sub findCreateEquivalentCompartment {
 			compartmentIndex => $cmp->compartmentIndex(),
 		});
 	}
-	$cmp->id($mdlcmp->uuid());
+	$mdlcmp->mapped_uuid($cmp->uuid());
+	$cmp->mapped_uuid($mdlcmp->uuid());
 	return $cmp;
 }
 =head3 findCreateEquivalentCompound
@@ -97,7 +98,8 @@ sub findCreateEquivalentCompound {
 			formula => $inmdlcpd->formula()
 		});
 	}
-	$outcpd->id($inmdlcpd->uuid());
+	$inmdlcpd->mapped_uuid($outcpd->uuid());
+	$outcpd->mapped_uuid($inmdlcpd->uuid());
 	return $outcpd;
 }
 =head3 findCreateEquivalentReaction
@@ -145,7 +147,8 @@ sub findCreateEquivalentReaction {
 			$outrxn->create("ModelReactionReagent",$prot->serializeToDB());
 		}
 	}
-	$outrxn->id($inmdlrxn->uuid());
+	$inmdlrxn->mapped_uuid($outrxn->uuid());
+	$outrxn->mapped_uuid($inmdlrxn->uuid());
 	return $outrxn;
 }
 =head3 findCreateEquivalentBiomass
@@ -186,6 +189,8 @@ sub findCreateEquivalentBiomass {
 			});
 		}
 	}
+	$inmdlbio->mapped_uuid($outbio->uuid());
+	$outbio->mapped_uuid($inmdlbio->uuid());
 	return $outbio;
 }
 =head3 mergeModel
@@ -799,6 +804,54 @@ sub addCompoundToModel {
 		});
 	}
 	return $mdlcpd;
+}
+=head3 labelBiomassCompounds
+Definition:
+	void ModelSEED::MS::Model->labelBiomassCompounds();
+Description:
+	Labels all model compounds indicating whether or not they are biomass components
+=cut
+sub labelBiomassCompounds {
+	my ($self,$args) = @_;
+	#$args = ModelSEED::utilities::ARGS($args,[],{});#Commented out until we need it
+	for (my $i=0; $i < @{$self->modelcompounds()}; $i++) {
+		my $cpd = $self->modelcompounds()->[$i];
+		$cpd->isBiomassCompound(0);
+	}
+	for (my $i=0; $i < @{$self->biomasses()}; $i++) {
+		my $bio = $self->biomasses()->[$i];
+		for (my $j=0; $j < @{$bio->biomasscompounds()}; $j++) {
+			my $biocpd = $bio->biomasscompounds()->[$j];
+			$biocpd->modelcompound()->isBiomassCompound(1);
+		}
+	}
+}
+#***********************************************************************************************************
+# ANALYSIS FUNCTIONS:
+#***********************************************************************************************************
+=head3 gapfillModel
+Definition:
+	ModelSEED::MS::GapfillingSolution ModelSEED::MS::Model->gapfillModel({
+		gapfillingFormulation => ModelSEED::MS::GapfillingFormulation,
+		fbaFormulation => ModelSEED::MS::FBAFormulation
+	});
+Description:
+	Runs gapfilling on the model and integrates the output gapfilling solution
+=cut
+sub gapfillModel {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["gapfillingFormulation"],{
+		fbaFormulation => undef
+	});
+	my $solution = $args->{gapfillingFormulation}->runGapFilling({
+		model => $self,
+		fbaFormulation => $args->{fbaFormulation}
+	});
+	if (defined($solution)) {
+		$self->add("GapfillingFormulation",$args->{gapfillingFormulation});
+		return $solution;	
+	}
+	return undef;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -17,6 +17,8 @@ extends 'ModelSEED::MS::DB::ModelCompound';
 has name => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildname' );
 has id => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildid' );
 has modelCompartmentLabel => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmodelCompartmentLabel' );
+has isBiomassCompound  => ( is => 'rw', isa => 'Bool',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildisBiomassCompound' );
+has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -32,6 +34,15 @@ sub _buildname {
 sub _buildmodelCompartmentLabel {
 	my ($self) = @_;
 	return $self->modelcompartment()->label();
+}
+sub _buildisBiomassCompound {
+	my ($self) = @_;
+	$self->parent()->labelBiomassCompounds();
+	return $self->isBiomassCompound();
+}
+sub _buildmapped_uuid {
+	my ($self) = @_;
+	return "00000000-0000-0000-0000-000000000000";
 }
 
 #***********************************************************************************************************
