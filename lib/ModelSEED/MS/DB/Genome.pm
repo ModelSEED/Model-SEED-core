@@ -4,34 +4,33 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::IndexedObject;
 package ModelSEED::MS::DB::Genome;
+use ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Annotation', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Annotation', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has source => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', required => 1 );
-has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has taxonomy => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has size => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has gc => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has etcType => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has id => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has source => (is => 'rw', isa => 'ModelSEED::varchar', required => 1, type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has taxonomy => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has size => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
+has gc => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has etcType => (is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # LINKS:
@@ -45,14 +44,111 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'Genome'; }
 
-my $attributes = ['uuid', 'modDate', 'id', 'name', 'source', 'class', 'taxonomy', 'cksum', 'size', 'gc', 'etcType'];
+my $attributes = [
+          {
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 32,
+            'req' => 1,
+            'name' => 'id',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'name',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'name' => 'source',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'class',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'taxonomy',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'cksum',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'size',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'gc',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 1,
+            'req' => 0,
+            'name' => 'etcType',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, modDate => 1, id => 2, name => 3, source => 4, class => 5, taxonomy => 6, cksum => 7, size => 8, gc => 9, etcType => 10};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
 my $subobjects = [];
+
+my $subobject_map = {};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
 
 

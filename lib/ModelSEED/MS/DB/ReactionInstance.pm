@@ -4,94 +4,162 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::InstanceTransport;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ReactionInstance;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::InstanceTransport;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '=' );
-has compartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1 );
-has sourceEquation => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has transprotonNature => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', default => '=', type => 'attribute', metaclass => 'Typed');
+has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has sourceEquation => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has transprotonNature => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has transports => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::InstanceTransport]', type => 'encompassed(InstanceTransport)', metaclass => 'Typed');
+has transports => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(InstanceTransport)', metaclass => 'Typed', reader => '_transports');
 
 
 # LINKS:
-has compartment => (is => 'rw',lazy => 1,builder => '_buildcompartment',isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,Compartment,uuid,compartment_uuid)', metaclass => 'Typed',weak_ref => 1);
-has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,Reaction,uuid,reaction_uuid)', metaclass => 'Typed',weak_ref => 1);
-has id => (is => 'rw',lazy => 1,builder => '_buildid',isa => 'Str', type => 'id', metaclass => 'Typed');
+has compartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,compartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcompartment', weak_ref => 1);
+has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreaction', weak_ref => 1);
+has id => (is => 'rw', lazy => 1, builder => '_buildid', isa => 'Str', type => 'id', metaclass => 'Typed');
 
 
 # BUILDERS:
 sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildcompartment {
-	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','Compartment','uuid',$self->compartment_uuid());
+    my ($self) = @_;
+    return $self->getLinkedObject('Biochemistry','compartments',$self->compartment_uuid());
 }
 sub _buildreaction {
-	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','Reaction','uuid',$self->reaction_uuid());
+    my ($self) = @_;
+    return $self->getLinkedObject('Biochemistry','reactions',$self->reaction_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'ReactionInstance'; }
 
-my $typeToFunction = {
-	InstanceTransport => 'transports',
-};
-sub _typeToFunction {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $typeToFunction->{$key};
-	} else {
-		return $typeToFunction;
-	}
-}
+my $attributes = [
+          {
+            'len' => 36,
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'locked',
+            'default' => '0',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'name' => 'reaction_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 1,
+            'req' => 0,
+            'name' => 'direction',
+            'default' => '=',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 36,
+            'req' => 1,
+            'name' => 'compartment_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 36,
+            'req' => 1,
+            'name' => 'sourceEquation',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'transprotonNature',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          }
+        ];
 
-my $functionToType = {
-	transports => 'InstanceTransport',
-};
-sub _functionToType {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $functionToType->{$key};
-	} else {
-		return $functionToType;
-	}
-}
-
-my $attributes = ['uuid', 'modDate', 'locked', 'reaction_uuid', 'direction', 'compartment_uuid', 'sourceEquation', 'transprotonNature'];
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, reaction_uuid => 3, direction => 4, compartment_uuid => 5, sourceEquation => 6, transprotonNature => 7};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
-my $subobjects = ['transports'];
+my $subobjects = [
+          {
+            'name' => 'transports',
+            'type' => 'encompassed',
+            'class' => 'InstanceTransport'
+          }
+        ];
+
+my $subobject_map = {transports => 0};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
 sub _aliasowner { return 'Biochemistry'; }
+
+
+# SUBOBJECT READERS:
+around 'transports' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('transports');
+};
 
 
 __PACKAGE__->meta->make_immutable;

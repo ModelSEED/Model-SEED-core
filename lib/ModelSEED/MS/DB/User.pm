@@ -4,9 +4,8 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::User;
+use ModelSEED::MS::BaseObject;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
@@ -17,16 +16,16 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has login => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has password => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has email => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
-has firstname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
-has lastname => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has login => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has password => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has email => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has firstname => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has lastname => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # LINKS:
@@ -39,14 +38,78 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 # CONSTANTS:
 sub _type { return 'User'; }
 
-my $attributes = ['uuid', 'login', 'password', 'email', 'firstname', 'lastname'];
+my $attributes = [
+          {
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'name' => 'login',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'name' => 'password',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'email',
+            'default' => '',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'firstname',
+            'default' => '',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'lastname',
+            'default' => '',
+            'type' => 'Str',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, login => 1, password => 2, email => 3, firstname => 4, lastname => 5};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
 my $subobjects = [];
+
+my $subobject_map = {};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
 
 

@@ -4,44 +4,43 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
+package ModelSEED::MS::DB::Cue;
+use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::CompoundStructure;
 use ModelSEED::MS::CompoundPk;
-use ModelSEED::MS::BaseObject;
-package ModelSEED::MS::DB::Cue;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has abbreviation => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has cksum => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has unchargedFormula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has formula => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has mass => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has defaultCharge => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has deltaG => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has deltaGErr => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed' );
-has smallMolecule => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed' );
-has priority => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has abbreviation => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has unchargedFormula => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has formula => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has mass => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has defaultCharge => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has deltaG => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has deltaGErr => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has smallMolecule => (is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed');
+has priority => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has structures => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundStructure]', type => 'encompassed(CompoundStructure)', metaclass => 'Typed');
-has pks => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::CompoundPk]', type => 'encompassed(CompoundPk)', metaclass => 'Typed');
+has structures => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(CompoundStructure)', metaclass => 'Typed', reader => '_structures');
+has pks => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(CompoundPk)', metaclass => 'Typed', reader => '_pks');
 
 
 # LINKS:
@@ -55,41 +54,153 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'Cue'; }
 
-my $typeToFunction = {
-	CompoundPk => 'pks',
-	CompoundStructure => 'structures',
-};
-sub _typeToFunction {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $typeToFunction->{$key};
-	} else {
-		return $typeToFunction;
-	}
-}
+my $attributes = [
+          {
+            'len' => 36,
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'locked',
+            'default' => '0',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'name',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'abbreviation',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'cksum',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'unchargedFormula',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'formula',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'mass',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'defaultCharge',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'deltaG',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'deltaGErr',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'smallMolecule',
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'priority',
+            'type' => 'Int',
+            'perm' => 'rw'
+          }
+        ];
 
-my $functionToType = {
-	pks => 'CompoundPk',
-	structures => 'CompoundStructure',
-};
-sub _functionToType {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $functionToType->{$key};
-	} else {
-		return $functionToType;
-	}
-}
-
-my $attributes = ['uuid', 'modDate', 'locked', 'name', 'abbreviation', 'cksum', 'unchargedFormula', 'formula', 'mass', 'defaultCharge', 'deltaG', 'deltaGErr', 'smallMolecule', 'priority'];
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, abbreviation => 4, cksum => 5, unchargedFormula => 6, formula => 7, mass => 8, defaultCharge => 9, deltaG => 10, deltaGErr => 11, smallMolecule => 12, priority => 13};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
-my $subobjects = ['structures', 'pks'];
+my $subobjects = [
+          {
+            'name' => 'structures',
+            'type' => 'encompassed',
+            'class' => 'CompoundStructure'
+          },
+          {
+            'name' => 'pks',
+            'type' => 'encompassed',
+            'class' => 'CompoundPk'
+          }
+        ];
+
+my $subobject_map = {structures => 0, pks => 1};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
+
+
+# SUBOBJECT READERS:
+around 'structures' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('structures');
+};
+around 'pks' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('pks');
+};
 
 
 __PACKAGE__->meta->make_immutable;

@@ -4,35 +4,34 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::ReactionSetReaction;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::ReactionSet;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ReactionSetReaction;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Biochemistry', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has id => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has class => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => 'unclassified' );
-has type => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', required => 1 );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has id => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'ModelSEED::varchar', default => 'unclassified', type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has reactions => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::ReactionSetReaction]', type => 'encompassed(ReactionSetReaction)', metaclass => 'Typed');
+has reactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionSetReaction)', metaclass => 'Typed', reader => '_reactions');
 
 
 # LINKS:
@@ -46,39 +45,100 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 # CONSTANTS:
 sub _type { return 'ReactionSet'; }
 
-my $typeToFunction = {
-	ReactionSetReaction => 'reactions',
-};
-sub _typeToFunction {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $typeToFunction->{$key};
-	} else {
-		return $typeToFunction;
-	}
-}
+my $attributes = [
+          {
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'locked',
+            'default' => '0',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 32,
+            'req' => 1,
+            'name' => 'id',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'name',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'class',
+            'default' => 'unclassified',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 32,
+            'req' => 1,
+            'name' => 'type',
+            'type' => 'Str',
+            'perm' => 'rw'
+          }
+        ];
 
-my $functionToType = {
-	reactions => 'ReactionSetReaction',
-};
-sub _functionToType {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $functionToType->{$key};
-	} else {
-		return $functionToType;
-	}
-}
-
-my $attributes = ['uuid', 'modDate', 'locked', 'id', 'name', 'class', 'type'];
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, id => 3, name => 4, class => 5, type => 6};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
-my $subobjects = ['reactions'];
+my $subobjects = [
+          {
+            'name' => 'reactions',
+            'type' => 'encompassed',
+            'class' => 'ReactionSetReaction'
+          }
+        ];
+
+my $subobject_map = {reactions => 0};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
+
+
+# SUBOBJECT READERS:
+around 'reactions' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('reactions');
+};
 
 
 __PACKAGE__->meta->make_immutable;

@@ -1,222 +1,343 @@
+# try to do away with typeToFunction and functionToType.
+# call around methods via $orig, and store class name in info hash
+
 use strict;
 use ModelSEED::MS::Metadata::Definitions;
 use ModelSEED::utilities;
 use DateTime;
+use Data::Dumper;
 
 my $objects = ModelSEED::MS::DB::Definitions::objectDefinitions();
+my $tab = "   ";
 
 foreach my $name (keys(%{$objects})) {
-	my $object = $objects->{$name};
-	#Creating header
-	my $output = [
-		"########################################################################",
-		"# ModelSEED::MS::DB::".$name." - This is the moose object corresponding to the ".$name." object",
-		"# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
-		"# Contact email: chenry\@mcs.anl.gov",
-		"# Development location: Mathematics and Computer Science Division, Argonne National Lab",
-		"########################################################################",
-		"use strict;"
-	];
-	#Creating perl use statements
-	my $baseObject = "BaseObject";
-	if ($object->{class} eq "indexed") {
-		$baseObject = "IndexedObject";
-	}
+    my $object = $objects->{$name};
+    #Creating header
+    my $output = [
+        "########################################################################",
+        "# ModelSEED::MS::DB::".$name." - This is the moose object corresponding to the ".$name." object",
+        "# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
+        "# Contact email: chenry\@mcs.anl.gov",
+        "# Development location: Mathematics and Computer Science Division, Argonne National Lab",
+        "########################################################################"
+    ];
 
-	#if (defined($object->{parents}->[0])) {
-	#	push(@{$output},"use ModelSEED::MS::".$object->{parents}->[0].";");
-	#}
-	foreach my $subobject (@{$object->{subobjects}}) {
-		if ($subobject->{type} !~ /hasharray/) {
-			push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
-		}
-	}
-	push(@{$output},("use ModelSEED::MS::".$baseObject.";"));
-	#foreach my $subobject (@{$object->{links}}) {
-	#	push(@{$output},"use ModelSEED::MS::".$subobject->{class}.";");
-	#}
-	#Creating package statement
-	push(@{$output},"package ModelSEED::MS::DB::".$name.";");
-	push(@{$output},"use Moose;","use namespace::autoclean;");
-	#Determining and setting base class
-	push(@{$output},("extends 'ModelSEED::MS::".$baseObject."';","",""));
-	#Printing parent
-	my $type = ", type => 'parent', metaclass => 'Typed'";
-	if (defined($object->{parents}->[0])) {
+    #Creating package statement
+    push(@$output, "package ModelSEED::MS::DB::" . $name . ";");
+
+    #Creating perl use statements
+    my $baseObject = "BaseObject";
+    if ($object->{class} eq "indexed") {
+        $baseObject = "IndexedObject";
+    }
+    push(@$output, "use ModelSEED::MS::" . $baseObject . ";");
+
+    foreach my $subobject (@{$object->{subobjects}}) {
+        if ($subobject->{type} !~ /hasharray/) {
+            push(@$output, "use ModelSEED::MS::" . $subobject->{class} . ";");
+        }
+    }
+
+    push(@$output,
+         "use Moose;",
+         "use namespace::autoclean;"
+    );
+
+    #Determining and setting base class
+    push(@$output, "extends 'ModelSEED::MS::" . $baseObject . "';", "", "");
+
+    #Printing parent
+    my $type = ", type => 'parent', metaclass => 'Typed'";
+    if (defined($object->{parents}->[0])) {
         my $parent = $object->{parents}->[0];
-		push(@{$output},("# PARENT:"));
-        if($parent =~ /ModelSEED::/) {
-            push(@{$output},"has parent => (is => 'rw', isa => '$parent'$type);");
-        } else {
-            push(@{$output},"has parent => (is => 'rw',isa => 'ModelSEED::MS::".$object->{parents}->[0]."'".$type.",weak_ref => 1);");
-        }
-		push(@{$output},("",""));
-	}
-	#Printing attributes
-	push(@{$output},("# ATTRIBUTES:"));
-	$type = ", type => 'attribute', metaclass => 'Typed'";
-	my $uuid = 0;
-	my $modDate = 0;
-        my $attrs = [];
-	foreach my $attribute (@{$object->{attributes}}) {
-		my $suffix = "";
-		if (defined($attribute->{req}) && $attribute->{req} == 1) {
-			$suffix .= ", required => 1";
-		}
-		if (defined($attribute->{default})) {
-			$suffix .= ", default => '".$attribute->{default}."'";
-		}
-		if ($attribute->{name} eq "uuid") {
-			$suffix .= ", lazy => 1, builder => '_builduuid'";
-			$uuid = 1;
-		}
-		if ($attribute->{name} eq "modDate") {
-			$suffix .= ", lazy => 1, builder => '_buildmodDate'";
-			$modDate = 1;
-		}
-		push(@{$output},"has ".$attribute->{name}." => ( is => '".$attribute->{perm}."', isa => '".$attribute->{type}."'".$type.$suffix." );");
-                push(@$attrs, "'" . $attribute->{name} . "'");
-	}
-	push(@{$output},("",""));
-	#Printing ancestor
-	if ($uuid == 1) {
-		push(@{$output},("# ANCESTOR:"));
-		my $type = ", type => 'acestor', metaclass => 'Typed'";
-		push(@{$output},"has ancestor_uuid => (is => 'rw',isa => 'uuid'".$type.");");
-	}
-	push(@{$output},("",""));
-	#Printing subobjects
-	my $typeToFunction;
-        my $functionToType;
-        my $subobjs = [];
-	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
-		push(@{$output},("# SUBOBJECTS:"));
-		foreach my $subobject (@{$object->{subobjects}}) {
-			$typeToFunction->{$subobject->{class}} = $subobject->{name};
-                        $functionToType->{$subobject->{name}} = $subobject->{class};
-			$type = ", type => '".$subobject->{type}."(".$subobject->{class}.")', metaclass => 'Typed'";
-			if ($subobject->{type} =~ m/hasharray\((.+)\)/) {
-				$type = ", type => 'hasharray(".$subobject->{class}.",".$1.")', metaclass => 'Typed'";
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return {};},isa => 'HashRef[ArrayRef]'".$type.");");
-			} elsif ($subobject->{type} =~ m/link/) {
-				$type = ", type => 'solink(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.",weak_ref => 1);");
-			} else {
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::".$subobject->{class}."]'".$type.");");
-			}
-                        push(@$subobjs, "'" . $subobject->{name} . "'");
-		}
-		push(@{$output},("",""));
-	}
-	#Printing object links
-	if (defined($object->{links}) || defined($object->{alias})) {
-		push(@{$output},("# LINKS:"));
-		if (defined($object->{links}) && defined($object->{links}->[0])) {
-			foreach my $subobject (@{$object->{links}}) {
-				$type = ", type => 'link(".$subobject->{parent}.",".$subobject->{class}.",".$subobject->{query}.",".$subobject->{attribute}.")', metaclass => 'Typed'";
-				push(@{$output},"has ".$subobject->{name}." => (is => 'rw',lazy => 1,builder => '_build".$subobject->{name}."',isa => 'ModelSEED::MS::".$subobject->{class}."'".$type.",weak_ref => 1);");
-			}
-		}
-		if (defined($object->{alias})) {
-			push(@{$output},"has id => (is => 'rw',lazy => 1,builder => '_buildid',isa => 'Str', type => 'id', metaclass => 'Typed');");
-		}
-		push(@{$output},("",""));
-	}
-	#Printing builders
-	push(@{$output},("# BUILDERS:"));
-	if ($uuid == 1) {
-		push(@{$output},"sub _builduuid { return Data::UUID->new()->create_str(); }");
-	}
-	if ($modDate == 1) {
-		push(@{$output},"sub _buildmodDate { return DateTime->now()->datetime(); }");
-	}
-	foreach my $subobject (@{$object->{links}}) {
-		push(@{$output},(
-			"sub _build".$subobject->{name}." {",
-				"\tmy (\$self) = \@_;",
-				"\treturn \$self->getLinkedObject('".$subobject->{parent}."','".$subobject->{class}."','".$subobject->{query}."',\$self->".$subobject->{attribute}."());",
-			"}"
-		));
-	}
-	push(@{$output},("",""));
-	#Printing constants
-	push(@{$output},("# CONSTANTS:"));
-	push(@{$output},"sub _type { return '".$name."'; }");
-	if (defined($typeToFunction)) {
-		push(@$output, "", "my \$typeToFunction = {");
-		foreach my $key (keys(%{$typeToFunction})) {
-			push(@$output,"\t$key => '".$typeToFunction->{$key}."',");
-		}
-		push(@$output,"};");
-		push(@$output,
-                     "sub _typeToFunction {",
-                     "\tmy (\$self, \$key) = \@_;",
-                     "\tif (defined(\$key)) {",
-                     "\t\treturn \$typeToFunction->{\$key};",
-                     "\t} else {",
-                     "\t\treturn \$typeToFunction;",
-                     "\t}",
-                     "}");
-            }
-        if (defined($functionToType)) {
-            push(@$output, "", "my \$functionToType = {");
-            foreach my $key (keys %$functionToType) {
-                push(@$output, "\t$key => '" . $functionToType->{$key} . "',");
-            }
-            push(@$output, "};");
-            push(@$output,
-                 "sub _functionToType {",
-                 "\tmy (\$self, \$key) = \@_;",
-                 "\tif (defined(\$key)) {",
-                 "\t\treturn \$functionToType->{\$key};",
-                 "\t} else {",
-                 "\t\treturn \$functionToType;",
-                 "\t}",
-                 "}");
-        }
+        push(@$output, "# PARENT:");
 
-        # add _attributes and _subobjects
-        push(@$output, "", "my \$attributes = [" . join(", ", @$attrs) . "];");
-        push(@$output, "sub _attributes {",
-             "\treturn \$attributes;",
-             "}");
-        push(@$output, "", "my \$subobjects = [" . join(", ", @$subobjs) . "];");
-        push(@$output, "sub _subobjects {",
-             "\treturn \$subobjects;",
-             "}");
+        my $props = ["is => 'rw'"];
+        if ($parent =~ /ModelSEED::/) {
+            push(@$props, "isa => '$parent'");
+        } else {
+            push(@$props, "isa => 'ModelSEED::MS::$parent'", "weak_ref => 1");
+        }
+        push(@$props, "type => 'parent'", "metaclass => 'Typed'");
+
+        push(@$output, "has parent => (" . join(", ", @$props) . ");");
+        push(@$output, "", "");
+    }
+
+    #Printing attributes
+    push(@$output, "# ATTRIBUTES:");
+    $type = ", type => 'attribute', metaclass => 'Typed'";
+    my $uuid = 0;
+    my $modDate = 0;
+    my $attrs = [];
+    foreach my $attribute (@{$object->{attributes}}) {
+        my $props = [
+            "is => '"  . $attribute->{perm} . "'",
+            "isa => '" . $attribute->{type} . "'"
+        ];
+
+        if (defined($attribute->{req}) && $attribute->{req} == 1) {
+            push(@$props, "required => 1");
+        }
+        if (defined($attribute->{default})) {
+            push(@$props, "default => '" . $attribute->{default} . "'");
+        }
+        if ($attribute->{name} eq "uuid") {
+            push(@$props, "lazy => 1", "builder => '_builduuid'");
+            $uuid = 1;
+        }
+        if ($attribute->{name} eq "modDate") {
+            push(@$props, "lazy => 1", "builder => '_buildmodDate'");
+            $modDate = 1;
+        }
+        push(@$props, "type => 'attribute'", "metaclass => 'Typed'");
+
+        push(@$output, "has " . $attribute->{name} . " => (" . join(", ", @$props) . ");");
+        push(@$attrs, "'" . $attribute->{name} . "'");
+    }
+    push(@$output, "", "");
+
+    #Printing ancestor
+    if ($uuid == 1) {
+        push(@$output, "# ANCESTOR:");
+        my $type = ", type => 'ancestor', metaclass => 'Typed'";
+        push(@$output, "has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');");
+        push(@$output, "", "");
+    }
+
+    #Printing subobjects
+    my $typeToFunction;
+    my $functionToType;
+    if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
+        push(@$output, "# SUBOBJECTS:");
+        foreach my $subobject (@{$object->{subobjects}}) {
+            $typeToFunction->{$subobject->{class}} = $subobject->{name};
+            $functionToType->{$subobject->{name}} = $subobject->{class};
+
+            my $soname = $subobject->{name};
+            my $class = $subobject->{class};
+
+            my $props = [ "is => 'rw'" ];
+            my $type = $subobject->{type};
+
+            push(@$props,
+                 "isa => 'ArrayRef[HashRef]'",
+                 "default => sub { return []; }",
+                 "type => '$type($class)'",
+                 "metaclass => 'Typed'",
+                 "reader => '_$soname'"
+            );
+
+            push(@$output, "has $soname => (" . join(", ", @$props) . ");");
+        }
+        push(@$output, "", "");
+    }
+
+    #Printing object links
+    if (defined($object->{links}) || defined($object->{alias})) {
+        push(@$output, "# LINKS:");
+        if (defined($object->{links}) && defined($object->{links}->[0])) {
+            foreach my $subobject (@{$object->{links}}) {
+                my $soname = $subobject->{name};
+                my $parent = $subobject->{parent};
+                my $method = $subobject->{method};
+                my $attr = $subobject->{attribute};
+
+                # find link class
+                my $class;
+                foreach my $parent_so (@{$objects->{$parent}->{subobjects}}) {
+                    if ($parent_so->{name} eq $method) {
+                        $class = $parent_so->{class};
+                        last;
+                    }
+                }
+
+                if (!defined($class)) {
+                    $class = $method;
+                }
+
+                my $props = [
+                    "is => 'rw'",
+                    "isa => 'ModelSEED::MS::$class'",
+                    "type => 'link($parent,$method,$attr)'",
+                    "metaclass => 'Typed'",
+                    "lazy => 1",
+                    "builder => '_build$soname'",
+                    "weak_ref => 1"
+                ];
+
+                push(@$output, "has $soname => (" . join(", ", @$props) . ");");
+            }
+        }
 
         if (defined($object->{alias})) {
-            push(@{$output},"sub _aliasowner { return '".$object->{alias}."'; }");
+            push(@$output,"has id => (is => 'rw', lazy => 1, builder => '_buildid', isa => 'Str', type => 'id', metaclass => 'Typed');");
         }
+        push(@$output, "", "");
+    }
 
-	push(@{$output},("",""));
-	#Finalizing
-	push(@{$output},("__PACKAGE__->meta->make_immutable;","1;"));
-	ModelSEED::utilities::PRINTFILE("../MS/DB/".$name.".pm",$output);
-	if (!-e "../MS/".$name.".pm") {
-		$output = [
-			"########################################################################",
-			"# ModelSEED::MS::".$name." - This is the moose object corresponding to the ".$name." object",
-			"# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
-			"# Contact email: chenry\@mcs.anl.gov",
-			"# Development location: Mathematics and Computer Science Division, Argonne National Lab",
-			"# Date of module creation: ".DateTime->now()->datetime(),
-			"########################################################################",
-			"use strict;",
-			"use ModelSEED::MS::DB::".$name.";",
-			"package ModelSEED::MS::".$name.";",
-			"use Moose;",
-			"use namespace::autoclean;",
-			"extends 'ModelSEED::MS::DB::".$name."';",
-			"# CONSTANTS:",
-			"#TODO",
-			"# FUNCTIONS:",
-			"#TODO",
-			"",
-			"",
-			"__PACKAGE__->meta->make_immutable;",
-			"1;"
-		];
-		ModelSEED::utilities::PRINTFILE("../MS/".$name.".pm",$output);
-	}
+    #Printing builders
+    push(@$output,("# BUILDERS:"));
+    if ($uuid == 1) {
+        push(@$output, "sub _builduuid { return Data::UUID->new()->create_str(); }");
+    }
+    if ($modDate == 1) {
+        push(@$output, "sub _buildmodDate { return DateTime->now()->datetime(); }");
+    }
+    foreach my $subobject (@{$object->{links}}) {
+        push(@$output,
+            "sub _build".$subobject->{name}." {",
+            "$tab my (\$self) = \@_;",
+            "$tab return \$self->getLinkedObject('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
+            "}"
+        );
+    }
+    push(@$output, "", "");
+
+    #Printing constants
+    push(@$output, "# CONSTANTS:");
+    push(@$output, "sub _type { return '" . $name . "'; }");
+
+
+=head
+
+    if (defined($typeToFunction)) {
+        push(@$output, "", "my \$typeToFunction = {");
+        foreach my $key (keys(%{$typeToFunction})) {
+            push(@$output, "$tab $key => '".$typeToFunction->{$key}."',");
+        }
+        push(@$output, "};");
+        push(@$output,
+             "sub _typeToFunction {",
+             "$tab my (\$self, \$key) = \@_;",
+             "$tab if (defined(\$key)) {",
+             "$tab $tab return \$typeToFunction->{\$key};",
+             "$tab } else {",
+             "$tab $tab return \$typeToFunction;",
+             "$tab }",
+             "}"
+        );
+    }
+    if (defined($functionToType)) {
+        push(@$output, "", "my \$functionToType = {");
+        foreach my $key (keys %$functionToType) {
+            push(@$output, "$tab $key => '" . $functionToType->{$key} . "',");
+        }
+        push(@$output, "};");
+        push(@$output,
+             "sub _functionToType {",
+             "$tab my (\$self, \$key) = \@_;",
+             "$tab if (defined(\$key)) {",
+             "$tab $tab return \$functionToType->{\$key};",
+             "$tab } else {",
+             "$tab $tab return \$functionToType;",
+             "$tab }",
+             "}"
+        );
+    }
+
+=cut
+
+    # add _attributes and _subobjects
+
+    my $attr_map = [];
+    my $num = 0;
+    map {push(@$attr_map, $_->{name} . " => " . $num++)} @{$object->{attributes}};
+
+    my $attributes = Dumper($object->{attributes});
+    $attributes =~ s/\$VAR1/my \$attributes/;
+
+    push(@$output, "",
+         $attributes,
+         "my \$attribute_map = {" . join(", ", @$attr_map) . "};",
+         "sub _attributes {",
+         "$tab my (\$self, \$key) = \@_;",
+         "$tab if (defined(\$key)) {",
+         "$tab $tab my \$ind = \$attribute_map->{\$key};",
+         "$tab $tab if (defined(\$ind)) {",
+         "$tab $tab $tab return \$attributes->[\$ind];",
+         "$tab $tab } else {",
+         "$tab $tab $tab return undef;",
+         "$tab $tab }",
+         "$tab } else {",
+         "$tab $tab return \$attributes;",
+         "$tab }",
+         "}"
+    );
+
+
+    my $so_map = [];
+    $num = 0;
+    map {push(@$so_map, $_->{name} . " => " . $num++)} @{$object->{subobjects}};
+
+    my $subobjects = Dumper($object->{subobjects});
+    $subobjects =~ s/\$VAR1/my \$subobjects/;
+
+    push(@$output, "",
+         $subobjects,
+         "my \$subobject_map = {" . join(", ", @$so_map) . "};",
+         "sub _subobjects {",
+         "$tab my (\$self, \$key) = \@_;",
+         "$tab if (defined(\$key)) {",
+         "$tab $tab my \$ind = \$subobject_map->{\$key};",
+         "$tab $tab if (defined(\$ind)) {",
+         "$tab $tab $tab return \$subobjects->[\$ind];",
+         "$tab $tab } else {",
+         "$tab $tab $tab return undef;",
+         "$tab $tab }",
+         "$tab } else {",
+         "$tab $tab return \$subobjects;",
+         "$tab }",
+         "}"
+    );
+
+    if (defined($object->{alias})) {
+        push(@$output, "sub _aliasowner { return '".$object->{alias}."'; }");
+    }
+
+    push(@$output, "", "");
+
+    # print subobject readers
+    if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
+        push(@$output, "# SUBOBJECT READERS:");
+        foreach my $subobject (@{$object->{subobjects}}) {
+            push(@$output,
+                 "around '" . $subobject->{name} . "' => sub {",
+                 "$tab my (\$orig, \$self) = \@_;",
+                 "$tab return \$self->_build_all_objects('" . $subobject->{name} . "');",
+                 "};"
+            );
+        }
+        push(@$output, "", "");
+    }
+
+    #Finalizing
+    push(@$output, "__PACKAGE__->meta->make_immutable;", "1;");
+    ModelSEED::utilities::PRINTFILE("../MS/DB/".$name.".pm",$output);
+    if (!-e "../MS/".$name.".pm") {
+        $output = [
+            "########################################################################",
+            "# ModelSEED::MS::".$name." - This is the moose object corresponding to the ".$name." object",
+            "# Authors: Christopher Henry, Scott Devoid, Paul Frybarger",
+            "# Contact email: chenry\@mcs.anl.gov",
+            "# Development location: Mathematics and Computer Science Division, Argonne National Lab",
+            "# Date of module creation: ".DateTime->now()->datetime(),
+            "########################################################################",
+            "use strict;",
+            "use ModelSEED::MS::DB::".$name.";",
+            "package ModelSEED::MS::".$name.";",
+            "use Moose;",
+            "use namespace::autoclean;",
+            "extends 'ModelSEED::MS::DB::".$name."';",
+            "# CONSTANTS:",
+            "#TODO",
+            "# FUNCTIONS:",
+            "#TODO",
+            "",
+            "",
+            "__PACKAGE__->meta->make_immutable;",
+            "1;"
+      ];
+        ModelSEED::utilities::PRINTFILE("../MS/".$name.".pm",$output);
+    }
 }

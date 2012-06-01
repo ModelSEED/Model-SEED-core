@@ -4,12 +4,11 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
+package ModelSEED::MS::DB::Annotation;
+use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::Genome;
 use ModelSEED::MS::Feature;
 use ModelSEED::MS::SubsystemState;
-use ModelSEED::MS::IndexedObject;
-package ModelSEED::MS::DB::Annotation;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
@@ -20,76 +19,135 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '' );
-has mapping_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has mapping_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has genomes => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Genome]', type => 'child(Genome)', metaclass => 'Typed');
-has features => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::Feature]', type => 'child(Feature)', metaclass => 'Typed');
-has subsystemStates => (is => 'rw',default => sub{return [];},isa => 'ArrayRef|ArrayRef[ModelSEED::MS::SubsystemState]', type => 'child(SubsystemState)', metaclass => 'Typed');
+has genomes => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Genome)', metaclass => 'Typed', reader => '_genomes');
+has features => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Feature)', metaclass => 'Typed', reader => '_features');
+has subsystemStates => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SubsystemState)', metaclass => 'Typed', reader => '_subsystemStates');
 
 
 # LINKS:
-has mapping => (is => 'rw',lazy => 1,builder => '_buildmapping',isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,uuid,mapping_uuid)', metaclass => 'Typed',weak_ref => 1);
+has mapping => (is => 'rw', isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
 
 
 # BUILDERS:
 sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildmapping {
-	my ($self) = @_;
-	return $self->getLinkedObject('ModelSEED::Store','Mapping','uuid',$self->mapping_uuid());
+    my ($self) = @_;
+    return $self->getLinkedObject('ModelSEED::Store','Mapping',$self->mapping_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'Annotation'; }
 
-my $typeToFunction = {
-	Genome => 'genomes',
-	SubsystemState => 'subsystemStates',
-	Feature => 'features',
-};
-sub _typeToFunction {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $typeToFunction->{$key};
-	} else {
-		return $typeToFunction;
-	}
-}
+my $attributes = [
+          {
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'locked',
+            'default' => '0',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'name',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          },
+          {
+            'name' => 'mapping_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          }
+        ];
 
-my $functionToType = {
-	features => 'Feature',
-	subsystemStates => 'SubsystemState',
-	genomes => 'Genome',
-};
-sub _functionToType {
-	my ($self, $key) = @_;
-	if (defined($key)) {
-		return $functionToType->{$key};
-	} else {
-		return $functionToType;
-	}
-}
-
-my $attributes = ['uuid', 'modDate', 'locked', 'name', 'mapping_uuid'];
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, mapping_uuid => 4};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
-my $subobjects = ['genomes', 'features', 'subsystemStates'];
+my $subobjects = [
+          {
+            'name' => 'genomes',
+            'type' => 'child',
+            'class' => 'Genome'
+          },
+          {
+            'name' => 'features',
+            'type' => 'child',
+            'class' => 'Feature'
+          },
+          {
+            'name' => 'subsystemStates',
+            'type' => 'child',
+            'class' => 'SubsystemState'
+          }
+        ];
+
+my $subobject_map = {genomes => 0, features => 1, subsystemStates => 2};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
+
+
+# SUBOBJECT READERS:
+around 'genomes' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('genomes');
+};
+around 'features' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('features');
+};
+around 'subsystemStates' => sub {
+    my ($orig, $self) = @_;
+    return $self->_build_all_objects('subsystemStates');
+};
 
 
 __PACKAGE__->meta->make_immutable;

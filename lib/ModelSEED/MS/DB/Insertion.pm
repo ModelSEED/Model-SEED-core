@@ -4,26 +4,25 @@
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-use strict;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::DB::Insertion;
+use ModelSEED::MS::BaseObject;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Genome', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Genome', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid' );
-has insertionTarget => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed' );
-has sequence => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has insertionTarget => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
+has sequence => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # LINKS:
@@ -36,14 +35,58 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 # CONSTANTS:
 sub _type { return 'Insertion'; }
 
-my $attributes = ['uuid', 'insertionTarget', 'sequence'];
+my $attributes = [
+          {
+            'req' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'insertionTarget',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'name' => 'sequence',
+            'default' => '',
+            'type' => 'Str',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, insertionTarget => 1, sequence => 2};
 sub _attributes {
-	return $attributes;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $attribute_map->{$key};
+        if (defined($ind)) {
+            return $attributes->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $attributes;
+    }
 }
 
 my $subobjects = [];
+
+my $subobject_map = {};
 sub _subobjects {
-	return $subobjects;
+    my ($self, $key) = @_;
+    if (defined($key)) {
+        my $ind = $subobject_map->{$key};
+        if (defined($ind)) {
+            return $subobjects->[$ind];
+        } else {
+            return undef;
+        }
+    } else {
+        return $subobjects;
+    }
 }
 
 
