@@ -49,6 +49,7 @@ sub new {
     if(defined($args->{figmodel})) {
         $self->{_figmodel} = $args->{figmodel};
     } else {
+	  	ModelSEED::globals::SETFIGMODEL(ModelSEED::FIGMODEL->new());
 	    $self->{_figmodel} = ModelSEED::globals::GETFIGMODEL();
     }
 	bless $self, $class;
