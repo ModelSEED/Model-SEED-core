@@ -5,35 +5,75 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::ModelAnalysisModel;
+use ModelSEED::MS::BaseObject;
 use Moose;
-use Moose::Util::TypeConstraints;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelAnalysis', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has model_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-
-
+has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
-has model => (is => 'rw',lazy => 1,builder => '_buildmodel',isa => 'ModelSEED::MS::Model', type => 'link(Store,Model,uuid,model_uuid)', metaclass => 'Typed',weak_ref => 1);
+has model => (is => 'rw', isa => 'ModelSEED::MS::models', type => 'link(Store,models,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodel', weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildmodel {
-	my ($self) = @_;
-	return $self->getLinkedObject('Store','Model','uuid',$self->model_uuid());
+  my ($self) = @_;
+  return $self->getLinkedObject('Store','models',$self->model_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'ModelAnalysisModel'; }
+
+my $attributes = [
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'model_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {model_uuid => 0};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
+}
+
+my $subobjects = [];
+
+my $subobject_map = {};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
 
 
 __PACKAGE__->meta->make_immutable;
