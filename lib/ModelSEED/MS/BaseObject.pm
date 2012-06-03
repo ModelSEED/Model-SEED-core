@@ -39,7 +39,6 @@ use namespace::autoclean;
 
 sub BUILD {
     my ($self,$params) = @_;
-
     # replace subobject data with info hash
     foreach my $subobj (@{$self->_subobjects}) {
         my $name = $subobj->{name};
@@ -66,28 +65,22 @@ sub BUILD {
 sub serializeToDB {
     my ($self) = @_;
     my $data = {};
-    my $class = 'ModelSEED::MS::DB::'.$self->_type();
-    for my $attr ( $class->meta->get_all_attributes ) {
-        if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
-            my $name = $attr->name();
-            if ($attr->type() eq "attribute") {
-                if (defined($self->$name())) {
-                    $data->{$name} = $self->$name();
-                }
-            } elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-                my $arrayRef = $self->$name();
-                foreach my $subobject (@{$arrayRef}) {
-                    push(@{$data->{$name}},$subobject->serializeToDB());
-                }
-            } elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
-                my $hashRef = $self->$name();
-                foreach my $key (keys(%{$hashRef})) {
-                    foreach my $obj (@{$hashRef->{$key}}) {
-                        push(@{$data->{$name}},$obj->serializeToDB());
-                    }
-                }
-            }
-        }
+    my $attributes = $self->_attributes();
+    foreach my $item (@{$attributes}) {
+    	my $name = $item->{name};
+    	$data->{$name} = $self->$name();
+    }
+    my $subobjects = $self->_subobjects();
+    foreach my $item (@{$subobjects}) {
+    	my $name = "_".$item->{name};
+    	my $arrayRef = $self->$name();
+    	foreach my $subobject (@{$arrayRef}) {
+			if ($subobject->{created} == 1) {
+				push(@{$data->{$name}},$subobject->{object}->serializeToDB());	
+			} else {
+				push(@{$data->{$name}},$subobject->{data});
+			}
+		}
     }
     return $data;
 }
@@ -120,12 +113,12 @@ sub getAliases {
     my $aliasowner = lc($self->_aliasowner());
     my $owner = $self->$aliasowner();
     my $aliasSetClass = $self->_type()."AliasSet";
-    my $aliasset = $owner->getObject($aliasSetClass,{type => $aliasSet});
+    my $aliasset = $owner->queryObject($aliasSetClass,{type => $aliasSet});
     if (!defined($aliasset)) {
         print "Alias set ".$aliasset." not found!\n";
         return [];
     }
-    my $aliasObjects = $aliasset->getObjects($self->_type()."Alias",{lc($self->_type())."_uuid" => $self->uuid()});
+    my $aliasObjects = $aliasset->queryObjects($self->_type()."Alias",{lc($self->_type())."_uuid" => $self->uuid()});
     my $aliases = [];
     for (my $i=0; $i < @{$aliasObjects}; $i++) {
         push(@{$aliases},$aliasObjects->[$i]->alias());
@@ -217,36 +210,12 @@ sub getReadableAttributes {
 ######################################################################
 #Object addition functions
 ######################################################################
-
-=head
-
-removing create method, use add instead
-
-sub create {
-    my ($self, $attribute, $data) = @_;
-    foreach my $key (keys(%{$data})) {
-        if (!defined($data->{$key})) {
-            delete $data->{$key};
-        }
-    }
-    if (!$self->meta->has_attribute($attribute)) {
-        ModelSEED::utilities::ERROR("Object doesn't have attribute with name: $attribute");
-    }
-    my $package = "ModelSEED::MS::$type";
-    Module::Load::load $package;
-    my $object = $package->new($data);
-    $self->add($attribute, $object);
-    return $object;
-}
-
-=cut
-
 sub add {
     my ($self, $attribute, $data_or_object) = @_;
 
-    my $attr_info = $self->_attributes($attribute);
+    my $attr_info = $self->_subobjects($attribute);
     if (!defined($attr_info)) {
-        ModelSEED::utilities::ERROR("Object doesn't have attribute with name: $attribute");
+        ModelSEED::utilities::ERROR("Object doesn't have subobject with name: $attribute");
     }
 
     my $obj_info = {
@@ -269,8 +238,7 @@ sub add {
     $obj_info->{object}->parent($self);
     my $method = "_$attribute";
     push(@{$self->$method}, $obj_info);
-
-    return $self;
+    return $obj_info->{object};
 }
 
 sub remove {
@@ -302,9 +270,9 @@ sub getLinkedObject {
     my ($self, $sourceType, $attribute, $uuid) = @_;
 
     if (ref($self) =~ /$sourceType/) {
-        return $self->getObject($attribute, $uuid);
+        return $self->getObject($attribute,$uuid);
     } elsif (ref($self->parent) eq 'ModelSEED::Store') {
-        my $o = $self->parent->get_object_by_uuid($attribute, $uuid);
+        my $o = $self->parent->get_object_by_uuid($attribute,$uuid);
         warn "Getting object ".ref($o);
         return $o;
     } else {
@@ -375,8 +343,11 @@ sub _build_object {
     if ($obj_info->{created}) {
         return $obj_info->{object};
     }
-
-    my $class = 'ModelSEED::MS::' . $obj_info->{class};
+	my $attInfo = $self->_subobjects($attribute);
+    if (!defined($attInfo->{class})) {
+    	ModelSEED::utilities::ERROR("No class for attribute ".$attribute);	
+    }
+    my $class = 'ModelSEED::MS::' . $attInfo->{class};
     Module::Load::load $class;
     my $obj = $class->new($obj_info->{data});
 

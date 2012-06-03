@@ -579,12 +579,13 @@ $objectDefinitions->{AliasSet} = {
 	parents => ['Ref'],
 	class => 'indexed',
 	attributes => [
-		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "0"}, #KEGG, GenBank, SEED, ModelSEED
-		{name => 'source',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "0"}, #url or pubmed ID indicating where the alias set came from
-		{name => 'class',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "0"}, #url or pubmed ID indicating where the alias set came from
-		{name => 'aliases',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "0"} #url or pubmed ID indicating where the alias set came from
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 1}, #KEGG, GenBank, SEED, ModelSEED
+		{name => 'source',printOrder => 0,perm => 'rw',type => 'Str',req => 1}, #url or pubmed ID indicating where the alias set came from
+		{name => 'class',printOrder => 0,perm => 'rw',type => 'Str',req => 1}, #
+		{name => 'attribute',printOrder => 0,perm => 'rw',type => 'Str',req => 1}, #
+		{name => 'aliases',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub {return {};}" } #url or pubmed ID indicating where the alias set came from
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
@@ -942,9 +943,9 @@ $objectDefinitions->{Model} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"get_object"},
-		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"get_object"},
-		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",method=>"get_object"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping"},
+		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",method=>"Annotation"},
 	]
 };
 
@@ -1207,7 +1208,7 @@ $objectDefinitions->{Mapping} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"get_object"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry"},
 	]
 };
 

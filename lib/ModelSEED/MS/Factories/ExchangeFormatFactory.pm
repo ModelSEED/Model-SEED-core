@@ -143,6 +143,11 @@ sub buildObjectFromExchangeFileArray {
 			Media => "Biochemistry",
 			Compartment => "Biochemistry"
 	};
+	my $subobjectAttributes = {
+			Reaction => "reactions",
+			Media => "media",
+			Compartment => "compartments"
+	};
 	#Parsing through all attributes looking for and reconciling all non-parent references
 	foreach my $att (keys(%{$data})) {
 		my $refData = $self->reconcileReference($data->{$att});
@@ -153,9 +158,9 @@ sub buildObjectFromExchangeFileArray {
 				if (defined($parents->{$subobjectParents->{$refData->{class}}})) {
 					my $obj;
 					if ($refData->{type} eq "name" || $refData->{type} eq "abbreviation") {
-						$obj = $parents->{$subobjectParents->{$refData->{class}}}->getObject($refData->{class},{$refData->{type} => $refData->{id}});
+						$obj = $parents->{$subobjectParents->{$refData->{class}}}->queryObject($subobjectAttributes->{$refData->{class}},{$refData->{type} => $refData->{id}});
 					} else {
-						$obj = $parents->{$subobjectParents->{$refData->{class}}}->getObjectByAlias($refData->{class},$refData->{id},$refData->{type});
+						$obj = $parents->{$subobjectParents->{$refData->{class}}}->getObjectByAlias($subobjectAttributes->{$refData->{class}},$refData->{id},$refData->{type});
 					}
 					if (defined($obj)) {
 						$data->{$att} = $obj->uuid();	

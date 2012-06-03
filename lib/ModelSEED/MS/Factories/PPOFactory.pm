@@ -87,7 +87,7 @@ sub createModel {
 	for (my $i=0; $i < @{$rxntbl}; $i++) {
 		#Adding biomass reaction
 		if ($rxntbl->[$i]->REACTION() =~ m/bio\d+/) {
-			my $bioobj = $model->create("Biomass",{
+			my $bioobj = $model->add("biomasses",{
 				name => "bio0000".$biomassIndex
 			});
 			my $biorxn = $mdl->db()->get_object("bof",{id => $rxntbl->[$i]->REACTION()});
@@ -99,7 +99,7 @@ sub createModel {
 			}
 			$biomassIndex++;
 		} else {
-			my $rxn = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$rxntbl->[$i]->REACTION(),"ModelSEED");
+			my $rxn = $args->{biochemistry}->getObjectByAlias("reactioninstances",$rxntbl->[$i]->REACTION(),"ModelSEED");
 			my $direction = "=";
 			if ($rxntbl->[$i]->directionality() eq "=>") {
 				$direction = ">";
@@ -149,7 +149,7 @@ sub createBiochemistry {
 		{id => "d",name => "Plastid",hierarchy => 12}
 	];
 	for (my $i=0; $i < @{$comps}; $i++) {
-		my $comp = $biochemistry->create("Compartment",{
+		my $comp = $biochemistry->add("compartments",{
 			locked => "0",
 			id => $comps->[$i]->{id},
 			name => $comps->[$i]->{name},
@@ -171,7 +171,7 @@ sub createBiochemistry {
 			if (defined($cuePriority->{$array->[0]})) {
 				$priority = $cuePriority->{$array->[0]};
 			}		
-			$biochemistry->create("Cue",{
+			$biochemistry->add("cues",{
 				locked => "0",
 				name => $array->[0],
 				abbreviation => $array->[0],
@@ -189,7 +189,7 @@ sub createBiochemistry {
     print "Handling compounds!\n";
 	#for (my $i=0; $i < 1000; $i++) {
 	for (my $i=0; $i < @{$cpds}; $i++) {
-		my $cpd = $biochemistry->create("Compound",{
+		my $cpd = $biochemistry->add("compounds",{
 			locked => "0",
 			name => $cpds->[$i]->name(),
 			abbreviation => $cpds->[$i]->abbrev(),
@@ -201,15 +201,15 @@ sub createBiochemistry {
 			deltaGErr => $cpds->[$i]->deltaGErr()
 		});
 		$biochemistry->addAlias({
-			objectType => "Compound",
-			aliasType => "ModelSEED",
+			attribute => "compounds",
+			aliasName => "ModelSEED",
 			alias => $cpds->[$i]->id(),
 			uuid => $cpd->uuid()
 		});
 		if ($args->{addStructure} == 1) {
 			#Adding stringcode as structure 
 			if (defined($cpds->[$i]->stringcode()) && length($cpds->[$i]->stringcode()) > 0) {
-				$cpd->create("CompoundStructure",{
+				$cpd->add("structures",{
 					structure => $cpds->[$i]->stringcode(),
 					type => "stringcode"
 				});
@@ -217,7 +217,7 @@ sub createBiochemistry {
 			#Adding molfile as structure 
 			if (-e $ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol") {
 				my $data = join("\n",@{ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol")});
-				$cpd->create("CompoundStructure",{
+				$cpd->add("structures",{
 					structure => $data,
 					type => "molfile"
 				});
@@ -229,9 +229,9 @@ sub createBiochemistry {
 			 	my $list = [split(/;/,$cpds->[$i]->structuralCues())];
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		my $array = [split(/:/,$list->[$j])];
-			 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
+			 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
 			 		if (!defined($cue)) {
-			 			$cue = $biochemistry->create("Cue",{
+			 			$cue = $biochemistry->add("cues",{
 			 				locked => "0",
 							name => $array->[0],
 							abbreviation => $array->[0],
@@ -239,7 +239,7 @@ sub createBiochemistry {
 							priority => -1
 			 			});
 			 		}
-			 		$cpd->create("CompoundCue",{
+			 		$cpd->add("compoundCues",{
 						cue_uuid => $cue->uuid(),
 						count => $array->[1]
 					});
@@ -252,7 +252,7 @@ sub createBiochemistry {
 			 	my $list = [split(/;/,$cpds->[$i]->pKa())];
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->create("CompoundPk",{
+			 		$cpd->add("pks",{
 						type => "pKa",
 						pk => $array->[0],
 						atom => $array->[1]
@@ -263,7 +263,7 @@ sub createBiochemistry {
 			 	my $list = [split(/;/,$cpds->[$i]->pKb())];
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->create("CompoundPk",{
+			 		$cpd->add("pks",{
 						type => "pKb",
 						pk => $array->[0],
 						atom => $array->[1]
@@ -284,7 +284,7 @@ sub createBiochemistry {
 		if ($medias->[$i]->id() =~ m/LB/ || $medias->[$i]->id() =~ m/BHI/) {
 			$defined = "0";
 		}
-		my $media = $biochemistry->create("Media",{
+		my $media = $biochemistry->add("media",{
 			locked => "0",
 			id => $medias->[$i]->id(),
 			name => $medias->[$i]->id(),
@@ -295,9 +295,9 @@ sub createBiochemistry {
 		my $mediacpds = $args->{database}->get_objects("mediacpd",{MEDIA => $medias->[$i]->id()});
 		for (my $j=0; $j < @{$mediacpds}; $j++) {
 			if ($mediacpds->[$j]->type() eq "COMPOUND") {
-				my $cpd = $biochemistry->getObjectByAlias("Compound",$mediacpds->[$j]->entity(),"ModelSEED");
+				my $cpd = $biochemistry->getObjectByAlias("compounds",$mediacpds->[$j]->entity(),"ModelSEED");
 				if (defined($cpd)) {
-					$media->create("MediaCompound",{
+					$media->add("mediacompounds",{
 						compound_uuid => $cpd->uuid(),
 						concentration => $mediacpds->[$j]->concentration(),
 						maxFlux => $mediacpds->[$j]->maxFlux(),
@@ -340,8 +340,8 @@ sub createBiochemistry {
 		if (!defined($codeHash->{$code})) {
 			#Adding the new core reaction and reaction instance to the database
 			$codeHash->{$code} = $rxn;
-			$biochemistry->add("Reaction",$rxn);
-			$biochemistry->add("ReactionInstance",$rxninstance);
+			$biochemistry->add("reactions",$rxn);
+			$biochemistry->add("reactioninstances",$rxninstance);
 		} else {
 			#Determining if the new reaction instance matches any existing reaction instances mapped to the new core reaction
 			my $instanceCode = $rxninstance->equationCode();
@@ -356,10 +356,10 @@ sub createBiochemistry {
 			}
 			#Linking the new reaction instance to the matching core reaction
 			if ($found == 0) {
-				$biochemistry->add("ReactionInstance",$rxninstance);
+				$biochemistry->add("reactioninstances",$rxninstance);
 				$rxninstance->reaction($correctRxn);
 				$rxninstance->reaction_uuid($correctRxn->uuid());
-				$correctRxn->create("ReactionReactionInstance",{
+				$correctRxn->add("reactionreactioninstances",{
 					reactioninstance_uuid => $rxninstance->uuid(),
 					reactioninstance => $rxninstance
 				});
@@ -373,9 +373,9 @@ sub createBiochemistry {
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		if (length($list->[$j]) > 0) {
 				 		my $array = [split(/:/,$list->[$j])];
-				 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
+				 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
 				 		if (!defined($cue)) {
-				 			$biochemistry->create("Cue",{
+				 			$biochemistry->add("cues",{
 				 				locked => "0",
 								name => $array->[0],
 								abbreviation => $array->[0],
@@ -383,7 +383,7 @@ sub createBiochemistry {
 								priority => -1
 				 			});
 				 		}
-				 		$codeHash->{$code}->create("ReactionCue",{
+				 		$codeHash->{$code}->add("reactionCues",{
 							cue_uuid => $cue->uuid(),
 							count => $array->[1]
 						});
@@ -402,27 +402,27 @@ sub createBiochemistry {
 		 	}
 		}
 		$biochemistry->addAlias({
-			objectType => "ReactionInstance",
-			aliasType => "ModelSEED",
+			attribute => "reactioninstances",
+			aliasName => "ModelSEED",
 			alias => $rxns->[$i]->id(),
 			uuid => $rxninstance->uuid()
 		});
 		$biochemistry->addAlias({
-			objectType => "Reaction",
-			aliasType => "ModelSEED",
+			attribute => "reactions",
+			aliasName => "ModelSEED",
 			alias => $rxns->[$i]->id(),
 			uuid => $rxn->uuid()
 		});
 		for (my $j=0; $j < @{$ecnumbers}; $j++) {
 			$biochemistry->addAlias({
-				objectType => "ReactionInstance",
-				aliasType => "Enzyme Class",
+				attribute => "reactioninstances",
+				aliasName => "Enzyme Class",
 				alias => $ecnumbers->[$j],
 				uuid => $rxninstance->uuid()
 			});
 			$biochemistry->addAlias({
-				objectType => "Reaction",
-				aliasType => "Enzyme Class",
+				attribute => "reactions",
+				aliasName => "Enzyme Class",
 				alias => $ecnumbers->[$j],
 				uuid => $rxn->uuid()
 			});
@@ -447,11 +447,11 @@ sub addAliases {
 	print "Handling compound aliases!\n";
 	my $cpdals = $args->{database}->get_objects("cpdals");
 	for (my $i=0; $i < @{$cpdals}; $i++) {
-		my $cpd = $biochemistry->getObjectByAlias("Compound",$cpdals->[$i]->COMPOUND(),"ModelSEED");
+		my $cpd = $biochemistry->getObjectByAlias("compounds",$cpdals->[$i]->COMPOUND(),"ModelSEED");
 		if (defined($cpd)) {
 			$biochemistry->addAlias({
-				objectType => "Compound",
-				aliasType => $cpdals->[$i]->type(),
+				attribute => "compounds",
+				aliasName => $cpdals->[$i]->type(),
 				alias => $cpdals->[$i]->alias(),
 				uuid => $cpd->uuid()
 			});
@@ -462,20 +462,20 @@ sub addAliases {
 	#Adding reaction aliases
 	my $rxnals = $args->{database}->get_objects("rxnals");
 	for (my $i=0; $i < @{$rxnals}; $i++) {
-		my $rxn = $biochemistry->getObjectByAlias("Reaction",$rxnals->[$i]->REACTION(),"ModelSEED");
+		my $rxn = $biochemistry->getObjectByAlias("reactions",$rxnals->[$i]->REACTION(),"ModelSEED");
 		if (defined($rxn)) {
 			$biochemistry->addAlias({
-				objectType => "Reaction",
-				aliasType => $rxnals->[$i]->type(),
+				attribute => "reactions",
+				aliasName => $rxnals->[$i]->type(),
 				alias => $rxnals->[$i]->alias(),
 				uuid => $rxn->uuid()
 			});
 		}
-		$rxn = $biochemistry->getObjectByAlias("ReactionInstance",$rxnals->[$i]->REACTION(),"ModelSEED");
+		$rxn = $biochemistry->getObjectByAlias("reactioninstances",$rxnals->[$i]->REACTION(),"ModelSEED");
 		if (defined($rxn)) {
 			$biochemistry->addAlias({
-				objectType => "ReactionInstance",
-				aliasType => $rxnals->[$i]->type(),
+				attribute => "reactionsinstances",
+				aliasName => $rxnals->[$i]->type(),
 				alias => $rxnals->[$i]->alias(),
 				uuid => $rxn->uuid()
 			});
@@ -496,9 +496,9 @@ sub createMapping {
 	});
 	my $spontaneousRxn = $self->figmodel()->config("spontaneous reactions");
 	for (my $i=0; $i < @{$spontaneousRxn}; $i++) {
-		my $rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$spontaneousRxn->[$i],"ModelSEED");
+		my $rxnInst = $args->{biochemistry}->getObjectByAlias("reactioninstances",$spontaneousRxn->[$i],"ModelSEED");
 		if (defined($rxnInst)) {
-			$mapping->create("UniversalReaction",{
+			$mapping->add("universalReactions",{
 				type => "SPONTANEOUS",
 				reactioninstance_uuid => $rxnInst->uuid()	
 			});
@@ -506,9 +506,9 @@ sub createMapping {
 	}
 	my $universalRxn = $self->figmodel()->config("universal reactions");
 	for (my $i=0; $i < @{$universalRxn}; $i++) {
-		my $rxnInst = $args->{biochemistry}->getObjectByAlias("ReactionInstance",$universalRxn->[$i],"ModelSEED");
+		my $rxnInst = $args->{biochemistry}->getObjectByAlias("reactioninstances",$universalRxn->[$i],"ModelSEED");
 		if (defined($rxnInst)) {
-			$mapping->create("UniversalReaction",{
+			$mapping->add("universalReactions",{
 				type => "UNIVERSAL",
 				reactioninstance_uuid => $rxnInst->uuid()	
 			});
@@ -612,7 +612,7 @@ sub createMapping {
 		["cofactor","cpd03422","cpd00166","AND{COMPOUND:cpd00166}"]
 	];
 	my $templates = [
-		$mapping->create("BiomassTemplate",{
+		$mapping->add("biomassTemplates",{
 			class => "Gram positive",
 			dna => "0.026",
 			rna => "0.0655",
@@ -621,7 +621,7 @@ sub createMapping {
 			cellwall => "0.25",
 			cofactor => "0.10"
 		}),
-		$mapping->create("BiomassTemplate",{
+		$mapping->add("biomassTemplates",{
 			class => "Gram negative",
 			dna => "0.031",
 			rna => "0.21",
@@ -630,7 +630,7 @@ sub createMapping {
 			cellwall => "0.177",
 			cofactor => "0.039"
 		}),
-		$mapping->create("BiomassTemplate",{
+		$mapping->add("biomassTemplates",{
 			class => "Unknown",
 			dna => "0.031",
 			rna => "0.21",
@@ -644,8 +644,8 @@ sub createMapping {
 		if (defined($biomassTempComp->{$template->class()})) {
 			foreach my $type (keys(%{$biomassTempComp->{$template->class()}})) {
 				foreach my $cpd (keys(%{$biomassTempComp->{$template->class()}->{$type}})) {
-					my $cpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$cpd,"ModelSEED");
-					$template->create("BiomassTemplateComponent",{
+					my $cpdobj = $args->{biochemistry}->getObjectByAlias("compounds",$cpd,"ModelSEED");
+					$template->add("biomassTemplateComponents",{
 						class => $type,
 						coefficientType => "NUMBER",
 						coefficient => $biomassTempComp->{$template->class()}->{$type}->{$cpd},
@@ -656,13 +656,13 @@ sub createMapping {
 			}
 		}
 		for (my $i=0; $i < @{$universalBiomassTempComp}; $i++) {
-			my $cpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$universalBiomassTempComp->[$i]->[1],"ModelSEED");
+			my $cpdobj = $args->{biochemistry}->getObjectByAlias("compounds",$universalBiomassTempComp->[$i]->[1],"ModelSEED");
 			my $coefficientType = "FRACTION";
 			my $coefficient = 1;
 			if ($universalBiomassTempComp->[$i]->[2] =~ m/cpd\d+/) {
 				my $array = [split(/,/,$universalBiomassTempComp->[$i]->[2])];
 				for (my $j=0; $j < @{$array}; $j++) {
-					my $newcpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$array->[$j],"ModelSEED");
+					my $newcpdobj = $args->{biochemistry}->getObjectByAlias("compounds",$array->[$j],"ModelSEED");
 					$array->[$j] = $newcpdobj->uuid();
 				}
 				$coefficientType = join(",",@{$array});
@@ -670,7 +670,7 @@ sub createMapping {
 				$coefficientType = "NUMBER";
 				$coefficient = $universalBiomassTempComp->[$i]->[2];
 			}
-			$template->create("BiomassTemplateComponent",{
+			$template->add("biomassTemplateComponents",{
 				class => $universalBiomassTempComp->[$i]->[0],
 				coefficientType => $coefficientType,
 				coefficient => $coefficient,
@@ -679,13 +679,13 @@ sub createMapping {
 			});
 		}
 		for (my $i=0; $i < @{$conditionedBiomassTempComp}; $i++) {
-			my $cpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$conditionedBiomassTempComp->[$i]->[1],"ModelSEED");
+			my $cpdobj = $args->{biochemistry}->getObjectByAlias("compounds",$conditionedBiomassTempComp->[$i]->[1],"ModelSEED");
 			my $coefficientType = "FRACTION";
 			my $coefficient = 1;
 			if ($conditionedBiomassTempComp->[$i]->[2] =~ m/cpd\d+/) {
 				my $array = [split(/,/,$conditionedBiomassTempComp->[$i]->[2])];
 				for (my $j=0; $j < @{$array}; $j++) {
-					my $newcpdobj = $args->{biochemistry}->getObjectByAlias("Compound",$array->[$j],"ModelSEED");
+					my $newcpdobj = $args->{biochemistry}->getObjectByAlias("compounds",$array->[$j],"ModelSEED");
 					$array->[$j] = $newcpdobj->uuid();
 				}
 				$coefficientType = join(",",@{$array});
@@ -693,7 +693,7 @@ sub createMapping {
 				$coefficientType = "NUMBER";
 				$coefficient = $conditionedBiomassTempComp->[$i]->[2];
 			}
-			$template->create("BiomassTemplateComponent",{
+			$template->add("biomassTemplateComponents",{
 				class => $conditionedBiomassTempComp->[$i]->[0],
 				coefficientType => $coefficientType,
 				coefficient => $coefficient,
@@ -704,21 +704,21 @@ sub createMapping {
 	};
 	my $roles = $args->{database}->get_objects("role");
 	for (my $i=0; $i < @{$roles}; $i++) {
-		my $role = $mapping->create("Role",{
+		my $role = $mapping->add("roles",{
 			locked => "0",
 			name => $roles->[$i]->name(),
 			seedfeature => $roles->[$i]->exemplarmd5()
 		});
 		$mapping->addAlias({
-			objectType => "Role",
-			aliasType => "ModelSEED",
+			attribute => "roles",
+			aliasName => "ModelSEED",
 			alias => $roles->[$i]->id(),
 			uuid => $role->uuid()
 		});
 	}
 	my $subsystems = $args->{database}->get_objects("subsystem");
 	for (my $i=0; $i < @{$subsystems}; $i++) {
-		my $ss = $mapping->create("RoleSet",{
+		my $ss = $mapping->add("rolesets",{
 			public => "1",
 			locked => "0",
 			name => $subsystems->[$i]->name(),
@@ -727,19 +727,19 @@ sub createMapping {
 			type => "SEED Subsystem"
 		});
 		$mapping->addAlias({
-			objectType => "RoleSet",
-			aliasType => "ModelSEED",
+			attribute => "rolesets",
+			aliasName => "ModelSEED",
 			alias => $subsystems->[$i]->id(),
 			uuid => $ss->uuid()
 		});
 	}
 	my $ssroles = $args->{database}->get_objects("ssroles");
 	for (my $i=0; $i < @{$ssroles}; $i++) {
-		my $ss = $mapping->getObjectByAlias("RoleSet",$ssroles->[$i]->SUBSYSTEM(),"ModelSEED");
+		my $ss = $mapping->getObjectByAlias("rolesets",$ssroles->[$i]->SUBSYSTEM(),"ModelSEED");
 		if (defined($ss)) {
-			my $role = $mapping->getObjectByAlias("Role",$ssroles->[$i]->ROLE(),"ModelSEED");
+			my $role = $mapping->getObjectByAlias("roles",$ssroles->[$i]->ROLE(),"ModelSEED");
 			if (defined($role)) {
-				$ss->create("RoleSetRole",{
+				$ss->add("rolesetroles",{
 					role_uuid => $role->uuid(),
 					role => $role
 				});
@@ -748,28 +748,28 @@ sub createMapping {
 	}
 	my $complexes = $args->{database}->get_objects("complex");
 	for (my $i=0; $i < @{$complexes}; $i++) {
-		my $complex = $mapping->create("Complex",{
+		my $complex = $mapping->add("complexes",{
 			locked => "0",
 			name => $complexes->[$i]->id(),
 		});
 		$mapping->addAlias({
-			objectType => "Complex",
-			aliasType => "ModelSEED",
+			attribute => "complexes",
+			aliasName => "ModelSEED",
 			alias => $complexes->[$i]->id(),
 			uuid => $complex->uuid()
 		});
 	}
 	my $complexRoles = $args->{database}->get_objects("cpxrole");
 	for (my $i=0; $i < @{$complexRoles}; $i++) {
-		my $complex = $mapping->getObjectByAlias("Complex",$complexRoles->[$i]->COMPLEX(),"ModelSEED");
+		my $complex = $mapping->getObjectByAlias("complexes",$complexRoles->[$i]->COMPLEX(),"ModelSEED");
 		if (defined($complex)) {
-			my $role = $mapping->getObjectByAlias("Role",$complexRoles->[$i]->ROLE(),"ModelSEED");
+			my $role = $mapping->getObjectByAlias("roles",$complexRoles->[$i]->ROLE(),"ModelSEED");
 			my $type = "triggering";
 			if ($complexRoles->[$i]->type() eq "L") {
 				$type = "involved";	
 			}
 			if (defined($role)) {
-				$complex->create("ComplexRole",{
+				$complex->add("complexRoles",{
 					role_uuid => $role->uuid(),
 					optional => "0",
 					type => $type
@@ -780,11 +780,11 @@ sub createMapping {
 	my $reactionRules = $args->{database}->get_objects("rxncpx");
 	for (my $i=0; $i < @{$reactionRules}; $i++) {
 		if ($reactionRules->[$i]->master() eq "1") {
-			my $complex = $mapping->getObjectByAlias("Complex",$reactionRules->[$i]->COMPLEX(),"ModelSEED");
+			my $complex = $mapping->getObjectByAlias("complexes",$reactionRules->[$i]->COMPLEX(),"ModelSEED");
 			if (defined($complex)) {
-				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("ReactionInstance",$reactionRules->[$i]->REACTION(),"ModelSEED");
+				my $rxnInstance = $mapping->biochemistry()->getObjectByAlias("reactioninstances",$reactionRules->[$i]->REACTION(),"ModelSEED");
 				if (defined($rxnInstance)) {
-					$complex->create("ComplexReactionInstance",{
+					$complex->add("complexreactioninstances",{
 						reactioninstance_uuid => $rxnInstance->uuid()
 					});
 				}

@@ -21,7 +21,7 @@ has ortholog_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute',
 has orthologGenome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
 has similarityScore => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
 has distanceScore => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has reactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => 'sub{return [];}', type => 'attribute', metaclass => 'Typed');
+has reactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

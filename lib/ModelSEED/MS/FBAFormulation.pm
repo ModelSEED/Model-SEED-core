@@ -47,7 +47,7 @@ sub runFBA {
 	$fba->buildProblem();
 	$fba->printLPfile();
 	my $solution = $fba->submitLPFile({solver => "cplex"});
-	my $results = $self->create("FBAResult",{
+	my $results = $self->add("fbaResults",{
 		name => $self->name()." results",
 		fbaformulation_uuid => $self->uuid(),
 		fbaformulation => $self,

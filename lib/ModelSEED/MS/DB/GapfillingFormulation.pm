@@ -21,9 +21,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
 has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => 'sub{return [];}', type => 'attribute', metaclass => 'Typed');
-has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => 'sub{return [];}', type => 'attribute', metaclass => 'Typed');
-has allowableCompartments => (is => 'rw', isa => 'ArrayRef', required => 1, default => 'sub{return [];}', type => 'attribute', metaclass => 'Typed');
+has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has allowableCompartments => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has numberOfSolutions => (is => 'rw', isa => 'Int', default => '1', type => 'attribute', metaclass => 'Typed');
 has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
 has reactionActivationBonus => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');

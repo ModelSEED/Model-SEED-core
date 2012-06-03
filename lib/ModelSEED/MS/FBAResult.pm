@@ -41,7 +41,7 @@ sub buildFromOptSolution {
 		if ($type eq "flux" || $type eq "forflux" || $type eq "revflux" || $type eq "fluxuse" || $type eq "forfluxuse" || $type eq "revfluxuse") {
 			$self->integrateReactionFluxRawData($var);
 		} elsif ($type eq "biomassflux") {
-			$self->create("FBABiomassVariable",{
+			$self->add("fbaBiomassVariables",{
 				biomass_uuid => $var->entity_uuid(),
 				variableType => $type,
 				lowerBound => $var->lowerBound(),
@@ -72,12 +72,12 @@ sub integrateReactionFluxRawData {
 		$min = -1;
 		$type = "fluxuse";	
 	}
-	my $fbavar = $self->getObject("FBAReactionVariable",{
+	my $fbavar = $self->queryObject("fbaReactionVariables",{
 		reaction_uuid => $var->entity_uuid(),
 		variableType => $type
 	});
 	if (!defined($fbavar)) {
-		$fbavar = $self->create("FBAReactionVariable",{
+		$fbavar = $self->add("fbaReactionVariables",{
 			modelreaction_uuid => $var->entity_uuid(),
 			variableType => $type,
 			lowerBound => $min,
@@ -143,12 +143,12 @@ sub integrateCompoundFluxRawData {
 		$min = -1;
 		$type = "drainfluxuse";	
 	}
-	my $fbavar = $self->getObject("FBACompoundVariable",{
+	my $fbavar = $self->queryObject("FBACompoundVariable",{
 		compound_uuid => $var->entity_uuid(),
 		variableType => $type
 	});
 	if (!defined($fbavar)) {
-		$fbavar = $self->create("FBACompoundVariable",{
+		$fbavar = $self->add("fbaCompoundVariables",{
 			modelcompound_uuid => $var->entity_uuid(),
 			variableType => $type,
 			lowerBound => $min,

@@ -55,7 +55,9 @@ foreach my $name (keys(%{$objects})) {
         my $props = ["is => 'rw'"];
         if ($parent =~ /ModelSEED::/) {
             push(@$props, "isa => '$parent'");
-        } else {
+        } elsif ($parent eq "Ref") {
+        	push(@$props, "isa => 'Ref'", "weak_ref => 1");
+    	} else {
             push(@$props, "isa => 'ModelSEED::MS::$parent'", "weak_ref => 1");
         }
         push(@$props, "type => 'parent'", "metaclass => 'Typed'");
@@ -75,12 +77,15 @@ foreach my $name (keys(%{$objects})) {
             "is => '" . $attribute->{perm} . "'",
             "isa => '" . $attribute->{type} . "'"
         ];
-
         if (defined($attribute->{req}) && $attribute->{req} == 1) {
             push(@$props, "required => 1");
         }
         if (defined($attribute->{default})) {
-            push(@$props, "default => '" . $attribute->{default} . "'");
+            if ($attribute->{default} =~ /sub\s*\{/) {
+				push(@$props, "default => " . $attribute->{default} );
+			} else {
+				push(@$props, "default => '" . $attribute->{default} . "'");
+			}
         }
         if ($attribute->{name} eq "uuid") {
             push(@$props, "lazy => 1", "builder => '_builduuid'");

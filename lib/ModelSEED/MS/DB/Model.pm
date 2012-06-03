@@ -51,9 +51,9 @@ has modelreactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { 
 
 
 # LINKS:
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::get_object', type => 'link(ModelSEED::Store,get_object,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
-has mapping => (is => 'rw', isa => 'ModelSEED::MS::get_object', type => 'link(ModelSEED::Store,get_object,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
-has annotation => (is => 'rw', isa => 'ModelSEED::MS::get_object', type => 'link(ModelSEED::Store,get_object,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
+has mapping => (is => 'rw', isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
+has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(ModelSEED::Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
 
 
 # BUILDERS:
@@ -61,15 +61,15 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildbiochemistry {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelSEED::Store','get_object',$self->biochemistry_uuid());
+  return $self->getLinkedObject('ModelSEED::Store','Biochemistry',$self->biochemistry_uuid());
 }
 sub _buildmapping {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelSEED::Store','get_object',$self->mapping_uuid());
+  return $self->getLinkedObject('ModelSEED::Store','Mapping',$self->mapping_uuid());
 }
 sub _buildannotation {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelSEED::Store','get_object',$self->annotation_uuid());
+  return $self->getLinkedObject('ModelSEED::Store','Annotation',$self->annotation_uuid());
 }
 
 

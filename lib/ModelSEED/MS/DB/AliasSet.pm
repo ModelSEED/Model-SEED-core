@@ -12,16 +12,17 @@ extends 'ModelSEED::MS::IndexedObject';
 
 
 # PARENT:
-has parent => (is => 'rw', isa => 'ModelSEED::MS::Ref', weak_ref => 1, type => 'parent', metaclass => 'Typed');
+has parent => (is => 'rw', isa => 'Ref', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has source => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has aliases => (is => 'rw', isa => 'HashRef', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has source => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has attribute => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has aliases => (is => 'rw', isa => 'HashRef', default => sub {return {};}, type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -41,7 +42,7 @@ sub _type { return 'AliasSet'; }
 
 my $attributes = [
           {
-            'req' => 1,
+            'req' => 0,
             'printOrder' => 0,
             'name' => 'uuid',
             'type' => 'ModelSEED::uuid',
@@ -55,26 +56,30 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 0,
+            'req' => 1,
             'printOrder' => 0,
-            'name' => 'type',
-            'default' => '0',
+            'name' => 'name',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
-            'req' => 0,
+            'req' => 1,
             'printOrder' => 0,
             'name' => 'source',
-            'default' => '0',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
-            'req' => 0,
+            'req' => 1,
             'printOrder' => 0,
             'name' => 'class',
-            'default' => '0',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'attribute',
             'type' => 'Str',
             'perm' => 'rw'
           },
@@ -82,13 +87,13 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 0,
             'name' => 'aliases',
-            'default' => '0',
+            'default' => 'sub {return {};}',
             'type' => 'HashRef',
             'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, type => 2, source => 3, class => 4, aliases => 5};
+my $attribute_map = {uuid => 0, modDate => 1, name => 2, source => 3, class => 4, attribute => 5, aliases => 6};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

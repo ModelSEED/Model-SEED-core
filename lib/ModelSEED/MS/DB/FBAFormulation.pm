@@ -33,8 +33,8 @@ has growthConstraint => (is => 'rw', isa => 'ModelSEED::varchar', default => 'no
 has thermodynamicConstraints => (is => 'rw', isa => 'ModelSEED::varchar', default => 'none', type => 'attribute', metaclass => 'Typed');
 has allReversible => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
 has dilutionConstraints => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has uptakeLimits => (is => 'rw', isa => 'HashRef', default => 'sub{return {};}', type => 'attribute', metaclass => 'Typed');
-has geneKO => (is => 'rw', isa => 'ArrayRef', required => 1, default => 'sub{return [];}', type => 'attribute', metaclass => 'Typed');
+has uptakeLimits => (is => 'rw', isa => 'HashRef', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has geneKO => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has defaultMaxFlux => (is => 'rw', isa => 'Int', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMinDrainFlux => (is => 'rw', isa => 'Int', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');

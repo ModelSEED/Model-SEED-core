@@ -118,11 +118,11 @@ sub findCreateEquivalentCompartment {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["compartment"],{create => 1});
 	my $incomp = $args->{compartment};
-	my $outcomp = $self->getObject("Compartment",{
+	my $outcomp = $self->queryObject("compartments",{
 		name => $incomp->name()
 	});
 	if (!defined($outcomp) && $args->{create} == 1) {
-		$outcomp = $self->biochemistry()->create("Compartment",{
+		$outcomp = $self->biochemistry()->add("compartments",{
 			id => $incomp->id(),
 			name => $incomp->name(),
 			hierarchy => $incomp->hierarchy()
@@ -145,11 +145,11 @@ sub findCreateEquivalentCompound {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["compound"],{create => 1});
 	my $incpd = $args->{compound};
-	my $outcpd = $self->getObject("Compound",{
+	my $outcpd = $self->queryObject("compounds",{
 		name => $incpd->name()
 	});
 	if (!defined($outcpd) && $args->{create} == 1) {
-		$outcpd = $self->biochemistry()->create("Compound",{
+		$outcpd = $self->biochemistry()->add("compounds",{
 			name => $incpd->name(),
 			abbreviation => $incpd->abbreviation(),
 			unchargedFormula => $incpd->unchargedFormula(),
@@ -161,11 +161,11 @@ sub findCreateEquivalentCompound {
 		});
 		for (my $i=0; $i < @{$incpd->structures()}; $i++) {
 			my $cpdstruct = $incpd->structures()->[$i];
-			$outcpd->create("CompoundStructure",$cpdstruct->serializeToDB());
+			$outcpd->add("structures",$cpdstruct->serializeToDB());
 		}
 		for (my $i=0; $i < @{$incpd->pks()}; $i++) {
 			my $cpdpk = $incpd->pks()->[$i];
-			$outcpd->create("CompoundPk",$cpdpk->serializeToDB());
+			$outcpd->add("pks",$cpdpk->serializeToDB());
 		}
 	}
 	$incpd->mapped_uuid($outcpd->uuid());
@@ -185,11 +185,11 @@ sub findCreateEquivalentReaction {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["reaction"],{create => 1});
 	my $inrxn = $args->{reaction};
-	my $outrxn = $self->getObject("Reaction",{
+	my $outrxn = $self->queryObject("reactions",{
 		definition => $inrxn->definition()
 	});
 	if (!defined($outrxn) && $args->{create} == 1) {
-		$outrxn = $self->biochemistry()->create("Reaction",{
+		$outrxn = $self->biochemistry()->add("reactions",{
 			name => $inrxn->name(),
 			abbreviation => $inrxn->abbreviation(),
 			reversibility => $inrxn->reversibility(),
@@ -205,7 +205,7 @@ sub findCreateEquivalentReaction {
 				compound => $rgt->compound(),
 				create => 1
 			});
-			$outrxn->create("Reagent",{
+			$outrxn->add("reagents",{
 				compound_uuid => $cpd->uuid(),
 				coefficient => $rgt->coefficient(),
 				cofactor => $rgt->cofactor(),
