@@ -170,6 +170,7 @@ sub get_aliases {
                 $query->{owner} = $ref->owner;
             }
         } else {
+            $query->{type} = $ref->base_types->[0];
             if ($ref->id_type eq 'uuid') {
                 $query->{uuid} = $ref->id;
             }
@@ -242,6 +243,7 @@ sub _alias_create {
         biochemistry => 1,
         model => 1,
         mapping => 1,
+        annotation => 1,
     };
     return 0 unless(defined($validAliasTypes->{$type}));
     return 0 unless($ref->id_type eq 'alias');

@@ -123,6 +123,10 @@ sub _uuid {
         username => "bob",
         password => "password"
     );
+    my $charlie = ModelSEED::Auth::Basic->new(
+        username => "charlie",
+        password => "password"
+    );
     # Set up permissions:
     # alias  type          owner  viewers  public
     # one    biochemistry  alice           1
@@ -131,18 +135,25 @@ sub _uuid {
     # four   model         bob    alice    
     # five   model         alice  bob      1
     # six    biochemistry  bob    alice     
+    # c      model         charlie
+    # c      biochemistry  charlie
     my $ref1 = ModelSEED::Reference->new(ref => "biochemistry/alice/one");
     my $ref2 = ModelSEED::Reference->new(ref => "biochemistry/alice/two");
     my $ref3 = ModelSEED::Reference->new(ref => "biochemistry/alice/three");
     my $ref4 = ModelSEED::Reference->new(ref => "model/bob/four");
     my $ref5 = ModelSEED::Reference->new(ref => "model/alice/five");
     my $ref6 = ModelSEED::Reference->new(ref => "biochemistry/bob/six");
+    my $ref7 = ModelSEED::Reference->new(ref => "biochemistry/charlie/c");
+    my $ref8 = ModelSEED::Reference->new(ref => "model/charlie/c");
     my $obj1 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
     my $obj2 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
     my $obj3 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
     my $obj4 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
     my $obj5 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
     my $obj6 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj7 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj8 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+
     $db->save_data($ref1, $obj1, $alice);
     $db->save_data($ref2, $obj2, $alice);
     $db->save_data($ref3, $obj3, $alice);
@@ -160,6 +171,8 @@ sub _uuid {
         $db->set_public($ref5, 1, $alice);
         $db->add_viewer($ref6, "alice", $bob);
     }
+    $db->save_data($ref7, $obj7, $charlie);
+    $db->save_data($ref8, $obj8, $charlie);
    
     # Now test get_aliases for alice
     {
@@ -200,5 +213,17 @@ sub _uuid {
         is scalar(@$m_his), 0, "Should get 0 aliases for pub, 'model/bob'";
     }
     $test_count += 14;
+
+    # Now test that get_aliases for charlie returns correct ammount for different refs
+    {
+        my $bio    = $db->get_aliases("biochemistry", $charlie);
+        my $model  = $db->get_aliases("model", $charlie);
+        my $all    = $db->get_aliases(undef, $charlie);
+        is scalar(@$bio), 3, "Should get 3 for charlie 2 public + 1 private";
+        is scalar(@$model), 2, "Should get 2 for charlie 1 public + 1 private";
+        is scalar(@$all), 5, "Should get 5 for charlie, the total of last two tests";
+
+        $test_count += 3;
+    }
 }
 done_testing($test_count);
