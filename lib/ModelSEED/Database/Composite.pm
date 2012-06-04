@@ -118,6 +118,7 @@ around BUILDARGS => sub {
     # use configuration if that's what we want
     if(defined($args->{use_config}) && $args->{use_config}) {
         my $Config = ModelSEED::Configuration->new();
+        die "Database Error" unless(defined($Config->config->{stores}));
         $args->{databases} = [ @{$Config->config->{stores}} ];
     }
     foreach my $db (@{ $args->{databases} || [] }) {
@@ -190,6 +191,7 @@ sub get_aliases {
         my @args = @_;
         push(@$aliases, @{$db->get_aliases(@args)});
     }
+    return $aliases;
 }
 
 sub update_alias {
