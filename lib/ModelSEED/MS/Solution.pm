@@ -55,9 +55,9 @@ sub buildFromCPLEXFile {
 			$self->feasible($1);
 		} elsif ($data->[$i] =~ m/\<constraint\sname=\"(.+)\".+index=\"(.+)\".+slack=\"(.+)\"/) {
 			my $slack = $3;
-			my $constraint = $self->parent()->getObject("Constraint",{"index" => $2});
+			my $constraint = $self->parent()->queryObject("constraints",{"index" => $2});
 			if (defined($constraint)) {
-				$self->create("SolutionConstraint",{
+				$self->add("solutionConstraints",{
 					constraint_uuid => $constraint->uuid(),
 					constraint => $constraint,
 					slack => $slack
@@ -65,9 +65,9 @@ sub buildFromCPLEXFile {
 			}
 		} elsif ($data->[$i] =~ m/\<variable\sname=\"(.+)\".+index=\"(.+)\".+value=\"(.+)\"/) {
 			my $value = $3;
-			my $variable = $self->parent()->getObject("Variable",{"index" => $2});
+			my $variable = $self->parent()->queryObject("variables",{"index" => $2});
 			if (defined($variable)) {
-				$self->create("SolutionVariable",{
+				$self->add("solutionVariables",{
 					variable_uuid => $variable->uuid(),
 					variable => $variable,
 					value => $value
@@ -114,9 +114,9 @@ sub buildFromGLPKFile {
 			my $activity = $4;
 			my $bound = $5;
 			my $slack = $bound - $activity;
-			my $constraint = $self->parent()->getObject("Constraint",{"index" => $index});
+			my $constraint = $self->parent()->queryObject("constraints",{"index" => $index});
 			if (defined($constraint)) {
-				$self->create("SolutionConstraint",{
+				$self->add("solutionConstraints",{
 					constraint_uuid => $constraint->uuid(),
 					constraint => $constraint,
 					slack => $slack
@@ -127,9 +127,9 @@ sub buildFromGLPKFile {
 			my $name = $2;
 			my $status = $3;
 			my $value = $4;
-			my $variable = $self->parent()->getObject("Variable",{"index" => $index});
+			my $variable = $self->parent()->queryObject("variables",{"index" => $index});
 			if (defined($variable)) {
-				$self->create("SolutionVariable",{
+				$self->add("solutionVariables",{
 					variable_uuid => $variable->uuid(),
 					variable => $variable,
 					value => $value

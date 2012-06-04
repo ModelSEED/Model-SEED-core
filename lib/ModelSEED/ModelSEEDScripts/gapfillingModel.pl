@@ -38,7 +38,7 @@ my $gapform = $exFact->buildObjectFromExchangeFileArray({
 	Biochemistry => $biochem,
 });
 $gapform->biochemistry($biochem);
-$gapform->media($biochem->getObject("Media",{uuid => $gapform->media_uuid()}));
+$gapform->media($biochem->queryObject("media",[$gapform->media_uuid()]));
 
 open MODEL, "<c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.json";
 $string = join("",<MODEL>);

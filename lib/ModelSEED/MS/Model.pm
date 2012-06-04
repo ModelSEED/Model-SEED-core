@@ -45,7 +45,7 @@ sub findCreateEquivalentCompartment {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["modelcompartment"],{create => 1});
 	my $mdlcmp = $args->{modelcompartment};
-	my $cmp = $self->getObject("ModelCompartment",{
+	my $cmp = $self->queryObject("modelcompartments",{
 		label => $mdlcmp->label()
 	});
 	if (!defined($cmp) && $args->{create} == 1) {
@@ -78,7 +78,7 @@ sub findCreateEquivalentCompound {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["modelcompound"],{create => 1});
 	my $inmdlcpd = $args->{modelcompound};
-	my $outcpd = $self->getObject("ModelCompound",{
+	my $outcpd = $self->queryObject("modelcompounds",{
 		name => $inmdlcpd->name(),
 		modelCompartmentLabel => $inmdlcpd->modelCompartmentLabel()
 	});
@@ -115,7 +115,7 @@ sub findCreateEquivalentReaction {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["modelreaction"],{create => 1});
 	my $inmdlrxn = $args->{modelreaction};
-	my $outrxn = $self->getObject("ModelReaction",{
+	my $outrxn = $self->queryObject("modelreactions",{
 		definition => $inmdlrxn->definition(),
 	});
 	if (!defined($outrxn) && $args->{create} == 1) {
@@ -126,7 +126,7 @@ sub findCreateEquivalentReaction {
 		my $mdlcmp = $self->findCreateEquivalentCompartment({
 			modelcompartment => $inmdlrxn->modelcompartment()
 		});
-		$outrxn = $self->create("ModelReaction",{
+		$outrxn = $self->add("modelreactions",{
 			reaction_uuid => $biorxn->uuid(),
 			direction => $inmdlrxn->direction(),
 			protons => $inmdlrxn->protons(),
@@ -137,14 +137,14 @@ sub findCreateEquivalentReaction {
 			my $mdlcpd = $self->findCreateEquivalentCompound({
 				modelcompound => $rgt->modelcompound()
 			});
-			$outrxn->create("ModelReactionReagent",{
+			$outrxn->add("modelreactionreagents",{
 				modelcompound_uuid => $mdlcpd->uuid(),
 				coefficient => $rgt->coefficient()
 			});
 		}
 		for (my $i=0; $i < @{$inmdlrxn->modelReactionProteins()}; $i++) {
 			my $prot = $inmdlrxn->modelReactionProteins()->[$i];
-			$outrxn->create("ModelReactionReagent",$prot->serializeToDB());
+			$outrxn->add("modelreactionreagents",$prot->serializeToDB());
 		}
 	}
 	$inmdlrxn->mapped_uuid($outrxn->uuid());
@@ -164,11 +164,11 @@ sub findCreateEquivalentBiomass {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["biomass"],{create => 1});
 	my $inmdlbio = $args->{biomass};
-	my $outbio = $self->getObject("Biomass",{
+	my $outbio = $self->queryObject("biomasses",{
 		definition => $inmdlbio->definition()
 	});
 	if (!defined($outbio) && $args->{create} == 1) {
-		$outbio = $self->create("Biomass",{
+		$outbio = $self->add("biomasses",{
 			name => $inmdlbio->name(),
 			dna => $inmdlbio->dna(),
 			rna => $inmdlbio->rna(),
@@ -183,7 +183,7 @@ sub findCreateEquivalentBiomass {
 			my $mdlcpd = $self->findCreateEquivalentCompound({
 				modelcompound => $rgt->modelcompound()
 			});
-			$outbio->create("BiomassCompound",{
+			$outbio->add("biomasscompounds",{
 				modelcompound_uuid => $mdlcpd->uuid(),
 				coefficient => $rgt->coefficient()
 			});
@@ -432,12 +432,12 @@ sub createStandardFBABiomass {
 	my $anno = $args->{annotation};
 	my $mapping = $args->{mapping};
 	my $biochem = $mapping->biochemistry();
-	my $bio = $self->create("Biomass",{
+	my $bio = $self->add("biomasses",{
 		name => $self->name()." auto biomass"
 	});
-	my $template = $mapping->getObject("BiomassTemplate",{class => $anno->genomes()->[0]->class()});
+	my $template = $mapping->queryObject("biomassTemplates",{class => $anno->genomes()->[0]->class()});
 	if (!defined($template)) {
-		$template = $mapping->getObject("BiomassTemplate",{class => "Unknown"});
+		$template = $mapping->queryObject("biomassTemplates",{class => "Unknown"});
 	}
 	my $list = ["dna","rna","protein","lipid","cellwall","cofactor","energy"];
 	for (my $i=0; $i < @{$list}; $i++) {
@@ -479,7 +479,7 @@ sub createStandardFBABiomass {
 		}
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
 			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
-			my $cmp = $biochem->getObject("Compartment",{id => "c"});
+			my $cmp = $biochem->queryObject("compartments",{id => "c"});
 			my $mdlcmp = $self->addCompartmentToModel({compartment => $cmp,pH => 7,potential => 0,compartmentIndex => 0});
 			my $mdlcpd = $self->addCompoundToModel({
 				compound => $templateComp->compound(),
@@ -506,7 +506,7 @@ sub createStandardFBABiomass {
 					}
 				}
 				if ($found == 0) {
-					$bio->create("BiomassCompound",{
+					$bio->add("biomasscompounds",{
 						modelcompound_uuid => $mdlcpd->uuid(),
 						coefficient => $coefficient
 					});	
@@ -678,12 +678,12 @@ sub addReactionInstanceToModel {
 	});
 	my $rxninst = $args->{reactionInstance};
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
-	my $mdlrxn = $self->getObject("ModelReaction",{
+	my $mdlrxn = $self->queryObject("modelreactions",{
 		reaction_uuid => $rxninst->reaction_uuid(),
 		modelcompartment_uuid => $mdlcmp->uuid()
 	});
 	if (!defined($mdlrxn)) {
-		$mdlrxn = $self->create("ModelReaction",{
+		$mdlrxn = $self->add("modelreactions",{
 			reaction_uuid => $rxninst->reaction_uuid(),
 			direction => $rxninst->direction(),
 			protons => $rxninst->reaction()->defaultProtons(),
@@ -759,9 +759,9 @@ sub addCompartmentToModel {
 		potential => 0,
 		compartmentIndex => 0
 	});
-	my $mdlcmp = $self->getObject("ModelCompartment",{compartment_uuid => $args->{compartment}->uuid(),compartmentIndex => $args->{compartmentIndex}});
+	my $mdlcmp = $self->queryObject("modelcompartments",{compartment_uuid => $args->{compartment}->uuid(),compartmentIndex => $args->{compartmentIndex}});
 	if (!defined($mdlcmp)) {
-		$mdlcmp = $self->create("ModelCompartment",{
+		$mdlcmp = $self->add("modelcompartments",{
 			compartment_uuid => $args->{compartment}->uuid(),
 			label => $args->{compartment}->id()."0",
 			pH => $args->{pH},
@@ -788,7 +788,7 @@ sub addCompoundToModel {
 		charge => undef,
 		formula => undef
 	});
-	my $mdlcpd = $self->getObject("ModelCompound",{compound_uuid => $args->{compound}->uuid(),modelcompartment_uuid => $args->{modelCompartment}->uuid()});
+	my $mdlcpd = $self->queryObject("modelcompounds",{compound_uuid => $args->{compound}->uuid(),modelcompartment_uuid => $args->{modelCompartment}->uuid()});
 	if (!defined($mdlcpd)) {
 		if (!defined($args->{charge})) {
 			$args->{charge} = $args->{compound}->defaultCharge();
@@ -796,7 +796,7 @@ sub addCompoundToModel {
 		if (!defined($args->{formula})) {
 			$args->{formula} = $args->{compound}->formula();
 		}
-		$mdlcpd = $self->create("ModelCompound",{
+		$mdlcpd = $self->add("modelcompounds",{
 			modelcompartment_uuid => $args->{modelCompartment}->uuid(),
 			compound_uuid => $args->{compound}->uuid(),
 			charge => $args->{charge},

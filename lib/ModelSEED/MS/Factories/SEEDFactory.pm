@@ -51,13 +51,13 @@ sub buildMooseAnnotation {
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
 	my $annoationObj;
 	if (defined($self->om())) {
-		$annoationObj = $self->om()->create("Annotation");
+		$annoationObj = $self->om()->add("annotations");
 	} else {
 		$annoationObj = ModelSEED::MS::Annotation->new({
 			name => $genomeData->{name}
 		});
 	}
-	my $genomeObj = $annoationObj->create("Genome",{
+	my $genomeObj = $annoationObj->add("genomes",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},
 		source => $args->{source},
@@ -75,7 +75,7 @@ sub buildMooseAnnotation {
 	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
 		my $row = $genomeData->{features}->[$i]; 
 		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
-			my $featureObj = $annoationObj->create("Feature",{
+			my $featureObj = $annoationObj->add("features",{
 				id => $row->{ID}->[0],
 				genome_uuid => $genomeObj->uuid(),
 				start => $row->{START}->[0],
@@ -85,7 +85,7 @@ sub buildMooseAnnotation {
 			if (defined($row->{ROLES}->[0])) {
 				for (my $j=0; $j < @{$row->{ROLES}}; $j++) {
 					my $roleObj = $self->getRoleObject({mapping => $args->{mapping},roleString => $row->{ROLES}->[$j]});
-					my $ftrRoleObj =$featureObj->create("FeatureRole",{
+					my $ftrRoleObj =$featureObj->add("featureroles",{
 						feature_uuid => $featureObj->uuid(),
 						role_uuid => $roleObj->uuid(),
 						compartment => join("|",@{$row->{COMPARTMENT}}),
@@ -110,9 +110,9 @@ sub getRoleObject {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["roleString","mapping"],{});					
 	my $searchName = ModelSEED::MS::Utilities::GlobalFunctions::convertRoleToSearchRole($args->{roleString});
-	my $roleObj = $args->{mapping}->getObject("Role",{searchname => $searchName});
+	my $roleObj = $args->{mapping}->queryObject("roles",{searchname => $searchName});
 	if (!defined($roleObj)) {
-		$roleObj = $args->{mapping}->create("Role",{
+		$roleObj = $args->{mapping}->add("roles",{
 			name => $args->{roleString},
 		});
 	}
@@ -131,7 +131,7 @@ sub getMappingObject {
 			ModelSEED::utilities::ERROR("Mapping with uuid ".$args->{mapping_uuid}." not found in database!");
 		}
 	} else {
-		$mappingObj = $self->om()->create("Mapping",{name=>"Test"});
+		$mappingObj = $self->om()->add("mappings",{name=>"Test"});
 	}
 	return $mappingObj;
 }

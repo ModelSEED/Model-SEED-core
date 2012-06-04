@@ -5,46 +5,102 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::ModelReactionProtein;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ModelReactionProteinSubunit;
 use Moose;
-use Moose::Util::TypeConstraints;
-use ModelSEED::MS::LazyHolder::ModelReactionProteinSubunit;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has complex_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has note => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
-
-
+has complex_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has note => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has modelReactionProteinSubunits => (is => 'bare', coerce => 1, handles => { modelReactionProteinSubunits => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionProteinSubunit::Lazy', type => 'encompassed(ModelReactionProteinSubunit)', metaclass => 'Typed');
+has modelReactionProteinSubunits => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProteinSubunit)', metaclass => 'Typed', reader => '_modelReactionProteinSubunits');
 
 
 # LINKS:
-has complex => (is => 'rw',lazy => 1,builder => '_buildcomplex',isa => 'ModelSEED::MS::Complex', type => 'link(Mapping,Complex,uuid,complex_uuid)', metaclass => 'Typed',weak_ref => 1);
+has complex => (is => 'rw', isa => 'ModelSEED::MS::Complex', type => 'link(Mapping,complexes,complex_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcomplex', weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildcomplex {
-	my ($self) = @_;
-	return $self->getLinkedObject('Mapping','Complex','uuid',$self->complex_uuid());
+  my ($self) = @_;
+  return $self->getLinkedObject('Mapping','complexes',$self->complex_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'ModelReactionProtein'; }
-sub _typeToFunction {
-	return {
-		ModelReactionProteinSubunit => 'modelReactionProteinSubunits',
-	};
+
+my $attributes = [
+          {
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'complex_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'note',
+            'default' => '',
+            'type' => 'Str',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {complex_uuid => 0, note => 1};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
 }
+
+my $subobjects = [
+          {
+            'name' => 'modelReactionProteinSubunits',
+            'type' => 'encompassed',
+            'class' => 'ModelReactionProteinSubunit'
+          }
+        ];
+
+my $subobject_map = {modelReactionProteinSubunits => 0};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
+
+
+# SUBOBJECT READERS:
+around 'modelReactionProteinSubunits' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('modelReactionProteinSubunits');
+};
 
 
 __PACKAGE__->meta->make_immutable;

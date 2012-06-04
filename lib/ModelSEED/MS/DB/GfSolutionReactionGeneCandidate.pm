@@ -5,35 +5,75 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::GfSolutionReactionGeneCandidate;
+use ModelSEED::MS::BaseObject;
 use Moose;
-use Moose::Util::TypeConstraints;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::GapfillingSolutionReaction', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingSolutionReaction', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has feature_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-
-
+has feature_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
-has feature => (is => 'rw',lazy => 1,builder => '_buildfeature',isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,Feature,uuid,feature_uuid)', metaclass => 'Typed',weak_ref => 1);
+has feature => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildfeature', weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildfeature {
-	my ($self) = @_;
-	return $self->getLinkedObject('Annotation','Feature','uuid',$self->feature_uuid());
+  my ($self) = @_;
+  return $self->getLinkedObject('Annotation','features',$self->feature_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'GfSolutionReactionGeneCandidate'; }
+
+my $attributes = [
+          {
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'feature_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {feature_uuid => 0};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
+}
+
+my $subobjects = [];
+
+my $subobject_map = {};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
 
 
 __PACKAGE__->meta->make_immutable;

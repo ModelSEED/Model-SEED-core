@@ -5,27 +5,25 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::FBAConstraint;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::FBAConstraintVariable;
 use Moose;
-use Moose::Util::TypeConstraints;
-use ModelSEED::MS::LazyHolder::FBAConstraintVariable;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::FBAFormulation', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has name => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
-has rhs => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
-has sign => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
-
-
+has name => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
+has rhs => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
+has sign => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has fbaConstraintVariables => (is => 'bare', coerce => 1, handles => { fbaConstraintVariables => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAConstraintVariable::Lazy', type => 'encompassed(FBAConstraintVariable)', metaclass => 'Typed');
+has fbaConstraintVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraintVariable)', metaclass => 'Typed', reader => '_fbaConstraintVariables');
 
 
 # LINKS:
@@ -36,11 +34,78 @@ has fbaConstraintVariables => (is => 'bare', coerce => 1, handles => { fbaConstr
 
 # CONSTANTS:
 sub _type { return 'FBAConstraint'; }
-sub _typeToFunction {
-	return {
-		FBAConstraintVariable => 'fbaConstraintVariables',
-	};
+
+my $attributes = [
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'name',
+            'default' => '0',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'rhs',
+            'default' => '0',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'sign',
+            'default' => '0',
+            'type' => 'Str',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {name => 0, rhs => 1, sign => 2};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
 }
+
+my $subobjects = [
+          {
+            'name' => 'fbaConstraintVariables',
+            'type' => 'encompassed',
+            'class' => 'FBAConstraintVariable'
+          }
+        ];
+
+my $subobject_map = {fbaConstraintVariables => 0};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
+
+
+# SUBOBJECT READERS:
+around 'fbaConstraintVariables' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('fbaConstraintVariables');
+};
 
 
 __PACKAGE__->meta->make_immutable;

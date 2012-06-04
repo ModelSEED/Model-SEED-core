@@ -5,51 +5,72 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 3/11/2012
 ########################################################################
-use strict;
-use ModelSEED::MS::BaseObject;
 package ModelSEED::MS::IndexedObject;
+
 use Moose;
 use namespace::autoclean;
+use ModelSEED::MS::BaseObject;
+
+use Data::Dumper;
+
 extends 'ModelSEED::MS::BaseObject';
 
-has om      => (is => 'rw',isa => 'ModelSEED::CoreApi');
-has indices => (is => 'rw',isa => 'HashRef',lazy => 1,builder => '_buildindices');
-
+has indices => ( is => 'rw', isa => 'HashRef', default => sub { return {} } );
 ######################################################################
 #Object addition functions
 ######################################################################
-
-override add => sub {
-    my ($self,$attribute, $object) = @_;
-    #Checking if an object matching the input object already exists
-    if (!defined($object)) {
-    	ModelSEED::utilities::ERROR("Can't call add without defined object!");	
+sub add {
+    my ($self, $attribute, $data_or_object) = @_;
+    my $attr_info = $self->_subobjects($attribute);
+    if (!defined($attr_info)) {
+        ModelSEED::utilities::ERROR("Object doesn't have subobject with name: $attribute");
     }
-    my $type = $object->_type();
-    my $function = $self->_typeToFunction()->{$type};
-    my $class = 'ModelSEED::MS::DB::'.$object->_type;
-    if (defined($class->meta->find_attribute_by_name("uuid"))) {
-	    my $oldObj = $self->getObject($type,{uuid => $object->uuid()});
-	    if (defined($oldObj)) {
-	    	if ($oldObj->locked() != 1) {
-	    		$object->uuid($oldObj->uuid());
-	    	}
-	    	my $list = $self->$function();
-	    	for (my $i=0; $i < @{$list}; $i++) {
-	    		if ($list->[$i] eq $oldObj) {
-	    			$list->[$i] = $object;
-	    		}
-	    	}
-	    	$self->clearIndex({type=>$type});
-	    	return;
-	    }
+    my $obj_info = {
+        created => 0,
+        class => $attr_info->{class}
+    };
+    my $ref = ref($data_or_object);
+    if ($ref eq "HASH") {
+        # need to create object first
+        foreach my $att (keys(%$data_or_object)) {
+        	if (!defined($data_or_object->{$att})) {
+        		delete $data_or_object->{$att};
+        	}
+        }
+        $obj_info->{data} = $data_or_object;
+        $self->_build_object($attribute, $obj_info);
+    } elsif ($ref =~ m/ModelSEED::MS/) {
+        $obj_info->{object} = $data_or_object;
+        $obj_info->{created} = 1;
+    } else {
+        ModelSEED::utilities::ERROR("Neither data nor object passed into " . ref($self) . "->add");
     }
-	if (defined($self->indices->{$type})) {
-		foreach my $att (keys(%{$self->indices->{$type}})) {
-			push(@{$self->indices->{$type}->{$att}->{$object->$att()}},$object);
+    my $method = "_$attribute";
+	$obj_info->{object}->parent($self);
+	#Checking if another object with the same uuid is already present
+	if (defined($obj_info->{object}->_attributes("uuid"))) {
+		my $obj = $self->getObject($attribute,$obj_info->{object}->uuid());
+		if (defined($obj) && $obj ne $obj_info->{object}) {
+			for (my $i=0; $i < @{$self->$method()}; $i++) {
+				if ($self->$method()->[$i] eq $obj) {
+					$self->$method()->[$i] = $obj_info->{object};
+				}
+			}
+			$self->clearIndex({attribute=>$attribute});
+			return $obj_info->{object};
 		}
 	}
-	super();
+	#Updating the indecies
+	if (defined($self->indices->{$attribute})) {
+		my $indices = $self->indices->{$attribute};
+		foreach my $attribute (keys(%{$indices})) {
+			if (defined($indices->{$attribute})) {
+				push(@{$indices->{$attribute}->{$obj_info->{object}->$attribute()}},$obj_info);
+			}
+		}
+	}
+	push(@{$self->$method},$obj_info); 
+    return $obj_info->{object};
 };
 
 ######################################################################
@@ -57,85 +78,127 @@ override add => sub {
 ######################################################################
 sub addAlias {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["objectType","aliasType","alias","uuid"],{
+	$args = ModelSEED::utilities::ARGS($args,["attribute","aliasName","alias","uuid"],{
 		source => undef
 	});
 	if (!defined($args->{source})) {
-		$args->{source} = $args->{aliasType};
+		$args->{source} = $args->{aliasName};
 	}
-	my $aliasSetType = $args->{objectType}."AliasSet";
 	#Checking for alias set
-	my $aliasSet = $self->getObject($aliasSetType,{type => $args->{aliasType}});
+	my $aliasSet = $self->queryObject("aliasSets",{
+		name => $args->{aliasName},
+		attribute => $args->{attribute}
+	});
 	if (!defined($aliasSet)) {
+		my $attInfo = $self->_subobjects($args->{attribute});
 		#Creating alias set
-		$aliasSet = $self->create($aliasSetType,{
-			type => $args->{aliasType},
-			source => $args->{source}
+		$aliasSet = $self->add("aliasSets",{
+			name => $args->{aliasName},
+			source => $args->{source},
+			attribute => $args->{attribute},
+			class => $attInfo->{class}
 		});
 	}
-	my $objects = $aliasSet->getObjects($args->{objectType}."Alias",{lc($args->{objectType})."_uuid" => $args->{uuid}});
-	for (my $i=0; $i < @{$objects}; $i++) {
-		if ($objects->[$i]->alias() eq $args->{alias}) {
-			return;
+	if (defined($aliasSet->aliases()->{$args->{alias}})) {
+		my $aliases = $aliasSet->aliases()->{$args->{alias}};
+		for (my $i=0; $i < @{$aliases}; $i++) {
+			if ($aliases->[$i] eq $args->{uuid}) {
+				return;	
+			}
 		}
 	}
-	$aliasSet->create($args->{objectType}."Alias",{
-		lc($args->{objectType})."_uuid" => $args->{uuid},
-		alias => $args->{alias}
-	});
-	return;
-}
-
-sub getObjectsByAlias {
-	my ($self,$objectType,$alias,$aliasType) = @_;
-	my $aliasSet = $self->getObject($objectType."AliasSet",{type => $aliasType});
-	if (!defined($aliasSet)) {
-		ModelSEED::utilities::USEWARNING("Alias set '".$aliasType."' not found in database!");
-		return undef;
-	}
-	my $objs = $aliasSet->getObjects($objectType."Alias",{alias => $alias});
-	my $result;
-	my $function = lc($objectType);
-	for (my $i=0; $i < @{$objs}; $i++) {
-		push(@{$result},$objs->[$i]->$function());	
-	}
-	return $result;
+	push(@{$aliasSet->aliases()->{$args->{alias}}},$args->{uuid});
 }
 
 sub getObjectByAlias {
-	my ($self,$objectType,$alias,$aliasType) = @_;
-	my $objects = $self->getObjectsByAlias($objectType,$alias,$aliasType);
-	if (defined($objects->[0])) {
-		return $objects->[0];
+	my ($self,$attribute,$alias,$aliasName) = @_;
+	my $objs = $self->getObjectsByAlias($attribute,$alias,$aliasName);
+	if (defined($objs->[0])) {
+        return $objs->[0];
+    } else {
+        return undef;
+    }
+}
+
+sub getObjectsByAlias {
+	my ($self,$attribute,$alias,$aliasName) = @_;
+	my $aliasSet = $self->queryObject("aliasSets",{
+		name => $aliasName,
+		attribute => $attribute
+	});
+	if (!defined($aliasSet)) {
+		ModelSEED::utilities::USEWARNING("Alias set '".$aliasName."' not found in database!");
+		return [];
 	}
-	return undef;
+	if (defined($aliasSet->aliases()->{$alias})) {
+		my $array = $aliasSet->aliases()->{$alias};
+		return $self->getObjects($attribute,$aliasSet->aliases()->{$alias});
+	}
+	return [];
 }
 
 ######################################################################
-#Query Functions
+#Object retreival functions
 ######################################################################
 sub getObject {
-	my ($self,$type,$query) = @_;
-	my $objects = $self->getObjects($type,$query);
-	return $objects->[0];
+    my ($self, $attribute, $uuid) = @_;
+    my $objs = $self->getObjects($attribute, [$uuid]);
+    if (scalar @$objs == 1) {
+        return $objs->[0];
+    } else {
+        return undef;
+    }
 }
 
 sub getObjects {
-    my ($self,$type,$query) = @_;
-    if(!defined($type) || !defined($query) || ref($query) ne 'HASH') {
+    my ($self, $attribute, $uuids) = @_;
+	#Checking arguments
+	if(!defined($attribute) || !defined($uuids) || ref($uuids) ne 'ARRAY') {
     	ModelSEED::utilities::ERROR("Bad arguments to getObjects.");
     }
-    # resultSet is a map of $object => $object
+    #Retreiving objects
+    my $results = [];
+    if (!defined($self->indices->{$attribute}->{uuid})) {
+    	$self->_buildIndex({attribute=>$attribute,subAttribute=>"uuid"});
+    }
+    my $index = $self->indices->{$attribute}->{uuid};
+    foreach my $obj_uuid (@$uuids) {
+        my $obj_info = $index->{$obj_uuid}->[0];
+        if (defined($obj_info)) {
+            push(@$results, $self->_build_object($attribute, $obj_info));
+        } else {
+            push(@$results, undef);
+        }
+    }
+    return $results;
+}
+
+sub queryObject {
+    my ($self,$attribute,$query) = @_;
+    my $objs = $self->queryObjects($attribute,$query);
+    if (defined($objs->[0])) {
+        return $objs->[0];
+    } else {
+        return undef;
+    }
+}
+
+sub queryObjects {
+    my ($self,$attribute,$query) = @_;
+	#Checking arguments
+	if(!defined($attribute) || !defined($query) || ref($query) ne 'HASH') {
+		ModelSEED::utilities::ERROR("Bad arguments to queryObjects.");
+    }
+    #ResultSet is a map of $object => $object
     my $resultSet;
     my $indices = $self->indices;
-    while ( my ($attribute, $value) = each %$query ) {
-        # Build the index if it does not already exist
-        unless (defined($indices->{$type}) &&
-                defined($indices->{$type}->{$attribute})) {
-    		$self->buildIndex({type => $type, attribute => $attribute});
+    while ( my ($subAttribute, $value) = each %$query ) {
+        #Build the index if it does not already exist
+        unless (defined($indices->{$attribute}) &&
+                defined($indices->{$attribute}->{$subAttribute})) {
+    		$self->_buildIndex({attribute => $attribute, subAttribute => $subAttribute});
     	}
-        my $index = $indices->{$type};
-        my $newHits = $index->{$attribute}->{$value};
+        my $newHits = $indices->{$attribute}->{$subAttribute}->{$value};
         # If any index returns empty, return empty.
         return [] if(!defined($newHits) || @$newHits == 0);
         # Build the current resultSet map $object => $object
@@ -154,52 +217,60 @@ sub getObjects {
             }
         }
     }
-    return [values %$resultSet];
+    my $results = [];
+    foreach my $value (keys(%$resultSet)) {
+    	push(@$results, $self->_build_object($attribute,$resultSet->{$value}));
+    }
+    return $results;
 }
 
-sub clearIndex {
+sub _buildIndex {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["attribute","subAttribute"],{});
+	my $att = $args->{attribute};
+	my $subatt = $args->{subAttribute};
+	my $newIndex  = {};
+	my $method = "_$att";
+	my $subobjs = $self->$method();
+	if (@{$subobjs} > 0) {
+		#First we check if all objects need to be built before the index can be constructed
+		my $obj = $self->_build_object($att,$subobjs->[0]);
+		my $alwaysBuild = 1;
+		if (defined($obj->_attributes($subatt))) {
+			#The attribute is a base attribute, so we can build the index without building objects
+			$alwaysBuild = 0;
+		}
+		foreach my $so_info (@{$subobjs}) {
+			if ($alwaysBuild == 1) {
+				$self->_build_object($att,$so_info);
+			}
+			if ($so_info->{created} == 1) {
+				push(@{$newIndex->{$so_info->{object}->$subatt()}},$so_info);
+			} else {
+				push(@{$newIndex->{$so_info->{data}->{$subatt}}},$so_info);
+			}
+		}
+	}
+	$self->indices->{$att}->{$subatt} = $newIndex;
+}
+
+sub _clearIndex {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
-		type => undef,
-		attribute => undef
+		attribute => undef,
+		subAttribute => undef,
 	});
-	if (!defined($args->{type})) {
+	my $att = $args->{attribute};
+	my $subatt = $args->{subAttribute};
+	if (!defined($att)) {
 		$self->indices({});
 	} else {
-		if (!defined($args->{attribute})) {
-			$self->indices->{$args->{type}} = {};	
+		if (!defined($subatt)) {
+			$self->indices->{$att} = {};	
 		} else {
-			$self->indices->{$args->{type}}->{$args->{attribute}} = {};
+			$self->indices->{$att}->{$subatt} = {};
 		}
 	}
 }
 
-sub buildIndex {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["type","attribute"],{});
-	my $function = $self->_typeToFunction()->{$args->{type}};
-	if (!defined($function)) {
-		ModelSEED::utilities::ERROR("Could not find type ".$args->{type}." in object ".$self->_type."!");
-	}
-	my $objects = $self->$function();
-	my $attribute = $args->{attribute};
-	$self->indices->{$args->{type}}->{$attribute} = {};
-	for (my $i=0; $i < @{$objects}; $i++) {
-		push(@{$self->indices->{$args->{type}}->{$attribute}->{$objects->[$i]->$attribute()}},$objects->[$i]);
-	}
-}
-
-sub save {
-    my ($self, $alias, $om) = @_;
-    $om = $self->parent() unless (defined($om));
-    if (!defined($om)) {
-        ModelSEED::utilities::ERROR("No Storage Object");
-    }
-    my $refstring = lc(substr($self->_type,0,1)).substr($self->_type,1) . "/" . $alias;
-    $om->save_object($refstring, $self);
-}
-
-sub _buildindices { return {}; }
-
-__PACKAGE__->meta->make_immutable;
 1;

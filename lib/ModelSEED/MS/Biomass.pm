@@ -128,21 +128,21 @@ sub loadFromEquation {
 					$compartment .= "0";	
 				}
 			}
-			my $comp = $mod->getObject("ModelCompartment",{label => $compartment});
+			my $comp = $mod->queryObject("modelcompartments",{label => $compartment});
 			if (!defined($comp)) {
 				ModelSEED::utilities::USEWARNING("Unrecognized compartment '".$compartment."' used in biomass equation!");
 				my $biocompid = substr($compartment,0,1);
 				my $compindex = substr($compartment,1,1);
-				my $biocomp = $bio->getObject("Compartment",{id => $biocompid});
+				my $biocomp = $bio->queryObject("compartments",{id => $biocompid});
 				if (!defined($biocomp)) {
-					$biocomp = $bio->create("Compartment",{
+					$biocomp = $bio->add("compartments",{
 						locked => "0",
 						id => $biocompid,
 						name => $biocompid,
 						hierarchy => 3
 					});
 				}
-				$comp = $mod->create("ModelCompartment",{
+				$comp = $mod->add("modelcompartments",{
 					locked => "0",
                     compartment_uuid => $biocomp->uuid,
 					compartmentIndex => $compindex,
@@ -153,31 +153,31 @@ sub loadFromEquation {
 			}
 			my $cpd;
 			if ($args->{aliasType} eq "uuid" || $args->{aliasType} eq "name") {
-				$cpd = $bio->getObject("Compound",{$args->{aliasType} => $compound});
+				$cpd = $bio->queryObject("compounds",{$args->{aliasType} => $compound});
 			} else {
-				$cpd = $bio->getObjectByAlias("Compound",$compound,$args->{aliasType});
+				$cpd = $bio->getObjectByAlias("compounds",$compound,$args->{aliasType});
 			}
 			if (!defined($cpd)) {
 				ModelSEED::utilities::USEWARNING("Unrecognized compound '".$compound."' used in biomass equation!");
-				$cpd = $bio->create("Compound",{
+				$cpd = $bio->add("compounds",{
 					locked => "0",
 					name => $compound,
 					abbreviation => $compound
 				});
 			}
-			my $modcpd = $mod->getObject("ModelCompound",{
+			my $modcpd = $mod->queryObject("modelcompounds",{
 				compound_uuid => $cpd->uuid(),
 				modelcompartment_uuid => $comp->uuid()
 			});			
 			if (!defined($modcpd)) {
-				$modcpd = $mod->create("ModelCompound",{
+				$modcpd = $mod->add("modelcompounds",{
 					compound_uuid => $cpd->uuid(),
 					charge => $cpd->defaultCharge(),
 					formula => $cpd->formula(),
 					modelcompartment_uuid => $comp->uuid()
 				});
 			}
-			$self->create("BiomassCompound",{
+			$self->add("biomasscompounds",{
 				modelcompound_uuid => $modcpd->uuid(),
 				coefficient => $Coefficient,
 			});

@@ -5,36 +5,36 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::Complex;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ComplexReactionInstance;
+use ModelSEED::MS::ComplexRole;
 use Moose;
-use Moose::Util::TypeConstraints;
-use ModelSEED::MS::LazyHolder::ComplexReactionInstance;
-use ModelSEED::MS::LazyHolder::ComplexRole;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Mapping', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Mapping', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
-has locked => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
-has name => ( is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '1' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has complexreactioninstances => (is => 'bare', coerce => 1, handles => { complexreactioninstances => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexReactionInstance::Lazy', type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed');
-has complexroles => (is => 'bare', coerce => 1, handles => { complexroles => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ComplexRole::Lazy', type => 'encompassed(ComplexRole)', metaclass => 'Typed');
+has complexreactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed', reader => '_complexreactioninstances');
+has complexroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ComplexRole)', metaclass => 'Typed', reader => '_complexroles');
 
 
 # LINKS:
-has id => (is => 'rw',lazy => 1,builder => '_buildid',isa => 'Str', type => 'id', metaclass => 'Typed');
+has id => (is => 'rw', lazy => 1, builder => '_buildid', isa => 'Str', type => 'id', metaclass => 'Typed');
 
 
 # BUILDERS:
@@ -44,13 +44,94 @@ sub _buildmodDate { return DateTime->now()->datetime(); }
 
 # CONSTANTS:
 sub _type { return 'Complex'; }
-sub _typeToFunction {
-	return {
-		ComplexReactionInstance => 'complexreactioninstances',
-		ComplexRole => 'complexroles',
-	};
+
+my $attributes = [
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'locked',
+            'default' => '0',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 1,
+            'name' => 'name',
+            'default' => '',
+            'type' => 'ModelSEED::varchar',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
+}
+
+my $subobjects = [
+          {
+            'name' => 'complexreactioninstances',
+            'type' => 'encompassed',
+            'class' => 'ComplexReactionInstance'
+          },
+          {
+            'name' => 'complexroles',
+            'type' => 'encompassed',
+            'class' => 'ComplexRole'
+          }
+        ];
+
+my $subobject_map = {complexreactioninstances => 0, complexroles => 1};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
 }
 sub _aliasowner { return 'Mapping'; }
+
+
+# SUBOBJECT READERS:
+around 'complexreactioninstances' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('complexreactioninstances');
+};
+around 'complexroles' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('complexroles');
+};
 
 
 __PACKAGE__->meta->make_immutable;

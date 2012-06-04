@@ -160,7 +160,7 @@ sub addReagentToReaction {
 			return $self->modelReactionReagents()->[$i];
 		}
 	}
-	my $mdlrxnrgt = $self->create("ModelReactionReagent",{
+	my $mdlrxnrgt = $self->add("modelReactionReagents",{
 		coefficient => $args->{coefficient},
 		modelcompound_uuid => $args->{modelcompound_uuid}
 	});
@@ -212,7 +212,7 @@ sub addModelReactionProtein {
 		}
 		$protdata->{modelReactionProteinSubunits} = $subunitData;
 	}
-	my $mdlrxnprot = $self->create("ModelReactionProtein",$protdata);
+	my $mdlrxnprot = $self->add("modelReactionProteins",$protdata);
 	return $mdlrxnprot;
 }
 

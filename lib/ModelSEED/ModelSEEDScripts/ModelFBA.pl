@@ -36,7 +36,7 @@ $mdl->setParents(undef);
 close MODEL;
 print "Loaded model!\n";
 
-my $media = $biochem->getObject("Media",{name => $mediaID});
+my $media = $biochem->queryObject("media",{name => $mediaID});
 if (!defined($media)) {
 	print "Could not find specified media!";	
 }

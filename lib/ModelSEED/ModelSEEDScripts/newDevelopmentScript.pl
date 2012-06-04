@@ -70,8 +70,8 @@ my $annotation = ModelSEED::MS::Annotation->new(
 );
 for ( my $i = 0 ; $i < @{ $in_genome->{features} } ; $i++ ) {
 	my $ftr = $in_genome->{features}->[$i];
-	my $ftr = $annotation->create(
-			   "Feature",
+	my $ftr = $annotation->add(
+			   "features",
 			   {
 				 id          => $ftr->{id},
 				 type        => $ftr->{type},
@@ -94,11 +94,11 @@ for ( my $i = 0 ; $i < @{ $in_genome->{features} } ; $i++ ) {
 									{ name => $output->{roles}->[$j] } );
 			if ( !defined($role) ) {
 				$role =
-				  $mapping->create( "Role",
+				  $mapping->add( "roles",
 									{ name => $output->{roles}->[$j] } );
 			}
-			$ftr->create(
-						  "FeatureRole",
+			$ftr->add(
+						  "featuresroles",
 						  {
 							 role_uuid   => $role->uuid(),
 							 compartment => $output->{compartments},
