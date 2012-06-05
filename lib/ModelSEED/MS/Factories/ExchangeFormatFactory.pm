@@ -7,7 +7,7 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
-use ModelSEED::Store;
+#use ModelSEED::Store;
 package ModelSEED::MS::Factories::ExchangeFormatFactory;
 use Moose;
 use namespace::autoclean;
@@ -69,7 +69,6 @@ sub parseExchangeFileArray {
 			push(@{$data->{$section}},$subobjectData);
 		}
 	}
-	print Data::Dumper->Dump([$data]);
 	return $data;
 }
 =head3 buildObjectFromExchangeFileArray

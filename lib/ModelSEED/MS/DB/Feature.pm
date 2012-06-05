@@ -40,7 +40,7 @@ has featureroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { re
 
 
 # LINKS:
-has genome => (is => 'rw', isa => 'ModelSEED::MS::gneomes', type => 'link(Annotation,gneomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
+has genome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
 
 
 # BUILDERS:
@@ -48,7 +48,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildgenome {
   my ($self) = @_;
-  return $self->getLinkedObject('Annotation','gneomes',$self->genome_uuid());
+  return $self->getLinkedObject('Annotation','genomes',$self->genome_uuid());
 }
 
 

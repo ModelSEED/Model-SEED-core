@@ -1127,7 +1127,7 @@ $objectDefinitions->{Annotation} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"mappings"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping"},
 	]
 };
 
@@ -1153,7 +1153,7 @@ $objectDefinitions->{Feature} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "genome",attribute => "genome_uuid",parent => "Annotation",method=>"gneomes"},
+		{name => "genome",attribute => "genome_uuid",parent => "Annotation",method=>"genomes"},
 	]
 };
 
@@ -1222,7 +1222,7 @@ $objectDefinitions->{UniversalReaction} = {
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstance"},
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstances"},
 	]
 };
 

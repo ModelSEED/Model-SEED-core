@@ -51,7 +51,7 @@ sub createStandardFBAModel {
 	my $mapping = $args->{mapping};
 	my $biochem = $mapping->biochemistry();
 	my $type = "Singlegenome";
-	if (@{$self->genomes()} > 0) {
+	if (@{$self->genomes()} > 1) {
 		$type = "Metagenome";
 	}
 	my $mdl = ModelSEED::MS::Model->new({

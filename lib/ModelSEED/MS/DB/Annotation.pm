@@ -38,7 +38,7 @@ has subsystemStates => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub {
 
 
 # LINKS:
-has mapping => (is => 'rw', isa => 'ModelSEED::MS::mappings', type => 'link(ModelSEED::Store,mappings,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
+has mapping => (is => 'rw', isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
 
 
 # BUILDERS:
@@ -46,7 +46,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildmapping {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelSEED::Store','mappings',$self->mapping_uuid());
+  return $self->getLinkedObject('ModelSEED::Store','Mapping',$self->mapping_uuid());
 }
 
 

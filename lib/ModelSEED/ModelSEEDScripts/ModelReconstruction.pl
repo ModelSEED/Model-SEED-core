@@ -8,6 +8,8 @@ use ModelSEED::MS::Model;
 use ModelSEED::MS::Factories::SEEDFactory;
 use Time::HiRes qw(time);
 
+$| = 1;
+
 #Loading biochemistry
 my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
 open BIOCHEM, "<".$directory."biochemistry.json";
@@ -15,58 +17,34 @@ my $string = join("\n",<BIOCHEM>);
 close BIOCHEM;
 my $objectData = JSON::Any->decode($string);
 my $biochem = ModelSEED::MS::Biochemistry->new($objectData);
-my $readable = $biochem->createReadableStringArray();
-ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/biochemistry.readable",$readable);
-
-
-exit();
 #Loading mapping
 open MAPPING, "<".$directory."mapping.json";
 $string = join("\n",<MAPPING>);
 close MAPPING;
 $objectData = JSON::Any->decode($string);
 my $mapping = ModelSEED::MS::Mapping->new($objectData);
-$mapping->setParents(undef);
 $mapping->biochemistry($biochem);
-print "Mapping loaded!\n";
-$mapping->buildSubsystemReactionSets();
-
-
-
-
-#my $string;
-#my $gzipString;
-#open BIOCHEM, "<c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.json.zip";
-#read BIOCHEM,$gzipString,10000000;
-#close BIOCHEM;
-#gunzip \$gzipString => \$string;
-#my $objectData = JSON::Any->decode($string);
-#my $biochem = ModelSEED::MS::Biochemistry->new($objectData);
-#$biochem->setParents(undef);
-#print "Biochemistry loaded!\n";
-##Loading mapping
-#open MAPPING, "<c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json.zip";
-#read MAPPING,$gzipString,10000000;
-#close MAPPING;
-#gunzip \$gzipString => \$string;
+#Retrieving annotation
+#open ANNO, "<".$directory."FullAnnotation.json";
+#$string = join("\n",<ANNO>);
+#close ANNO;
 #$objectData = JSON::Any->decode($string);
-#my $mapping = ModelSEED::MS::Mapping->new($objectData);
-#$mapping->setParents(undef);
-#$mapping->biochemistry($biochem);
-#print "Mapping loaded!\n";
-#my $readable = $mapping->createReadableStringArray();
-#ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.readable",$readable);
-##Retrieving annotation
-#my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
-#my $anno = $seedFactory->buildMooseAnnotation({
-#	genome_id => "83333.1",
-#	mapping => $mapping
-#});
-#print "Created annotation!\n";
-#$readable = $anno->createReadableStringArray();
-#ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/83333.1-annotation.readable",$readable); 
+#my $anno = ModelSEED::MS::Annotation->new($objectData);
+#$anno->mapping($mapping);
+print "Retrieving annotation!\n";
+my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
+my $anno = $seedFactory->buildMooseAnnotation({
+	genome_id => "83333.1",
+	mapping => $mapping
+});
+$anno->printJSONFile($directory."83333.1.json");
+$mapping->printJSONFile($directory."mapping.json");
+my $readable = $anno->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE($directory."83333.1.readable",$readable);
+print "Beginning reconstruction!\n";
 ##Building model
-#my $mdl = $anno->createStandardFBAModel();
-#$mdl->printJSONFile("c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.json");
-#$readable = $mdl->createReadableStringArray();
-#ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.readable",$readable);
+my $mdl = $anno->createStandardFBAModel();
+print "Model generated!\n";
+$mdl->printJSONFile($directory."ReconstructedModel.json");
+$readable = $mdl->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE($directory."ReconstructedModel.readable",$readable);

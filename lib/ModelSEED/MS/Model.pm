@@ -240,25 +240,29 @@ sub buildModelFromAnnotation {
 	my $mapping = $args->{mapping};
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
-	my $type = "Singlegenome";
-	if (@{$annotaton->genomes()} > 0) {
-		$type = "Metagenome";
-	}
+	print "Scanning features!\n";
 	my $roleFeatures;
-	for (my $i=0; $i < @{$annotaton->features()}; $i++) {
-		my $ftr = $annotaton->features()->[$i];
-		for (my $j=0; $j < @{$ftr->featureroles()}; $j++) {
-			push(@{$roleFeatures->{$ftr->featureroles()->[$j]->role_uuid()}->{$ftr->featureroles()->[$j]->compartment()}},$ftr);
+	my $features = $annotaton->features();
+	for (my $i=0; $i < @{$features}; $i++) {
+		my $ftr = $features->[$i];
+		my $ftrroles = $ftr->featureroles();
+		for (my $j=0; $j < @{$ftrroles}; $j++) {
+			my $ftrrole = $ftrroles->[$j];
+			push(@{$roleFeatures->{$ftrrole->role_uuid()}->{$ftrrole->compartment()}},$ftr);
 		}
 	}
-	for (my $i=0; $i < @{$mapping->complexes()};$i++) {
-		my $cpx = $mapping->complexes()->[$i];
+	print "Scanning complexes!\n";
+	my $complexes = $mapping->complexes();
+	for (my $i=0; $i < @{$complexes};$i++) {
+		my $cpx = $complexes->[$i];
 		my $compartments;
-		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
-			$compartments->{$cpx->complexreactioninstances()->[$j]->compartment()} = {present => 0,subunits => {}};
+		my $complexreactioninstances = $cpx->complexreactioninstances();
+		for (my $j=0; $j < @{$complexreactioninstances}; $j++) {
+			$compartments->{$complexreactioninstances->[$j]->compartment()} = {present => 0,subunits => {}};
 		}
-		for (my $j=0; $j < @{$cpx->complexroles()}; $j++) {
-			my $cpxrole = $cpx->complexroles()->[$j];
+		my $complexroles = $cpx->complexroles();
+		for (my $j=0; $j < @{$complexroles}; $j++) {
+			my $cpxrole = $complexroles->[$j];
 			if (defined($roleFeatures->{$cpxrole->role_uuid()})) {
 				foreach my $compartment (keys(%{$roleFeatures->{$cpxrole->role_uuid()}})) {
 					if ($compartment eq "u") {
@@ -291,8 +295,8 @@ sub buildModelFromAnnotation {
 				}
 			}
 		}
-		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
-			my $cpxrxninst = $cpx->complexreactioninstances()->[$j];
+		for (my $j=0; $j < @{$complexreactioninstances}; $j++) {
+			my $cpxrxninst = $complexreactioninstances->[$j];
 			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
 				my $mdlrxn = $self->addReactionInstanceToModel({
 					reactionInstance => $cpxrxninst->reactioninstance(),
@@ -304,7 +308,9 @@ sub buildModelFromAnnotation {
 			}
 		}
 	}
-	foreach my $universalRxn (@{$mapping->universalReactions()}) {
+	print "Scanning universal reactions!\n";
+	my $universalReactions = $mapping->universalReactions();
+	foreach my $universalRxn (@{$universalReactions}) {
 		my $mdlrxn = $self->addReactionInstanceToModel({
 			reactionInstance => $universalRxn->reactioninstance(),
 		});
@@ -425,6 +431,7 @@ Description:
 =cut
 sub createStandardFBABiomass {
 	my ($self,$args) = @_;
+	print "Building biomass!\n";
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
@@ -446,16 +453,20 @@ sub createStandardFBABiomass {
 	}
 	my $biomassComps;
 	my $biomassCompByUUID;
-	for (my $i=0; $i < @{$template->biomassTemplateComponents()}; $i++) {
-		$biomassCompByUUID->{$template->biomassTemplateComponents()->[$i]->uuid()} = $template->biomassTemplateComponents()->[$i];
+	print "Scanning template components!\n";
+	my $biomassTemplateComponents = $template->biomassTemplateComponents();
+	for (my $i=0; $i < @{$biomassTemplateComponents}; $i++) {
+		my $tmpComp = $biomassTemplateComponents->[$i];
+		$biomassCompByUUID->{$tmpComp->uuid()} = $tmpComp;
 		if ($self->testBiomassCondition({
-				condition => $template->biomassTemplateComponents()->[$i]->condition(),
+				condition => $tmpComp->condition(),
 				annotation => $args->{annotation}
 			}) == 1) {
-			$biomassComps->{$template->biomassTemplateComponents()->[$i]->class()}->{$template->biomassTemplateComponents()->[$i]->uuid()} = $template->biomassTemplateComponents()->[$i]->coefficient();
+			$biomassComps->{$tmpComp->class()}->{$tmpComp->uuid()} = $tmpComp->coefficient();
 		}
 	}
 	my $coef;
+	print "Building equation!\n";
 	my $gc = $anno->genomes()->[0]->gc();
 	foreach my $class (keys(%{$biomassComps})) {
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
@@ -498,9 +509,10 @@ sub createStandardFBABiomass {
 			}
 			if ($coefficient != 0) {
 				my $found = 0;
-				for (my $i=0; $i < @{$bio->biomasscompounds()}; $i++) {
-					my $biocpd = $bio->biomasscompounds()->[$i];
-					if ($bio->biomasscompounds()->[$i]->modelcompound_uuid() eq $mdlcpd->uuid()) {
+				my $biomasscompounds = $bio->biomasscompounds();
+				for (my $i=0; $i < @{$biomasscompounds}; $i++) {
+					my $biocpd = $biomasscompounds->[$i];
+					if ($biocpd->modelcompound_uuid() eq $mdlcpd->uuid()) {
 						$found = 1;
 						$biocpd->coefficient($biocpd->coefficient() + $coefficient);
 					}
@@ -535,15 +547,18 @@ sub testBiomassCondition {
 		my $Class = $args->{annotation}->genomes()->[0]->class();
 		my $Name = $args->{annotation}->genomes()->[0]->name();
 		my $RoleHash;
-		for (my $i=0; $i < @{$args->{annotation}->features()}; $i++) {
-			my $ftr = $args->{annotation}->features()->[$i];
-			for (my $j=0; $j < @{$ftr->featureroles()}; $j++) {
-				$RoleHash->{$ftr->featureroles()->[$j]->role()->name()} = 1;
+		my $features = $args->{annotation}->features();
+		for (my $i=0; $i < @{$features}; $i++) {
+			my $ftr = $features->[$i];
+			my $featureroles = $ftr->featureroles();
+			for (my $j=0; $j < @{$featureroles}; $j++) {
+				$RoleHash->{$featureroles->[$j]->role()->name()} = 1;
 			}
 		}
 		my $VariantHash;
-		for (my $i=0; $i < @{$args->{annotation}->subsystemStates()}; $i++) {
-			$VariantHash->{$args->{annotation}->subsystemStates()->[$i]->name()} = $args->{annotation}->subsystemStates()->[$i]->variant();
+		my $subsystemStates = $args->{annotation}->subsystemStates();
+		for (my $i=0; $i < @{$subsystemStates}; $i++) {
+			$VariantHash->{$subsystemStates->[$i]->name()} = $subsystemStates->[$i]->variant();
 		}
 		my $Criteria = $args->{condition};
 		my $End = 0;
@@ -825,6 +840,231 @@ sub labelBiomassCompounds {
 			$biocpd->modelcompound()->isBiomassCompound(1);
 		}
 	}
+}
+=head3 parseSBML
+Definition:
+	void ModelSEED::MS::Model->parseSBML();
+Description:
+	Parse an input SBML file to generate the model
+=cut
+sub parseSBML {
+	my ($self,$args) = @_;
+	
+}
+=head3 printSBML
+Definition:
+	void ModelSEED::MS::Model->printSBML();
+Description:
+	Prints the model in SBML format
+=cut
+sub printSBML {
+	my ($self,$args) = @_;
+	# convert ids to SIds
+    my $idToSId = sub {
+        my $id = shift @_;
+        my $cpy = $id;
+        # SIds must begin with a letter
+        $cpy =~ s/^([^a-zA-Z])/A_$1/;
+        # SIDs must only contain letters numbers or '_'
+        $cpy =~ s/[^a-zA-Z0-9_]/_/g;
+        return $cpy;
+    };
+    #clean names
+    my $stringToString = sub {
+	my ($name,$value) = @_;
+	#SNames cannot contain angle brackets
+	my $cpy = XML::LibXML::Attr->new($name,$value)->toString();
+		return $cpy;
+    };
+	#Printing header to SBML file
+	my $ModelName = $idToSId->($self->id());
+	my $output;
+	push(@{$output},'<?xml version="1.0" encoding="UTF-8"?>');
+	push(@{$output},'<sbml xmlns="http://www.sbml.org/sbml/level2" level="2" version="1" xmlns:html="http://www.w3.org/1999/xhtml">');
+	my $name = $self->name()." SEED model";
+	$name =~ s/[\s\.]/_/g;
+	push(@{$output},'<model id="'.$ModelName.'" name="'.$name.'">');
+
+	#Printing the unit data
+	push(@{$output},"<listOfUnitDefinitions>");
+	push(@{$output},"\t<unitDefinition id=\"mmol_per_gDW_per_hr\">");
+	push(@{$output},"\t\t<listOfUnits>");
+	push(@{$output},"\t\t\t<unit kind=\"mole\" scale=\"-3\"/>");
+	push(@{$output},"\t\t\t<unit kind=\"gram\" exponent=\"-1\"/>");
+	push(@{$output},"\t\t\t<unit kind=\"second\" multiplier=\".00027777\" exponent=\"-1\"/>");
+	push(@{$output},"\t\t</listOfUnits>");
+	push(@{$output},"\t</unitDefinition>");
+	push(@{$output},"</listOfUnitDefinitions>");
+
+	#Printing compartments for SBML file
+	push(@{$output},'<listOfCompartments>');
+	for (my $i=0; $i < @{$self->modelcompartments()}; $i++) {
+		my $cmp = $self->modelcompartments()->[$i];
+    	push(@{$output},'<compartment '.$stringToString->("id",$cmp->label()).' '.$stringToString->("name",$cmp->label()).' />');
+    }
+	push(@{$output},'</listOfCompartments>');
+	#Printing the list of metabolites involved in the model
+	push(@{$output},'<listOfSpecies>');
+	for (my $i=0; $i < @{$self->modelcompounds()}; $i++) {
+		my $cpd = $self->modelcompounds()->[$i];
+		push(@{$output},'<species '.$stringToString->("id",$cpd->id()).' '.$stringToString->("name",$cpd->name()).' '.$stringToString->("compartment",$cpd->modelCompartmentLabel()).' '.$stringToString->("charge",$cpd->charge()).' boundaryCondition="false"/>');
+	}
+	for (my $i=0; $i < @{$self->modelcompounds()}; $i++) {
+		my $cpd = $self->modelcompounds()->[$i];
+		if ($cpd->modelCompartmentLabel() =~ m/^e/) {
+			push(@{$output},'<species '.$stringToString->("id",$cpd->compound()->id()."_b").' '.$stringToString->("name",$cpd->compound()->name()."_b").' '.$stringToString->("compartment","b").' '.$stringToString->("charge",$cpd->charge()).' boundaryCondition="true"/>');
+		}
+	}
+	push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="b" charge="10000000" boundaryCondition="true"/>');
+	push(@{$output},'</listOfSpecies>');
+	push(@{$output},'<listOfReactions>');
+	for (my $i=0; $i < @{$self->modelreactions()}; $i++) {
+		my $rxn = $self->modelreactions()->[$i];
+		my $reversibility = "true";
+		my $lb = -1000;
+		if ($rxn->direction() ne "=") {
+			$lb = 0;
+			$reversibility = "false";
+		}
+		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
+		push(@{$output},"<notes>");
+		my $ec = $rxn->getAlias("EC");
+		my $keggID = $rxn->getAlias("KEGG");
+		my $GeneAssociation = $rxn->gprString();
+		my $ProteinAssociation = $rxn->gprString();
+		push(@{$output},"<html:p>GENE_ASSOCIATION:".$GeneAssociation."</html:p>");
+		push(@{$output},"<html:p>PROTEIN_ASSOCIATION:".$ProteinAssociation."</html:p>");
+		if (defined($keggID)) {
+			push(@{$output},"<html:p>KEGG_RID:".$keggID."</html:p>");
+		}
+		if (defined($ec)) {
+			push(@{$output},"<html:p>PROTEIN_CLASS:".$ec."</html:p>");
+		}
+		push(@{$output},"</notes>");
+		my $firstreact = 1;
+		my $firstprod = 1;
+		my $prodoutput = [];
+		for (my $i=0; $i < @{$rxn->modelReactionReagents()}; $i++) {
+			my $rgt = $rxn->modelReactionReagents()->[$i];
+			if ($rgt->coefficient() < 0) {
+				if ($firstreact == 1) {
+					$firstreact = 0;
+					push(@{$output},"<listOfReactants>");
+				}
+				push(@{$output},'<speciesReference '.$stringToString->("species",$rgt->modelcompound()->id()).' '.$stringToString->("stoichiometry",$rgt->coefficient()).'/>');	
+			} else {
+				if ($firstprod == 1) {
+					$firstprod = 0;
+					push(@{$prodoutput},"<listOfProducts>");
+				}
+				push(@{$prodoutput},'<speciesReference '.$stringToString->("species",$rgt->modelcompound()->id()).' '.$stringToString->("stoichiometry",$rgt->coefficient()).'/>');
+			}
+		}
+		if ($firstreact != 1) {
+			push(@{$output},"</listOfReactants>");
+		}
+		if ($firstprod != 1) {
+			push(@{$prodoutput},"</listOfProducts>");
+		}
+		push(@{$output},@{$prodoutput});
+		push(@{$output},"<kineticLaw>");
+		push(@{$output},"\t<math xmlns=\"http://www.w3.org/1998/Math/MathML\">");
+		push(@{$output},"\t\t\t<ci> FLUX_VALUE </ci>");
+		push(@{$output},"\t</math>");
+		push(@{$output},"\t<listOfParameters>");
+		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"".$lb."\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"1000\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"OBJECTIVE_COEFFICIENT\" value=\"0\"/>");
+		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t</listOfParameters>");
+		push(@{$output},"</kineticLaw>");
+		push(@{$output},'</reaction>');
+	}
+	for (my $i=0; $i < @{$self->biomasses()}; $i++) {
+		my $rxn = $self->biomasses()->[$i];
+		my $obj = 0;
+		if ($i==0) {
+			$obj = 1;
+		}
+		my $reversibility = "false";
+		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
+		push(@{$output},"<notes>");
+		push(@{$output},"</notes>");
+		my $firstreact = 1;
+		my $firstprod = 1;
+		my $prodoutput = [];
+		for (my $i=0; $i < @{$rxn->biomasscompounds()}; $i++) {
+			my $rgt = $rxn->biomasscompounds()->[$i];
+			if ($rgt->coefficient() < 0) {
+				if ($firstreact == 1) {
+					$firstreact = 0;
+					push(@{$output},"<listOfReactants>");
+				}
+				push(@{$output},'<speciesReference '.$stringToString->("species",$rgt->modelcompound()->id()).' '.$stringToString->("stoichiometry",$rgt->coefficient()).'/>');	
+			} else {
+				if ($firstprod == 1) {
+					$firstprod = 0;
+					push(@{$prodoutput},"<listOfProducts>");
+				}
+				push(@{$prodoutput},'<speciesReference '.$stringToString->("species",$rgt->modelcompound()->id()).' '.$stringToString->("stoichiometry",$rgt->coefficient()).'/>');
+			}
+		}
+		if ($firstreact != 1) {
+			push(@{$output},"</listOfReactants>");
+		}
+		if ($firstprod != 1) {
+			push(@{$prodoutput},"</listOfProducts>");
+		}
+		push(@{$output},@{$prodoutput});
+		push(@{$output},"<kineticLaw>");
+		push(@{$output},"\t<math xmlns=\"http://www.w3.org/1998/Math/MathML\">");
+		push(@{$output},"\t\t\t<ci> FLUX_VALUE </ci>");
+		push(@{$output},"\t</math>");
+		push(@{$output},"\t<listOfParameters>");
+		push(@{$output},"\t\t<parameter id=\"LOWER_BOUND\" value=\"0.0\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"UPPER_BOUND\" value=\"1000\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t\t<parameter id=\"OBJECTIVE_COEFFICIENT\" value=\"".$obj."\"/>");
+		push(@{$output},"\t\t<parameter id=\"FLUX_VALUE\" value=\"0.0\" name=\"mmol_per_gDW_per_hr\"/>");
+		push(@{$output},"\t</listOfParameters>");
+		push(@{$output},"</kineticLaw>");
+		push(@{$output},'</reaction>');
+	}
+	for (my $i=0; $i < @{$self->modelcompounds()}; $i++) {
+		my $cpd = $self->modelcompounds()->[$i];
+		my $lb = -1000;
+		my $ub = 1000;
+		if ($cpd->modelCompartmentLabel() =~ m/^e/ || $cpd->name() eq "Biomass") {
+			push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$cpd->id()).' '.$stringToString->("name",'EX_'.$cpd->name()).' reversible="true">');
+			push(@{$output},"\t".'<notes>');
+			push(@{$output},"\t\t".'<html:p>GENE_ASSOCIATION: </html:p>');
+			push(@{$output},"\t\t".'<html:p>PROTEIN_ASSOCIATION: </html:p>');
+			push(@{$output},"\t\t".'<html:p>PROTEIN_CLASS: </html:p>');
+			push(@{$output},"\t".'</notes>');
+			push(@{$output},"\t".'<listOfReactants>');
+			push(@{$output},"\t\t".'<speciesReference '.$stringToString->("species",$cpd->id()).' stoichiometry="1.000000"/>');
+			push(@{$output},"\t".'</listOfReactants>');
+			push(@{$output},"\t".'<listOfProducts>');
+			push(@{$output},"\t\t".'<speciesReference '.$stringToString->("species",$cpd->compound()->id()."_b").' stoichiometry="1.000000"/>');
+			push(@{$output},"\t".'</listOfProducts>');
+			push(@{$output},"\t".'<kineticLaw>');
+			push(@{$output},"\t\t".'<math xmlns="http://www.w3.org/1998/Math/MathML">');
+			push(@{$output},"\t\t\t\t".'<ci> FLUX_VALUE </ci>');
+			push(@{$output},"\t\t".'</math>');
+			push(@{$output},"\t\t".'<listOfParameters>');
+			push(@{$output},"\t\t\t".'<parameter id="LOWER_BOUND" value="'.$lb.'" units="mmol_per_gDW_per_hr"/>');
+			push(@{$output},"\t\t\t".'<parameter id="UPPER_BOUND" value="'.$ub.'" units="mmol_per_gDW_per_hr"/>');
+			push(@{$output},"\t\t\t".'<parameter id="OBJECTIVE_COEFFICIENT" value="0"/>');
+			push(@{$output},"\t\t\t".'<parameter id="FLUX_VALUE" value="0.000000" units="mmol_per_gDW_per_hr"/>');
+			push(@{$output},"\t\t".'</listOfParameters>');
+			push(@{$output},"\t".'</kineticLaw>');
+			push(@{$output},'</reaction>');
+		}	
+	}
+	#Closing out the file
+	push(@{$output},'</listOfReactions>');
+	push(@{$output},'</model>');
+	push(@{$output},'</sbml>');
+	return $output;
 }
 #***********************************************************************************************************
 # ANALYSIS FUNCTIONS:

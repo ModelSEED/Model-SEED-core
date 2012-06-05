@@ -48,7 +48,6 @@ sub BUILD {
 
         for (my $i=0; $i<scalar @$subobjs; $i++) {
             my $data = $subobjs->[$i];
-
             # create the info hash
             my $info = {
                 created => 0,
@@ -90,6 +89,7 @@ sub serializeToDB {
 sub printJSONFile {
     my ($self,$filename) = @_;
     my $data = $self->serializeToDB();
+    print ref($data)."\n";
     my $jsonData = JSON::Any->encode($data);
     ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
 }
@@ -262,16 +262,12 @@ sub remove {
 # can only get via uuid
 sub getLinkedObject {
     my ($self, $sourceType, $attribute, $uuid) = @_;
-
-    if (ref($self) =~ /$sourceType/) {
-        return $self->getObject($attribute,$uuid);
-    } elsif (ref($self->parent) eq 'ModelSEED::Store') {
-        my $o = $self->parent->get_object_by_uuid($attribute,$uuid);
-        warn "Getting object ".ref($o);
-        return $o;
-    } else {
-        return $self->parent->getLinkedObject($sourceType, $attribute, $uuid);
-    }
+   	my $source = lc($sourceType);
+   	my $sourceObj = $self->$source();
+   	if (!defined($sourceObj)) {
+   		ModelSEED::utilities::ERROR("Cannot obtain source object ".$sourceType." for ".$attribute." link!");
+   	}
+   	return $sourceObj->getObject($attribute,$uuid);
 }
 
 sub biochemistry {
@@ -279,8 +275,8 @@ sub biochemistry {
     my $parent = $self->parent();
     if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
         return $parent;
-    } elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Biochemistry object in tree!";
+    } elsif (defined($parent)) {
+        return $parent->biochemistry();
     }
     ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
@@ -290,8 +286,8 @@ sub model {
     my $parent = $self->parent();
     if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
         return $parent;
-    } elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Model object in tree!";
+    } elsif (defined($parent)) {
+        return $parent->model();
     }
     ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
@@ -301,8 +297,8 @@ sub annotation {
     my $parent = $self->parent();
     if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
         return $parent;
-    } elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find Annotation object in tree!";
+    } elsif (defined($parent)) {
+        return $parent->annotation();
     }
     ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
@@ -312,8 +308,8 @@ sub mapping {
     my $parent = $self->parent();
     if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
         return $parent;
-    } elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-        confess "Cannot find mapping object in tree!";
+    } elsif (defined($parent)) {
+        return $parent->mapping();
     }
     ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
 }
