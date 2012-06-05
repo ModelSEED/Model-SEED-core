@@ -25,12 +25,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has defaultNameSpace => (is => 'rw', isa => 'Str', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Bool', default => '1', type => 'attribute', metaclass => 'Typed');
-has public => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has defaultNameSpace => (is => 'rw', isa => 'Str', printOrder => '2', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '1', type => 'attribute', metaclass => 'Typed');
+has public => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -38,15 +38,15 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has compartments => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compartment)', metaclass => 'Typed', reader => '_compartments');
-has compounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compound)', metaclass => 'Typed', reader => '_compounds');
-has reactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Reaction)', metaclass => 'Typed', reader => '_reactions');
-has reactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionInstance)', metaclass => 'Typed', reader => '_reactioninstances');
-has media => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Media)', metaclass => 'Typed', reader => '_media');
-has compoundSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(CompoundSet)', metaclass => 'Typed', reader => '_compoundSets');
-has reactionSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionSet)', metaclass => 'Typed', reader => '_reactionSets');
-has aliasSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(AliasSet)', metaclass => 'Typed', reader => '_aliasSets');
-has cues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(Cue)', metaclass => 'Typed', reader => '_cues');
+has compartments => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compartment)', metaclass => 'Typed', reader => '_compartments', printOrder => '0');
+has compounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compound)', metaclass => 'Typed', reader => '_compounds', printOrder => '3');
+has reactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Reaction)', metaclass => 'Typed', reader => '_reactions', printOrder => '4');
+has reactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionInstance)', metaclass => 'Typed', reader => '_reactioninstances', printOrder => '5');
+has media => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Media)', metaclass => 'Typed', reader => '_media', printOrder => '2');
+has compoundSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(CompoundSet)', metaclass => 'Typed', reader => '_compoundSets', printOrder => '-1');
+has reactionSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionSet)', metaclass => 'Typed', reader => '_reactionSets', printOrder => '-1');
+has aliasSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(AliasSet)', metaclass => 'Typed', reader => '_aliasSets', printOrder => '-1');
+has cues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(Cue)', metaclass => 'Typed', reader => '_cues', printOrder => '1');
 
 
 # LINKS:
@@ -157,16 +157,19 @@ my $subobjects = [
             'class' => 'Media'
           },
           {
+            'printOrder' => -1,
             'name' => 'compoundSets',
             'type' => 'child',
             'class' => 'CompoundSet'
           },
           {
+            'printOrder' => -1,
             'name' => 'reactionSets',
             'type' => 'child',
             'class' => 'ReactionSet'
           },
           {
+            'printOrder' => -1,
             'name' => 'aliasSets',
             'type' => 'child',
             'class' => 'AliasSet'

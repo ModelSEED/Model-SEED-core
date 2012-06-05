@@ -19,12 +19,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has fbaformulation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has resultNotes => (is => 'rw', isa => 'Str', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
-has objectiveValue => (is => 'rw', isa => 'Num', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has fbaformulation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has resultNotes => (is => 'rw', isa => 'Str', printOrder => '3', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
+has objectiveValue => (is => 'rw', isa => 'Num', printOrder => '2', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -32,9 +32,9 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has fbaCompoundVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundVariable)', metaclass => 'Typed', reader => '_fbaCompoundVariables');
-has fbaReactionVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionVariable)', metaclass => 'Typed', reader => '_fbaReactionVariables');
-has fbaBiomassVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBABiomassVariable)', metaclass => 'Typed', reader => '_fbaBiomassVariables');
+has fbaCompoundVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundVariable)', metaclass => 'Typed', reader => '_fbaCompoundVariables', printOrder => '2');
+has fbaReactionVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionVariable)', metaclass => 'Typed', reader => '_fbaReactionVariables', printOrder => '1');
+has fbaBiomassVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBABiomassVariable)', metaclass => 'Typed', reader => '_fbaBiomassVariables', printOrder => '0');
 
 
 # LINKS:

@@ -16,17 +16,17 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Annotation', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has id => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has source => (is => 'rw', isa => 'ModelSEED::varchar', required => 1, type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has taxonomy => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has size => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
-has gc => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has etcType => (is => 'rw', isa => 'ModelSEED::varchar', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has id => (is => 'rw', isa => 'Str', printOrder => '1', required => 1, type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '2', default => '', type => 'attribute', metaclass => 'Typed');
+has source => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '8', required => 1, type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '3', default => '', type => 'attribute', metaclass => 'Typed');
+has taxonomy => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '4', default => '', type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
+has size => (is => 'rw', isa => 'Int', printOrder => '5', type => 'attribute', metaclass => 'Typed');
+has gc => (is => 'rw', isa => 'Num', printOrder => '6', type => 'attribute', metaclass => 'Typed');
+has etcType => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '7', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:

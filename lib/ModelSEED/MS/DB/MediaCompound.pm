@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Media', weak_ref => 1, type =>
 
 
 # ATTRIBUTES:
-has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has concentration => (is => 'rw', isa => 'Num', default => '0.001', type => 'attribute', metaclass => 'Typed');
-has maxFlux => (is => 'rw', isa => 'Num', default => '100', type => 'attribute', metaclass => 'Typed');
-has minFlux => (is => 'rw', isa => 'Num', default => '-100', type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has concentration => (is => 'rw', isa => 'Num', printOrder => '0', default => '0.001', type => 'attribute', metaclass => 'Typed');
+has maxFlux => (is => 'rw', isa => 'Num', printOrder => '0', default => '100', type => 'attribute', metaclass => 'Typed');
+has minFlux => (is => 'rw', isa => 'Num', printOrder => '0', default => '-100', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

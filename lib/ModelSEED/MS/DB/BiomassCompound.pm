@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Biomass', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has modelcompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has coefficient => (is => 'rw', isa => 'Num', required => 1, type => 'attribute', metaclass => 'Typed');
+has modelcompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

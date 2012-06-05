@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has entityType => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has variableType => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has coefficient => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has entityType => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has variableType => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

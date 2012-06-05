@@ -17,9 +17,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingFormulation', weak_r
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has solutionCost => (is => 'rw', isa => 'Num', default => '1', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has solutionCost => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -27,7 +27,7 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has gapfillingSolutionReactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(GapfillingSolutionReaction)', metaclass => 'Typed', reader => '_gapfillingSolutionReactions');
+has gapfillingSolutionReactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(GapfillingSolutionReaction)', metaclass => 'Typed', reader => '_gapfillingSolutionReactions', printOrder => '-1');
 
 
 # LINKS:
@@ -83,6 +83,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'gapfillingSolutionReactions',
             'type' => 'encompassed',
             'class' => 'GapfillingSolutionReaction'

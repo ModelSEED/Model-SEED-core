@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Mapping', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '4', required => 1, type => 'attribute', metaclass => 'Typed');
+has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

@@ -16,12 +16,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingFormulation', weak_r
 
 
 # ATTRIBUTES:
-has feature_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has ortholog_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has orthologGenome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has similarityScore => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has distanceScore => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has reactions => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has feature_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has ortholog_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has orthologGenome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has similarityScore => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has distanceScore => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has reactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

@@ -231,6 +231,9 @@ sub _buildIndex {
 	my $subatt = $args->{subAttribute};
 	my $newIndex  = {};
 	my $method = "_$att";
+	if ($method eq "_CompoundAliasSet") {
+		ModelSEED::utilities::ERROR("calling bad attribute!");	
+	}
 	my $subobjs = $self->$method();
 	if (@{$subobjs} > 0) {
 		#First we check if all objects need to be built before the index can be constructed

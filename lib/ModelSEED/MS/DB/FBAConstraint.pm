@@ -17,13 +17,13 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has name => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has rhs => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has sign => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has rhs => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has sign => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has fbaConstraintVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraintVariable)', metaclass => 'Typed', reader => '_fbaConstraintVariables');
+has fbaConstraintVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraintVariable)', metaclass => 'Typed', reader => '_fbaConstraintVariables', printOrder => '-1');
 
 
 # LINKS:
@@ -79,6 +79,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'fbaConstraintVariables',
             'type' => 'encompassed',
             'class' => 'FBAConstraintVariable'

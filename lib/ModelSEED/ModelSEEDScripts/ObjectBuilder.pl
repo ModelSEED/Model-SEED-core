@@ -73,9 +73,13 @@ foreach my $name (keys(%{$objects})) {
     my $modDate = 0;
     my $attrs = [];
     foreach my $attribute (@{$object->{attributes}}) {
+        if (!defined($attribute->{printOrder})) {
+        	$attribute->{printOrder} = -1;	
+        }
         my $props = [
             "is => '" . $attribute->{perm} . "'",
-            "isa => '" . $attribute->{type} . "'"
+            "isa => '" . $attribute->{type} . "'",
+            "printOrder => '". $attribute->{printOrder} ."'"
         ];
         if (defined($attribute->{req}) && $attribute->{req} == 1) {
             push(@$props, "required => 1");
@@ -116,6 +120,9 @@ foreach my $name (keys(%{$objects})) {
     if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
         push(@$output, "# SUBOBJECTS:");
         foreach my $subobject (@{$object->{subobjects}}) {
+            if (!defined($subobject->{printOrder})) {
+	        	$subobject->{printOrder} = -1;	
+	        }
             $typeToFunction->{$subobject->{class}} = $subobject->{name};
             $functionToType->{$subobject->{name}} = $subobject->{class};
 
@@ -130,7 +137,8 @@ foreach my $name (keys(%{$objects})) {
                  "default => sub { return []; }",
                  "type => '$type($class)'",
                  "metaclass => 'Typed'",
-                 "reader => '_$soname'"
+                 "reader => '_$soname'",
+                 "printOrder => '". $subobject->{printOrder} ."'"
             );
 
             push(@$output, "has $soname => (" . join(", ", @$props) . ");");

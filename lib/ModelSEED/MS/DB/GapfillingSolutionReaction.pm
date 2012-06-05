@@ -17,12 +17,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingSolution', weak_ref 
 
 
 # ATTRIBUTES:
-has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has direction => (is => 'rw', isa => 'Str', default => '1', type => 'attribute', metaclass => 'Typed');
+has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has gfSolutionReactionGeneCandidates => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(GfSolutionReactionGeneCandidate)', metaclass => 'Typed', reader => '_gfSolutionReactionGeneCandidates');
+has gfSolutionReactionGeneCandidates => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(GfSolutionReactionGeneCandidate)', metaclass => 'Typed', reader => '_gfSolutionReactionGeneCandidates', printOrder => '-1');
 
 
 # LINKS:
@@ -74,6 +74,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'gfSolutionReactionGeneCandidates',
             'type' => 'encompassed',
             'class' => 'GfSolutionReactionGeneCandidate'

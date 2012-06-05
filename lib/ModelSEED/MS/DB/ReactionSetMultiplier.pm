@@ -16,11 +16,11 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingFormulation', weak_r
 
 
 # ATTRIBUTES:
-has reactionset_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has reactionsetType => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has multiplierType => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has description => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has multiplier => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has reactionset_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has reactionsetType => (is => 'rw', isa => 'Str', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has multiplierType => (is => 'rw', isa => 'Str', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has description => (is => 'rw', isa => 'Str', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has multiplier => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

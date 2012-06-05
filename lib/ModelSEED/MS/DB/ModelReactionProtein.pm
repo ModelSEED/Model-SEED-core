@@ -17,12 +17,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', weak_ref => 1,
 
 
 # ATTRIBUTES:
-has complex_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has note => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has complex_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has note => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has modelReactionProteinSubunits => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProteinSubunit)', metaclass => 'Typed', reader => '_modelReactionProteinSubunits');
+has modelReactionProteinSubunits => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProteinSubunit)', metaclass => 'Typed', reader => '_modelReactionProteinSubunits', printOrder => '-1');
 
 
 # LINKS:
@@ -74,6 +74,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'modelReactionProteinSubunits',
             'type' => 'encompassed',
             'class' => 'ModelReactionProteinSubunit'

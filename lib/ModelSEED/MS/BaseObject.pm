@@ -68,7 +68,9 @@ sub serializeToDB {
     my $attributes = $self->_attributes();
     foreach my $item (@{$attributes}) {
     	my $name = $item->{name};
-    	$data->{$name} = $self->$name();
+    	if (defined($self->$name())) {
+    		$data->{$name} = $self->$name();	
+    	}
     }
     my $subobjects = $self->_subobjects();
     foreach my $item (@{$subobjects}) {
@@ -76,9 +78,9 @@ sub serializeToDB {
     	my $arrayRef = $self->$name();
     	foreach my $subobject (@{$arrayRef}) {
 			if ($subobject->{created} == 1) {
-				push(@{$data->{$name}},$subobject->{object}->serializeToDB());	
+				push(@{$data->{$item->{name}}},$subobject->{object}->serializeToDB());	
 			} else {
-				push(@{$data->{$name}},$subobject->{data});
+				push(@{$data->{$item->{name}}},$subobject->{data});
 			}
 		}
     }
@@ -112,28 +114,20 @@ sub getAliases {
     }
     my $aliasowner = lc($self->_aliasowner());
     my $owner = $self->$aliasowner();
-    my $aliasSetClass = $self->_type()."AliasSet";
-    my $aliasset = $owner->queryObject($aliasSetClass,{type => $aliasSet});
-    if (!defined($aliasset)) {
-        print "Alias set ".$aliasset." not found!\n";
+    my $aliasobj = $owner->queryObject("aliasSets",{
+    	name => $aliasSet,
+    	class => $self->_type()
+    });
+    if (!defined($aliasobj)) {
+        print "Alias set ".$aliasSet." not found!\n";
         return [];
     }
-    my $aliasObjects = $aliasset->queryObjects($self->_type()."Alias",{lc($self->_type())."_uuid" => $self->uuid()});
-    my $aliases = [];
-    for (my $i=0; $i < @{$aliasObjects}; $i++) {
-        push(@{$aliases},$aliasObjects->[$i]->alias());
-    }
-    return $aliases;
+    my $aliases = $aliasobj->aliasesByuuid()->{$self->uuid()};
 }
 
 sub _buildid {
     my ($self) = @_;
-    my $aliasSetClass = $self->_type()."AliasSet";
-    my $set = $self->objectmanager()->getSelectedAliases($aliasSetClass);
-    if (!defined($set)) {
-        return $self->uuid();
-    }
-    return $self->getAlias($set);
+    return $self->getAlias($self->parent()->defaultNameSpace());
 }
 
 ######################################################################

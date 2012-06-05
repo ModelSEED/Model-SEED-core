@@ -17,14 +17,14 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', weak_ref => 1, 
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has direction => (is => 'rw', isa => 'Str', default => '=', type => 'attribute', metaclass => 'Typed');
-has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has sourceEquation => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has transprotonNature => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '7', required => 1, type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '4', default => '=', type => 'attribute', metaclass => 'Typed');
+has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '8', required => 1, type => 'attribute', metaclass => 'Typed');
+has sourceEquation => (is => 'rw', isa => 'Str', printOrder => '3', required => 1, type => 'attribute', metaclass => 'Typed');
+has transprotonNature => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '6', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -32,7 +32,7 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has transports => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(InstanceTransport)', metaclass => 'Typed', reader => '_transports');
+has transports => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(InstanceTransport)', metaclass => 'Typed', reader => '_transports', printOrder => '-1');
 
 
 # LINKS:
@@ -140,6 +140,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'transports',
             'type' => 'encompassed',
             'class' => 'InstanceTransport'

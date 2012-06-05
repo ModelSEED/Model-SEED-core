@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ExperimentDataPoint', weak_ref
 
 
 # ATTRIBUTES:
-has value => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has method => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
+has value => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has method => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

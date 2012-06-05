@@ -20,13 +20,13 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has maximize => (is => 'rw', isa => 'Bool', default => '1', type => 'attribute', metaclass => 'Typed');
-has milp => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has fluxUseVariables => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has drainfluxUseVariables => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has maximize => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has milp => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -34,10 +34,10 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has objectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ObjectiveTerm)', metaclass => 'Typed', reader => '_objectiveTerms');
-has constraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Constraint)', metaclass => 'Typed', reader => '_constraints');
-has variables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Variable)', metaclass => 'Typed', reader => '_variables');
-has solutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Solution)', metaclass => 'Typed', reader => '_solutions');
+has objectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ObjectiveTerm)', metaclass => 'Typed', reader => '_objectiveTerms', printOrder => '-1');
+has constraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Constraint)', metaclass => 'Typed', reader => '_constraints', printOrder => '-1');
+has variables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Variable)', metaclass => 'Typed', reader => '_variables', printOrder => '-1');
+has solutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Solution)', metaclass => 'Typed', reader => '_solutions', printOrder => '-1');
 
 
 # LINKS:
@@ -129,21 +129,25 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'objectiveTerms',
             'type' => 'child',
             'class' => 'ObjectiveTerm'
           },
           {
+            'printOrder' => -1,
             'name' => 'constraints',
             'type' => 'child',
             'class' => 'Constraint'
           },
           {
+            'printOrder' => -1,
             'name' => 'variables',
             'type' => 'child',
             'class' => 'Variable'
           },
           {
+            'printOrder' => -1,
             'name' => 'solutions',
             'type' => 'child',
             'class' => 'Solution'

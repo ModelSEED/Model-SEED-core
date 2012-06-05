@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 
 
 # ATTRIBUTES:
-has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
+has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

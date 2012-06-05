@@ -16,13 +16,13 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has variableType => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has lowerBound => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has upperBound => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has min => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has max => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has value => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
+has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has variableType => (is => 'rw', isa => 'Str', printOrder => '3', type => 'attribute', metaclass => 'Typed');
+has lowerBound => (is => 'rw', isa => 'Str', printOrder => '7', type => 'attribute', metaclass => 'Typed');
+has upperBound => (is => 'rw', isa => 'Str', printOrder => '8', type => 'attribute', metaclass => 'Typed');
+has min => (is => 'rw', isa => 'Str', printOrder => '5', type => 'attribute', metaclass => 'Typed');
+has max => (is => 'rw', isa => 'Str', printOrder => '6', type => 'attribute', metaclass => 'Typed');
+has value => (is => 'rw', isa => 'Str', printOrder => '4', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

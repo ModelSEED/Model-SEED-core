@@ -16,19 +16,19 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has binary => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has start => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has upperBound => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has lowerBound => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has index => (is => 'rw', isa => 'Int', default => '-1', type => 'attribute', metaclass => 'Typed');
-has primal => (is => 'rw', isa => 'Bool', default => '1', type => 'attribute', metaclass => 'Typed');
-has dualConstraint_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has upperBoundDualVariable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has lowerBoundDualVariable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has binary => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has start => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has upperBound => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has lowerBound => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has index => (is => 'rw', isa => 'Int', printOrder => '0', default => '-1', type => 'attribute', metaclass => 'Typed');
+has primal => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has dualConstraint_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has upperBoundDualVariable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has lowerBoundDualVariable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
