@@ -19,30 +19,30 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
-has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has description => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
-has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has growthConstraint => (is => 'rw', isa => 'ModelSEED::varchar', default => 'none', type => 'attribute', metaclass => 'Typed');
-has thermodynamicConstraints => (is => 'rw', isa => 'ModelSEED::varchar', default => 'none', type => 'attribute', metaclass => 'Typed');
-has allReversible => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has dilutionConstraints => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has uptakeLimits => (is => 'rw', isa => 'HashRef', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
-has geneKO => (is => 'rw', isa => 'ArrayRef', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has defaultMaxFlux => (is => 'rw', isa => 'Int', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
-has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
-has defaultMinDrainFlux => (is => 'rw', isa => 'Int', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
-has maximizeObjective => (is => 'rw', isa => 'Bool', required => 1, default => '1', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has fluxUseVariables => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has drainfluxUseVariables => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
+has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has description => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
+has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has growthConstraint => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
+has thermodynamicConstraints => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
+has allReversible => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has dilutionConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has uptakeLimits => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has geneKO => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has defaultMaxFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
+has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
+has defaultMinDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
+has maximizeObjective => (is => 'rw', isa => 'Bool', printOrder => '0', required => 1, default => '1', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -50,9 +50,9 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has fbaObjectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed', reader => '_fbaObjectiveTerms');
-has fbaConstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraint)', metaclass => 'Typed', reader => '_fbaConstraints');
-has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAResult)', metaclass => 'Typed', reader => '_fbaResults');
+has fbaObjectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed', reader => '_fbaObjectiveTerms', printOrder => '-1');
+has fbaConstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraint)', metaclass => 'Typed', reader => '_fbaConstraints', printOrder => '-1');
+has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAResult)', metaclass => 'Typed', reader => '_fbaResults', printOrder => '-1');
 
 
 # LINKS:
@@ -290,16 +290,19 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'fbaObjectiveTerms',
             'type' => 'encompassed',
             'class' => 'FBAObjectiveTerm'
           },
           {
+            'printOrder' => -1,
             'name' => 'fbaConstraints',
             'type' => 'encompassed',
             'class' => 'FBAConstraint'
           },
           {
+            'printOrder' => -1,
             'name' => 'fbaResults',
             'type' => 'encompassed',
             'class' => 'FBAResult'

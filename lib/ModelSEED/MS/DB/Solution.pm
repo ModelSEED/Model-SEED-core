@@ -18,11 +18,11 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has status => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has method => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has feasible => (is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed');
-has objective => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has status => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has method => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has feasible => (is => 'rw', isa => 'Bool', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has objective => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -30,8 +30,8 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has solutionconstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionConstraint)', metaclass => 'Typed', reader => '_solutionconstraints');
-has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionVariable)', metaclass => 'Typed', reader => '_solutionvariables');
+has solutionconstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionConstraint)', metaclass => 'Typed', reader => '_solutionconstraints', printOrder => '-1');
+has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionVariable)', metaclass => 'Typed', reader => '_solutionvariables', printOrder => '-1');
 
 
 # LINKS:
@@ -99,11 +99,13 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'solutionconstraints',
             'type' => 'child',
             'class' => 'SolutionConstraint'
           },
           {
+            'printOrder' => -1,
             'name' => 'solutionvariables',
             'type' => 'child',
             'class' => 'SolutionVariable'

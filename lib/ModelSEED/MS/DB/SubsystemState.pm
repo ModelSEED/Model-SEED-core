@@ -16,9 +16,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Annotation', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has roleset_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has variant => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has roleset_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has variant => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

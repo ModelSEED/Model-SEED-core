@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has coefficient => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has variable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has variable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

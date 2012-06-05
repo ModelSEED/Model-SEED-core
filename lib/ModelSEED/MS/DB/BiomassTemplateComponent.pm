@@ -16,13 +16,13 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::BiomassTemplate', weak_ref => 
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has compound_uuid => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has coefficientType => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has coefficient => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has condition => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has coefficientType => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has condition => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:

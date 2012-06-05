@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::RoleSet', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

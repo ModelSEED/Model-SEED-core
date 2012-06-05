@@ -20,16 +20,16 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Experiment', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has strain_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed');
-has pH => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has temperature => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has buffers => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has phenotype => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has notes => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has growthMeasurement => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has growthMeasurementType => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has strain_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has pH => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has temperature => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has buffers => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has phenotype => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has notes => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has growthMeasurement => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has growthMeasurementType => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -37,10 +37,10 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has fluxMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FluxMeasurement)', metaclass => 'Typed', reader => '_fluxMeasurements');
-has uptakeMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(UptakeMeasurement)', metaclass => 'Typed', reader => '_uptakeMeasurements');
-has metaboliteMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(MetaboliteMeasurement)', metaclass => 'Typed', reader => '_metaboliteMeasurements');
-has geneMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GeneMeasurement)', metaclass => 'Typed', reader => '_geneMeasurements');
+has fluxMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FluxMeasurement)', metaclass => 'Typed', reader => '_fluxMeasurements', printOrder => '-1');
+has uptakeMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(UptakeMeasurement)', metaclass => 'Typed', reader => '_uptakeMeasurements', printOrder => '-1');
+has metaboliteMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(MetaboliteMeasurement)', metaclass => 'Typed', reader => '_metaboliteMeasurements', printOrder => '-1');
+has geneMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GeneMeasurement)', metaclass => 'Typed', reader => '_geneMeasurements', printOrder => '-1');
 
 
 # LINKS:
@@ -153,21 +153,25 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'fluxMeasurements',
             'type' => 'child',
             'class' => 'FluxMeasurement'
           },
           {
+            'printOrder' => -1,
             'name' => 'uptakeMeasurements',
             'type' => 'child',
             'class' => 'UptakeMeasurement'
           },
           {
+            'printOrder' => -1,
             'name' => 'metaboliteMeasurements',
             'type' => 'child',
             'class' => 'MetaboliteMeasurement'
           },
           {
+            'printOrder' => -1,
             'name' => 'geneMeasurements',
             'type' => 'child',
             'class' => 'GeneMeasurement'

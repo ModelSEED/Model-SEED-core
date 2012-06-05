@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Complex', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has compartment => (is => 'rw', isa => 'Str', default => 'cytosol', type => 'attribute', metaclass => 'Typed');
+has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has compartment => (is => 'rw', isa => 'Str', printOrder => '0', default => 'cytosol', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

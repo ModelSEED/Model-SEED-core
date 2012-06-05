@@ -17,16 +17,16 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Mapping', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'Str', default => '0', type => 'attribute', metaclass => 'Typed');
-has dna => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has rna => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has protein => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has lipid => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has cellwall => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has cofactor => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
-has energy => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', printOrder => '1', default => '0', type => 'attribute', metaclass => 'Typed');
+has dna => (is => 'rw', isa => 'Num', printOrder => '2', default => '0', type => 'attribute', metaclass => 'Typed');
+has rna => (is => 'rw', isa => 'Num', printOrder => '3', default => '0', type => 'attribute', metaclass => 'Typed');
+has protein => (is => 'rw', isa => 'Num', printOrder => '4', default => '0', type => 'attribute', metaclass => 'Typed');
+has lipid => (is => 'rw', isa => 'Num', printOrder => '5', default => '0', type => 'attribute', metaclass => 'Typed');
+has cellwall => (is => 'rw', isa => 'Num', printOrder => '6', default => '0', type => 'attribute', metaclass => 'Typed');
+has cofactor => (is => 'rw', isa => 'Num', printOrder => '7', default => '0', type => 'attribute', metaclass => 'Typed');
+has energy => (is => 'rw', isa => 'Num', printOrder => '8', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -34,7 +34,7 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has biomassTemplateComponents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(BiomassTemplateComponent)', metaclass => 'Typed', reader => '_biomassTemplateComponents');
+has biomassTemplateComponents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(BiomassTemplateComponent)', metaclass => 'Typed', reader => '_biomassTemplateComponents', printOrder => '-1');
 
 
 # LINKS:
@@ -146,6 +146,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'biomassTemplateComponents',
             'type' => 'child',
             'class' => 'BiomassTemplateComponent'

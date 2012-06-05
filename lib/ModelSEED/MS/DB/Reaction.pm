@@ -19,18 +19,18 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', weak_ref => 1, 
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has abbreviation => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has deltaG => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has deltaGErr => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has reversibility => (is => 'rw', isa => 'Str', default => '=', type => 'attribute', metaclass => 'Typed');
-has thermoReversibility => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has defaultProtons => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has status => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', default => '', type => 'attribute', metaclass => 'Typed');
+has abbreviation => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '2', default => '', type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
+has deltaG => (is => 'rw', isa => 'Num', printOrder => '8', type => 'attribute', metaclass => 'Typed');
+has deltaGErr => (is => 'rw', isa => 'Num', printOrder => '9', type => 'attribute', metaclass => 'Typed');
+has reversibility => (is => 'rw', isa => 'Str', printOrder => '5', default => '=', type => 'attribute', metaclass => 'Typed');
+has thermoReversibility => (is => 'rw', isa => 'Str', printOrder => '6', type => 'attribute', metaclass => 'Typed');
+has defaultProtons => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
+has status => (is => 'rw', isa => 'Str', printOrder => '10', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -38,9 +38,9 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has reactionCues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionCue)', metaclass => 'Typed', reader => '_reactionCues');
-has reactionreactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed', reader => '_reactionreactioninstances');
-has reagents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(Reagent)', metaclass => 'Typed', reader => '_reagents');
+has reactionCues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionCue)', metaclass => 'Typed', reader => '_reactionCues', printOrder => '-1');
+has reactionreactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed', reader => '_reactionreactioninstances', printOrder => '-1');
+has reagents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(Reagent)', metaclass => 'Typed', reader => '_reagents', printOrder => '-1');
 
 
 # LINKS:
@@ -167,16 +167,19 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'reactionCues',
             'type' => 'encompassed',
             'class' => 'ReactionCue'
           },
           {
+            'printOrder' => -1,
             'name' => 'reactionreactioninstances',
             'type' => 'encompassed',
             'class' => 'ReactionReactionInstance'
           },
           {
+            'printOrder' => -1,
             'name' => 'reagents',
             'type' => 'encompassed',
             'class' => 'Reagent'

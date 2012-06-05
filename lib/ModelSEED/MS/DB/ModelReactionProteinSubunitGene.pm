@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelReactionProteinSubunit', 
 
 
 # ATTRIBUTES:
-has feature_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has feature_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

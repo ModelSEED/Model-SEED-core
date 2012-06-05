@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::CompoundSet', weak_ref => 1, t
 
 
 # ATTRIBUTES:
-has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

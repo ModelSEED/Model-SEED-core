@@ -17,18 +17,18 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Annotation', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has id => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has genome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has start => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
-has stop => (is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed');
-has contig => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has direction => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has sequence => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has id => (is => 'rw', isa => 'Str', printOrder => '1', required => 1, type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
+has genome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has start => (is => 'rw', isa => 'Int', printOrder => '3', type => 'attribute', metaclass => 'Typed');
+has stop => (is => 'rw', isa => 'Int', printOrder => '4', type => 'attribute', metaclass => 'Typed');
+has contig => (is => 'rw', isa => 'Str', printOrder => '5', type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '6', type => 'attribute', metaclass => 'Typed');
+has sequence => (is => 'rw', isa => 'Str', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '7', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -36,11 +36,11 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has featureroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FeatureRole)', metaclass => 'Typed', reader => '_featureroles');
+has featureroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FeatureRole)', metaclass => 'Typed', reader => '_featureroles', printOrder => '-1');
 
 
 # LINKS:
-has genome => (is => 'rw', isa => 'ModelSEED::MS::gneomes', type => 'link(Annotation,gneomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
+has genome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
 
 
 # BUILDERS:
@@ -48,7 +48,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildgenome {
   my ($self) = @_;
-  return $self->getLinkedObject('Annotation','gneomes',$self->genome_uuid());
+  return $self->getLinkedObject('Annotation','genomes',$self->genome_uuid());
 }
 
 
@@ -162,6 +162,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'featureroles',
             'type' => 'encompassed',
             'class' => 'FeatureRole'

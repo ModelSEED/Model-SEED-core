@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Feature', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has compartment => (is => 'rw', isa => 'Str', default => 'unknown', type => 'attribute', metaclass => 'Typed');
-has comment => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
-has delimiter => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has compartment => (is => 'rw', isa => 'Str', printOrder => '0', default => 'unknown', type => 'attribute', metaclass => 'Typed');
+has comment => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
+has delimiter => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

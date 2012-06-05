@@ -16,12 +16,12 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has charge => (is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed');
-has formula => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
-has modelcompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '6', required => 1, type => 'attribute', metaclass => 'Typed');
+has charge => (is => 'rw', isa => 'Num', printOrder => '3', type => 'attribute', metaclass => 'Typed');
+has formula => (is => 'rw', isa => 'Str', printOrder => '4', default => '', type => 'attribute', metaclass => 'Typed');
+has modelcompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '5', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:

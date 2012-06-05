@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Reaction', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has cue_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has count => (is => 'rw', isa => 'Num', default => '', type => 'attribute', metaclass => 'Typed');
+has cue_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has count => (is => 'rw', isa => 'Num', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

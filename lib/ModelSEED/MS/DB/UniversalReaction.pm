@@ -16,18 +16,18 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Mapping', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '4', required => 1, type => 'attribute', metaclass => 'Typed');
+has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
-has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::reactioninstance', type => 'link(Biochemistry,reactioninstance,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreactioninstance', weak_ref => 1);
+has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,reactioninstances,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreactioninstance', weak_ref => 1);
 
 
 # BUILDERS:
 sub _buildreactioninstance {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','reactioninstance',$self->reactioninstance_uuid());
+  return $self->getLinkedObject('Biochemistry','reactioninstances',$self->reactioninstance_uuid());
 }
 
 

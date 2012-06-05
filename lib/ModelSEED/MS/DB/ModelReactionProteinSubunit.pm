@@ -17,14 +17,14 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelReactionProtein', weak_re
 
 
 # ATTRIBUTES:
-has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has triggering => (is => 'rw', isa => 'Bool', default => '1', type => 'attribute', metaclass => 'Typed');
-has optional => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has note => (is => 'rw', isa => 'Str', default => '', type => 'attribute', metaclass => 'Typed');
+has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has triggering => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has optional => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has note => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has modelReactionProteinSubunitGenes => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProteinSubunitGene)', metaclass => 'Typed', reader => '_modelReactionProteinSubunitGenes');
+has modelReactionProteinSubunitGenes => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProteinSubunitGene)', metaclass => 'Typed', reader => '_modelReactionProteinSubunitGenes', printOrder => '-1');
 
 
 # LINKS:
@@ -92,6 +92,7 @@ sub _attributes {
 
 my $subobjects = [
           {
+            'printOrder' => -1,
             'name' => 'modelReactionProteinSubunitGenes',
             'type' => 'encompassed',
             'class' => 'ModelReactionProteinSubunitGene'

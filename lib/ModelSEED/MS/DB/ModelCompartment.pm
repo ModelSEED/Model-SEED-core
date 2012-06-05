@@ -16,14 +16,14 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has compartmentIndex => (is => 'rw', isa => 'Int', required => 1, type => 'attribute', metaclass => 'Typed');
-has label => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has pH => (is => 'rw', isa => 'Num', default => '7', type => 'attribute', metaclass => 'Typed');
-has potential => (is => 'rw', isa => 'Num', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '5', required => 1, type => 'attribute', metaclass => 'Typed');
+has compartmentIndex => (is => 'rw', isa => 'Int', printOrder => '2', required => 1, type => 'attribute', metaclass => 'Typed');
+has label => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', default => '', type => 'attribute', metaclass => 'Typed');
+has pH => (is => 'rw', isa => 'Num', printOrder => '3', default => '7', type => 'attribute', metaclass => 'Typed');
+has potential => (is => 'rw', isa => 'Num', printOrder => '4', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:

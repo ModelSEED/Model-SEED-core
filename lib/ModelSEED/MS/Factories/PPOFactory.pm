@@ -769,7 +769,7 @@ sub createMapping {
 				$type = "involved";	
 			}
 			if (defined($role)) {
-				$complex->add("complexRoles",{
+				$complex->add("complexroles",{
 					role_uuid => $role->uuid(),
 					optional => "0",
 					type => $type

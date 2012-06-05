@@ -16,9 +16,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Compound', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has structure => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
-has cksum => (is => 'rw', isa => 'ModelSEED::varchar', default => '', type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', required => 1, type => 'attribute', metaclass => 'Typed');
+has structure => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

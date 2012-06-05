@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Complex', weak_ref => 1, type 
 
 
 # ATTRIBUTES:
-has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has optional => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', default => 'G', type => 'attribute', metaclass => 'Typed');
-has triggering => (is => 'rw', isa => 'Int', default => '1', type => 'attribute', metaclass => 'Typed');
+has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has optional => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has type => (is => 'rw', isa => 'Str', printOrder => '0', default => 'G', type => 'attribute', metaclass => 'Typed');
+has triggering => (is => 'rw', isa => 'Int', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:

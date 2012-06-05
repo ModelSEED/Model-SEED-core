@@ -29,7 +29,7 @@ sub _buildid {
 }
 sub _buildname {
 	my ($self) = @_;
-	return $self->compound()->name();
+	return $self->compound()->name()."_".$self->modelCompartmentLabel();
 }
 sub _buildmodelCompartmentLabel {
 	my ($self) = @_;

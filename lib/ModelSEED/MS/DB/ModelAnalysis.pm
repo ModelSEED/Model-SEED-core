@@ -23,11 +23,11 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has defaultNameSpace => (is => 'rw', isa => 'Str', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
-has locked => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
-has public => (is => 'rw', isa => 'Int', default => '0', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has defaultNameSpace => (is => 'rw', isa => 'Str', printOrder => '3', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has public => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -35,13 +35,13 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has modelAnalysisModels => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisModel)', metaclass => 'Typed', reader => '_modelAnalysisModels');
-has modelAnalysisMappings => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisMapping)', metaclass => 'Typed', reader => '_modelAnalysisMappings');
-has modelAnalysisBiochemistries => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisBiochemistry)', metaclass => 'Typed', reader => '_modelAnalysisBiochemistries');
-has modelAnalysisAnnotations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisAnnotation)', metaclass => 'Typed', reader => '_modelAnalysisAnnotations');
-has fbaFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaFormulations');
-has gapfillingFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GapfillingFormulation)', metaclass => 'Typed', reader => '_gapfillingFormulations');
-has fbaProblems => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAProblem)', metaclass => 'Typed', reader => '_fbaProblems');
+has modelAnalysisModels => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisModel)', metaclass => 'Typed', reader => '_modelAnalysisModels', printOrder => '0');
+has modelAnalysisMappings => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisMapping)', metaclass => 'Typed', reader => '_modelAnalysisMappings', printOrder => '0');
+has modelAnalysisBiochemistries => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisBiochemistry)', metaclass => 'Typed', reader => '_modelAnalysisBiochemistries', printOrder => '0');
+has modelAnalysisAnnotations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisAnnotation)', metaclass => 'Typed', reader => '_modelAnalysisAnnotations', printOrder => '0');
+has fbaFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaFormulations', printOrder => '0');
+has gapfillingFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GapfillingFormulation)', metaclass => 'Typed', reader => '_gapfillingFormulations', printOrder => '1');
+has fbaProblems => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAProblem)', metaclass => 'Typed', reader => '_fbaProblems', printOrder => '2');
 
 
 # LINKS:

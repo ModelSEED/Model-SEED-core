@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Reaction', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', required => 1, type => 'attribute', metaclass => 'Typed');
-has coefficient => (is => 'rw', isa => 'Num', required => 1, type => 'attribute', metaclass => 'Typed');
-has cofactor => (is => 'rw', isa => 'Bool', default => '0', type => 'attribute', metaclass => 'Typed');
-has compartmentIndex => (is => 'rw', isa => 'Int', required => 1, default => '0', type => 'attribute', metaclass => 'Typed');
+has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has cofactor => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has compartmentIndex => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
