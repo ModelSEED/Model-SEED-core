@@ -36,7 +36,7 @@ Description:
 =cut
 sub buildSubsystemReactionSets {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["model"],{});
+	$args = ModelSEED::utilities::ARGS($args,[],{});
 	my $subsystemHash;
 	my $subsystemRoles;
 	#First, placing all roles in subsystems into a hash

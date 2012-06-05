@@ -19,6 +19,7 @@ has definition => ( is => 'rw',printOrder => 3, isa => 'Str', type => 'msdata', 
 has equation => ( is => 'rw',printOrder => 4, isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
 has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has balanced => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbalanced' );
+has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -38,6 +39,10 @@ sub _buildequationcode {
 sub _buildbalanced {
 	my ($self,$args) = @_;
 	return $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
+}
+sub _buildmapped_uuid {
+	my ($self) = @_;
+	return "00000000-0000-0000-0000-000000000000";
 }
 
 #***********************************************************************************************************

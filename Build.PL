@@ -26,6 +26,7 @@ my $builder = Module::Build->new(
         "DBD::SQLite" => 0,
         "DB_File" => 1.824,
         "Data::Dumper" => 2.131,
+        "Data::UUID" => 0,
         "Digest::MD5" => 2.39,
         "Encode" => 2.39,
         "Fcntl" => 1.06,

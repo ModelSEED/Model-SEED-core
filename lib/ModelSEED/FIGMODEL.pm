@@ -27,7 +27,7 @@ our $VERSION = '0.01';
 $MODELSEED::FIGMODEL::VERSION = $VERSION;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
-use Time::ParseDate;
+#use Time::ParseDate;
 use ModelSEED::ModelSEEDUtilities::FileIOFunctions;
 use ModelSEED::FIGMODEL::FIGMODELmodel;
 use ModelSEED::FIGMODEL::FIGMODELdatabase;

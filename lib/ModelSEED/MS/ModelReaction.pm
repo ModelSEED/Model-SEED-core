@@ -19,6 +19,10 @@ has name => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', meta
 has modelCompartmentLabel => ( is => 'rw', isa => 'Str',printOrder => '4', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmodelCompartmentLabel' );
 has gprString => ( is => 'rw', isa => 'Str',printOrder => '6', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildgprString' );
 has id => ( is => 'rw', isa => 'Str',printOrder => '1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildid' );
+has missingStructure => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmissingStructure' );
+has biomassTransporter => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbiomassTransporter' );
+has isTransporter => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildisTransporter' );
+has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -88,6 +92,48 @@ sub _buildgprString {
 		$gpr = "Unknown";
 	}
 	return $gpr;
+}
+sub _buildmissingStructure {
+	my ($self) = @_;
+	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
+		my $rgt = $self->modelReactionReagents()->[$i];
+		if (@{$rgt->modelcompound()->structures()} == 0) {
+			return 1;	
+		}
+	}
+	return 0;
+}
+sub _buildbiomassTransporter {
+	my ($self) = @_;
+	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
+		my $rgt = $self->modelReactionReagents()->[$i];
+		if ($rgt->modelcompound()->isBiomassCompound() == 1) {
+			for (my $j=$i+1; $j < @{$self->modelReactionReagents()}; $j++) {
+				my $rgtc = $self->modelReactionReagents()->[$j];
+				if ($rgt->modelcompound()->compound_uuid() eq $rgtc->modelcompound()->compound_uuid()) {
+					if ($rgt->modelcompound()->modelcompartment_uuid() ne $rgtc->modelcompound()->modelcompartment_uuid()) {
+						return 1;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+sub _buildisTransporter {
+	my ($self) = @_;
+	my $initrgt = $self->modelReactionReagents()->[0];
+	for (my $i=1; $i < @{$self->modelReactionReagents()}; $i++) {
+		my $rgt = $self->modelReactionReagents()->[$i];
+		if ($rgt->modelcompound()->modelcompartment_uuid() ne $initrgt->modelcompound()->modelcompartment_uuid()) {
+			return 1;	
+		}
+	}
+	return 0;
+}
+sub _buildmapped_uuid {
+	my ($self) = @_;
+	return "00000000-0000-0000-0000-000000000000";
 }
 
 #***********************************************************************************************************
@@ -169,7 +215,6 @@ sub addModelReactionProtein {
 	my $mdlrxnprot = $self->create("ModelReactionProtein",$protdata);
 	return $mdlrxnprot;
 }
-
 
 __PACKAGE__->meta->make_immutable;
 1;

@@ -8,8 +8,7 @@ package ModelSEED::MS::DB::FBAFormulation;
 use Moose;
 use Moose::Util::TypeConstraints;
 use ModelSEED::MS::LazyHolder::FBAObjectiveTerm;
-use ModelSEED::MS::LazyHolder::FBACompoundConstraint;
-use ModelSEED::MS::LazyHolder::FBAReactionConstraint;
+use ModelSEED::MS::LazyHolder::FBAConstraint;
 use ModelSEED::MS::LazyHolder::FBAResult;
 extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
@@ -40,6 +39,10 @@ has defaultMaxFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass
 has defaultMaxDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '1000', printOrder => '0' );
 has defaultMinDrainFlux => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', required => 1, default => '-1000', printOrder => '0' );
 has maximizeObjective => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', required => 1, default => '1', printOrder => '0' );
+has decomposeReversibleFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has decomposeReversibleDrainFlux => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has fluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
+has drainfluxUseVariables => ( is => 'rw', isa => 'Bool', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
 
 
 # ANCESTOR:
@@ -48,8 +51,7 @@ has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 
 
 # SUBOBJECTS:
 has fbaObjectiveTerms => (is => 'bare', coerce => 1, handles => { fbaObjectiveTerms => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAObjectiveTerm::Lazy', type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed');
-has fbaCompoundConstraints => (is => 'bare', coerce => 1, handles => { fbaCompoundConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBACompoundConstraint::Lazy', type => 'encompassed(FBACompoundConstraint)', metaclass => 'Typed');
-has fbaReactionConstraints => (is => 'bare', coerce => 1, handles => { fbaReactionConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAReactionConstraint::Lazy', type => 'encompassed(FBAReactionConstraint)', metaclass => 'Typed');
+has fbaConstraints => (is => 'bare', coerce => 1, handles => { fbaConstraints => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAConstraint::Lazy', type => 'encompassed(FBAConstraint)', metaclass => 'Typed');
 has fbaResults => (is => 'bare', coerce => 1, handles => { fbaResults => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::FBAResult::Lazy', type => 'encompassed(FBAResult)', metaclass => 'Typed');
 
 
@@ -82,8 +84,7 @@ sub _typeToFunction {
 	return {
 		FBAObjectiveTerm => 'fbaObjectiveTerms',
 		FBAResult => 'fbaResults',
-		FBAReactionConstraint => 'fbaReactionConstraints',
-		FBACompoundConstraint => 'fbaCompoundConstraints',
+		FBAConstraint => 'fbaConstraints',
 	};
 }
 

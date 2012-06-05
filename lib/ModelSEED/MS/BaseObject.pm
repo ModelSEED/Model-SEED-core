@@ -313,8 +313,11 @@ sub remove {
 sub getLinkedObject {
 	my ($self,$sourceType,$type,$attribute,$value) = @_;
 	my $sourceTypeLC = lc($sourceType);
-    if ($sourceTypeLC eq "store") {
+    if ($sourceTypeLC =~ m/store/) {
     	ModelSEED::utilities::ERROR("Attempting to access store!");
+    }
+    if ($sourceTypeLC =~ m/modelanalysis/) {
+    	ModelSEED::utilities::ERROR("Attempting to access modelanalysis!");
     }
     if(ref($self) =~ /:$sourceType$/) {
         return $self->getObject($type, {$attribute => $value}); 

@@ -21,9 +21,9 @@ has parent => (is => 'rw',isa => 'ModelSEED::MS::ModelAnalysis', type => 'parent
 # ATTRIBUTES:
 has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
 has media_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
-has guaranteedReactions => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
-has blacklistedReactions => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
-has allowableCompartments => ( is => 'rw', isa => 'ArrayRef[ModelSEED::uuid]', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has guaranteedReactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has blacklistedReactions => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
+has allowableCompartments => ( is => 'rw', isa => 'ArrayRef', type => 'attribute', metaclass => 'Typed', required => 1, default => sub{return [];}, printOrder => '0' );
 has numberOfSolutions => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has biochemistry_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
 has reactionActivationBonus => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '0' );
@@ -36,7 +36,7 @@ has biomassTransporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribu
 has singleTransporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has transporterMultiplier => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '1', printOrder => '0' );
 has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
-has annotation_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '0' );
+has annotation_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
 
 
 # ANCESTOR:

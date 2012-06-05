@@ -178,6 +178,47 @@ sub _buildSchema {
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Media",
                     },
+                    reactioninstanceAliasSets => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::ReactioninstanceAliasSets",
+                        children => {
+                            reactioninstanceAliases => {
+                                type => "collection",
+                                id_types => [ 'uuid' ],
+                                class => "ModelSEED::MS::ReactionInstanceAlias"
+                            },
+                        },
+                    },
+                    reactionAliasSets => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::ReactionAliasSets",
+                        children => {
+                            reactionAliases => {
+                                type => "collection",
+                                id_types => [ 'uuid' ],
+                                class => "ModelSEED::MS::ReactionAlias"
+                            },
+                        },
+                    },
+                    compoundAliasSets => {
+                        type => "collection",
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::CompoundAliasSet",
+                        children => {
+                            compoundAliases => {
+                                type => "collection",
+                                id_types => [ 'uuid' ],
+                                class => "ModelSEED::MS::CompoundAlias",
+                            },
+                        }
+                    },
+                    compartments => {
+                        type => "collection",
+                        id_types => [ "uuid" ],
+                        class => "ModelSEED::MS::Compartment",
+                    }
                 }
             },
             model   => {

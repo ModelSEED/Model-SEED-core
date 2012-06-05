@@ -104,12 +104,15 @@ $objectDefinitions->{FBAFormulation} = {
 		{name => 'defaultMaxFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
 		{name => 'defaultMaxDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
 		{name => 'defaultMinDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => -1000},
-		{name => 'maximizeObjective',printOrder => 0,perm => 'rw',type => 'Bool',req => 1,default => 1},
+		{name => 'maximizeObjective',printOrder => 0,perm => 'rw',type => 'Bool',req => 1,default => 1},		
+		{name => 'decomposeReversibleFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
+		{name => 'decomposeReversibleDrainFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
+		{name => 'fluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
+		{name => 'drainfluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
 	],
 	subobjects => [
 		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
-		{name => "fbaCompoundConstraints",class => "FBACompoundConstraint",type => "encompassed"},
-		{name => "fbaReactionConstraints",class => "FBAReactionConstraint",type => "encompassed"},
+		{name => "fbaConstraints",class => "FBAConstraint",type => "encompassed"},
 		{name => "fbaResults",class => "FBAResult",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
@@ -120,45 +123,43 @@ $objectDefinitions->{FBAFormulation} = {
 	]
 };
 	
-$objectDefinitions->{FBACompoundConstraint} = {
+$objectDefinitions->{FBAConstraint} = {
 	parents => ['FBAFormulation'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
+		{name => 'name',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "0"},
+		{name => 'rhs',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
+		{name => 'sign',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "0"}
 	],
-	subobjects => [],
+	subobjects => [
+		{name => "fbaConstraintVariables",class => "FBAConstraintVariable",type => "encompassed"},
+	],
 	primarykeys => [ qw(atom) ],
-	links => [
-		{name => "modelcompound",attribute => "modelcompound_uuid",parent => "Model",class => "ModelCompound",query => "uuid"}
-	]
+	links => []
 };
 
-$objectDefinitions->{FBAReactionConstraint} = {
-	parents => ['FBAFormulation'],
+$objectDefinitions->{FBAConstraintVariable} = {
+	parents => ['FBAConstraint'],
 	class => 'encompassed',
 	attributes => [
-		{name => 'reaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'entity_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'entityType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
 		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'max',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
-		{name => 'min',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"}
+		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',len => 1,req => 0},
 	],
 	subobjects => [],
 	primarykeys => [ qw(atom) ],
-	links => [
-		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",class => "ModelReaction",query => "uuid"}
-	]
+	links => []
 };
 
 $objectDefinitions->{FBAObjectiveTerm} = {
 	parents => ['FBAFormulation'],
 	class => 'encompassed',
 	attributes => [
+		{name => 'entity_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
+		{name => 'entityType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
 		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',len => 1,req => 0},
-		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',len => 1,req => 0},
-		{name => 'variable_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 1,req => 0},
 	],
 	subobjects => [],
 	primarykeys => [ qw(atom) ],
@@ -250,9 +251,9 @@ $objectDefinitions->{GapfillingFormulation} = {
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
-		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
-		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef[ModelSEED::uuid]',req => 1,default => "sub{return [];}"},
+		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => "1"},
 		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
@@ -265,7 +266,7 @@ $objectDefinitions->{GapfillingFormulation} = {
 		{name => 'singleTransporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'transporterMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 	],
 	subobjects => [
 		{name => "gapfillingGeneCandidates",class => "GapfillingGeneCandidate",type => "encompassed"},
@@ -1011,6 +1012,7 @@ $objectDefinitions->{Model} = {
 		{name => 'annotation_uuid',printOrder => 10,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 	],
 	subobjects => [
+		{name => "gapfillingformulations",printOrder => 4,class => "GapfillingFormulation",type => "child"},
 		{name => "biomasses",printOrder => 0,class => "Biomass",type => "child"},
 		{name => "modelcompartments",printOrder => 1,class => "ModelCompartment",type => "child"},
 		{name => "modelcompounds",printOrder => 2,class => "ModelCompound",type => "child"},

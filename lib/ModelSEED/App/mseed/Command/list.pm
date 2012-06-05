@@ -1,6 +1,9 @@
 package ModelSEED::App::mseed::Command::list;
+use Try::Tiny;
+use List::Util qw(max);
 use Class::Autouse qw(
-    ModelSEED::Configuration
+    ModelSEED::Reference
+    ModelSEED::Auth::Factory
     ModelSEED::Store
 );
 use base 'App::Cmd::Command';
@@ -8,16 +11,55 @@ use Data::Dumper;
 
 sub execute {
     my ($self, $opts, $args) = @_;
-    my $Config = ModelSEED::Configuration->new();
-    my $username = $Config->config->{login}->{username};
-    my $store  = ModelSEED::Store->new({
-            username => $username,
-            password => $Config->config->{login}->{password}
-    });
+    my $auth = ModelSEED::Auth::Factory->new->from_config();
+    my $store  = ModelSEED::Store->new(auth => $auth);
     my $arg = shift @$args;
-    my ($type) = _processRef($arg);
-    my $aliases = $store->get_aliases_for_type($type);
-    print join("\n", map { "$username/$_" } @$aliases) . "\n";
+    my $ref;
+    try {
+        $ref = ModelSEED::Reference->new(ref => $arg);
+    };
+    if(defined($ref)) {
+        # Base level collection ( want a list of aliases )
+        if($ref->type eq 'collection' && 0 == @{$ref->parent_collections}) {
+            my $aliases = $store->get_aliases({ type => $ref->base });
+            foreach my $a (@$aliases) {
+                print $a->{type} . "/" . $a->{owner} . "/" . $a->{alias} . "\n";
+            }
+        # Subobject listing. want a list of ids under subobject
+        } elsif($ref->type eq 'collection' && @{$ref->parent_collections}) {
+            my $data = $store->get_data($ref->parent_objects->[0]);
+            my @sections = split($ref->delimiter, $ref->base);
+            my $subtype = pop @sections;
+            foreach my $o ( @{$data->{$subtype}} ) {
+                print $ref->base . "/" . $o->{uuid} . "\n";
+            }
+        # Want a breakdown of the subobjects
+        } elsif($ref->type eq 'object') {
+            my $data = $store->get_data($ref->base . $ref->delimiter . $ref->id);
+            my $max =  max map { length $_ } keys %$data;
+            $max += 5;
+            foreach my $k ( keys %$data ) {
+                my $v = $data->{$k};
+                if(ref($v) eq 'ARRAY') {
+                    printf("%-${max}s(%d)\n", ($k, scalar(@$v)));
+                }
+            }
+            # how the fuck
+        }
+    } else {
+        # ref was an empty string or completely invalid 
+        my $aliases = $store->get_aliases({});
+        my $types = {};
+        # Print counts for aliased objects
+        foreach my $alias (@$aliases) {
+            $types->{$alias->{type}} = 0 unless(defined($types->{$alias->{type}}));
+            $types->{$alias->{type}} += 1;
+        }
+        printf("%-15s\t%-15s\n", ("Type", "Count"));
+        foreach my $type (keys %$types) {
+            printf("%-15s\t%d\n", ($type."/", $types->{$type}));
+        }
+    }
 }
 
 sub abstract {

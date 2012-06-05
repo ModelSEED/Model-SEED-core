@@ -63,6 +63,9 @@ Description:
 sub buildProblem {
 	my ($self) = @_;
 	$self->clearProblem();
+	if ($self->fbaFormulation()->dilutionConstraints() == 1) {
+		$self->decomposeReversibleFlux(1);
+	}
 	#Creating flux variables and mass balance constraints
 	$self->createFluxVariables();
 	$self->createDrainFluxVariables();
@@ -78,6 +81,8 @@ sub buildProblem {
 		$self->milp(1);
 		$self->createUseVariableConstraints();	
 	}
+	#Creating objective function
+	$self->createFBAFormulationConstraints();
 	#Creating objective function
 	$self->createObjectiveFunction();
 }
@@ -100,7 +105,7 @@ sub createObjectiveFunction {
 			my $fluxtypes = ["flux","forflux","revflux"];
 			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
 				my $var = $self->getObject("Variable",{
-					entity_uuid => $term->variable_uuid(),
+					entity_uuid => $term->entity_uuid(),
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
@@ -109,12 +114,12 @@ sub createObjectiveFunction {
 						variable_uuid => $var->uuid()
 					});
 				}
-			}
+			}	
 		} elsif ($term->variableType() eq "drainflux") {
 			my $fluxtypes = ["drainflux","fordrainflux","revdrainflux"];
 			for (my $k=0; $k < @{$fluxtypes}; $k++) { 
 				my $var = $self->getObject("Variable",{
-					entity_uuid => $term->variable_uuid(),
+					entity_uuid => $term->entity_uuid(),
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
@@ -126,7 +131,7 @@ sub createObjectiveFunction {
 			}
 		} elsif ($term->variableType() eq "biomassflux") {
 			my $var = $self->getObject("Variable",{
-				entity_uuid => $term->variable_uuid(),
+				entity_uuid => $term->entity_uuid(),
 				type => "biomassflux"
 			});
 			if (defined($var)) {
@@ -315,13 +320,6 @@ sub createFluxVariables {
 		my $rxn = $self->model()->modelreactions()->[$i];
 		my $maxFlux = $self->fbaFormulation()->defaultMaxFlux();
 		my $minFlux = -1*$maxFlux;
-		for (my $j=0; $j < @{$self->fbaFormulation()->fbaReactionConstraints()}; $j++) {
-			my $fbarxnconst = $self->fbaFormulation()->fbaReactionConstraints()->[$j];
-			if ($fbarxnconst->reaction_uuid() eq $rxn->uuid() && $fbarxnconst->variableType() eq "flux") {
-				$maxFlux = $fbarxnconst->max();
-				$minFlux = $fbarxnconst->min();
-			}
-		}
 		if ($self->model()->modelreactions()->[$i]->direction() eq ">") {
 			$minFlux = 0;
 		}
@@ -413,13 +411,6 @@ sub createDrainFluxVariables {
 					$minFlux = $media->mediacompounds()->[$j]->minFlux();
 				}
 			}
-			for (my $j=0; $j < @{$self->fbaFormulation()->fbaCompoundConstraints()}; $j++) {
-				my $fbacpdconst = $self->fbaFormulation()->fbaCompoundConstraints()->[$j];
-				if ($fbacpdconst->modelcompound_uuid() eq $cpd->uuid() && $fbacpdconst->variableType() eq "drainflux") {
-					$maxFlux = $fbacpdconst->max();
-					$minFlux = $fbacpdconst->min();
-				}
-			}
 			if ($self->decomposeReversibleDrainFlux() == 0) {
 				$self->create("Variable",{
 					name => "df_".$cpd->id(),
@@ -462,11 +453,21 @@ sub createDrainFluxVariables {
 				});
 			}
 		} else {
-			for (my $j=0; $j < @{$self->fbaFormulation()->fbaCompoundConstraints()}; $j++) {
-				my $fbacpdconst = $self->fbaFormulation()->fbaCompoundConstraints()->[$j];
-				if ($fbacpdconst->modelcompound_uuid() eq $cpd->uuid() && $fbacpdconst->variableType() eq "drainflux") {
-					my $maxFlux = $fbacpdconst->max();
-					my $minFlux = $fbacpdconst->min();
+			for (my $j=0; $j < @{$self->fbaFormulation()->fbaConstraints()}; $j++) {
+				my $fbacpdconst = $self->fbaFormulation()->fbaConstraints()->[$j];
+				if ($fbacpdconst->entity_uuid() eq $cpd->uuid() && $fbacpdconst->variableType() eq "drainflux") {
+					my $maxFlux = $self->fbaFormulation()->defaultMaxDrainFlux();
+					my $minFlux = $self->fbaFormulation()->defaultMinDrainFlux();
+					if (@{$fbacpdconst->fbaConstraintVariables()} == 1) {
+						if ($fbacpdconst->sign() eq ">") {
+							$minFlux = $fbacpdconst->rhs();
+						} elsif ($fbacpdconst->sign() eq "<") {
+							$maxFlux = $fbacpdconst->rhs();
+						} else {
+							$minFlux = $fbacpdconst->rhs();
+							$maxFlux = $fbacpdconst->rhs();
+						}
+					}
 					if ($self->decomposeReversibleDrainFlux() == 0) {
 						$self->create("Variable",{
 							name => "df_".$cpd->id(),
@@ -554,6 +555,10 @@ sub createMassBalanceConstraints {
 					type => $fluxtypes->[$k]
 				});
 				if (defined($var)) {
+					my $coefficient = $rgt->coefficient();
+					if ($self->fbaFormulation()->dilutionConstraints() == 1) {
+						$coefficient += -0.000001;
+					}
 					$const->create("ConstraintVariable",{
 						coefficient => $rgt->coefficient(),
 						variable_uuid => $var->uuid()
@@ -585,7 +590,7 @@ sub createMassBalanceConstraints {
 			});
 			if (defined($var)) {
 				$const->create("ConstraintVariable",{
-					coefficient => $biocpd->(),
+					coefficient => $biocpd->coefficient(),
 					variable_uuid => $var->uuid()
 				});
 			} else {
@@ -626,6 +631,39 @@ sub createMassBalanceConstraints {
 	#Indexing constraints
 	for (my $i=0; $i < @{$self->constraints()}; $i++) {
 		$self->constraints()->[$i]->index($i);
+	}
+}
+=head3 createFBAFormulationConstraints
+Definition:
+	void ModelSEED::MS::Problem->createFBAFormulationConstraints();
+Description:
+	Creates FBAFormulation constraints
+=cut
+sub createFBAFormulationConstraints {
+	my ($self) = @_;
+	for (my $i=0; $i < @{$self->fbaFormulation()->fbaConstraints()}; $i++) {
+		my $fbaconst = $self->fbaFormulation()->fbaConstraints()->[$i];
+		my $newConst = $self->create("ConstraintVariable",{
+			name => $fbaconst->name(),
+			type => "userconstraint",
+			rightHandSide => $fbaconst->rhs(),
+			equalityType => $fbaconst->sign(),
+			"index" => @{$self->constraints()},
+		});
+		for (my $j=0; $j < @{$fbaconst->fbaConstraintVariables()}; $j++) {
+			my $constvar = $fbaconst->fbaConstraintVariables()->[$j];
+			my $var = $self->getObject("Variable",{
+				entity_uuid => $constvar->entity_uuid(),
+				type => $constvar->variableType()
+			});
+			if (!defined($var)) {
+				ModelSEED::utilities::ERROR("Constraint variable ".$constvar->entity_uuid()." ".$constvar->variableType()." not found!");
+			}
+			$newConst->create("ConstraintVariable",{
+				coefficient => ,
+				variable_uuid => $var->uuid()
+			});
+		}
 	}
 }
 

@@ -17,6 +17,7 @@ extends 'ModelSEED::MS::DB::Biomass';
 has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 has equation => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
 has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
+has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -32,6 +33,10 @@ sub _buildequation {
 sub _buildequationcode {
 	my ($self,$args) = @_;
 	return $self->createEquation({format=>"uuid",hashed=>1});
+}
+sub _buildmapped_uuid {
+	my ($self) = @_;
+	return "00000000-0000-0000-0000-000000000000";
 }
 
 #***********************************************************************************************************

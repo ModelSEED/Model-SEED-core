@@ -128,7 +128,8 @@ sub findCreateEquivalentCompartment {
 			hierarchy => $incomp->hierarchy()
 		});
 	}
-	#$incomp->id($outcomp->uuid());
+	$incomp->mapped_uuid($outcomp->uuid());
+	$outcomp->mapped_uuid($incomp->uuid());
 	return $outcomp;
 }
 =head3 findCreateEquivalentCompound
@@ -167,7 +168,8 @@ sub findCreateEquivalentCompound {
 			$outcpd->create("CompoundPk",$cpdpk->serializeToDB());
 		}
 	}
-	$incpd->id($outcpd->uuid());
+	$incpd->mapped_uuid($outcpd->uuid());
+	$outcpd->mapped_uuid($incpd->uuid());
 	return $outcpd;
 }
 =head3 findCreateEquivalentReaction
@@ -211,7 +213,8 @@ sub findCreateEquivalentReaction {
 			});
 		}
 	}
-	$inrxn->id($outrxn->uuid());
+	$inrxn->mapped_uuid($outrxn->uuid());
+	$outrxn->mapped_uuid($inrxn->uuid());
 	return $outrxn;
 }
 

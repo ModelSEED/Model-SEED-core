@@ -120,7 +120,11 @@ sub createBiochemistry {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		name => $self->namespace()."/primary.biochemistry",
-		database => $self->figmodel()->database()
+		database => $self->figmodel()->database(),
+		addAliases => 0,
+		addStructuralCues => 0,
+		addStructure => 0,
+		addPK => 0,
 	});
 	#Creating the biochemistry
 	my $biochemistry = ModelSEED::MS::Biochemistry->new({
@@ -153,30 +157,32 @@ sub createBiochemistry {
 		});
 	}
 	#Adding structural cues to biochemistry
-	my $data = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/MFAToolkitInputFiles/cueTable.txt");
-	my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/Input/FinalGroups.dat");
-	my $cuePriority;
-	for (my $i=2;$i < @{$priorities}; $i++) {
-		my $array = [split(/_/,$priorities->[$i])];
-		$cuePriority->{$array->[1]} = ($i-1);
-	}
-	for (my $i=1;$i < @{$data}; $i++) {
-		my $array = [split(/;/,$data->[$i])];
-		my $priority = -1;
-		if (defined($cuePriority->{$array->[0]})) {
-			$priority = $cuePriority->{$array->[0]};
-		}		
-		$biochemistry->create("Cue",{
-			locked => "0",
-			name => $array->[0],
-			abbreviation => $array->[0],
-			formula => $array->[5],
-			defaultCharge => $array->[3],
-			deltaG => $array->[3],
-			deltaGErr => $array->[3],
-			smallMolecule => $array->[1],
-			priority => $priority
-		});
+	if ($args->{addStructuralCues} == 1) {
+		my $data = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/MFAToolkitInputFiles/cueTable.txt");
+		my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/Input/FinalGroups.dat");
+		my $cuePriority;
+		for (my $i=2;$i < @{$priorities}; $i++) {
+			my $array = [split(/_/,$priorities->[$i])];
+			$cuePriority->{$array->[1]} = ($i-1);
+		}
+		for (my $i=1;$i < @{$data}; $i++) {
+			my $array = [split(/;/,$data->[$i])];
+			my $priority = -1;
+			if (defined($cuePriority->{$array->[0]})) {
+				$priority = $cuePriority->{$array->[0]};
+			}		
+			$biochemistry->create("Cue",{
+				locked => "0",
+				name => $array->[0],
+				abbreviation => $array->[0],
+				formula => $array->[5],
+				defaultCharge => $array->[3],
+				deltaG => $array->[3],
+				deltaGErr => $array->[3],
+				smallMolecule => $array->[1],
+				priority => $priority
+			});
+		}
 	}
 	#Adding compounds to biochemistry
 	my $cpds = $args->{database}->get_objects("compound");
@@ -200,80 +206,70 @@ sub createBiochemistry {
 			alias => $cpds->[$i]->id(),
 			uuid => $cpd->uuid()
 		});
-		#Adding stringcode as structure 
-		if (defined($cpds->[$i]->stringcode()) && length($cpds->[$i]->stringcode()) > 0) {
-			$cpd->create("CompoundStructure",{
-				structure => $cpds->[$i]->stringcode(),
-				type => "stringcode"
-			});
+		if ($args->{addStructure} == 1) {
+			#Adding stringcode as structure 
+			if (defined($cpds->[$i]->stringcode()) && length($cpds->[$i]->stringcode()) > 0) {
+				$cpd->create("CompoundStructure",{
+					structure => $cpds->[$i]->stringcode(),
+					type => "stringcode"
+				});
+			}
+			#Adding molfile as structure 
+			if (-e $ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol") {
+				my $data = join("\n",@{ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol")});
+				$cpd->create("CompoundStructure",{
+					structure => $data,
+					type => "molfile"
+				});
+			}
 		}
-		#Adding molfile as structure 
-#		if (-e $ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol") {
-#			my $data = join("\n",@{ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol")});
-#			$cpd->create("CompoundStructure",{
-#				structure => $data,
-#				type => "molfile"
-#			});
-#		}
 		#Adding structural cues
-		if (defined($cpds->[$i]->structuralCues()) && length($cpds->[$i]->structuralCues()) > 0) {
-		 	my $list = [split(/;/,$cpds->[$i]->structuralCues())];
-		 	for (my $j=0;$j < @{$list}; $j++) {
-		 		my $array = [split(/:/,$list->[$j])];
-		 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
-		 		if (!defined($cue)) {
-		 			$cue = $biochemistry->create("Cue",{
-		 				locked => "0",
-						name => $array->[0],
-						abbreviation => $array->[0],
-						smallMolecule => 0,
-						priority => -1
-		 			});
-		 		}
-		 		$cpd->create("CompoundCue",{
-					cue_uuid => $cue->uuid(),
-					count => $array->[1]
-				});
-		 	}
-		 }
-		 #Adding pka and pkb
-		 if (defined($cpds->[$i]->pKa()) && length($cpds->[$i]->pKa()) > 0) {
-		 	my $list = [split(/;/,$cpds->[$i]->pKa())];
-		 	for (my $j=0;$j < @{$list}; $j++) {
-		 		my $array = [split(/:/,$list->[$j])];
-		 		$cpd->create("CompoundPk",{
-					type => "pKa",
-					pk => $array->[0],
-					atom => $array->[1]
-				});
-		 	}
-		 }
-		 if (defined($cpds->[$i]->pKb()) && length($cpds->[$i]->pKb()) > 0) {
-		 	my $list = [split(/;/,$cpds->[$i]->pKb())];
-		 	for (my $j=0;$j < @{$list}; $j++) {
-		 		my $array = [split(/:/,$list->[$j])];
-		 		$cpd->create("CompoundPk",{
-					type => "pKb",
-					pk => $array->[0],
-					atom => $array->[1]
-				});
-		 	}
-		 }
-	}
-	#Adding compound aliases
-	print "Handling compound aliases!\n";
-	my $cpdals = $args->{database}->get_objects("cpdals");
-	for (my $i=0; $i < @{$cpdals}; $i++) {
-		my $cpd = $biochemistry->getObjectByAlias("Compound",$cpdals->[$i]->COMPOUND(),"ModelSEED");
-		if (defined($cpd)) {
-			$biochemistry->addAlias({
-				objectType => "Compound",
-				aliasType => $cpdals->[$i]->type(),
-				alias => $cpdals->[$i]->alias(),
-				uuid => $cpd->uuid()
-			});
-		} else {
-			print $cpdals->[$i]->COMPOUND()." not found!\n";
+		if ($args->{addStructuralCues} == 1) {
+			if (defined($cpds->[$i]->structuralCues()) && length($cpds->[$i]->structuralCues()) > 0) {
+			 	my $list = [split(/;/,$cpds->[$i]->structuralCues())];
+			 	for (my $j=0;$j < @{$list}; $j++) {
+			 		my $array = [split(/:/,$list->[$j])];
+			 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
+			 		if (!defined($cue)) {
+			 			$cue = $biochemistry->create("Cue",{
+			 				locked => "0",
+							name => $array->[0],
+							abbreviation => $array->[0],
+							smallMolecule => 0,
+							priority => -1
+			 			});
+			 		}
+			 		$cpd->create("CompoundCue",{
+						cue_uuid => $cue->uuid(),
+						count => $array->[1]
+					});
+			 	}
+			}
+		}
+		#Adding pka and pkb
+		if ($args->{addPK} == 1) {
+			if (defined($cpds->[$i]->pKa()) && length($cpds->[$i]->pKa()) > 0) {
+			 	my $list = [split(/;/,$cpds->[$i]->pKa())];
+			 	for (my $j=0;$j < @{$list}; $j++) {
+			 		my $array = [split(/:/,$list->[$j])];
+			 		$cpd->create("CompoundPk",{
+						type => "pKa",
+						pk => $array->[0],
+						atom => $array->[1]
+					});
+			 	}
+			 }
+			 if (defined($cpds->[$i]->pKb()) && length($cpds->[$i]->pKb()) > 0) {
+			 	my $list = [split(/;/,$cpds->[$i]->pKb())];
+			 	for (my $j=0;$j < @{$list}; $j++) {
+			 		my $array = [split(/:/,$list->[$j])];
+			 		$cpd->create("CompoundPk",{
+						type => "pKb",
+						pk => $array->[0],
+						atom => $array->[1]
+					});
+			 	}
+			 }
 		}
 	}
 	print "Handling media formulations!\n";
@@ -371,27 +367,29 @@ sub createBiochemistry {
 			$rxn = $correctRxn;
 		}
 		#Adding structural cues
-		if (defined($rxns->[$i]->structuralCues()) && length($rxns->[$i]->structuralCues()) > 0 && @{$rxn->reactionCues()} == 0) {
-		 	my $list = [split(/\|/,$rxns->[$i]->structuralCues())];
-		 	for (my $j=0;$j < @{$list}; $j++) {
-		 		if (length($list->[$j]) > 0) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
-			 		if (!defined($cue)) {
-			 			$biochemistry->create("Cue",{
-			 				locked => "0",
-							name => $array->[0],
-							abbreviation => $array->[0],
-							smallMolecule => 0,
-							priority => -1
-			 			});
+		if ($args->{addStructuralCues} == 1) {
+			if (defined($rxns->[$i]->structuralCues()) && length($rxns->[$i]->structuralCues()) > 0 && @{$rxn->reactionCues()} == 0) {
+			 	my $list = [split(/\|/,$rxns->[$i]->structuralCues())];
+			 	for (my $j=0;$j < @{$list}; $j++) {
+			 		if (length($list->[$j]) > 0) {
+				 		my $array = [split(/:/,$list->[$j])];
+				 		my $cue = $biochemistry->getObject("Cue",{name => $array->[0]});
+				 		if (!defined($cue)) {
+				 			$biochemistry->create("Cue",{
+				 				locked => "0",
+								name => $array->[0],
+								abbreviation => $array->[0],
+								smallMolecule => 0,
+								priority => -1
+				 			});
+				 		}
+				 		$codeHash->{$code}->create("ReactionCue",{
+							cue_uuid => $cue->uuid(),
+							count => $array->[1]
+						});
 			 		}
-			 		$codeHash->{$code}->create("ReactionCue",{
-						cue_uuid => $cue->uuid(),
-						count => $array->[1]
-					});
-		 		}
-		 	}
+			 	}
+			}
 		}
 		#Adding ModelSEED ID and EC numbers as aliases
 		my $ecnumbers = [];
@@ -430,6 +428,37 @@ sub createBiochemistry {
 			});
 		}
 	}
+	if ($args->{addAliases} == 1) {
+		$self->addAliases({
+			biochemistry => $biochemistry,
+			database => $args->{database}
+		});
+	}
+	return $biochemistry;
+}
+
+sub addAliases {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
+		database => $self->figmodel()->database(),
+	});
+	my $biochemistry = $args->{biochemistry};
+	#Adding compound aliases
+	print "Handling compound aliases!\n";
+	my $cpdals = $args->{database}->get_objects("cpdals");
+	for (my $i=0; $i < @{$cpdals}; $i++) {
+		my $cpd = $biochemistry->getObjectByAlias("Compound",$cpdals->[$i]->COMPOUND(),"ModelSEED");
+		if (defined($cpd)) {
+			$biochemistry->addAlias({
+				objectType => "Compound",
+				aliasType => $cpdals->[$i]->type(),
+				alias => $cpdals->[$i]->alias(),
+				uuid => $cpd->uuid()
+			});
+		} else {
+			print $cpdals->[$i]->COMPOUND()." not found!\n";
+		}
+	}
 	#Adding reaction aliases
 	my $rxnals = $args->{database}->get_objects("rxnals");
 	for (my $i=0; $i < @{$rxnals}; $i++) {
@@ -452,7 +481,6 @@ sub createBiochemistry {
 			});
 		}
 	}
-	return $biochemistry;
 }
 
 sub createMapping {
@@ -463,7 +491,8 @@ sub createMapping {
 	});
 	my $mapping = ModelSEED::MS::Mapping->new({
 		name=>$args->{name},
-		biochemistry_uuid => $args->{biochemistry}->uuid()
+		biochemistry_uuid => $args->{biochemistry}->uuid(),
+		biochemistry => $args->{biochemistry}
 	});
 	my $spontaneousRxn = $self->figmodel()->config("spontaneous reactions");
 	for (my $i=0; $i < @{$spontaneousRxn}; $i++) {

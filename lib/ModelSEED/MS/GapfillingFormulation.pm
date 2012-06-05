@@ -14,14 +14,11 @@ extends 'ModelSEED::MS::DB::GapfillingFormulation';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-has definition => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_builddefinition' );
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
-sub _builddefinition {
-	my ($self) = @_;
-}
+
 
 #***********************************************************************************************************
 # CONSTANTS:
@@ -30,21 +27,139 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
-=head3 runGapfilling
+=head3 calculateReactionCosts
 Definition:
-	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->runGapfilling({});
-Description:
-	Runs specified gapfilling analysis on specified model
-=cut
-sub runGapfilling {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,[],{
-		"fbaformulation" => undef
+	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->calculateReactionCosts({
+		modelreaction => ModelSEED::MS::ModelReaction
 	});
-	if (defined($args->{fbaformulation})) {
-		$self->fbaformulation($args->{fbaformulation});
-		$self->fbaformulation_uuid($args->{fbaformulation}->uuid());
+Description:
+	Calculates the cost of adding or adjusting the reaction directionality in the model
+=cut
+sub calculateReactionCosts {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["modelreaction"],{});
+	my $rxn = $args->{modelreaction};
+	my $rcosts = 1;
+	my $fcosts = 1;
+	if (@{$rxn->modelReactionProteins()} > 0 && $rxn->modelReactionProteins()->[0]->note() ne "CANDIDATE") {
+		if ($rxn->direction() eq ">" || $rxn->direction() eq "=") {
+			$fcosts = 0;	
+		}
+		if ($rxn->direction() eq "<" || $rxn->direction() eq "=") {
+			$rcosts = 0;
+		}
 	}
+	if ($fcosts == 0 && $rcosts == 0) {
+		return {forwardDirection => $fcosts,reverseDirection => $rcosts};
+	}
+	#Handling directionality multiplier
+	if ($rxn->direction() eq ">") {
+		$rcosts = $rcosts*$self->directionalityMultiplier();
+		if ($rxn->reactioninstance()->deltaG() ne 10000000) {
+			$rcosts = $rcosts*(1-$self->deltaGMultiplier()*$rxn->reactioninstance()->deltaG());
+		}
+	} elsif ($rxn->direction() eq "<") {
+		$fcosts = $fcosts*$self->directionalityMultiplier();
+		if ($rxn->reactioninstance()->deltaG() ne 10000000) {
+			$fcosts = $fcosts*(1+$self->deltaGMultiplier()*$rxn->reactioninstance()->deltaG());
+		}
+	}
+	#Checking for structure
+	if ($rxn->reaction()->deltaG() eq 10000000) {
+		$rcosts = $rcosts*$self->noDeltaGMultiplier();
+		$fcosts = $fcosts*$self->noDeltaGMultiplier();
+	}
+	#Checking for transport based penalties
+	if ($rxn->isTransporter() == 1) {
+		$rcosts = $rcosts*$self->transporterMultiplier();
+		$fcosts = $fcosts*$self->transporterMultiplier();
+		if ($rxn->biomassTransporter() == 1) {
+			$rcosts = $rcosts*$self->biomassTransporterMultiplier();
+			$fcosts = $fcosts*$self->biomassTransporterMultiplier();
+		}
+		if (@{$rxn->modelReactionReagents()} <= 2) {
+			$rcosts = $rcosts*$self->singleTransporterMultiplier();
+			$fcosts = $fcosts*$self->singleTransporterMultiplier();
+		}
+	}
+	#Checking for structure based penalties
+	if ($rxn->missingStructure() == 1) {
+		$rcosts = $rcosts*$self->noStructureMultiplier();
+		$fcosts = $fcosts*$self->noStructureMultiplier();
+	}		
+	#Handling reactionset multipliers
+	for (my $i=0; $i < @{$self->reactionSetMultipliers()}; $i++) {
+		my $setMult = $self->reactionSetMultipliers()->[$i];
+		my $set = $setMult->reactionset();
+		if ($set->containsReaction($rxn->reaction()) == 1) {
+			if ($setMult->multiplierType() eq "absolute") {
+				$rcosts = $rcosts*$setMult->multiplier();
+				$fcosts = $fcosts*$setMult->multiplier();
+			} else {
+				my $coverage = $set->modelCoverage({model=>$rxn->parent()});
+				my $multiplier = $setMult->multiplier()/$coverage;
+			}	
+		}
+	}
+	return {forwardDirection => $fcosts,reverseDirection => $rcosts};
+}
+=head3 runGapFilling
+Definition:
+	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->runGapFilling({
+		model => ModelSEED::MS::Model(REQ)
+	});
+Description:
+	Identifies the solution that gapfills the input model
+=cut
+sub runGapFilling {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["model"],{
+		fbaFormulation => undef
+	});
+	my $model = $args->{model};
+	my $fbaform = $args->{fbaFormulation};
+	#Creating default FBAFormulation if one was not provided
+	if (!defined($fbaform)) {
+		my $maxDrain = 0;
+		if ($self->media()->name() eq "Complete") {
+			$maxDrain = 10000;
+		}
+		$fbaform = ModelSEED::MS::FBAFormulation->new({
+			name => "Gapfilling growth test",
+			model_uuid => $model->uuid(),
+			model => $model,
+			media_uuid => $self->media_uuid(),
+			media => $self->media(),
+			type => "singlegrowth",
+			biochemistry_uuid => $self->biochemistry_uuid(),
+			biochemistry => $self->biochemistry(),
+			description => "Gapfilling growth test",
+			growthConstraint => "none",
+			thermodynamicConstraints => "none",
+			allReversible => 0,
+			defaultMaxFlux => 1000,
+			defaultMaxDrainFlux => $maxDrain,
+			defaultMinDrainFlux => -10000,
+			decomposeReversibleFlux => 0,
+			decomposeReversibleDrainFlux => 0,
+			fluxUseVariables => 0,
+			drainfluxUseVariables => 0,
+			maximizeObjective => 1,
+			fbaObjectiveTerms => [{
+				coefficient => 1,
+				variableType => "biomassflux",
+				variable_uuid => $model->biomasses()->[0]->uuid()
+			}]			
+		});
+	}
+	#Testing if the object function is already greater than zero
+	print "Testing for zero objective!\n";
+	my $fbasolution = $fbaform->runFBA();
+	if ($fbasolution->objectiveValue() > 0.0000001) {
+		print "Objective is already greater than zero. No gapfilling needed!\n";
+		return undef;
+	}
+	print "Objective is zero. Proceeding with gapfilling!\n";
 	#Creating the database model
 	my $dbmodel = $self->biochemistry()->makeDBModel({
 		balancedOnly => $self->balancedReactionsOnly(),
@@ -53,33 +168,66 @@ sub runGapfilling {
 		forbiddenReactions => $self->blacklistedReactions()
 	});
 	#Merging in the model selected for gapfilling
-	my $model = $self->model();
 	$dbmodel->mergeModel({
 		model => $model
 	});
-	#Setting up the default FBAFormulation if none is provided
-	if ($self->fbaformulation_uuid() eq "00000000-0000-0000-0000-000000000000") {
-		my $newFormulation;
-		my $formulationData = {
-			name => "Default gapfilling formulation",
-			model_uuid => $self->model_uuid(),
-			type => "gapfilling",
-			biochemistry_uuid => $self->biochemistry_uuid(),
-			description => "Default gapfilling formulation",
-			growthConstraint => "forcedGrowth",
-			thermodynamicConstraints => 0,
-			allReversible => 1,
-			defaultMaxFlux => 1000,
-			defaultMaxDrainFlux => 10000,
-			defaultMinDrainFlux => -10000,
-		};
-		if (defined($self->parent())) {
-			$newFormulation = $self->parent()->create("FBAFormulation",$formulationData);	
-		} else {
-			$newFormulation = ModelSEED::MS::FBAFormulation->new($formulationData);
+	#Creating gapfilling FBAFormulation
+	my $gffbaform = ModelSEED::MS::FBAFormulation->new({
+		name => "Gapfilling simulation",
+		model_uuid => $dbmodel->uuid(),
+		model => $dbmodel,
+		media_uuid => $self->media_uuid(),
+		media => $self->media(),
+		type => "gapfilling",
+		biochemistry_uuid => $self->biochemistry_uuid(),
+		biochemistry => $self->biochemistry(),
+		description => "Gapfilling simulation",
+		growthConstraint => "none",
+		thermodynamicConstraints => "none",
+		allReversible => 1,
+		defaultMaxFlux => 1000,
+		defaultMaxDrainFlux => $fbaform->defaultMaxDrainFlux(),
+		defaultMinDrainFlux => -10000,
+		decomposeReversibleFlux => 1,
+		decomposeReversibleDrainFlux => 0,
+		fluxUseVariables => 1,
+		drainfluxUseVariables => 0,
+		maximizeObjective => 0,			
+	});
+	#Copying all constraints from previous FBAFormulation
+	for (my $i=0; $i < @{$fbaform->fbaConstraints()}; $i++) {
+		my $oldConst = $fbaform->fbaConstraints()->[$i];
+		my $const = $gffbaform->create("FBAConstraint",{
+			name => $oldConst->name(),
+			rhs => $oldConst->rhs(),
+			sign => $oldConst->sign()
+		});
+		for (my $j=0; $j < @{$oldConst->fbaConstraintVariables()}; $j++) {
+			my $term = $fbaform->fbaObjectiveTerms()->[$j];
+			my $obj = $dbmodel->getObject($term->entityType(),{mapped_uuid => $term->entity_uuid()});
+			$const->create("FBAConstraintVariable",{
+				entity_uuid => $obj->entity_uuid(),
+				entityType => $term->entityType(),
+				variableType => $term->variableType(),
+				coefficient => $term->coefficient()
+			});
 		}
-		$self->fbaformulation_uuid($newFormulation->uuid());
-		$self->fbaformulation($newFormulation);
+	}
+	#Making a constraint forcing the previous objective to be greater than zero
+	my $const = $gffbaform->create("FBAConstraint",{
+		name => "Objective constraint",
+		rhs => 0.01,
+		sign => ">"
+	});
+	for (my $i=0; $i < @{$fbaform->fbaObjectiveTerms()}; $i++) {
+		my $term = $fbaform->fbaObjectiveTerms()->[$i];
+		my $obj = $dbmodel->getObject($term->entityType(),{mapped_uuid => $term->entity_uuid()});
+		$const->create("FBAConstraintVariable",{
+			entity_uuid => $obj->entity_uuid(),
+			entityType => $term->entityType(),
+			variableType => $term->variableType(),
+			coefficient => $term->coefficient()
+		});
 	}
 	#Labeling all dbmodel reactions as candidates and creating objective terms
 	for (my $i=0; $i < @{$dbmodel->modelreactions()}; $i++) {
@@ -92,22 +240,24 @@ sub runGapfilling {
 		}
 		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
 		if ($costs->{forwardDirection} != 0) {
-			$self->fbaformulation()->create("ObjectiveTerm",{
-				coefficient => $costs->{forwardDirection},
+			$gffbaform->create("ObjectiveTerm",{
+				entity_uuid => $rxn->uuid(),
+				entityType => "Reaction",
 				variableType => "forfluxuse",
-				variable_uuid => $rxn->uuid()
+				coefficient => $costs->{forwardDirection}
 			});
 		}
 		if ($costs->{reverseDirection} != 0) {
-			$self->fbaformulation()->create("ObjectiveTerm",{
-				coefficient => $costs->{reverseDirection},
+			$gffbaform->create("ObjectiveTerm",{
+				entity_uuid => $rxn->uuid(),
+				entityType => "Reaction",
 				variableType => "revfluxuse",
-				variable_uuid => $rxn->uuid()
+				coefficient => $costs->{reverseDirection}
 			});
 		}
 	}
 	#Running the flux balance analysis for the gapfilling optimization problem
-	my $solution = $self->fbaformulation()->runFBA();
+	my $solution = $gffbaform->runFBA();
 	#Translating te solution into a gapfilling solution
 	my $gfsolution = $self->create("GapfillingSolution",{
 		solutionCost => $solution->objectiveValue()
@@ -155,20 +305,7 @@ sub runGapfilling {
 			}
 		}
 	}
-	return $gfsolution;
-}
-=head3 calculateReactionCosts
-Definition:
-	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->calculateReactionCosts({
-		modelreaction => ModelSEED::MS::ModelReaction
-	});
-Description:
-	Calculates the cost of adding or adjusting the reaction directionality in the model
-=cut
-sub calculateReactionCosts {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["modelreaction"],{});
-	return {forwardDirection => 1,reverseDirection => 1};
+	return $solution;
 }
 
 __PACKAGE__->meta->make_immutable;
