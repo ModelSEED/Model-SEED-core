@@ -74,8 +74,8 @@ sub execute {
 
     unless($opts->{dry}) {
         $store->save_object($alias_ref, $anno);
+        print "Saved annotation to $alias!\n" if(defined($opts->{verbose}));
     }
-    print "Saved annotation to $alias!\n" if(defined($opts->{verbose}));
 }
 
 1;
