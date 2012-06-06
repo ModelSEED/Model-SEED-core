@@ -14,10 +14,6 @@ $objectDefinitions->{ModelAnalysis} = {
 		{name => 'public',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
 	],
 	subobjects => [
-		{name => "modelAnalysisModels",printOrder => 0,class => "ModelAnalysisModel",type => "child"},
-		{name => "modelAnalysisMappings",printOrder => 0,class => "ModelAnalysisMapping",type => "child"},
-		{name => "modelAnalysisBiochemistries",printOrder => 0,class => "ModelAnalysisBiochemistry",type => "child"},
-		{name => "modelAnalysisAnnotations",printOrder => 0,class => "ModelAnalysisAnnotation",type => "child"},
 		{name => "fbaFormulations",printOrder => 0,class => "FBAFormulation",type => "child"},
 		{name => "gapfillingFormulations",printOrder => 1,class => "GapfillingFormulation",type => "child"},
 		{name => "fbaProblems",printOrder => 2,class => "FBAProblem",type => "child"},
@@ -25,59 +21,6 @@ $objectDefinitions->{ModelAnalysis} = {
 	primarykeys => [ qw(uuid) ],
 	links => []
 };
-
-$objectDefinitions->{ModelAnalysisModel} = {
-	parents => ['ModelAnalysis'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'model_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "model",attribute => "model_uuid",parent => "Store",method=>"models"},
-	]
-};
-
-$objectDefinitions->{ModelAnalysisBiochemistry} = {
-	parents => ['ModelAnalysis'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'biochemistry_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",method=>"biochemistries"},
-	]
-};
-
-$objectDefinitions->{ModelAnalysisAnnotation} = {
-	parents => ['ModelAnalysis'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'annotation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "annotation",attribute => "annotation_uuid",parent => "Store",method=>"annotations"},
-	]
-};
-
-$objectDefinitions->{ModelAnalysisMapping} = {
-	parents => ['ModelAnalysis'],
-	class => 'encompassed',
-	attributes => [
-		{name => 'mapping_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-	],
-	subobjects => [],
-	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "mapping",attribute => "mapping_uuid",parent => "Store",method=>"mappings"},
-	]
-};
-
 
 $objectDefinitions->{FBAFormulation} = {
 	parents => ['ModelAnalysis'],
@@ -116,8 +59,8 @@ $objectDefinitions->{FBAFormulation} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelAnalysis",method=>"biochemistries"},
-		{name => "model",attribute => "model_uuid",parent => "ModelAnalysis",method=>"models"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",method=>"Biochemistry"},
+		{name => "model",attribute => "model_uuid",parent => "Store",method=>"Model"},
 	]
 };
 	
@@ -182,7 +125,7 @@ $objectDefinitions->{FBAResult} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "ModelAnalysis",method=>"fbaformulations"}
+		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "Store",method=>"FBAFormulation"}
 	]
 };
 
@@ -274,8 +217,8 @@ $objectDefinitions->{GapfillingFormulation} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
-		{name => "annotation",attribute => "annotation_uuid",parent => "ModelAnalysis",method=>"annotations"},
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelAnalysis",method=>"biochemistries"}
+		{name => "annotation",attribute => "annotation_uuid",parent => "Store",method=>"Annotation"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",method=>"Biochemistry"}
 	]
 };
 

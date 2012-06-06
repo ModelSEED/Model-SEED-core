@@ -51,8 +51,8 @@ has gapfillingSolutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmedia', weak_ref => 1);
-has annotation => (is => 'rw', isa => 'ModelSEED::MS::annotations', type => 'link(ModelAnalysis,annotations,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::biochemistries', type => 'link(ModelAnalysis,biochemistries,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
+has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
 
 
 # BUILDERS:
@@ -64,11 +64,11 @@ sub _buildmedia {
 }
 sub _buildannotation {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelAnalysis','annotations',$self->annotation_uuid());
+  return $self->getLinkedObject('Store','Annotation',$self->annotation_uuid());
 }
 sub _buildbiochemistry {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelAnalysis','biochemistries',$self->biochemistry_uuid());
+  return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
 }
 
 

@@ -202,8 +202,7 @@ sub addModelReactionProtein {
 				my $genelist;
 				foreach my $gene (keys(%{$args->{proteinDataTree}->{subunits}->{$subunit}->{genes}})) {
 					push(@{$genelist},{
-						feature_uuid => $gene,
-						feature => $args->{proteinDataTree}->{subunits}->{$subunit}->{genes}->{$gene}
+						feature_uuid => $gene
 					});
 				}
 				$data->{modelReactionProteinSubunitGenes} = $genelist; 

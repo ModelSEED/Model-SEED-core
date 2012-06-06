@@ -7,6 +7,7 @@ use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 use ModelSEED::MS::Factories::SEEDFactory;
 use Time::HiRes qw(time);
+use Data::Dumper;
 
 $| = 1;
 
@@ -31,20 +32,18 @@ $mapping->biochemistry($biochem);
 #$objectData = JSON::Any->decode($string);
 #my $anno = ModelSEED::MS::Annotation->new($objectData);
 #$anno->mapping($mapping);
-print "Retrieving annotation!\n";
 my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
 my $anno = $seedFactory->buildMooseAnnotation({
 	genome_id => "83333.1",
 	mapping => $mapping
 });
 $anno->printJSONFile($directory."83333.1.json");
-$mapping->printJSONFile($directory."mapping.json");
+$mapping->printJSONFile($directory."83333.1.mapping.json");
 my $readable = $anno->createReadableStringArray();
 ModelSEED::utilities::PRINTFILE($directory."83333.1.readable",$readable);
-print "Beginning reconstruction!\n";
 ##Building model
 my $mdl = $anno->createStandardFBAModel();
-print "Model generated!\n";
+my $data = $mdl->serializeToDB();
 $mdl->printJSONFile($directory."ReconstructedModel.json");
 $readable = $mdl->createReadableStringArray();
 ModelSEED::utilities::PRINTFILE($directory."ReconstructedModel.readable",$readable);

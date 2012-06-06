@@ -6,10 +6,6 @@
 ########################################################################
 package ModelSEED::MS::DB::ModelAnalysis;
 use ModelSEED::MS::IndexedObject;
-use ModelSEED::MS::ModelAnalysisModel;
-use ModelSEED::MS::ModelAnalysisMapping;
-use ModelSEED::MS::ModelAnalysisBiochemistry;
-use ModelSEED::MS::ModelAnalysisAnnotation;
 use ModelSEED::MS::FBAFormulation;
 use ModelSEED::MS::GapfillingFormulation;
 use ModelSEED::MS::FBAProblem;
@@ -35,10 +31,6 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has modelAnalysisModels => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisModel)', metaclass => 'Typed', reader => '_modelAnalysisModels', printOrder => '0');
-has modelAnalysisMappings => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisMapping)', metaclass => 'Typed', reader => '_modelAnalysisMappings', printOrder => '0');
-has modelAnalysisBiochemistries => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisBiochemistry)', metaclass => 'Typed', reader => '_modelAnalysisBiochemistries', printOrder => '0');
-has modelAnalysisAnnotations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelAnalysisAnnotation)', metaclass => 'Typed', reader => '_modelAnalysisAnnotations', printOrder => '0');
 has fbaFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaFormulations', printOrder => '0');
 has gapfillingFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GapfillingFormulation)', metaclass => 'Typed', reader => '_gapfillingFormulations', printOrder => '1');
 has fbaProblems => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAProblem)', metaclass => 'Typed', reader => '_fbaProblems', printOrder => '2');
@@ -115,30 +107,6 @@ sub _attributes {
 my $subobjects = [
           {
             'printOrder' => 0,
-            'name' => 'modelAnalysisModels',
-            'type' => 'child',
-            'class' => 'ModelAnalysisModel'
-          },
-          {
-            'printOrder' => 0,
-            'name' => 'modelAnalysisMappings',
-            'type' => 'child',
-            'class' => 'ModelAnalysisMapping'
-          },
-          {
-            'printOrder' => 0,
-            'name' => 'modelAnalysisBiochemistries',
-            'type' => 'child',
-            'class' => 'ModelAnalysisBiochemistry'
-          },
-          {
-            'printOrder' => 0,
-            'name' => 'modelAnalysisAnnotations',
-            'type' => 'child',
-            'class' => 'ModelAnalysisAnnotation'
-          },
-          {
-            'printOrder' => 0,
             'name' => 'fbaFormulations',
             'type' => 'child',
             'class' => 'FBAFormulation'
@@ -157,7 +125,7 @@ my $subobjects = [
           }
         ];
 
-my $subobject_map = {modelAnalysisModels => 0, modelAnalysisMappings => 1, modelAnalysisBiochemistries => 2, modelAnalysisAnnotations => 3, fbaFormulations => 4, gapfillingFormulations => 5, fbaProblems => 6};
+my $subobject_map = {fbaFormulations => 0, gapfillingFormulations => 1, fbaProblems => 2};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -174,22 +142,6 @@ sub _subobjects {
 
 
 # SUBOBJECT READERS:
-around 'modelAnalysisModels' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('modelAnalysisModels');
-};
-around 'modelAnalysisMappings' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('modelAnalysisMappings');
-};
-around 'modelAnalysisBiochemistries' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('modelAnalysisBiochemistries');
-};
-around 'modelAnalysisAnnotations' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('modelAnalysisAnnotations');
-};
 around 'fbaFormulations' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('fbaFormulations');

@@ -240,7 +240,6 @@ sub buildModelFromAnnotation {
 	my $mapping = $args->{mapping};
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
-	print "Scanning features!\n";
 	my $roleFeatures;
 	my $features = $annotaton->features();
 	for (my $i=0; $i < @{$features}; $i++) {
@@ -251,7 +250,6 @@ sub buildModelFromAnnotation {
 			push(@{$roleFeatures->{$ftrrole->role_uuid()}->{$ftrrole->compartment()}},$ftr);
 		}
 	}
-	print "Scanning complexes!\n";
 	my $complexes = $mapping->complexes();
 	for (my $i=0; $i < @{$complexes};$i++) {
 		my $cpx = $complexes->[$i];
@@ -308,7 +306,6 @@ sub buildModelFromAnnotation {
 			}
 		}
 	}
-	print "Scanning universal reactions!\n";
 	my $universalReactions = $mapping->universalReactions();
 	foreach my $universalRxn (@{$universalReactions}) {
 		my $mdlrxn = $self->addReactionInstanceToModel({
@@ -431,7 +428,6 @@ Description:
 =cut
 sub createStandardFBABiomass {
 	my ($self,$args) = @_;
-	print "Building biomass!\n";
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
@@ -453,7 +449,6 @@ sub createStandardFBABiomass {
 	}
 	my $biomassComps;
 	my $biomassCompByUUID;
-	print "Scanning template components!\n";
 	my $biomassTemplateComponents = $template->biomassTemplateComponents();
 	for (my $i=0; $i < @{$biomassTemplateComponents}; $i++) {
 		my $tmpComp = $biomassTemplateComponents->[$i];
@@ -466,7 +461,6 @@ sub createStandardFBABiomass {
 		}
 	}
 	my $coef;
-	print "Building equation!\n";
 	my $gc = $anno->genomes()->[0]->gc();
 	foreach my $class (keys(%{$biomassComps})) {
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {

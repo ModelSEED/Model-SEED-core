@@ -147,8 +147,9 @@ sub runGapFilling {
 			maximizeObjective => 1,
 			fbaObjectiveTerms => [{
 				coefficient => 1,
+				entityType => "Biomass",
 				variableType => "biomassflux",
-				variable_uuid => $model->biomasses()->[0]->uuid()
+				entity_uuid => $model->biomasses()->[0]->uuid()
 			}]			
 		});
 	}

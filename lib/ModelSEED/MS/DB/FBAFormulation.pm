@@ -57,8 +57,8 @@ has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { retu
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmedia', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::biochemistries', type => 'link(ModelAnalysis,biochemistries,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
-has model => (is => 'rw', isa => 'ModelSEED::MS::models', type => 'link(ModelAnalysis,models,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodel', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
+has model => (is => 'rw', isa => 'ModelSEED::MS::Model', type => 'link(Store,Model,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodel', weak_ref => 1);
 
 
 # BUILDERS:
@@ -70,11 +70,11 @@ sub _buildmedia {
 }
 sub _buildbiochemistry {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelAnalysis','biochemistries',$self->biochemistry_uuid());
+  return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
 }
 sub _buildmodel {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelAnalysis','models',$self->model_uuid());
+  return $self->getLinkedObject('Store','Model',$self->model_uuid());
 }
 
 

@@ -66,8 +66,8 @@ sub serializeToDB {
     my $data = {};
     my $attributes = $self->_attributes();
     foreach my $item (@{$attributes}) {
-    	my $name = $item->{name};
-    	if (defined($self->$name())) {
+    	my $name = $item->{name};	
+		if (defined($self->$name())) {
     		$data->{$name} = $self->$name();	
     	}
     }
@@ -79,7 +79,13 @@ sub serializeToDB {
 			if ($subobject->{created} == 1) {
 				push(@{$data->{$item->{name}}},$subobject->{object}->serializeToDB());	
 			} else {
-				push(@{$data->{$item->{name}}},$subobject->{data});
+				my $newData;
+				foreach my $key (keys(%{$subobject->{data}})) {
+					if ($key ne "parent") {
+						$newData->{$key} = $subobject->{data}->{$key};
+					}
+				}
+				push(@{$data->{$item->{name}}},$newData);
 			}
 		}
     }
@@ -89,7 +95,6 @@ sub serializeToDB {
 sub printJSONFile {
     my ($self,$filename) = @_;
     my $data = $self->serializeToDB();
-    print ref($data)."\n";
     my $jsonData = JSON::Any->encode($data);
     ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
 }
