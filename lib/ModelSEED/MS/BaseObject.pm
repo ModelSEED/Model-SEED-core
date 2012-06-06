@@ -10,7 +10,6 @@ use DateTime;
 use Data::UUID;
 use JSON::Any;
 use Module::Load;
-use Carp qw(confess);
 
 package ModelSEED::Meta::Attribute::Typed;
 use Moose;
@@ -36,6 +35,7 @@ sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
 package ModelSEED::MS::BaseObject;
 use Moose;
 use namespace::autoclean;
+use Scalar::Util qw(weaken);
 
 sub BUILD {
     my ($self,$params) = @_;
@@ -56,6 +56,7 @@ sub BUILD {
             };
 
             $data->{parent} = $self; # set the parent
+            weaken($data->{parent}); # and make it weak
             $subobjs->[$i] = $info; # reset the subobject with info hash
         }
     }
@@ -79,6 +80,8 @@ sub serializeToDB {
 			if ($subobject->{created} == 1) {
 				push(@{$data->{$item->{name}}},$subobject->{object}->serializeToDB());	
 			} else {
+                # remove the parent ref
+                delete $subobject->{data}->{parent};
 				push(@{$data->{$item->{name}}},$subobject->{data});
 			}
 		}
@@ -262,12 +265,18 @@ sub remove {
 # can only get via uuid
 sub getLinkedObject {
     my ($self, $sourceType, $attribute, $uuid) = @_;
-   	my $source = lc($sourceType);
-   	my $sourceObj = $self->$source();
-   	if (!defined($sourceObj)) {
-   		ModelSEED::utilities::ERROR("Cannot obtain source object ".$sourceType." for ".$attribute." link!");
-   	}
-   	return $sourceObj->getObject($attribute,$uuid);
+    my $source = lc($attribute);
+    if ($sourceType eq 'ModelSEED::Store') {
+        my $ref = ModelSEED::Reference->new(uuid => $uuid, type => $source);
+        return $self->store->get_object($ref);
+    } else {
+        my $source = lc($sourceType);
+        my $sourceObj = $self->$source();
+        if (!defined($sourceObj)) {
+            ModelSEED::utilities::ERROR("Cannot obtain source object ".$sourceType." for ".$attribute." link!");
+        }
+        return $sourceObj->getObject($attribute,$uuid);
+    }
 }
 
 sub biochemistry {

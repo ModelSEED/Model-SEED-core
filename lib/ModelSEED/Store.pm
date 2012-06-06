@@ -130,6 +130,7 @@ sub get_object {
     my $o = $self->get_data($ref);
     my $class = $self->_get_class($ref);
     $self->_load_class($class);
+    $o->{parent} = $self;
     return $class->new($o);
 }
 
