@@ -13,6 +13,7 @@ use ModelSEED::Interface::interface;
 use Try::Tiny;
 use File::Temp;
 use Cwd;
+$|=1;
 my $JOBDIR =  "/vol/model-prod/jobfiles/";
 if (defined($ENV{"MSJOBDIR"})) {
 	$JOBDIR = $ENV{"MSJOBDIR"};
@@ -43,14 +44,7 @@ if (!defined($ARGV[0])) {
 	exit(0);
 }
 #Creating model driver object
-$|=1;
-my $driv;
-try {
-	$driv = ModelSEED::ModelDriver->new();
-} catch {
-	printErrorLog($_);
-    exit(1);
-};
+my $driv = ModelSEED::ModelDriver->new();
 #This variable will hold the name of a file that will be printed when a job finishes
 my $Status = "";
 #Parsing arguments into a list of function calls
@@ -137,71 +131,10 @@ for (my $i=0; $i < @{$functions}; $i++) {
 	} else {
 		push(@Data,@{$functions->[$i]->{argList}});
 	}
-	try {
-    	$Status .= $driv->$function(@Data);
-    	print $Status."\n";
-   	} catch {
-        printErrorLog($_);
-    };
+    $Status .= $driv->$function(@Data);
+    print $Status."\n";
 }
 #Printing the finish file if specified
 $driv->finish($Status);
-
-sub printErrorLog {
-    my $errorMessage = shift @_;
-    my $actualMessage;
-    if($errorMessage =~ /^\"\"(.*)\"\"/) {
-        $actualMessage = $1;
-    }
-    {
-        # Pad error message with four spaces
-        $errorMessage =~ s/\n/\n    /g;
-        $errorMessage = "    ".$errorMessage; 
-    }
-    my $gitSha = "";
-    {
-        my $cwd = Cwd::getcwd();
-        chdir $ENV{'MODEL_SEED_CORE'};
-        $gitSha = `git show-ref --hash HEAD`;
-        chdir $cwd;
-    }
-    
-    chomp $gitSha;
-    my $errorDir= $JOBDIR."/errors/";
-    mkdir $errorDir unless(-d $errorDir);
-    my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
-    $errorFilename =~ s/\\/\//g;
-    ModelSEED::Interface::interface::LASTERROR($errorFilename);
-    ModelSEED::Interface::interface::SAVEENVIRONMENT();
-    print $errorFH <<MSG;
-> ModelDriver encountered an unrecoverable error:
-
-$errorMessage
-
-> Model-SEED-core revision: $gitSha
-MSG
-    my $viewerMessage = <<MSG;
-Whoops! We encountered an unrecoverable error.
-
-MSG
-    if(defined($actualMessage)) {
-        $viewerMessage .= $actualMessage."\n\n";
-    }
-    $viewerMessage .= <<MSG;
-
-View error using the "ms-lasterror" command.
-
-Have you updated recently? ( git pull )
-Have you changed your configuration? ( ms-config )
-
-If you are still having problems, please submit a ticket
-copying the contents of the error file printed above to:
-
-https://github.com/ModelSEED/Model-SEED-core/issues/new
-
-Thanks!
-MSG
-    print $viewerMessage;
-}
 
 1;
