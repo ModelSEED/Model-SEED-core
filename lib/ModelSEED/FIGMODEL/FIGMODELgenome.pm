@@ -787,4 +787,114 @@ sub getTreeSimilarityHitTable {
 	
 }
 
+
+sub fluxanalysis_etc{
+   
+     my ($self, $args) = @_;
+     my $genomeP =$self->genome;
+     print "\n SEED Genome is  - $genomeP";
+     my $sap = SAPserver->new();
+     
+  
+  
+   open INPUTFLUX, "c:/Model-SEED-core/workspace/jedirisinghe1/default/Fluxes-iJR904.480-Succinate-Minimal.txt" or die "COUlnd't open  the flux  file: $!\n";
+  
+    my @subarray = ('Ubiquinone Biosynthesis','Respiratory dehydrogenases 1','Respiratory Complex I','Biogenesis of cytochrome c oxidases','Biogenesis of c-type cytochromes','Soluble cytochromes and functionally related electron carriers','Cytochrome c oxidases d@O copy','Riboflavin, FMN and FAD metabolism','Flavodoxin','Succinate dehydrogenase','F0F1-type ATP synthase','Fe-S cluster assembly');
+                    #'Menaquinone and Phylloquinone Biosynthesis','Menaquinone Biosynthesis via Futalosine',
+                my $subarraycount = @subarray;
+                my %roleH;
+                my $figcount=0;
+                my @figcount;
+                my $figoarrarycount=0;
+
+                  for(my $i=0; $i<$subarraycount; $i++){       
+                    
+                    my $genomes = $genomeP;
+                    my $ss      = [$subarray[$i]];
+                    my $ssH     = $sap->pegs_in_subsystems(-genomes => $genomes, -subsystems => $ss);
+                    my $funrole=0;
+ 
+                       foreach my $s(@$ss){
+   
+                           my $roleH = $ssH->{$s};
+                           my @roles = keys(%$roleH);
+                           my @figonlyarray;
+                           my @figarray;
+      
+      
+                           foreach my $role (@roles){
+                              
+                               $roleH{$role}=[$role,$subarray[$i]];
+                              
+                               print "\n$roleH{$role}->[0]";
+                           }
+                          
+                          
+                       }
+                      
+                  }
+      
+ 
+  
+  
+    while (my $lineString1 = <INPUTFLUX> ) {
+          
+        chomp $lineString1;
+        my @dataArr1 =  split /;/, $lineString1 ; #spliting the whole line
+           
+            #if ($dataArr1[0] =~ /rxn/){
+               
+                open INPUTFILE, "c:/Model_rxns/E.coli_iJR904_83333_1.txt" or die "COUlnd't open  the  rxn file: $!\n";
+                 while (my $lineString = <INPUTFILE> ) {
+      
+                        chomp $lineString;
+                     my @dataArr =  split /\t/, $lineString ; #spliting the whole line
+                     my @rxnArr = split /;/, $dataArr[-1];
+                       
+                    my %rxns;
+                    if ($dataArr[-1] =~ /rxn/){
+                        foreach my $rxn (@rxnArr){
+                            $rxns{$rxn} = [@dataArr];
+                            #print "data Array1 -->$dataArr1[0]->->$rxnArr[0]->->->$rxnArr[1]\n";
+                           
+                            if($dataArr1[0] eq $rxn){
+                                 #print "\nreaction ---  $rxn\t$dataArr1[0]\t";
+                                 my @roleArray =  split /;/, $rxns{$rxn}->[4];
+                                 #print "@roleArray\n";
+                                 foreach my $r (@roleArray){
+                                  #print "++ $r\n";
+                         
+                                    if(exists $roleH{$r} ){
+                       
+                                        print "\n\n role -- >$dataArr1[0]\t$r\t$rxn\t$dataArr1[-1]";
+                                        #last;
+                                           
+                                    } #if   
+                       
+                                } #foreach
+                               
+                            } #if   
+               
+                            #print "\n$dataArr1[0]\t@roleArray";
+                            #print "@rxnArr\t";
+                            #print "************ $rxns{$rxn}->[0]\t$rxn\n";   
+           
+                        } #foreach
+                       
+                    }# if
+   
+                } # end of inner while               
+                   
+                close INPUTFILE;
+                   
+            #} # end if
+               
+                #die;
+    } # end whi
+  
+ #=cut
+} # end of etc flux analysis
+
+
+
 1;

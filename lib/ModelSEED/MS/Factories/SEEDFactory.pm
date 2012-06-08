@@ -37,14 +37,17 @@ sub buildMooseAnnotation {
 	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
 		mapping_uuid => undef,
 		mapping => undef,
-		source => undef
+		source => undef,
+        verbose => 0,
 	});
 	if (!defined($args->{source})) {
 		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});	
+        print "Genome source is " . $args->{source} . ".\n" if($args->{verbose});
 	}
 	if (!defined($args->{mapping})) {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
+    print "Getting genome attributes...\n" if($args->{verbose});
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
 	my $annoationObj;
 	if (defined($self->om())) {
@@ -67,6 +70,8 @@ sub buildMooseAnnotation {
 	if (!defined($genomeData->{features})) {
 		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
 	}
+    my $featureCount = scalar(@{$genomeData->{features}});
+    print "Mapping $featureCount genome feature to metabolic roles...\n" if($args->{verbose});
 	for (my $i=0; $i < @{$genomeData->{features}}; $i++) {
 		my $row = $genomeData->{features}->[$i]; 
 		if (defined($row->{ID}->[0]) && defined($row->{START}->[0]) && defined($row->{STOP}->[0]) && defined($row->{CONTIG}->[0])) {
