@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use ModelSEED::TestingHelpers;
+#use ModelSEED::TestingHelpers;
 use Test::More tests => 5;
 use FBAMODELClient;
 
