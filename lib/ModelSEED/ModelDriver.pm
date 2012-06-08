@@ -277,11 +277,9 @@ sub dblistobjects {
     my $attributes = [keys(%{$objs->[0]->attributes()})];
     my $output = [join("\t",@{$attributes})];
     for (my $i=0; $i < @{$objs}; $i++) {
-    	my $line;
+    	my $line = $objs->[$i]->_id();
     	for (my $j=0; $j < @{$attributes}; $j++) {
-    		if ($j > 0) {
-    			$line .= "\t";	
-    		}
+    		$line .= "\t";	
     		my $function = $attributes->[$j];
     		$line .= $objs->[$i]->$function();
     	}
