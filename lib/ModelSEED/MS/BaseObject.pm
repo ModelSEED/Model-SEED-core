@@ -207,8 +207,13 @@ sub getReadableAttributes {
 	return ($sortedAtt,$sortedSO);
 }
 ######################################################################
-#Object addition functions
+#SubObject manipulation functions
 ######################################################################
+sub clearSubObject {
+    my ($self, $attribute) = @_;
+	$self->$attribute([]);	
+}
+
 sub add {
     my ($self, $attribute, $data_or_object) = @_;
 
@@ -317,6 +322,17 @@ sub mapping {
         return $parent->mapping();
     }
     ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
+}
+
+sub fbaproblem {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::FBAProblem") {
+        return $parent;
+    } elsif (defined($parent)) {
+        return $parent->fbaproblem();
+    }
+    ModelSEED::utilities::ERROR("Cannot find fbaproblem object in tree!");
 }
 
 sub objectmanager {

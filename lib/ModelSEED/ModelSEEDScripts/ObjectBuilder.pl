@@ -117,7 +117,7 @@ foreach my $name (keys(%{$objects})) {
     #Printing subobjects
     my $typeToFunction;
     my $functionToType;
-    if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
+	if (defined($object->{subobjects}) && defined($object->{subobjects}->[0])) {
         push(@$output, "# SUBOBJECTS:");
         foreach my $subobject (@{$object->{subobjects}}) {
             if (!defined($subobject->{printOrder})) {

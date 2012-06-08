@@ -192,6 +192,7 @@ $objectDefinitions->{GapfillingFormulation} = {
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
 		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
@@ -592,7 +593,7 @@ $objectDefinitions->{Compound} = {
 		{name => 'unchargedFormula',printOrder => -1,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'formula',printOrder => 3,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'mass',printOrder => 4,perm => 'rw',type => 'Num',req => 0},
-		{name => 'defaultCharge',printOrder => 5,perm => 'rw',type => 'Num',req => 0},
+		{name => 'defaultCharge',printOrder => 5,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'deltaG',printOrder => 6,perm => 'rw',type => 'Num',req => 0},
 		{name => 'deltaGErr',printOrder => 7,perm => 'rw',type => 'Num',req => 0},
 	],
