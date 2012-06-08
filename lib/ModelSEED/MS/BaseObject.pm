@@ -67,8 +67,8 @@ sub serializeToDB {
     my $data = {};
     my $attributes = $self->_attributes();
     foreach my $item (@{$attributes}) {
-    	my $name = $item->{name};
-    	if (defined($self->$name())) {
+    	my $name = $item->{name};	
+		if (defined($self->$name())) {
     		$data->{$name} = $self->$name();	
     	}
     }
@@ -80,9 +80,13 @@ sub serializeToDB {
 			if ($subobject->{created} == 1) {
 				push(@{$data->{$item->{name}}},$subobject->{object}->serializeToDB());	
 			} else {
-                # remove the parent ref
-                delete $subobject->{data}->{parent};
-				push(@{$data->{$item->{name}}},$subobject->{data});
+				my $newData;
+				foreach my $key (keys(%{$subobject->{data}})) {
+					if ($key ne "parent") {
+						$newData->{$key} = $subobject->{data}->{$key};
+					}
+				}
+				push(@{$data->{$item->{name}}},$newData);
 			}
 		}
     }
@@ -92,7 +96,6 @@ sub serializeToDB {
 sub printJSONFile {
     my ($self,$filename) = @_;
     my $data = $self->serializeToDB();
-    print ref($data)."\n";
     my $jsonData = JSON::Any->encode($data);
     ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
 }
@@ -205,8 +208,13 @@ sub getReadableAttributes {
 	return ($sortedAtt,$sortedSO);
 }
 ######################################################################
-#Object addition functions
+#SubObject manipulation functions
 ######################################################################
+sub clearSubObject {
+    my ($self, $attribute) = @_;
+	$self->$attribute([]);	
+}
+
 sub add {
     my ($self, $attribute, $data_or_object) = @_;
 
@@ -321,6 +329,17 @@ sub mapping {
         return $parent->mapping();
     }
     ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
+}
+
+sub fbaproblem {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::FBAProblem") {
+        return $parent;
+    } elsif (defined($parent)) {
+        return $parent->fbaproblem();
+    }
+    ModelSEED::utilities::ERROR("Cannot find fbaproblem object in tree!");
 }
 
 sub objectmanager {

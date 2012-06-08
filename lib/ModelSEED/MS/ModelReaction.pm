@@ -95,9 +95,10 @@ sub _buildgprString {
 }
 sub _buildmissingStructure {
 	my ($self) = @_;
-	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
-		my $rgt = $self->modelReactionReagents()->[$i];
-		if (@{$rgt->modelcompound()->structures()} == 0) {
+	my $rgts = $self->modelReactionReagents();
+	for (my $i=0; $i < @{$rgts}; $i++) {
+		my $rgt = $rgts->[$i];
+		if (@{$rgt->modelcompound()->compound()->structures()} == 0) {
 			return 1;	
 		}
 	}
@@ -105,11 +106,12 @@ sub _buildmissingStructure {
 }
 sub _buildbiomassTransporter {
 	my ($self) = @_;
-	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
-		my $rgt = $self->modelReactionReagents()->[$i];
+	my $rgts = $self->modelReactionReagents();
+	for (my $i=0; $i < @{$rgts}; $i++) {
+		my $rgt = $rgts->[$i];
 		if ($rgt->modelcompound()->isBiomassCompound() == 1) {
-			for (my $j=$i+1; $j < @{$self->modelReactionReagents()}; $j++) {
-				my $rgtc = $self->modelReactionReagents()->[$j];
+			for (my $j=$i+1; $j < @{$rgts}; $j++) {
+				my $rgtc = $rgts->[$j];
 				if ($rgt->modelcompound()->compound_uuid() eq $rgtc->modelcompound()->compound_uuid()) {
 					if ($rgt->modelcompound()->modelcompartment_uuid() ne $rgtc->modelcompound()->modelcompartment_uuid()) {
 						return 1;
@@ -122,9 +124,10 @@ sub _buildbiomassTransporter {
 }
 sub _buildisTransporter {
 	my ($self) = @_;
-	my $initrgt = $self->modelReactionReagents()->[0];
-	for (my $i=1; $i < @{$self->modelReactionReagents()}; $i++) {
-		my $rgt = $self->modelReactionReagents()->[$i];
+	my $rgts = $self->modelReactionReagents();
+	my $initrgt = $rgts->[0];
+	for (my $i=1; $i < @{$rgts}; $i++) {
+		my $rgt = $rgts->[$i];
 		if ($rgt->modelcompound()->modelcompartment_uuid() ne $initrgt->modelcompound()->modelcompartment_uuid()) {
 			return 1;	
 		}
@@ -155,8 +158,9 @@ Description:
 sub addReagentToReaction {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["coefficient","modelcompound_uuid"],{});
-	for (my $i=0; $i < @{$self->modelReactionReagents()}; $i++) {
-		if ($self->modelReactionReagents()->[$i]->modelcompound_uuid() eq $args->{modelcompound_uuid}) {
+	my $rgts = $self->modelReactionReagents();
+	for (my $i=0; $i < @{$rgts}; $i++) {
+		if ($rgts->[$i]->modelcompound_uuid() eq $args->{modelcompound_uuid}) {
 			return $self->modelReactionReagents()->[$i];
 		}
 	}
@@ -178,9 +182,10 @@ Description:
 sub addModelReactionProtein {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["proteinDataTree","complex_uuid"],{});
-	for (my $i=0; $i < @{$self->modelReactionProteins()}; $i++) {
-		if ($self->modelReactionProteins()->[$i]->complex_uuid() eq $args->{complex_uuid}) {
-			return $self->modelReactionProteins()->[$i];
+	my $prots = $self->modelReactionProteins();
+	for (my $i=0; $i < @{$prots}; $i++) {
+		if ($prots->[$i]->complex_uuid() eq $args->{complex_uuid}) {
+			return $prots->[$i];
 		}
 	}
 	my $protdata = {complex_uuid => $args->{complex_uuid}};
@@ -202,8 +207,7 @@ sub addModelReactionProtein {
 				my $genelist;
 				foreach my $gene (keys(%{$args->{proteinDataTree}->{subunits}->{$subunit}->{genes}})) {
 					push(@{$genelist},{
-						feature_uuid => $gene,
-						feature => $args->{proteinDataTree}->{subunits}->{$subunit}->{genes}->{$gene}
+						feature_uuid => $gene
 					});
 				}
 				$data->{modelReactionProteinSubunitGenes} = $genelist; 

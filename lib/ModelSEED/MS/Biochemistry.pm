@@ -56,7 +56,7 @@ sub makeDBModel {
 		mapping_uuid => "00000000-0000-0000-0000-000000000000",
 	});
 	my $mdl = ModelSEED::MS::Model->new({
-		id => $self->id().".model",
+		id => $self->name().".model",
 		version => 0,
 		type => "dbmodel",
 		name => $self->name().".model",
@@ -78,16 +78,18 @@ sub makeDBModel {
 	for (my $i=0; $i < @{$args->{allowableCompartments}}; $i++) {
 		$hashes->{allowcomp}->{$args->{allowableCompartments}->[$i]} = 1;
 	}
-	for (my $i=0; $i < @{$self->reactioninstances()}; $i++) {
-		my $rxn = $self->reactioninstances()->[$i];
+	my $reactioninstances = $self->reactioninstances();
+	for (my $i=0; $i < @{$reactioninstances}; $i++) {
+		my $rxn = $reactioninstances->[$i];
 		if (!defined($hashes->{forbidden}->{$rxn->uuid()})) {
 			my $add = 1;
 			if (!defined($hashes->{guaranteed}->{$rxn->uuid()})) {
 				if (!defined($hashes->{allowcomp}->{$rxn->compartment_uuid()})) {
 					$add = 0;	
 				}
-				for (my $j=0; $j < @{$rxn->transports()};$j++) {
-					if (!defined($hashes->{allowcomp}->{$rxn->transports()->[$j]->compartment_uuid()})) {
+				my $transports = $rxn->transports();
+				for (my $j=0; $j < @{$transports};$j++) {
+					if (!defined($hashes->{allowcomp}->{$transports->[$j]->compartment_uuid()})) {
 						$add = 0;
 						last;
 					}

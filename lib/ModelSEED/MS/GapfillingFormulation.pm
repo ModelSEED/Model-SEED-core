@@ -147,8 +147,9 @@ sub runGapFilling {
 			maximizeObjective => 1,
 			fbaObjectiveTerms => [{
 				coefficient => 1,
+				entityType => "Biomass",
 				variableType => "biomassflux",
-				variable_uuid => $model->biomasses()->[0]->uuid()
+				entity_uuid => $model->biomasses()->[0]->uuid()
 			}]			
 		});
 	}
@@ -228,16 +229,18 @@ sub runGapFilling {
 		my $term = $fbaform->fbaObjectiveTerms()->[$i];
 		my $obj = $dbmodel->queryObject($typesToAttribute->{$term->entityType()},{mapped_uuid => $term->entity_uuid()});
 		$const->add("fbaConstraintVariables",{
-			entity_uuid => $obj->entity_uuid(),
+			entity_uuid => $obj->uuid(),
 			entityType => $term->entityType(),
 			variableType => $term->variableType(),
 			coefficient => $term->coefficient()
 		});
 	}
 	#Labeling all dbmodel reactions as candidates and creating objective terms
-	for (my $i=0; $i < @{$dbmodel->modelreactions()}; $i++) {
-		my $rxn = $dbmodel->modelreactions()->[$i];
+	my $mdlrxns = $dbmodel->modelreactions();
+	for (my $i=0; $i < @{$mdlrxns}; $i++) {
+		my $rxn = $mdlrxns->[$i];
 		if (!defined($rxn->modelReactionProteins()->[0])) {
+			print "Adding candidate protein!\n";
 			$rxn->add("modelReactionProteins",{
 				complex_uuid => "00000000-0000-0000-0000-000000000000",
 				note => "CANDIDATE"
@@ -245,17 +248,19 @@ sub runGapFilling {
 		}
 		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
 		if ($costs->{forwardDirection} != 0) {
-			$gffbaform->add("objectiveTerms",{
+			print "Forward cost!\n";
+			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
-				entityType => "Reaction",
+				entityType => "ModelReaction",
 				variableType => "forfluxuse",
 				coefficient => $costs->{forwardDirection}
 			});
 		}
 		if ($costs->{reverseDirection} != 0) {
-			$gffbaform->add("objectiveTerms",{
+			print "Reverse cost!\n";
+			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
-				entityType => "Reaction",
+				entityType => "ModelReaction",
 				variableType => "revfluxuse",
 				coefficient => $costs->{reverseDirection}
 			});
@@ -267,8 +272,9 @@ sub runGapFilling {
 	my $gfsolution = $self->add("gapfillingSolutions",{
 		solutionCost => $solution->objectiveValue()
 	});
-	for (my $i=0; $i < @{$solution->fbaReactionVariables()}; $i++) {
-		my $var = $solution->fbaReactionVariables()->[$i];
+	my $rxnvars = $solution->fbaReactionVariables();
+	for (my $i=0; $i < @{$rxnvars}; $i++) {
+		my $var = $rxnvars->[$i];
 		if ($var->variableType() eq "flux") {
 			my $rxn = $var->modelreaction();
 			if ($var->value() < -0.0000001) {

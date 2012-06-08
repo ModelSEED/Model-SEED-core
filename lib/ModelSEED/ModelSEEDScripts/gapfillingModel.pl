@@ -15,20 +15,18 @@ $ENV{CPLEX} = "C:/ILOG/CPLEX_Studio_AcademicResearch122/cplex/bin/x86_win32/cple
 
 #Loading biochemistry
 my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
-open BIOCHEM, "<".$directory."FullBiochemistry.json";
+open BIOCHEM, "<".$directory."biochemistry.json";
 my $string = join("\n",<BIOCHEM>);
 close BIOCHEM;
 my $objectData = JSON::Any->decode($string);
 my $biochem = ModelSEED::MS::Biochemistry->new($objectData);
 #Loading mapping
-open MAPPING, "<".$directory."FullMapping.json";
+open MAPPING, "<".$directory."mapping.json";
 $string = join("\n",<MAPPING>);
 close MAPPING;
 $objectData = JSON::Any->decode($string);
 my $mapping = ModelSEED::MS::Mapping->new($objectData);
 $mapping->biochemistry($biochem);
-print "Loaded!";
-
 open GAPFORM, "<c:/Code/Model-SEED-core/data/exampleObjects/GapfillingFormulation.exchange";
 my $filedata = [<GAPFORM>];
 close GAPFORM;
@@ -40,6 +38,7 @@ my $gapform = $exFact->buildObjectFromExchangeFileArray({
 	array => $filedata,
 	Biochemistry => $biochem,
 });
+print "Loaded!";
 $gapform->biochemistry($biochem);
 $gapform->media($biochem->getObject("media",$gapform->media_uuid()));
 open MODEL, "<c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.json";

@@ -57,7 +57,7 @@ sub buildFromCPLEXFile {
 			my $slack = $3;
 			my $constraint = $self->parent()->queryObject("constraints",{"index" => $2});
 			if (defined($constraint)) {
-				$self->add("solutionConstraints",{
+				$self->add("solutionconstraints",{
 					constraint_uuid => $constraint->uuid(),
 					constraint => $constraint,
 					slack => $slack
@@ -67,7 +67,7 @@ sub buildFromCPLEXFile {
 			my $value = $3;
 			my $variable = $self->parent()->queryObject("variables",{"index" => $2});
 			if (defined($variable)) {
-				$self->add("solutionVariables",{
+				$self->add("solutionvariables",{
 					variable_uuid => $variable->uuid(),
 					variable => $variable,
 					value => $value
@@ -116,7 +116,7 @@ sub buildFromGLPKFile {
 			my $slack = $bound - $activity;
 			my $constraint = $self->parent()->queryObject("constraints",{"index" => $index});
 			if (defined($constraint)) {
-				$self->add("solutionConstraints",{
+				$self->add("solutionconstraints",{
 					constraint_uuid => $constraint->uuid(),
 					constraint => $constraint,
 					slack => $slack
@@ -129,7 +129,7 @@ sub buildFromGLPKFile {
 			my $value = $4;
 			my $variable = $self->parent()->queryObject("variables",{"index" => $index});
 			if (defined($variable)) {
-				$self->add("solutionVariables",{
+				$self->add("solutionvariables",{
 					variable_uuid => $variable->uuid(),
 					variable => $variable,
 					value => $value

@@ -38,7 +38,8 @@ sub _buildequationcode {
 }
 sub _buildbalanced {
 	my ($self,$args) = @_;
-	return $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
+	my $result = $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
+	return $result->{balanced};
 }
 sub _buildmapped_uuid {
 	my ($self) = @_;
@@ -283,18 +284,20 @@ sub checkReactionMassChargeBalance {
 	my $atomHash;
 	my $netCharge = 0;
 	#Adding up atoms and charge from all reagents
-	for (my $i=0; $i < @{$self->reagents()};$i++) {
-		my $rgt = $self->reagents()->[$i];
+	my $rgts = $self->reagents();
+	for (my $i=0; $i < @{$rgts};$i++) {
+		my $rgt = $rgts->[$i];
 		#Problems are: compounds with noformula, polymers (see next line), and reactions with duplicate compounds in the same compartment
 		#Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
 		my $cpdatoms = $rgt->compound()->calculateAtomsFromFormula();
 		if (defined($cpdatoms->{error})) {
 			return {
+				balanced => 0,
 				error => $cpdatoms->{error}
 			};	
 		}
 		foreach my $atom (keys(%{$cpdatoms})) {
-			if (!define($atomHash->{$atom})) {
+			if (!defined($atomHash->{$atom})) {
 				$atomHash->{$atom} = 0;
 			}
 			$netCharge += $rgt->coefficient()*$rgt->compound()->defaultCharge();

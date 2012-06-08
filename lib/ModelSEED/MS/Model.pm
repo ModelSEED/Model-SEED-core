@@ -55,9 +55,9 @@ sub findCreateEquivalentCompartment {
 		});
 		$cmp = $self->addCompartmentToModel({
 			compartment => $biocmp,
-			pH => $cmp->pH(),
-			potential => $cmp->potential(),
-			compartmentIndex => $cmp->compartmentIndex(),
+			pH => $mdlcmp->pH(),
+			potential => $mdlcmp->potential(),
+			compartmentIndex => $mdlcmp->compartmentIndex(),
 		});
 	}
 	$mdlcmp->mapped_uuid($cmp->uuid());
@@ -83,7 +83,7 @@ sub findCreateEquivalentCompound {
 		modelCompartmentLabel => $inmdlcpd->modelCompartmentLabel()
 	});
 	if (!defined($outcpd) && $args->{create} == 1) {
-		my $mdlcmp = $self->findEquivalentCompartment({
+		my $mdlcmp = $self->findCreateEquivalentCompartment({
 			modelcompartment => $inmdlcpd->modelcompartment(),
 			create => 1
 		});
@@ -132,19 +132,21 @@ sub findCreateEquivalentReaction {
 			protons => $inmdlrxn->protons(),
 			modelcompartment_uuid => $mdlcmp->uuid()
 		});
-		for (my $i=0; $i < @{$inmdlrxn->modelReactionReagents()}; $i++) {
-			my $rgt = $inmdlrxn->modelReactionReagents()->[$i];
+		my $rgts = $inmdlrxn->modelReactionReagents();
+		for (my $i=0; $i < @{$rgts}; $i++) {
+			my $rgt = $rgts->[$i];
 			my $mdlcpd = $self->findCreateEquivalentCompound({
 				modelcompound => $rgt->modelcompound()
 			});
-			$outrxn->add("modelreactionreagents",{
+			$outrxn->add("modelReactionReagents",{
 				modelcompound_uuid => $mdlcpd->uuid(),
 				coefficient => $rgt->coefficient()
 			});
 		}
-		for (my $i=0; $i < @{$inmdlrxn->modelReactionProteins()}; $i++) {
-			my $prot = $inmdlrxn->modelReactionProteins()->[$i];
-			$outrxn->add("modelreactionreagents",$prot->serializeToDB());
+		my $prots = $inmdlrxn->modelReactionProteins();
+		for (my $i=0; $i < @{$prots}; $i++) {
+			my $prot = $prots->[$i];
+			$outrxn->add("modelReactionProteins",$prot->serializeToDB());
 		}
 	}
 	$inmdlrxn->mapped_uuid($outrxn->uuid());
@@ -178,8 +180,9 @@ sub findCreateEquivalentBiomass {
 			cofactor => $inmdlbio->cofactor(),
 			energy => $inmdlbio->energy()
 		});
-		for (my $i=0; $i < @{$inmdlbio->biomasscompounds()}; $i++) {
-			my $rgt = $inmdlbio->biomasscompounds()->[$i];
+		my $cpds = $inmdlbio->biomasscompounds();
+		for (my $i=0; $i < @{$cpds}; $i++) {
+			my $rgt = $cpds->[$i];
 			my $mdlcpd = $self->findCreateEquivalentCompound({
 				modelcompound => $rgt->modelcompound()
 			});
@@ -205,20 +208,24 @@ sub mergeModel {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["model"],{});
 	my $mdl = $args->{model};
-	for (my $i = 0; $i < @{$mdl->modelcompartments()}; $i++) {
-		my $mdlcmp = $mdl->modelcompartments()->[$i];
+	my $cmps = $mdl->modelcompartments();
+	for (my $i = 0; $i < @{$cmps}; $i++) {
+		my $mdlcmp = $cmps->[$i];
 		my $cmp = $self->findCreateEquivalentCompartment({modelcompartment => $mdlcmp,create => 1});
 	}
-	for (my $i = 0; $i < @{$mdl->modelcompounds()}; $i++) {
-		my $mdlcpd = $mdl->modelcompounds()->[$i];
+	my $cpds = $mdl->modelcompounds();
+	for (my $i = 0; $i < @{$cpds}; $i++) {
+		my $mdlcpd = $cpds->[$i];
 		my $cpd = $self->findCreateEquivalentCompound({modelcompound => $mdlcpd,create => 1});
 	}
-	for (my $i = 0; $i < @{$mdl->modelreactions()}; $i++) {
-		my $mdlrxn = $mdl->modelreactions()->[$i];
+	my $rxns = $mdl->modelreactions();
+	for (my $i = 0; $i < @{$rxns}; $i++) {
+		my $mdlrxn = $rxns->[$i];
 		my $rxn = $self->findCreateEquivalentReaction({modelreaction => $mdlrxn,create => 1});
 	}
-	for (my $i = 0; $i < @{$mdl->biomasses()}; $i++) {
-		my $mdlbio = $mdl->biomasses()->[$i];
+	my $bios = $mdl->biomasses();
+	for (my $i = 0; $i < @{$bios}; $i++) {
+		my $mdlbio = $bios->[$i];
 		my $bio = $self->findCreateEquivalentBiomass({biomass => $mdlbio,create => 1});
 	}
 }
@@ -240,7 +247,6 @@ sub buildModelFromAnnotation {
 	my $mapping = $args->{mapping};
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
-	print "Scanning features!\n";
 	my $roleFeatures;
 	my $features = $annotaton->features();
 	for (my $i=0; $i < @{$features}; $i++) {
@@ -251,7 +257,6 @@ sub buildModelFromAnnotation {
 			push(@{$roleFeatures->{$ftrrole->role_uuid()}->{$ftrrole->compartment()}},$ftr);
 		}
 	}
-	print "Scanning complexes!\n";
 	my $complexes = $mapping->complexes();
 	for (my $i=0; $i < @{$complexes};$i++) {
 		my $cpx = $complexes->[$i];
@@ -308,7 +313,6 @@ sub buildModelFromAnnotation {
 			}
 		}
 	}
-	print "Scanning universal reactions!\n";
 	my $universalReactions = $mapping->universalReactions();
 	foreach my $universalRxn (@{$universalReactions}) {
 		my $mdlrxn = $self->addReactionInstanceToModel({
@@ -335,90 +339,7 @@ Description:
 =cut
 sub buildModelByLayers {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,[],{
-		annotation => $self->annotation(),
-		mapping => $self->mapping(),
-	});
-	my $mapping = $args->{mapping};
-	my $annotaton = $args->{annotation};
-	my $biochem = $mapping->biochemistry();
-	my $type = "Singlegenome";
-	if (@{$annotaton->genomes()} > 0) {
-		$type = "Metagenome";
-	}
-	my $roleFeatures;
-	for (my $i=0; $i < @{$annotaton->features()}; $i++) {
-		my $ftr = $annotaton->features()->[$i];
-		for (my $j=0; $j < @{$ftr->featureroles()}; $j++) {
-			push(@{$roleFeatures->{$ftr->featureroles()->[$j]->role_uuid()}->{$ftr->featureroles()->[$j]->compartment()}},$ftr);
-		}
-	}
-	for (my $i=0; $i < @{$mapping->complexes()};$i++) {
-		my $cpx = $mapping->complexes()->[$i];
-		my $compartments;
-		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
-			$compartments->{$cpx->complexreactioninstances()->[$j]->compartment()} = {present => 0,subunits => {}};
-		}
-		for (my $j=0; $j < @{$cpx->complexroles()}; $j++) {
-			my $cpxrole = $cpx->complexroles()->[$j];
-			if (defined($roleFeatures->{$cpxrole->role_uuid()})) {
-				foreach my $compartment (keys(%{$roleFeatures->{$cpxrole->role_uuid()}})) {
-					if ($compartment eq "u") {
-						foreach my $rxncomp (keys(%{$compartments})) {
-							if ($cpxrole->triggering() == 1) {
-								$compartments->{$rxncomp}->{present} = 1;
-							}
-							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
-							$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
-							foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
-								$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
-							}
-						}
-					} elsif (defined($compartments->{$compartment})) {
-						if ($cpxrole->triggering() == 1) {
-							$compartments->{$compartment}->{present} = 1;
-						}
-						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
-						$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
-						foreach my $feature (@{$roleFeatures->{$cpxrole->role_uuid()}->{$compartment}}) {
-							$compartments->{$compartment}->{subunits}->{$cpxrole->role_uuid()}->{genes}->{$feature->uuid()} = $feature;	
-						}
-					}
-				}
-			} elsif ($cpxrole->optional() == 0) {
-				foreach my $rxncomp (keys(%{$compartments})) {
-					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{triggering} = $cpxrole->triggering();
-					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{optional} = $cpxrole->optional();
-					$compartments->{$rxncomp}->{subunits}->{$cpxrole->role_uuid()}->{note} = "Complex-based-gapfilling";
-				}
-			}
-		}
-		for (my $j=0; $j < @{$cpx->complexreactioninstances()}; $j++) {
-			my $cpxrxninst = $cpx->complexreactioninstances()->[$j];
-			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
-				my $mdlrxn = $self->addReactionInstanceToModel({
-					reactionInstance => $cpxrxninst->reactioninstance(),
-				});
-				$mdlrxn->addModelReactionProtein({
-					proteinDataTree => $compartments->{$cpxrxninst->compartment()},
-					complex_uuid => $cpx->uuid()
-				});
-			}
-		}
-	}
-	foreach my $universalRxn (@{$mapping->universalReactions()}) {
-		my $mdlrxn = $self->addReactionInstanceToModel({
-			reactionInstance => $universalRxn->reactioninstance(),
-		});
-		$mdlrxn->addModelReactionProtein({
-			proteinDataTree => {note => "Universal reaction"},
-			complex_uuid => "00000000-0000-0000-0000-000000000000"
-		});
-	}
-	my $bio = $self->createStandardFBABiomass({
-		annotation => $self->annotation(),
-		mapping => $self->mapping(),
-	});
+	
 }
 
 =head3 createStandardFBABiomass
@@ -431,7 +352,6 @@ Description:
 =cut
 sub createStandardFBABiomass {
 	my ($self,$args) = @_;
-	print "Building biomass!\n";
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
@@ -453,7 +373,6 @@ sub createStandardFBABiomass {
 	}
 	my $biomassComps;
 	my $biomassCompByUUID;
-	print "Scanning template components!\n";
 	my $biomassTemplateComponents = $template->biomassTemplateComponents();
 	for (my $i=0; $i < @{$biomassTemplateComponents}; $i++) {
 		my $tmpComp = $biomassTemplateComponents->[$i];
@@ -466,7 +385,6 @@ sub createStandardFBABiomass {
 		}
 	}
 	my $coef;
-	print "Building equation!\n";
 	my $gc = $anno->genomes()->[0]->gc();
 	foreach my $class (keys(%{$biomassComps})) {
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {

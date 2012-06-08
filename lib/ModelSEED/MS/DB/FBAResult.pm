@@ -38,7 +38,7 @@ has fbaBiomassVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 
 # LINKS:
-has fbaformulation => (is => 'rw', isa => 'ModelSEED::MS::fbaformulations', type => 'link(ModelAnalysis,fbaformulations,fbaformulation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildfbaformulation', weak_ref => 1);
+has fbaformulation => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', type => 'link(Store,FBAFormulation,fbaformulation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildfbaformulation', weak_ref => 1);
 
 
 # BUILDERS:
@@ -46,7 +46,7 @@ sub _builduuid { return Data::UUID->new()->create_str(); }
 sub _buildmodDate { return DateTime->now()->datetime(); }
 sub _buildfbaformulation {
   my ($self) = @_;
-  return $self->getLinkedObject('ModelAnalysis','fbaformulations',$self->fbaformulation_uuid());
+  return $self->getLinkedObject('Store','FBAFormulation',$self->fbaformulation_uuid());
 }
 
 
