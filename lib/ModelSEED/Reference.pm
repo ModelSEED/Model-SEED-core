@@ -294,7 +294,12 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ "uuid" ],
                         class => "ModelSEED::MS::Compartment",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Biochemistry",
+                    },
                 }
             },
             model   => {
@@ -306,7 +311,27 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Biomass",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Model",
+                    },
+                    modelcompounds => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelCompound",
+                    },
+                    modelcompartments => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelCompartment",
+                    },
+                    modelreactions => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelReaction",
+                    },
                 }
             },
             mapping =>   => {
@@ -333,7 +358,12 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::BiomassTemplate",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Mapping",
+                    },
                 }
             },
             annotation =>   => {
@@ -350,7 +380,12 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Genome",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Annotation",
+                    },
                 }
             },
             user    => {},
