@@ -74,9 +74,6 @@ sub featuresInRoleSet {
     return $results;
 }
 
-
-
-
 =head3 createStandardFBAModel
 Definition:
 	ModelSEED::MS::Model = ModelSEED::MS::Annotation->createStandardFBAModel({

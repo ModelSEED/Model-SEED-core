@@ -9,6 +9,7 @@ use Class::Autouse qw(
     JSON
 );
 use base 'App::Cmd::Command';
+use Data::Dumper;
 
 sub abstract { return "Get an object from workspace or datastore."; }
 
