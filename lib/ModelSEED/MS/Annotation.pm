@@ -33,6 +33,50 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
+sub roles {
+    my ($self) = @_;
+    my $roles = [];
+    my $features = $self->features;
+    foreach my $feature (@$features) {
+        push(@$roles, map { $_->role } @{$feature->featureroles});
+    }
+    return $roles;
+}
+
+sub subsystems {
+    my ($self) = @_;
+    my $subsystems = [];
+    my $roles = $self->roles;
+    foreach my $role (@$roles) {
+        my $results = $role->sets_with_role({type => "SEED Subsystem"});
+        push(@$subsystems, @$results);
+    }
+    return $subsystems;
+}
+
+sub featuresInRoleSet {
+    my ($self, $roleSet) = @_;
+    my $roleHash = {};
+    my $results = [];
+    foreach my $roleSetRole (@{$roleSet->rolesetroles}) {
+        $roleHash->{$roleSetRole->role_uuid} = 1;
+    }
+    my $features = $self->features;
+    foreach my $feature (@$features) {
+        my $featureRoles = $feature->featureroles;
+        foreach my $featureRole (@$featureRoles) {
+            if(defined($roleHash->{$featureRole->role_uuid})) {
+                push(@$results, $feature);
+                last;
+            }
+        }
+    }
+    return $results;
+}
+
+
+
+
 =head3 createStandardFBAModel
 Definition:
 	ModelSEED::MS::Model = ModelSEED::MS::Annotation->createStandardFBAModel({
