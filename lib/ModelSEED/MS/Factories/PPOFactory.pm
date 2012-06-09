@@ -474,7 +474,7 @@ sub addAliases {
 		$rxn = $biochemistry->getObjectByAlias("reactioninstances",$rxnals->[$i]->REACTION(),"ModelSEED");
 		if (defined($rxn)) {
 			$biochemistry->addAlias({
-				attribute => "reactionsinstances",
+				attribute => "reactioninstances",
 				aliasName => $rxnals->[$i]->type(),
 				alias => $rxnals->[$i]->alias(),
 				uuid => $rxn->uuid()
@@ -487,7 +487,8 @@ sub createMapping {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
 		name => $self->namespace()."/primary.mapping",
-		database => $self->figmodel()->database()
+		database => $self->figmodel()->database(),
+        verbose => 0,
 	});
 	my $mapping = ModelSEED::MS::Mapping->new({
 		name=>$args->{name},
@@ -703,6 +704,7 @@ sub createMapping {
 		}
 	};
 	my $roles = $args->{database}->get_objects("role");
+    print "Processing ".scalar(@$roles)." roles\n" if($args->{verbose});
 	for (my $i=0; $i < @{$roles}; $i++) {
 		my $role = $mapping->add("roles",{
 			locked => "0",
@@ -717,6 +719,7 @@ sub createMapping {
 		});
 	}
 	my $subsystems = $args->{database}->get_objects("subsystem");
+    print "Processing ".scalar(@$subsystems)." subsystems\n" if($args->{verbose});
 	for (my $i=0; $i < @{$subsystems}; $i++) {
 		my $ss = $mapping->add("rolesets",{
 			public => "1",
@@ -778,6 +781,7 @@ sub createMapping {
 		}
 	}
 	my $reactionRules = $args->{database}->get_objects("rxncpx");
+    print "Processing ".scalar(@$reactionRules)." reactions\n" if($args->{verbose});
 	for (my $i=0; $i < @{$reactionRules}; $i++) {
 		if ($reactionRules->[$i]->master() eq "1") {
 			my $complex = $mapping->getObjectByAlias("complexes",$reactionRules->[$i]->COMPLEX(),"ModelSEED");
