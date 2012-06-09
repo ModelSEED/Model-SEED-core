@@ -8,15 +8,22 @@ use Class::Autouse qw(
 use base 'App::Cmd::Command';
 
 sub abstract { return "List and set default objects and aliases"; }
-sub usage_desc {
-    return <<END;
-ms defaults [ parameter [--set value ] ]
+sub usage_desc { return "ms defaults [ parameter [--set value ] ]"; }
+sub description { return <<END;
+Set the default object to use commands if no reference is passed.
+Valid object parameters include:
+
+    biochemistry.alias.set  - the ids to use for reactions and compounds
+    biochemistry            - which biochemistry to use 
+    mapping                 - which mapping to use
+    model                   - which model to use
+    annotation              - whcih annotated genome to use
 END
 }
 sub opt_spec {
     return (
         ["set|s:s", "Set default attribute to string value"],
-        ["unset", "Remove attribute value"],
+        ["unset|u", "Remove attribute value"],
     );
 }
 
@@ -27,6 +34,7 @@ sub execute {
         biochemistry => \&_ref,
         mapping => \&_ref,
         model => \&_ref,
+        annotation => \&_ref,
     };
     my $max_string_size = max map { length $_ } keys %$blessed_params;
     my $config = ModelSEED::Configuration->new;
@@ -42,11 +50,19 @@ sub execute {
     } elsif(defined($arg) && $opts->{unset}) {
         $config->config->{$arg} = undef;
         $config->save;
-    } elsif(defined($arg) && defined($opts->{set})) {
-        my $value = $opts->{set};
-        die "Invalid value $value for $arg" unless($blessed_params->{$arg}->($value));
-        $config->config->{$arg} = $opts->{set};
-        $config->save;
+    } elsif(defined($arg)) {
+        $self->usage_error("Unknown default name: $arg") unless(defined($blessed_params->{$arg}));
+        if(defined($opts->{set})) {
+            my $value = $opts->{set};
+            $self->usage_error("Invalid value $value for $arg") unless($blessed_params->{$arg}->($value));
+            $config->config->{$arg} = $opts->{set};
+            $config->save;
+        } elsif(defined($opts->{unset})) {
+            delete $config->config->{$arg};
+            $config->save;
+        } else {
+            print $config->config->{$arg} . "\n";
+        }
     }
 }
 
