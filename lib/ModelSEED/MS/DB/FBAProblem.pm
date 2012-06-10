@@ -23,10 +23,6 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
 has maximize => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has milp => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -73,46 +69,10 @@ my $attributes = [
             'default' => 0,
             'type' => 'Bool',
             'perm' => 'rw'
-          },
-          {
-            'len' => 32,
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'decomposeReversibleFlux',
-            'default' => 0,
-            'type' => 'Bool',
-            'perm' => 'rw'
-          },
-          {
-            'len' => 32,
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'decomposeReversibleDrainFlux',
-            'default' => 0,
-            'type' => 'Bool',
-            'perm' => 'rw'
-          },
-          {
-            'len' => 32,
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'fluxUseVariables',
-            'default' => 0,
-            'type' => 'Bool',
-            'perm' => 'rw'
-          },
-          {
-            'len' => 32,
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'drainfluxUseVariables',
-            'default' => 0,
-            'type' => 'Bool',
-            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, maximize => 1, milp => 2, decomposeReversibleFlux => 3, decomposeReversibleDrainFlux => 4, fluxUseVariables => 5, drainfluxUseVariables => 6};
+my $attribute_map = {uuid => 0, maximize => 1, milp => 2};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

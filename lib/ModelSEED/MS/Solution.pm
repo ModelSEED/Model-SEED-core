@@ -43,7 +43,7 @@ sub buildFromCPLEXFile {
 	if (!-e $args->{filename}) {
 		ModelSEED::utilities::ERROR("Solution file not found!");	
 	}
-	my $data = ModelSEED::utilities::LOADIFLE($args->{filename});
+	my $data = ModelSEED::utilities::LOADFILE($args->{filename});
 	for (my $i=0; $i < @{$data}; $i++) {
 		if ($data->[$i] =~ m/objectiveValue=\"(.+)\"/) {
 			$self->objective($1);

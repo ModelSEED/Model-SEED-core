@@ -100,13 +100,13 @@ sub integrateReactionFluxRawData {
 		if ($var->lowerBound() > 0) {
 			$fbavar->lowerBound($var->lowerBound());
 		}
-		if ($var->max() > 0) {
+		if ($solVar->max() > 0) {
 			$fbavar->max($solVar->max());
 		}
-		if ($var->min() > 0) {
+		if ($solVar->min() > 0) {
 			$fbavar->min($solVar->min());
 		}
-		if ($var->value() > 0) {
+		if ($solVar->value() > 0) {
 			$fbavar->value($solVar->value());
 		}
 	} elsif ($var->type() eq "rev".$type) {
@@ -116,13 +116,13 @@ sub integrateReactionFluxRawData {
 		if ($var->lowerBound() > 0) {
 			$fbavar->upperBound((-1*$var->lowerBound()));
 		}
-		if ($var->max() > 0) {
+		if ($solVar->max() > 0) {
 			$fbavar->min((-1*$solVar->max()));
 		}
-		if ($var->min() > 0) {
+		if ($solVar->min() > 0) {
 			$fbavar->max((-1*$solVar->min()));
 		}
-		if ($var->value() > 0) {
+		if ($solVar->value() > 0) {
 			$fbavar->value((-1*$solVar->value()));
 		}
 	}

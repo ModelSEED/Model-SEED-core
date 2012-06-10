@@ -311,10 +311,6 @@ $objectDefinitions->{FBAProblem} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'maximize',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
 		{name => 'milp',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 0},
-		{name => 'decomposeReversibleFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'decomposeReversibleDrainFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'fluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'drainfluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
 	],
 	subobjects => [
 		{name => "objectiveTerms",class => "ObjectiveTerm",type => "child"},

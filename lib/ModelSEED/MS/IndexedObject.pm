@@ -64,7 +64,9 @@ sub add {
 	if (defined($self->indices->{$attribute})) {
 		my $indices = $self->indices->{$attribute};
 		foreach my $attribute (keys(%{$indices})) {
-			push(@{$indices->{$attribute}->{$obj_info->{object}->$attribute()}},$obj_info);
+			if (defined($obj_info->{object}->$attribute())) {
+				push(@{$indices->{$attribute}->{$obj_info->{object}->$attribute()}},$obj_info);
+			}
 		}
 	}
 	push(@{$self->$method},$obj_info); 

@@ -221,7 +221,7 @@ sub runGapFilling {
 	}
 	#Making a constraint forcing the previous objective to be greater than zero
 	my $const = $gffbaform->add("fbaConstraints",{
-		name => "Objective constraint",
+		name => "ObjectiveConstraint",
 		rhs => 0.01,
 		sign => ">"
 	});
@@ -248,7 +248,6 @@ sub runGapFilling {
 		}
 		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
 		if ($costs->{forwardDirection} != 0) {
-			print "Forward cost!\n";
 			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
 				entityType => "ModelReaction",
@@ -257,7 +256,6 @@ sub runGapFilling {
 			});
 		}
 		if ($costs->{reverseDirection} != 0) {
-			print "Reverse cost!\n";
 			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
 				entityType => "ModelReaction",
