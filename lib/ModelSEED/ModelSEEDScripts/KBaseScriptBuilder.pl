@@ -39,12 +39,12 @@ my $scripts = [{
 		primaryInput => ["formulation-id","txt"],
 		primaryOutput => ["formulation-file","ref"],
 	},{
-		name => "print_gapfilling_formulation",
+		name => "gapfillingFormulation_to_exchangeFormat",
 		"package" => "fbaModelServices",
 		primaryInput => ["formulation-file","ref"],
 		primaryOutput => ["exchange-file","txt"],
 	},{
-		name => "create_gapfilling_formulation",
+		name => "exchangeFormat_to_gapfillingFormulation",
 		"package" => "fbaModelServices",
 		primaryInput => ["exchange-file","txt"],
 		primaryOutput => ["formulation-file","ref"],
@@ -55,7 +55,7 @@ my $scripts = [{
 		primaryOutput => ["model-file","ref"],
 		secondaryInput => ["form","formulation"]
 	},{
-		name => "runfba_on_fbamodel",
+		name => "runfba",
 		"package" => "fbaModelServices",
 		primaryInput => ["model-file","ref"],
 		primaryOutput => ["model-file","ref"],
@@ -68,8 +68,12 @@ foreach my $curr (@{$scripts}) {
 	my $secload = '';
 	my $secargs = '';
 	my $jsonparse = '';
+	my $outputFormatting = 'print $out_fh $output;';
 	if ($curr->{primaryInput}->[1] eq "ref") {
 		$jsonparse = "\n".'    $input = $json->decode($input_txt)';	
+	}
+	if ($curr->{primaryOutput}->[1] eq "ref") {
+		$outputFormatting = '$json->pretty(1);'."\n".'print $out_fh $json->encode($output);'
 	}
 	if (defined($curr->{secondaryInput})) {
 		$secvar = "\n".'my $sinput;';
@@ -147,8 +151,7 @@ my $input;
 '.$secload.'
 my $output = $'.$curr->{"package"}.'Obj->'.$curr->{name}.'($input'.$secargs.');
 
-$json->pretty(1);
-print $out_fh $json->encode($output);
+'.$outputFormatting.'
 close($out_fh);';
 ModelSEED::utilities::PRINTFILE("../../KBaseScripts/".$curr->{"package"}."/".$curr->{name}.".pl",[$text]);
 };

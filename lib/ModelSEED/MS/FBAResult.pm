@@ -42,10 +42,10 @@ sub buildFromOptSolution {
 			$self->integrateReactionFluxRawData($var);
 		} elsif ($type eq "biomassflux") {
 			$self->add("fbaBiomassVariables",{
-				biomass_uuid => $var->entity_uuid(),
+				biomass_uuid => $var->variable()->entity_uuid(),
 				variableType => $type,
-				lowerBound => $var->lowerBound(),
-				upperBound => $var->upperBound(),
+				lowerBound => $var->variable()->lowerBound(),
+				upperBound => $var->variable()->upperBound(),
 				min => $var->min(),
 				max => $var->max(),
 				value => $var->value()
@@ -73,12 +73,84 @@ sub integrateReactionFluxRawData {
 		$type = "fluxuse";	
 	}
 	my $fbavar = $self->queryObject("fbaReactionVariables",{
-		reaction_uuid => $var->entity_uuid(),
+		modelreaction_uuid => $var->entity_uuid(),
 		variableType => $type
 	});
 	if (!defined($fbavar)) {
 		$fbavar = $self->add("fbaReactionVariables",{
 			modelreaction_uuid => $var->entity_uuid(),
+			variableType => $type,
+			lowerBound => $min,
+			upperBound => $max,
+			min => $min,
+			max => $max,
+			value => 0
+		});
+	}
+	if ($var->type() eq $type) {
+		$fbavar->upperBound($var->upperBound());
+		$fbavar->lowerBound($var->lowerBound());
+		$fbavar->max($solVar->max());
+		$fbavar->min($solVar->min());
+		$fbavar->value($solVar->value());
+	} elsif ($var->type() eq "for".$type) {
+		if ($var->upperBound() > 0) {
+			$fbavar->upperBound($var->upperBound());	
+		}
+		if ($var->lowerBound() > 0) {
+			$fbavar->lowerBound($var->lowerBound());
+		}
+		if ($solVar->max() > 0) {
+			$fbavar->max($solVar->max());
+		}
+		if ($solVar->min() > 0) {
+			$fbavar->min($solVar->min());
+		}
+		if ($solVar->value() > 0) {
+			$fbavar->value($solVar->value());
+		}
+	} elsif ($var->type() eq "rev".$type) {
+		if ($var->upperBound() > 0) {
+			$fbavar->lowerBound((-1*$var->upperBound()));
+		}
+		if ($var->lowerBound() > 0) {
+			$fbavar->upperBound((-1*$var->lowerBound()));
+		}
+		if ($solVar->max() > 0) {
+			$fbavar->min((-1*$solVar->max()));
+		}
+		if ($solVar->min() > 0) {
+			$fbavar->max((-1*$solVar->min()));
+		}
+		if ($solVar->value() > 0) {
+			$fbavar->value((-1*$solVar->value()));
+		}
+	}
+}
+=head3 integrateCompoundFluxRawData
+Definition:
+	void ModelSEED::MS::FBAResults->integrateCompoundFluxRawData();
+Description:
+	Translates a raw flux or flux use variable into a compound variable with decomposed reversible reactions recombined
+=cut
+sub integrateCompoundFluxRawData {
+	my ($self,$solVar) = @_;
+	my $var = $solVar->variable();
+	my $type = "drainflux";
+	my $max = 0;
+	my $min = 0;
+	if ($var->type() =~ m/use$/) {
+		$max = 1;
+		$min = -1;
+		$type = "drainfluxuse";	
+	}
+	my $fbavar = $self->queryObject("fbaCompoundVariables",{
+		modelcompound_uuid => $var->entity_uuid(),
+		variableType => $type
+	});
+	if (!defined($fbavar)) {
+		$fbavar = $self->add("fbaCompoundVariables",{
+			modelcompound_uuid => $var->entity_uuid(),
 			variableType => $type,
 			lowerBound => $min,
 			upperBound => $max,
@@ -117,84 +189,13 @@ sub integrateReactionFluxRawData {
 			$fbavar->upperBound((-1*$var->lowerBound()));
 		}
 		if ($var->max() > 0) {
-			$fbavar->min((-1*$solVar->max()));
+			$fbavar->min((-1*$solVar->max()));	
 		}
 		if ($var->min() > 0) {
 			$fbavar->max((-1*$solVar->min()));
 		}
 		if ($var->value() > 0) {
 			$fbavar->value((-1*$solVar->value()));
-		}
-	}
-}
-=head3 integrateCompoundFluxRawData
-Definition:
-	void ModelSEED::MS::FBAResults->integrateCompoundFluxRawData();
-Description:
-	Translates a raw flux or flux use variable into a compound variable with decomposed reversible reactions recombined
-=cut
-sub integrateCompoundFluxRawData {
-	my ($self,$var) = @_;
-	my $type = "drainflux";
-	my $max = 0;
-	my $min = 0;
-	if ($var->type() =~ m/use$/) {
-		$max = 1;
-		$min = -1;
-		$type = "drainfluxuse";	
-	}
-	my $fbavar = $self->queryObject("FBACompoundVariable",{
-		compound_uuid => $var->entity_uuid(),
-		variableType => $type
-	});
-	if (!defined($fbavar)) {
-		$fbavar = $self->add("fbaCompoundVariables",{
-			modelcompound_uuid => $var->entity_uuid(),
-			variableType => $type,
-			lowerBound => $min,
-			upperBound => $max,
-			min => $min,
-			max => $max,
-			value => 0
-		});
-	}
-	if ($var->type() eq $type) {
-		$fbavar->upperBound() = $var->upperBound();
-		$fbavar->lowerBound() = $var->lowerBound();
-		$fbavar->max() = $var->max();
-		$fbavar->min() = $var->min();
-		$fbavar->value() = $var->value();
-	} elsif ($var->type() eq "for".$type) {
-		if ($var->upperBound() > 0) {
-			$fbavar->upperBound($var->upperBound());	
-		}
-		if ($var->lowerBound() > 0) {
-			$fbavar->lowerBound($var->lowerBound());
-		}
-		if ($var->max() > 0) {
-			$fbavar->max($var->max());
-		}
-		if ($var->min() > 0) {
-			$fbavar->min($var->min());
-		}
-		if ($var->value() > 0) {
-			$fbavar->value($var->value());
-		}
-	} elsif ($var->type() eq "rev".$type) {
-		if ($var->upperBound() > 0) {
-			$fbavar->lowerBound((-1*$var->upperBound()));
-		}
-		if ($var->lowerBound() > 0) {
-			$fbavar->upperBound((-1*$var->lowerBound()));
-		}
-		if ($var->max() > 0) {
-			$fbavar->min((-1*$var->max()));	
-		}
-		if ($var->min() > 0) {
-			$fbavar->max((-1*$var->min()));
-		}
-		if ($var->value() > 0) {
-			$fbavar->value((-1*$var->value()));
 		}
 	}
 }

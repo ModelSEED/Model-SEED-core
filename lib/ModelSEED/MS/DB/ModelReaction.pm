@@ -20,7 +20,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 has direction => (is => 'rw', isa => 'Str', printOrder => '-1', default => '=', type => 'attribute', metaclass => 'Typed');
 has protons => (is => 'rw', isa => 'Num', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 has modelcompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
@@ -36,16 +36,16 @@ has modelReactionReagents => (is => 'rw', isa => 'ArrayRef[HashRef]', default =>
 
 
 # LINKS:
-has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reaction', weak_ref => 1);
+has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,reactioninstances,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reactioninstance', weak_ref => 1);
 has modelcompartment => (is => 'rw', isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,modelcompartments,modelcompartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelcompartment', weak_ref => 1);
 
 
 # BUILDERS:
 sub _build_uuid { return Data::UUID->new()->create_str(); }
 sub _build_modDate { return DateTime->now()->datetime(); }
-sub _build_reaction {
+sub _build_reactioninstance {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','reactions',$self->reaction_uuid());
+  return $self->getLinkedObject('Biochemistry','reactioninstances',$self->reactioninstance_uuid());
 }
 sub _build_modelcompartment {
   my ($self) = @_;
@@ -74,7 +74,7 @@ my $attributes = [
           {
             'req' => 1,
             'printOrder' => -1,
-            'name' => 'reaction_uuid',
+            'name' => 'reactioninstance_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
@@ -104,7 +104,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, reaction_uuid => 2, direction => 3, protons => 4, modelcompartment_uuid => 5};
+my $attribute_map = {uuid => 0, modDate => 1, reactioninstance_uuid => 2, direction => 3, protons => 4, modelcompartment_uuid => 5};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

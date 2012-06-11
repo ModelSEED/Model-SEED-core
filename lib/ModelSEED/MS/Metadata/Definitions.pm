@@ -10,8 +10,6 @@ $objectDefinitions->{ModelAnalysis} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'defaultNameSpace',printOrder => 3,perm => 'rw',type => 'Str',len => 32,req => 0,default => "ModelSEED"},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'locked',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
-		{name => 'public',printOrder => -1,perm => 'rw',type => 'Int',req => 0,default => "0"},
 	],
 	subobjects => [
 		{name => "fbaFormulations",printOrder => 0,class => "FBAFormulation",type => "child"},
@@ -279,7 +277,7 @@ $objectDefinitions->{GapfillingSolutionReaction} = {
 	parents => ['GapfillingSolution'],
 	class => 'child',
 	attributes => [
-		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'reactioninstance_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'direction',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => "1"},
 	],
 	subobjects => [
@@ -287,7 +285,7 @@ $objectDefinitions->{GapfillingSolutionReaction} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "modelreaction",attribute => "modelreaction_uuid",parent => "Model",method=>"modelreactions"},
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstances"},
 	]
 };
 
@@ -311,10 +309,6 @@ $objectDefinitions->{FBAProblem} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'maximize',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
 		{name => 'milp',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 0},
-		{name => 'decomposeReversibleFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'decomposeReversibleDrainFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'fluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
-		{name => 'drainfluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
 	],
 	subobjects => [
 		{name => "objectiveTerms",class => "ObjectiveTerm",type => "child"},
@@ -877,9 +871,9 @@ $objectDefinitions->{Model} = {
 		{name => 'mapping_uuid',printOrder => 8,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'biochemistry_uuid',printOrder => 9,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'annotation_uuid',printOrder => 10,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'modelanalysis_uuid',printOrder => 11,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 	],
 	subobjects => [
-		{name => "gapfillingformulations",printOrder => 4,class => "GapfillingFormulation",type => "child"},
 		{name => "biomasses",printOrder => 0,class => "Biomass",type => "child"},
 		{name => "modelcompartments",printOrder => 1,class => "ModelCompartment",type => "child"},
 		{name => "modelcompounds",printOrder => 2,class => "ModelCompound",type => "child"},
@@ -887,9 +881,10 @@ $objectDefinitions->{Model} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry", weak => 0},
-		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping", weak => 0},
-		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",method=>"Annotation", weak => 0},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping"},
+		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",method=>"Annotation"},
+		{name => "modelanalysis",attribute => "modelanalysis_uuid",parent => "ModelSEED::Store",method=>"ModelAnalysis"},
 	]
 };
 
@@ -976,7 +971,7 @@ $objectDefinitions->{ModelReaction} = {
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'reaction_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'reactioninstance_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'direction',printOrder => -1,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
 		{name => 'protons',printOrder => -1,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'modelcompartment_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
@@ -987,7 +982,7 @@ $objectDefinitions->{ModelReaction} = {
 	],
 	primarykeys => [ qw(model_uuid uuid) ],
 	links => [
-		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",method=>"reactions"},
+		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstances"},
 		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",method=>"modelcompartments"}
 	]
 };
