@@ -9,11 +9,16 @@ use Class::Autouse qw(
     JSON
 );
 use base 'App::Cmd::Command';
-use Data::Dumper;
 
 sub abstract { return "Get an object from workspace or datastore."; }
 
-sub usage_desc { return "ms get [ref] [< references] [options]"; }
+sub usage_desc { return "ms get [ref] [- references] [options]"; }
+
+sub description { return <<END;
+Get an object from the datastore.  
+END
+}
+
 
 sub opt_spec {
     return (
@@ -54,7 +59,11 @@ sub execute {
     foreach my $ref (@$refs) {
         my $o = $self->get_object_deep($cache, $store, $ref);
         if($opts->{raw}) {
-            push(@$output, $o);
+            if(ref($o) eq 'ARRAY') {
+                push(@$output, @$o);
+            } else {
+                push(@$output, $o);
+            }
         }
     }
     if($opts->{raw}) {
