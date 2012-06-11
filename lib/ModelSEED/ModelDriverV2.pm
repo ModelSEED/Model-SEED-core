@@ -422,19 +422,19 @@ sub testobj {
 		public => 1,
 		locked => 0
 	});
-	my $c = $biochemistry->create("Compartment",{
+	my $c = $biochemistry->add("compartments",{
 		locked => "0",
 		id => "c",
 		name => "c",
 		hierarchy => 0
 	});
-	my $e = $biochemistry->create("Compartment",{
+	my $e = $biochemistry->add("compartments",{
 		locked => "0",
 		id => "e",
 		name => "e",
 		hierarchy => 1
 	});
-	my $cpdA = $biochemistry->create("Compound",{
+	my $cpdA = $biochemistry->add("compounds",{
 		locked => "0",
 		name => "A",
 		abbreviation => "A",
@@ -445,7 +445,7 @@ sub testobj {
 		deltaG => 0,
 		deltaGErr => 0
 	});
-	my $cpdB = $biochemistry->create("Compound",{
+	my $cpdB = $biochemistry->add("compounds",{
 		locked => "0",
 		name => "B",
 		abbreviation => "B",
@@ -456,7 +456,7 @@ sub testobj {
 		deltaG => 0,
 		deltaGErr => 0
 	});
-	my $cpdC = $biochemistry->create("Compound",{
+	my $cpdC = $biochemistry->add("compounds",{
 		locked => "0",
 		name => "Biomass",
 		abbreviation => "Biomass",
@@ -467,7 +467,7 @@ sub testobj {
 		deltaG => 0,
 		deltaGErr => 0
 	});
-	my $rxnA =  $biochemistry->create("Reaction",{
+	my $rxnA =  $biochemistry->add("reactions",{
 		locked => "0",
 		name => "rxnA",
 		abbreviation => "rxnA",
@@ -482,9 +482,9 @@ sub testobj {
 		equation => "A[e] => A",
 		aliasType => "name"
 	});
-	$biochemistry->add("ReactionInstance",$instA);
+	$biochemistry->add("reactioninstances",$instA);
 	print "Equation:".$rxnA->definition()."\n";
-	my $rxnB =  $biochemistry->create("Reaction",{
+	my $rxnB =  $biochemistry->add("reactions",{
 		locked => "0",
 		name => "rxnB",
 		abbreviation => "rxnB",
@@ -499,8 +499,8 @@ sub testobj {
 		equation => "A => B",
 		aliasType => "name"
 	});
-	$biochemistry->add("ReactionInstance",$instB);
-	my $media = $biochemistry->create("Media",{
+	$biochemistry->add("reactioninstances",$instB);
+	my $media = $biochemistry->add("media",{
 		locked => "0",
 		id => "MediaA",
 		name => "MediaA",
@@ -508,7 +508,7 @@ sub testobj {
 		isMinimal => 1,
 		type => "Test"
 	});
-	$media->create("MediaCompound",{
+	$media->add("medicompounds",{
 		compound_uuid => $cpdA->uuid(),
 		concentration => 0.001,
 		maxFlux => 100,
@@ -533,7 +533,7 @@ sub testobj {
 		biochemistry_uuid => $biochemistry->uuid(),
 		annotation_uuid => $annoation->uuid(),
 	});
-	my $mdlcompC = $model->create("ModelCompartment",{
+	my $mdlcompC = $model->add("modelcompartments",{
 		locked => 0,
 		compartment_uuid => $c->uuid(),
 		compartmentIndex => 0,
@@ -541,7 +541,7 @@ sub testobj {
 		pH => 7,
 		potential => 1
 	});
-	my $mdlcompE = $model->create("ModelCompartment",{
+	my $mdlcompE = $model->add("modelcompartments",{
 		locked => 0,
 		compartment_uuid => $e->uuid(),
 		compartmentIndex => 0,
@@ -549,25 +549,25 @@ sub testobj {
 		pH => 7.5,
 		potential => 1
 	});
-	my $mdlcpdAE = $model->create("ModelCompound",{
+	my $mdlcpdAE = $model->add("modelcompounds",{
 		compound_uuid => $cpdA->uuid(),
 		charge => 0,
 		formula => "C",
 		modelcompartment_uuid => $mdlcompE->uuid()
 	});
-	my $mdlcpdAC = $model->create("ModelCompound",{
+	my $mdlcpdAC = $model->add("modelcompounds",{
 		compound_uuid => $cpdA->uuid(),
 		charge => 0,
 		formula => "C",
 		modelcompartment_uuid => $mdlcompC->uuid()
 	});
-	my $mdlcpdBC = $model->create("ModelCompound",{
+	my $mdlcpdBC = $model->add("modelcompounds",{
 		compound_uuid => $cpdB->uuid(),
 		charge => 0,
 		formula => "C",
 		modelcompartment_uuid => $mdlcompC->uuid()
 	});
-	my $mdlcpdCC = $model->create("ModelCompound",{
+	my $mdlcpdCC = $model->add("modelcompounds",{
 		compound_uuid => $cpdC->uuid(),
 		charge => 0,
 		formula => "C",
@@ -585,15 +585,15 @@ sub testobj {
 		protons => 0,
 		gpr => "(b0003 and b0004)",
 	});
-	my $biomass = $model->create("Biomass",{
+	my $biomass = $model->add("biomasses",{
 		locked => 0,
 		name => "Biomass"
 	});
-	$biomass->create("BiomassCompound",{
+	$biomass->add("biomasscompounds",{
 		modelcompound_uuid => $mdlcpdBC->uuid(),
 		coefficient => -1
 	});
-	$biomass->create("BiomassCompound",{
+	$biomass->add("biomasscompounds",{
 		modelcompound_uuid => $mdlcpdCC->uuid(),
 		coefficient => 1
 	});
@@ -661,7 +661,7 @@ sub bcprint {
 		["type",1,undef,"type of the object to be printed"],
 		["id",1,undef,"id of object to be printed"]
 	],[@Data],"prints a file with object data to the workspace");
-    my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+    my $obj = $self->biochemistry()->queryObject($args->{type},{id=>$args->{id}});
     if (!defined($obj)) {
     	ModelSEED::utilities::USEERROR("No object of type ".$args->{type}." and with id ".$args->{id}." found in biochemistry ".$self->biochemistry()->uuid()."!");
     }
@@ -683,7 +683,7 @@ sub bcload {
 		["id",1,undef,"id of the object to be loaded"],
 		["overwrite",0,0,"overwrite the existing object?"]
 	],[@Data],"Creates (or alters) an object in the Model SEED database");
-	my $obj = $self->biochemistry()->getObject({type=>$args->{type},query=>{id=>$args->{id}}});
+	my $obj = $self->biochemistry()->queryObject($args->{type},{id=>$args->{id}});
 	if (defined($obj) && $args->{overwrite} == 0) {
 		ModelSEED::utilities::USEERROR("Object of type ".$args->{type}." with id ".$args->{id}." already exists in biochemistry ".$self->biochemistry()->uuid().". Must set overwrite flag to load object!");
 	}

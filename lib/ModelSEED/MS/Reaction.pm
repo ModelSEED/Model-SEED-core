@@ -38,7 +38,8 @@ sub _buildequationcode {
 }
 sub _buildbalanced {
 	my ($self,$args) = @_;
-	return $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
+	my $result = $self->checkReactionMassChargeBalance({rebalanceProtons => 0});
+	return $result->{balanced};
 }
 sub _buildmapped_uuid {
 	my ($self) = @_;
@@ -155,10 +156,10 @@ sub loadFromEquation {
 			if ($TempArray[$i] =~ m/^[a-zA-Z0-9]+\[([a-zA-Z]+)\]/) {
 				$NewRow->{compartment} = lc($1);
 			}
-			my $comp = $bio->getObject("Compartment",{id => $NewRow->{compartment}});
+			my $comp = $bio->queryObject("compartments",{id => $NewRow->{compartment}});
 			if (!defined($comp)) {
 				ModelSEED::utilities::USEWARNING("Unrecognized compartment '".$NewRow->{compartment}."' used in reaction!");
-				$comp = $bio->create("Compartment",{
+				$comp = $bio->add("compartments",{
 					locked => "0",
 					id => $NewRow->{compartment},
 					name => $NewRow->{compartment},
@@ -169,13 +170,13 @@ sub loadFromEquation {
 			$NewRow->{compartment} = $comp;
 			my $cpd;
 			if ($args->{aliasType} eq "uuid" || $args->{aliasType} eq "name") {
-				$cpd = $bio->getObject("Compound",{$args->{aliasType} => $NewRow->{compound}});
+				$cpd = $bio->queryObject("compounds",{$args->{aliasType} => $NewRow->{compound}});
 			} else {
-				$cpd = $bio->getObjectByAlias("Compound",$NewRow->{compound},$args->{aliasType});
+				$cpd = $bio->getObjectByAlias("compounds",$NewRow->{compound},$args->{aliasType});
 			}
 			if (!defined($cpd)) {
 				ModelSEED::utilities::USEWARNING("Unrecognized compound '".$NewRow->{compound}."' used in reaction!");
-				$cpd = $bio->create("Compound",{
+				$cpd = $bio->add("compounds",{
 					locked => "0",
 					name => $NewRow->{compound},
 					abbreviation => $NewRow->{compound}
@@ -204,11 +205,11 @@ sub loadFromEquation {
 		}
 	}
 	if (!defined($rxnComp)) {
-		$rxnComp = $bio->getObject("Compartment",{id => "c"});
+		$rxnComp = $bio->queryObject("compartments",{id => "c"});
 	}
 	foreach my $cpduuid (keys(%{$coreCpdHash})) {
 		if ($coreCpdHash->{$cpduuid} != 0 && $cpdHash->{$cpduuid}->formula() ne "H") {
-			$self->create("Reagent",{
+			$self->add("reagents",{
 				compound_uuid => $cpduuid,
 				coefficient => $coreCpdHash->{$cpduuid},
 				cofactor => 0,
@@ -228,7 +229,7 @@ sub loadFromEquation {
 		parent => $self->parent()
 	});
 	#Adding to reaction
-	$self->create("ReactionReactionInstance",{
+	$self->add("reactionreactioninstances",{
 		reactioninstance_uuid => $rxninst->uuid(),
 		reactioninstance => $rxninst
 	});
@@ -242,13 +243,13 @@ sub loadFromEquation {
 					if ($transCpdHash->{$sortedids->[$i]}->{$cpduuid} > 0) {
 						$coef = 1;
 					}
-					$self->create("Reagent",{
+					$self->add("reagents",{
 						compound_uuid => $cpduuid,
 						coefficient => $coef,
 						cofactor => 0,
 						compartmentIndex => $index
 					});
-					$rxninst->create("InstanceTransport",{
+					$rxninst->add("transports",{
 						compound_uuid => $cpduuid,
 						compartment_uuid => $compHash->{$sortedids->[$i]}->uuid(),
 						coefficient => $transCpdHash->{$sortedids->[$i]}->{$cpduuid},
@@ -283,18 +284,20 @@ sub checkReactionMassChargeBalance {
 	my $atomHash;
 	my $netCharge = 0;
 	#Adding up atoms and charge from all reagents
-	for (my $i=0; $i < @{$self->reagents()};$i++) {
-		my $rgt = $self->reagents()->[$i];
+	my $rgts = $self->reagents();
+	for (my $i=0; $i < @{$rgts};$i++) {
+		my $rgt = $rgts->[$i];
 		#Problems are: compounds with noformula, polymers (see next line), and reactions with duplicate compounds in the same compartment
 		#Latest KEGG formulas for polymers contain brackets and 'n', older ones contain '*'
 		my $cpdatoms = $rgt->compound()->calculateAtomsFromFormula();
 		if (defined($cpdatoms->{error})) {
 			return {
+				balanced => 0,
 				error => $cpdatoms->{error}
 			};	
 		}
 		foreach my $atom (keys(%{$cpdatoms})) {
-			if (!define($atomHash->{$atom})) {
+			if (!defined($atomHash->{$atom})) {
 				$atomHash->{$atom} = 0;
 			}
 			$netCharge += $rgt->coefficient()*$rgt->compound()->defaultCharge();

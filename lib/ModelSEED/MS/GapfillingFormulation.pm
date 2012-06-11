@@ -65,7 +65,7 @@ sub calculateReactionCosts {
 		}
 	}
 	#Checking for structure
-	if ($rxn->reaction()->deltaG() eq 10000000) {
+	if ($rxn->reactioninstance()->reaction()->deltaG() eq 10000000) {
 		$rcosts = $rcosts*$self->noDeltaGMultiplier();
 		$fcosts = $fcosts*$self->noDeltaGMultiplier();
 	}
@@ -91,7 +91,7 @@ sub calculateReactionCosts {
 	for (my $i=0; $i < @{$self->reactionSetMultipliers()}; $i++) {
 		my $setMult = $self->reactionSetMultipliers()->[$i];
 		my $set = $setMult->reactionset();
-		if ($set->containsReaction($rxn->reaction()) == 1) {
+		if ($set->containsReaction($rxn->reactioninstance()) == 1) {
 			if ($setMult->multiplierType() eq "absolute") {
 				$rcosts = $rcosts*$setMult->multiplier();
 				$fcosts = $fcosts*$setMult->multiplier();
@@ -147,8 +147,9 @@ sub runGapFilling {
 			maximizeObjective => 1,
 			fbaObjectiveTerms => [{
 				coefficient => 1,
+				entityType => "Biomass",
 				variableType => "biomassflux",
-				variable_uuid => $model->biomasses()->[0]->uuid()
+				entity_uuid => $model->biomasses()->[0]->uuid()
 			}]			
 		});
 	}
@@ -194,18 +195,23 @@ sub runGapFilling {
 		drainfluxUseVariables => 0,
 		maximizeObjective => 0,			
 	});
+	my $typesToAttribute = {
+		ModelReaction => "modelreactions",
+		ModelCompound => "modelcompounds",
+		Biomass => "biomasses"
+	};
 	#Copying all constraints from previous FBAFormulation
 	for (my $i=0; $i < @{$fbaform->fbaConstraints()}; $i++) {
 		my $oldConst = $fbaform->fbaConstraints()->[$i];
-		my $const = $gffbaform->create("FBAConstraint",{
+		my $const = $gffbaform->add("fbaConstraints",{
 			name => $oldConst->name(),
 			rhs => $oldConst->rhs(),
 			sign => $oldConst->sign()
 		});
 		for (my $j=0; $j < @{$oldConst->fbaConstraintVariables()}; $j++) {
 			my $term = $fbaform->fbaObjectiveTerms()->[$j];
-			my $obj = $dbmodel->getObject($term->entityType(),{mapped_uuid => $term->entity_uuid()});
-			$const->create("FBAConstraintVariable",{
+			my $obj = $dbmodel->queryObject($typesToAttribute->{$term->entityType()},{mapped_uuid => $term->entity_uuid()});
+			$const->add("fbaConstraintVariables",{
 				entity_uuid => $obj->entity_uuid(),
 				entityType => $term->entityType(),
 				variableType => $term->variableType(),
@@ -214,43 +220,45 @@ sub runGapFilling {
 		}
 	}
 	#Making a constraint forcing the previous objective to be greater than zero
-	my $const = $gffbaform->create("FBAConstraint",{
-		name => "Objective constraint",
+	my $const = $gffbaform->add("fbaConstraints",{
+		name => "ObjectiveConstraint",
 		rhs => 0.01,
 		sign => ">"
 	});
 	for (my $i=0; $i < @{$fbaform->fbaObjectiveTerms()}; $i++) {
 		my $term = $fbaform->fbaObjectiveTerms()->[$i];
-		my $obj = $dbmodel->getObject($term->entityType(),{mapped_uuid => $term->entity_uuid()});
-		$const->create("FBAConstraintVariable",{
-			entity_uuid => $obj->entity_uuid(),
+		my $obj = $dbmodel->queryObject($typesToAttribute->{$term->entityType()},{mapped_uuid => $term->entity_uuid()});
+		$const->add("fbaConstraintVariables",{
+			entity_uuid => $obj->uuid(),
 			entityType => $term->entityType(),
 			variableType => $term->variableType(),
 			coefficient => $term->coefficient()
 		});
 	}
 	#Labeling all dbmodel reactions as candidates and creating objective terms
-	for (my $i=0; $i < @{$dbmodel->modelreactions()}; $i++) {
-		my $rxn = $dbmodel->modelreactions()->[$i];
+	my $mdlrxns = $dbmodel->modelreactions();
+	for (my $i=0; $i < @{$mdlrxns}; $i++) {
+		my $rxn = $mdlrxns->[$i];
 		if (!defined($rxn->modelReactionProteins()->[0])) {
-			$rxn->create("ModelReactionProtein",{
+			print "Adding candidate protein!\n";
+			$rxn->add("modelReactionProteins",{
 				complex_uuid => "00000000-0000-0000-0000-000000000000",
 				note => "CANDIDATE"
 			});
 		}
 		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
 		if ($costs->{forwardDirection} != 0) {
-			$gffbaform->create("ObjectiveTerm",{
+			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
-				entityType => "Reaction",
+				entityType => "ModelReaction",
 				variableType => "forfluxuse",
 				coefficient => $costs->{forwardDirection}
 			});
 		}
 		if ($costs->{reverseDirection} != 0) {
-			$gffbaform->create("ObjectiveTerm",{
+			$gffbaform->add("fbaObjectiveTerms",{
 				entity_uuid => $rxn->uuid(),
-				entityType => "Reaction",
+				entityType => "ModelReaction",
 				variableType => "revfluxuse",
 				coefficient => $costs->{reverseDirection}
 			});
@@ -259,11 +267,13 @@ sub runGapFilling {
 	#Running the flux balance analysis for the gapfilling optimization problem
 	my $solution = $gffbaform->runFBA();
 	#Translating te solution into a gapfilling solution
-	my $gfsolution = $self->create("GapfillingSolution",{
+	print "Done with FBA!\n";
+	my $gfsolution = $self->add("gapfillingSolutions",{
 		solutionCost => $solution->objectiveValue()
 	});
-	for (my $i=0; $i < @{$solution->fbaReactionVariables()}; $i++) {
-		my $var = $solution->fbaReactionVariables()->[$i];
+	my $rxnvars = $solution->fbaReactionVariables();
+	for (my $i=0; $i < @{$rxnvars}; $i++) {
+		my $var = $rxnvars->[$i];
 		if ($var->variableType() eq "flux") {
 			my $rxn = $var->modelreaction();
 			if ($var->value() < -0.0000001) {
@@ -272,15 +282,15 @@ sub runGapFilling {
 					if ($rxn->direction() ne $direction) {
 						$direction = "=";
 					}
-					$gfsolution->create("GapfillingSolutionReaction",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+					$gfsolution->add("gapfillingSolutionReactions",{
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq ">") {
-					$gfsolution->create("GapfillingSolutionReaction",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+					$gfsolution->add("gapfillingSolutionReactions",{
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => "="
 					});
 				}
@@ -290,15 +300,15 @@ sub runGapFilling {
 					if ($rxn->direction() ne $direction) {
 						$direction = "=";
 					}
-					$gfsolution->create("GapfillingSolutionReaction",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+					$gfsolution->add("gapfillingSolutionReactions",{
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq "<") {
-					$gfsolution->create("GapfillingSolutionReaction",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+					$gfsolution->add("gapfillingSolutionReactions",{
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => "="
 					});
 				}
