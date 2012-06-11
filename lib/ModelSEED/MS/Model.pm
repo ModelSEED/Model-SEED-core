@@ -243,12 +243,14 @@ sub buildModelFromAnnotation {
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
+        verbose => 0
 	});
 	my $mapping = $args->{mapping};
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
 	my $roleFeatures;
 	my $features = $annotaton->features();
+    warn "Processing " . scalar(@$features) . " features...\n" if($args->{verbose});
 	for (my $i=0; $i < @{$features}; $i++) {
 		my $ftr = $features->[$i];
 		my $ftrroles = $ftr->featureroles();
@@ -257,6 +259,7 @@ sub buildModelFromAnnotation {
 			push(@{$roleFeatures->{$ftrrole->role_uuid()}->{$ftrrole->compartment()}},$ftr);
 		}
 	}
+    warn "Constructing reactions...\n" if($args->{verbose});
 	my $complexes = $mapping->complexes();
 	for (my $i=0; $i < @{$complexes};$i++) {
 		my $cpx = $complexes->[$i];

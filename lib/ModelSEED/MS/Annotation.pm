@@ -8,6 +8,7 @@
 use strict;
 use ModelSEED::MS::DB::Annotation;
 package ModelSEED::MS::Annotation;
+use ModelSEED::MS::Model;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::Annotation';
@@ -88,6 +89,7 @@ sub createStandardFBAModel {
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		prefix => "Seed",
 		mapping => $self->mapping(),
+        verbose => 0,
 	});
 	my $mapping = $args->{mapping};
 	my $biochem = $mapping->biochemistry();
@@ -110,7 +112,7 @@ sub createStandardFBAModel {
 		annotation_uuid => $self->uuid(),
 		annotation => $self
 	});
-	$mdl->buildModelFromAnnotation();
+	$mdl->buildModelFromAnnotation($args);
 	return $mdl;
 }
 
