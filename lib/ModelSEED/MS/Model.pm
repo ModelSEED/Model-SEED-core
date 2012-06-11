@@ -760,6 +760,15 @@ sub labelBiomassCompounds {
 	}
 }
 =head3 parseSBML
+
+# TODO parseSBML() parse error with SIds and UUIDs
+currently the id field on objects COULD output a UUID if
+there is no alias in the prefered alias set. If this is then
+placed in the "id" attribute of a species or reaction, this
+violates the SBML SId restrictions. Need to replace '-' with '_'
+and prefix with "UUID_" since uuids may start with a number while
+SIds cannot.
+
 Definition:
 	void ModelSEED::MS::Model->parseSBML();
 Description:
@@ -846,10 +855,10 @@ sub printSBML {
 		}
 		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
-		my $ec = $rxn->getAlias("EC");
-		my $keggID = $rxn->getAlias("KEGG");
-		my $GeneAssociation = $rxn->gprString();
-		my $ProteinAssociation = $rxn->gprString();
+		my $ec = $rxn->reaction->getAlias("Enzyme Class");
+		my $keggID = $rxn->reaction->getAlias("KEGG");
+		my $GeneAssociation = $rxn->gprString;
+		my $ProteinAssociation = $rxn->gprString;
 		push(@{$output},"<html:p>GENE_ASSOCIATION:".$GeneAssociation."</html:p>");
 		push(@{$output},"<html:p>PROTEIN_ASSOCIATION:".$ProteinAssociation."</html:p>");
 		if (defined($keggID)) {
@@ -905,7 +914,7 @@ sub printSBML {
 			$obj = 1;
 		}
 		my $reversibility = "false";
-		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
+		push(@{$output},'<reaction '.$stringToString->("id",$rxn->uuid).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
 		push(@{$output},"</notes>");
 		my $firstreact = 1;
