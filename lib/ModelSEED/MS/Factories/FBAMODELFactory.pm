@@ -22,15 +22,16 @@ A Factory that uses an FBAMODEL server to pull construct a model.
 package ModelSEED::MS::Factories::FBAMODELFactory;
 use FBAMODELClient;
 use ModelSEED::utilities;
-use ModelSEED::Auth::Factory;
-use ModelSEED::Auth;
-use ModelSEED::MS::Model;
-use ModelSEED::MS::Biomass;
+use Class::Autouse qw(
+    ModelSEED::Auth::Factory
+    ModelSEED::Auth
+    ModelSEED::MS::Model
+    ModelSEED::MS::Biomass
+    ModelSEED::MS::Factories::SEEDFactory
+);
 use Try::Tiny;
 use Moose;
 use namespace::autoclean;
-
-use Data::Dumper;
 
 has auth => ( is => 'ro', isa => "ModelSEED::Auth", required => 1);
 has store => ( is => 'ro', isa => "ModelSEED::Store", required => 1);
@@ -45,22 +46,9 @@ sub listAvailableModels {
 
 sub createModel {
     my ($self, $args) = @_;
-    my $c = ModelSEED::Configuration->instance;
-    my $default_bio = $c->config->{biochemistry};
-    my $default_map = $c->config->{mapping};
-    my $default_anno = $c->config->{annotation};
-	$args = ModelSEED::utilities::ARGS($args,["id"],{
-		biochemistry => $default_bio,
-		mapping => $default_map,
-		annotation => $default_anno,
+	$args = ModelSEED::utilities::ARGS($args,["id", "annotation"],{
         verbose => 0,
 	});
-    die "Must have a biochemistry to import model" unless(defined($args->{biochemistry}));
-    print "Using biochemistry " . $args->{biochemistry} . "\n" if($args->{verbose});
-    die "Must have a mapping to import model" unless(defined($args->{mapping}));
-    print "Using mapping " . $args->{mapping} . "\n" if($args->{verbose});
-    die "Must have a annotation to import model" unless(defined($args->{annotation}));
-    print "Using annotation " . $args->{annotation} . "\n" if($args->{verbose});
     # Get basic model data
     my $data;
     my $config = \%{$self->auth_config};
@@ -80,9 +68,9 @@ sub createModel {
         }
     }
     print "Loading linked objects...\n" if($args->{verbose});
-    my $biochemistry = $self->store->get_object($args->{biochemistry});
-    my $mapping = $self->store->get_object($args->{mapping});
-    my $annotation = $self->store->get_object($args->{annotation});
+    my $annotation = $args->{annotation};
+    my $mapping      = $annotation->mapping;
+    my $biochemistry = $mapping->biochemistry;
     my $model = $self->store->create("Model", {
 		locked => 0,
 		public => $model_data->{public} || 0,
