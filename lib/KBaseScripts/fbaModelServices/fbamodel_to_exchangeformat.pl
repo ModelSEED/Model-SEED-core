@@ -59,6 +59,5 @@ my $input;
 
 my $output = $fbaModelServicesObj->fbamodel_to_exchangeformat($input);
 
-$json->pretty(1);
-print $out_fh $json->encode($output);
+print $out_fh $output;
 close($out_fh);

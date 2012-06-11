@@ -1,5 +1,5 @@
 ########################################################################
-# print_gapfilling_formulation.pl - This is a KBase command script automatically built from server specifications
+# exchangeFormat_to_gapfillingFormulation.pl - This is a KBase command script automatically built from server specifications
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -21,7 +21,7 @@ my $rc = GetOptions(
 		    'output=s'  => \$output_file,
 		    );
 
-my $usage = "print_gapfilling_formulation [--input formulation-file] [--output exchange-file] [--url service-url] [< formulation-file] [> exchange-file]";
+my $usage = "exchangeFormat_to_gapfillingFormulation [--input exchange-file] [--output formulation-file] [--url service-url] [< exchange-file] [> formulation-file]";
 
 @ARGV == 0 or die "Usage: $usage\n";
 
@@ -53,11 +53,10 @@ my $input;
     local $/;
     undef $/;
     my $input_txt = <$in_fh>;
-    $input = $json->decode($input_txt)
 }
 
 
-my $output = $fbaModelServicesObj->print_gapfilling_formulation($input);
+my $output = $fbaModelServicesObj->exchangeFormat_to_gapfillingFormulation($input);
 
 $json->pretty(1);
 print $out_fh $json->encode($output);

@@ -19,6 +19,7 @@ has equation => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', 
 has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has compartmentName => ( is => 'rw', isa => 'Str',printOrder => '5', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildcompartmentName' );
 has balanced => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbalanced' );
+has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, default => '00000000-0000-0000-0000-000000000000' );
 
 #***********************************************************************************************************
 # BUILDERS:

@@ -29,11 +29,11 @@ has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', t
 #***********************************************************************************************************
 sub _buildid {
 	my ($self) = @_;
-	return $self->reaction()->id()."_".$self->modelCompartmentLabel();
+	return $self->reactioninstance()->id()."_".$self->modelCompartmentLabel();
 }
 sub _buildname {
 	my ($self) = @_;
-	return $self->reaction()->name();
+	return $self->reactioninstance()->reaction()->name();
 }
 sub _builddefinition {
 	my ($self) = @_;

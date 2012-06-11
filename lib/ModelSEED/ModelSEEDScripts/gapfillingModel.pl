@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use JSON::Any;
 use ModelSEED::MS::Factories::ExchangeFormatFactory;
+use ModelSEED::MS::ModelAnalysis;
 use ModelSEED::MS::GapfillingFormulation;
 use ModelSEED::MS::FBAFormulation;
 use ModelSEED::MS::FBAProblem;

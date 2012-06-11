@@ -1,5 +1,5 @@
 ########################################################################
-# runfba_on_fbamodel.pl - This is a KBase command script automatically built from server specifications
+# runfba.pl - This is a KBase command script automatically built from server specifications
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
@@ -23,7 +23,7 @@ my $rc = GetOptions(
 		    'form=s' => \$sinput,
 		    );
 
-my $usage = "runfba_on_fbamodel [--input model-file] [--output model-file] [--form formulation] [--url service-url] [< model-file] [> model-file]";
+my $usage = "runfba [--input model-file] [--output model-file] [--form formulation] [--url service-url] [< model-file] [> model-file]";
 
 @ARGV == 0 or die "Usage: $usage\n";
 
@@ -67,7 +67,7 @@ if (-e $sinput) {
 } else {
 	$formulation = $sinput;
 }
-my $output = $fbaModelServicesObj->runfba_on_fbamodel($input,$formulation);
+my $output = $fbaModelServicesObj->runfba($input,$formulation);
 
 $json->pretty(1);
 print $out_fh $json->encode($output);

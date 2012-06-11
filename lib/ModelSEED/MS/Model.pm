@@ -612,12 +612,12 @@ sub addReactionInstanceToModel {
 	my $rxninst = $args->{reactionInstance};
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
 	my $mdlrxn = $self->queryObject("modelreactions",{
-		reaction_uuid => $rxninst->reaction_uuid(),
+		reactioninstance_uuid => $rxninst->uuid(),
 		modelcompartment_uuid => $mdlcmp->uuid()
 	});
 	if (!defined($mdlrxn)) {
 		$mdlrxn = $self->add("modelreactions",{
-			reaction_uuid => $rxninst->reaction_uuid(),
+			reactioninstance_uuid => $rxninst->uuid(),
 			direction => $rxninst->direction(),
 			protons => $rxninst->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
@@ -999,17 +999,67 @@ Description:
 sub gapfillModel {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["gapfillingFormulation"],{
-		fbaFormulation => undef
+		fbaFormulation => undef,integrateSolution => 1
 	});
 	my $solution = $args->{gapfillingFormulation}->runGapFilling({
 		model => $self,
 		fbaFormulation => $args->{fbaFormulation}
 	});
 	if (defined($solution)) {
-		$self->add("GapfillingFormulation",$args->{gapfillingFormulation});
+		if (!defined($self->modelanalysis())) {
+			my $mdlanal = ModelSEED::MS::ModelAnalysis->new();
+			$self->modelanalysis_uuid($mdlanal->uuid());
+			$self->modelanalysis($mdlanal);
+		}
+		$self->modelanalysis()->add("gapfillingFormulations",$args->{gapfillingFormulation});
+		if ($args->{integrateSolution} == 1) {
+			$self->integrateGapfillingSolution({gapfillingSolution => $solution});
+		}
 		return $solution;	
 	}
 	return undef;
+}
+=head3 integrateGapfillingSolution
+Definition:
+	void ModelSEED::MS::Model->integrateGapfillingSolution({
+		gapfillingSolution => ModelSEED::MS::GapfillingSolution,
+	});
+Description:
+	Integrates gapfilling solution into model
+=cut
+sub integrateGapfillingSolution {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["gapfillingSolution"],{});
+	my $gfSolution = $args->{gapfillingSolution};
+	my $solrxns = $gfSolution->gapfillingSolutionReactions();
+	for (my $i=0; $i < @{$solrxns}; $i++) {
+		my $solrxn = $solrxns->[$i];
+		my $rxninst = $self->biochemistry()->findCreateEquivalentReactionInstance({reactioninstance => $solrxn->reactioninstance()});
+		my $mdlrxn = $self->queryObject("modelreactions",{reactioninstance_uuid => $rxninst->uuid()});
+		if (!defined($mdlrxn)) {
+			$self->addReactionInstanceToModel({
+				reactionInstance => $rxninst,
+				direction => $solrxn->direction()
+			});
+		} elsif ($mdlRxn->direction() ne $solrxn->direction()) {
+			$mdlRxn->direction("=");
+		}
+		my $geneCandidates = $solrxn->gfSolutionReactionGeneCandidates();
+		my $prot = $mdlRxn->add("modelReactionProteins",{
+			complex_uuid => "00000000-0000-0000-0000-000000000000"
+		});
+		my $subunit = $prot->add("modelReactionProteinSubunits",{
+			 role_uuid => "00000000-0000-0000-0000-000000000000",
+			 triggering => 1,
+			 optional => 0,
+		});
+		for (my $j=0; $j < @{$geneCandidates}; $j++) {
+			$prot->add("modelReactionProteinSubunits",{
+				feature_uuid => $geneCandidates->[$j]->feature_uuid()
+			});
+		}
+	}
+	$self->uuid(Data::UUID->new()->create_str());
 }
 
 __PACKAGE__->meta->make_immutable;

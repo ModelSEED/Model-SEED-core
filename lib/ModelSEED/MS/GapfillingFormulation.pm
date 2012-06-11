@@ -65,7 +65,7 @@ sub calculateReactionCosts {
 		}
 	}
 	#Checking for structure
-	if ($rxn->reaction()->deltaG() eq 10000000) {
+	if ($rxn->reactioninstance()->reaction()->deltaG() eq 10000000) {
 		$rcosts = $rcosts*$self->noDeltaGMultiplier();
 		$fcosts = $fcosts*$self->noDeltaGMultiplier();
 	}
@@ -91,7 +91,7 @@ sub calculateReactionCosts {
 	for (my $i=0; $i < @{$self->reactionSetMultipliers()}; $i++) {
 		my $setMult = $self->reactionSetMultipliers()->[$i];
 		my $set = $setMult->reactionset();
-		if ($set->containsReaction($rxn->reaction()) == 1) {
+		if ($set->containsReaction($rxn->reactioninstance()) == 1) {
 			if ($setMult->multiplierType() eq "absolute") {
 				$rcosts = $rcosts*$setMult->multiplier();
 				$fcosts = $fcosts*$setMult->multiplier();
@@ -267,6 +267,7 @@ sub runGapFilling {
 	#Running the flux balance analysis for the gapfilling optimization problem
 	my $solution = $gffbaform->runFBA();
 	#Translating te solution into a gapfilling solution
+	print "Done with FBA!\n";
 	my $gfsolution = $self->add("gapfillingSolutions",{
 		solutionCost => $solution->objectiveValue()
 	});
@@ -282,14 +283,14 @@ sub runGapFilling {
 						$direction = "=";
 					}
 					$gfsolution->add("gapfillingSolutionReactions",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq ">") {
 					$gfsolution->add("gapfillingSolutionReactions",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => "="
 					});
 				}
@@ -300,14 +301,14 @@ sub runGapFilling {
 						$direction = "=";
 					}
 					$gfsolution->add("gapfillingSolutionReactions",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq "<") {
 					$gfsolution->add("gapfillingSolutionReactions",{
-						modelreaction_uuid => $rxn->uuid(),
-						modelreaction => $rxn,
+						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
+						reactioninstance => $rxn->reactioninstance(),
 						direction => "="
 					});
 				}

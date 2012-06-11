@@ -42,10 +42,10 @@ sub buildFromOptSolution {
 			$self->integrateReactionFluxRawData($var);
 		} elsif ($type eq "biomassflux") {
 			$self->add("fbaBiomassVariables",{
-				biomass_uuid => $var->entity_uuid(),
+				biomass_uuid => $var->variable()->entity_uuid(),
 				variableType => $type,
-				lowerBound => $var->lowerBound(),
-				upperBound => $var->upperBound(),
+				lowerBound => $var->variable()->lowerBound(),
+				upperBound => $var->variable()->upperBound(),
 				min => $var->min(),
 				max => $var->max(),
 				value => $var->value()
@@ -73,7 +73,7 @@ sub integrateReactionFluxRawData {
 		$type = "fluxuse";	
 	}
 	my $fbavar = $self->queryObject("fbaReactionVariables",{
-		reaction_uuid => $var->entity_uuid(),
+		modelreaction_uuid => $var->entity_uuid(),
 		variableType => $type
 	});
 	if (!defined($fbavar)) {
@@ -134,7 +134,8 @@ Description:
 	Translates a raw flux or flux use variable into a compound variable with decomposed reversible reactions recombined
 =cut
 sub integrateCompoundFluxRawData {
-	my ($self,$var) = @_;
+	my ($self,$solVar) = @_;
+	my $var = $solVar->variable();
 	my $type = "drainflux";
 	my $max = 0;
 	my $min = 0;
@@ -143,8 +144,8 @@ sub integrateCompoundFluxRawData {
 		$min = -1;
 		$type = "drainfluxuse";	
 	}
-	my $fbavar = $self->queryObject("FBACompoundVariable",{
-		compound_uuid => $var->entity_uuid(),
+	my $fbavar = $self->queryObject("fbaCompoundVariables",{
+		modelcompound_uuid => $var->entity_uuid(),
 		variableType => $type
 	});
 	if (!defined($fbavar)) {
@@ -159,11 +160,11 @@ sub integrateCompoundFluxRawData {
 		});
 	}
 	if ($var->type() eq $type) {
-		$fbavar->upperBound() = $var->upperBound();
-		$fbavar->lowerBound() = $var->lowerBound();
-		$fbavar->max() = $var->max();
-		$fbavar->min() = $var->min();
-		$fbavar->value() = $var->value();
+		$fbavar->upperBound($var->upperBound());
+		$fbavar->lowerBound($var->lowerBound());
+		$fbavar->max($solVar->max());
+		$fbavar->min($solVar->min());
+		$fbavar->value($solVar->value());
 	} elsif ($var->type() eq "for".$type) {
 		if ($var->upperBound() > 0) {
 			$fbavar->upperBound($var->upperBound());	
@@ -172,13 +173,13 @@ sub integrateCompoundFluxRawData {
 			$fbavar->lowerBound($var->lowerBound());
 		}
 		if ($var->max() > 0) {
-			$fbavar->max($var->max());
+			$fbavar->max($solVar->max());
 		}
 		if ($var->min() > 0) {
-			$fbavar->min($var->min());
+			$fbavar->min($solVar->min());
 		}
 		if ($var->value() > 0) {
-			$fbavar->value($var->value());
+			$fbavar->value($solVar->value());
 		}
 	} elsif ($var->type() eq "rev".$type) {
 		if ($var->upperBound() > 0) {
@@ -188,13 +189,13 @@ sub integrateCompoundFluxRawData {
 			$fbavar->upperBound((-1*$var->lowerBound()));
 		}
 		if ($var->max() > 0) {
-			$fbavar->min((-1*$var->max()));	
+			$fbavar->min((-1*$solVar->max()));	
 		}
 		if ($var->min() > 0) {
-			$fbavar->max((-1*$var->min()));
+			$fbavar->max((-1*$solVar->min()));
 		}
 		if ($var->value() > 0) {
-			$fbavar->value((-1*$var->value()));
+			$fbavar->value((-1*$solVar->value()));
 		}
 	}
 }
