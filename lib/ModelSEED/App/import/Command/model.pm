@@ -4,6 +4,8 @@ use Class::Autouse qw(
     ModelSEED::Store
     ModelSEED::Auth::Factory
     ModelSEED::MS::Factories::FBAMODELFactory
+    ModelSEED::MS::Factories::PPOFactory
+    ModelSEED::FIGMODEL
     ModelSEED::Database::Composite
     ModelSEED::Reference
     ModelSEED::App::Helpers
@@ -11,7 +13,7 @@ use Class::Autouse qw(
 
 sub abstract { return "Import an existing model"; }
 
-sub usage_desc { return "ms import model [id] [alias] -a annotation [options]"; }
+sub usage_desc { return "ms import model [id] [alias] -a annotation"; }
 sub description { return <<END;
 Models may be imported from the local database or from an existing
 model on the ModelSeed website. To see a list of available models
@@ -35,11 +37,9 @@ END
 
 sub opt_spec {
     return (
+        ["list:s", "List models that are available to import from a source"], 
         ["source:s", "Source to import from, default is 'model-seed'"],
-        ["list:s", "List models that are available to import from a soruce"], 
         ["annotation|a=s", "Annotation to use when importing the model"],
-        ["mapping|m:s", "Select the mapping to use when importing the model"],
-        ["biochemistry|b:s", "Select the biochemistry to use when importing the model"],
         ["store|s:s", "Identify which store to save the model to"],
         ["verbose|v", "Print detailed output of import status"],
         ["dry|d", "Perform a dry run; that is, do everything but saving"],
@@ -62,7 +62,10 @@ sub execute {
     } else {
         $store = ModelSEED::Store->new(auth => $auth);
     }
-    
+    # If we're doing a listing, take the source from that 
+    if(defined($opts->{list})) {
+        $opts->{source} = $opts->{list};
+    }
     # Set source to 'model-seed' if it isn't defined
     $opts->{source} //= 'model-seed';
     my ($factory);
@@ -70,6 +73,18 @@ sub execute {
         $factory = ModelSEED::MS::Factories::FBAMODELFactory->new(
             auth => $auth,
             store => $store
+        );
+    } elsif($opts->{source} eq 'local') {
+        my $figmodel = ModelSEED::FIGMODEL->new();
+        if($auth->isa("ModelSEED::Auth::Basic")) {
+            $figmodel->authenticate({
+                username => $auth->username,
+                password => $auth->password
+            });
+        }
+        $factory = ModelSEED::MS::Factories::PPOFactory->new(
+            figmodel => $figmodel,
+            namespace => $auth->username,
         );
     } else {
         die "Unknown source: " . $opts->{source} . "\n";
@@ -79,9 +94,13 @@ sub execute {
         if($opts->{source} eq 'model-seed') {
             my $ids = $factory->listAvailableModels();
             print join("\n", @$ids);
+            print "\n" if(@$ids);
             return;
         } elsif($opts->{source} eq 'local') {
-            ...
+            my $mdls = $factory->figmodel->database->get_objects("model");
+            print join("\n", map { $_->id() } @$mdls );
+            print "\n" if(@$mdls);
+            return;
         }
     }
     # Now actual import stuff
@@ -99,18 +118,11 @@ sub execute {
         $config->{annotation} = $opts->{annotation};
         $config->{annotation} = $helpers->process_ref_string(
             $config->{annotation}, "annotation", $auth->username);
+        my $anno = $store->get_object($config->{annotation});
+        die "Could not get annotation: " . $config->{annotation} . "\n" unless(defined($anno));
+        $config->{annotation} = $anno;
     } else {
         $self->usage_error("Must supply and annotation");
-    }
-    if(defined($opts->{mapping})) {
-        $config->{mapping} = $opts->{mapping};
-        $config->{mapping} = $helpers->process_ref_string(
-            $config->{mapping}, "mapping", $auth->username);
-    }
-    if(defined($opts->{biochemistry})) {
-        $config->{biochemistry} = $opts->{biochemistry};
-        $config->{biochemistry} = $helpers->process_ref_string(
-            $config->{biochemistry}, "biochemistry", $auth->username);
     }
     $config->{verbose} = $opts->{verbose} if($opts->{verbose});
     my $model = $factory->createModel($config);
