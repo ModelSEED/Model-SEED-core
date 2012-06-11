@@ -26,11 +26,11 @@ has value => (is => 'rw', isa => 'Str', printOrder => '4', type => 'attribute', 
 
 
 # LINKS:
-has modelcompound => (is => 'rw', isa => 'ModelSEED::MS::ModelCompound', type => 'link(Model,modelcompounds,modelcompound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodelcompound', weak_ref => 1);
+has modelcompound => (is => 'rw', isa => 'ModelSEED::MS::ModelCompound', type => 'link(Model,modelcompounds,modelcompound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelcompound', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildmodelcompound {
+sub _build_modelcompound {
   my ($self) = @_;
   return $self->getLinkedObject('Model','modelcompounds',$self->modelcompound_uuid());
 }

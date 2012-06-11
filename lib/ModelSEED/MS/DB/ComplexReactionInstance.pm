@@ -21,11 +21,11 @@ has compartment => (is => 'rw', isa => 'Str', printOrder => '0', default => 'cyt
 
 
 # LINKS:
-has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,reactioninstances,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreactioninstance', weak_ref => 1);
+has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,reactioninstances,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reactioninstance', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildreactioninstance {
+sub _build_reactioninstance {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','reactioninstances',$self->reactioninstance_uuid());
 }

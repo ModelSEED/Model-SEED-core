@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has binary => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
@@ -36,22 +36,22 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # LINKS:
-has dualConstraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,dualConstraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_builddualConstraint', weak_ref => 1);
-has upperBoundDualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,upperBoundDualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildupperBoundDualVariable', weak_ref => 1);
-has lowerBoundDualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,lowerBoundDualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildlowerBoundDualVariable', weak_ref => 1);
+has dualConstraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,dualConstraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_dualConstraint', weak_ref => 1);
+has upperBoundDualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,upperBoundDualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_upperBoundDualVariable', weak_ref => 1);
+has lowerBoundDualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,lowerBoundDualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_lowerBoundDualVariable', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _builddualConstraint {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_dualConstraint {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','constraints',$self->dualConstraint_uuid());
 }
-sub _buildupperBoundDualVariable {
+sub _build_upperBoundDualVariable {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','variables',$self->upperBoundDualVariable_uuid());
 }
-sub _buildlowerBoundDualVariable {
+sub _build_lowerBoundDualVariable {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','variables',$self->lowerBoundDualVariable_uuid());
 }

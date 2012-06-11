@@ -18,7 +18,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has status => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has method => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has feasible => (is => 'rw', isa => 'Bool', printOrder => '0', type => 'attribute', metaclass => 'Typed');
@@ -38,7 +38,7 @@ has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
+sub _build_uuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:

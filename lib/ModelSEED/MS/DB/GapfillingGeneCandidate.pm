@@ -25,21 +25,21 @@ has reactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 
 
 
 # LINKS:
-has feature => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildfeature', weak_ref => 1);
-has ortholog => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,ortholog_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildortholog', weak_ref => 1);
-has orthologGenome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,orthogenome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildorthologGenome', weak_ref => 1);
+has feature => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_feature', weak_ref => 1);
+has ortholog => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,ortholog_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_ortholog', weak_ref => 1);
+has orthologGenome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,orthogenome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_orthologGenome', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildfeature {
+sub _build_feature {
   my ($self) = @_;
   return $self->getLinkedObject('Annotation','features',$self->feature_uuid());
 }
-sub _buildortholog {
+sub _build_ortholog {
   my ($self) = @_;
   return $self->getLinkedObject('Annotation','features',$self->ortholog_uuid());
 }
-sub _buildorthologGenome {
+sub _build_orthologGenome {
   my ($self) = @_;
   return $self->getLinkedObject('Annotation','genomes',$self->orthogenome_uuid());
 }

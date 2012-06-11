@@ -21,11 +21,11 @@ has variable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', r
 
 
 # LINKS:
-has variable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,variable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildvariable', weak_ref => 1);
+has variable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,variable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_variable', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildvariable {
+sub _build_variable {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','variables',$self->variable_uuid());
 }

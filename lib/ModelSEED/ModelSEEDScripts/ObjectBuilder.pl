@@ -92,11 +92,11 @@ foreach my $name (keys(%{$objects})) {
 			}
         }
         if ($attribute->{name} eq "uuid") {
-            push(@$props, "lazy => 1", "builder => '_builduuid'");
+            push(@$props, "lazy => 1", "builder => '_build_uuid'");
             $uuid = 1;
         }
         if ($attribute->{name} eq "modDate") {
-            push(@$props, "lazy => 1", "builder => '_buildmodDate'");
+            push(@$props, "lazy => 1", "builder => '_build_modDate'");
             $modDate = 1;
         }
         push(@$props, "type => 'attribute'", "metaclass => 'Typed'");
@@ -173,28 +173,28 @@ foreach my $name (keys(%{$objects})) {
                 "type => 'link($parent,$method,$attr)'",
                 "metaclass => 'Typed'",
                 "lazy => 1",
-                "builder => '_build$soname'",
+                "builder => '_build_$soname'",
             ];
             push(@$props, "weak_ref => 1") if($weak);
             push(@$output, "has $soname => (" . join(", ", @$props) . ");");
         }
     }
     if (defined($object->{alias})) {
-        push(@$output,"has id => (is => 'rw', lazy => 1, builder => '_buildid', isa => 'Str', type => 'id', metaclass => 'Typed');");
+        push(@$output,"has id => (is => 'rw', lazy => 1, builder => '_build_id', isa => 'Str', type => 'id', metaclass => 'Typed');");
     }
     push(@$output, "", "");
 
     #Printing builders
     push(@$output,("# BUILDERS:"));
     if ($uuid == 1) {
-        push(@$output, "sub _builduuid { return Data::UUID->new()->create_str(); }");
+        push(@$output, "sub _build_uuid { return Data::UUID->new()->create_str(); }");
     }
     if ($modDate == 1) {
-        push(@$output, "sub _buildmodDate { return DateTime->now()->datetime(); }");
+        push(@$output, "sub _build_modDate { return DateTime->now()->datetime(); }");
     }
     foreach my $subobject (@{$object->{links}}) {
         push(@$output,
-            "sub _build".$subobject->{name}." {",
+            "sub _build_".$subobject->{name}." {",
             "$tab my (\$self) = \@_;",
             "$tab return \$self->getLinkedObject('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
             "}"

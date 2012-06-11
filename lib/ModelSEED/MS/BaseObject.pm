@@ -106,36 +106,32 @@ sub printJSONFile {
 sub getAlias {
     my ($self,$set) = @_;
     my $aliases = $self->getAliases($set);
-    if (defined($aliases->[0])) {
-        return $aliases->[0];
-    }
-    print "No alias of type ".$set."!\n";
-    return $self->uuid();
+    return (@$aliases) ? $aliases->[0] : undef;
 }
 
 sub getAliases {
-    my ($self,$aliasSet) = @_;
-    if (!defined($aliasSet)) {
-        ModelSEED::utilities::ERROR("The 'getAliases' function requires a 'set' as input!");
-    }
-    my $aliasowner = lc($self->_aliasowner());
-    my $owner = $self->$aliasowner();
-    my $aliasobj = $owner->queryObject("aliasSets",{
-    	name => $aliasSet,
+    my ($self,$setName) = @_;
+    return [] unless(defined($setName));
+    my $aliasRootClass = lc($self->_aliasowner());
+    my $rootClass = $self->$aliasRootClass();
+    my $aliasSet = $rootClass->queryObject("aliasSets",{
+    	name => $setName,
     	class => $self->_type()
     });
-    if (!defined($aliasobj)) {
-        print "Alias set ".$aliasSet." not found!\n";
-        return [];
-    }
-    my $aliases = $aliasobj->aliasesByuuid()->{$self->uuid()};
+    return [] unless(defined($aliasSet));
+    my $aliases = $aliasSet->aliasesByuuid->{$self->uuid()};
+    return (defined($aliases)) ? $aliases : [];
 }
 
-sub _buildid {
+sub defaultNameSpace {
+    return $_[0]->parent->defaultNameSpace();
+}
+
+sub _build_id {
     my ($self) = @_;
-    return $self->getAlias($self->parent()->defaultNameSpace());
+    my $alias = $self->getAlias($self->defaultNameSpace());
+    return (defined($alias)) ? $alias : $self->uuid;
 }
-
 ######################################################################
 #Output functions
 ######################################################################

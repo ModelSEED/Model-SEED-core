@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Compound', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has atom => (is => 'rw', isa => 'Int', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has pk => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
@@ -26,7 +26,7 @@ has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type =>
 
 
 # BUILDERS:
-sub _buildmodDate { return DateTime->now()->datetime(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

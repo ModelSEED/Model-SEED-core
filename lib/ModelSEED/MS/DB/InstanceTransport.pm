@@ -23,16 +23,16 @@ has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, 
 
 
 # LINKS:
-has compound => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,compound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcompound', weak_ref => 1);
-has compartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,compartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcompartment', weak_ref => 1);
+has compound => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,compound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compound', weak_ref => 1);
+has compartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,compartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compartment', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildcompound {
+sub _build_compound {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','compounds',$self->compound_uuid());
 }
-sub _buildcompartment {
+sub _build_compartment {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','compartments',$self->compartment_uuid());
 }

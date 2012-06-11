@@ -21,11 +21,11 @@ has count => (is => 'rw', isa => 'Num', printOrder => '0', default => '', type =
 
 
 # LINKS:
-has cue => (is => 'rw', isa => 'ModelSEED::MS::Cue', type => 'link(Biochemistry,cues,cue_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcue', weak_ref => 1);
+has cue => (is => 'rw', isa => 'ModelSEED::MS::Cue', type => 'link(Biochemistry,cues,cue_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_cue', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildcue {
+sub _build_cue {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','cues',$self->cue_uuid());
 }

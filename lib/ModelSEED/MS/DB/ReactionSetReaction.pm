@@ -20,11 +20,11 @@ has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', r
 
 
 # LINKS:
-has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreaction', weak_ref => 1);
+has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reaction', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildreaction {
+sub _build_reaction {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','reactions',$self->reaction_uuid());
 }
