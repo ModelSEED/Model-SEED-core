@@ -221,7 +221,7 @@ sub _buildSchema {
                     }
                 }
             },
-            model   => {
+            model => {
                 type => "collection",
                 id_types => [ 'uuid', 'alias' ],
                 class => "ModelSEED::MS::Model",
@@ -233,7 +233,7 @@ sub _buildSchema {
                     }
                 }
             },
-            mapping =>   => {
+            mapping => {
                 type => "collection",
                 id_types => [ 'uuid', 'alias' ],
                 class => "ModelSEED::MS::Mapping",
@@ -260,7 +260,7 @@ sub _buildSchema {
                     }
                 }
             },
-            annotation =>   => {
+            annotation => {
                 type => "collection",
                 id_types => [ 'uuid', 'alias' ],
                 class => "ModelSEED::MS::Annotation",
@@ -274,6 +274,18 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Genome",
+                    }
+                }
+            },
+            modelanalysis => {
+                type => "collection",
+                id_types => [ 'uuid', 'alias' ],
+                class => "ModelSEED::MS::Annotation",
+                children => {
+                    gapfillingFormulations => {
+                        type => "collection",
+                        id_types => [ 'uuid', 'alias' ],
+                        class => "ModelSEED::MS::GapfillingFormulation",
                     }
                 }
             },
