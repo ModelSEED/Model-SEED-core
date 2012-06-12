@@ -121,10 +121,10 @@ sub createBiochemistry {
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		name => $self->namespace()."/primary.biochemistry",
 		database => $self->figmodel()->database(),
-		addAliases => 0,
-		addStructuralCues => 0,
-		addStructure => 0,
-		addPK => 0,
+		addAliases => 1,
+		addStructuralCues => 1,
+		addStructure => 1,
+		addPK => 1,
 	});
 	#Creating the biochemistry
 	my $biochemistry = ModelSEED::MS::Biochemistry->new({
@@ -166,7 +166,7 @@ sub createBiochemistry {
 			$cuePriority->{$array->[1]} = ($i-1);
 		}
 		for (my $i=1;$i < @{$data}; $i++) {
-			my $array = [split(/;/,$data->[$i])];
+			my $array = [split(/\t/,$data->[$i])];
 			my $priority = -1;
 			if (defined($cuePriority->{$array->[0]})) {
 				$priority = $cuePriority->{$array->[0]};
@@ -215,13 +215,13 @@ sub createBiochemistry {
 				});
 			}
 			#Adding molfile as structure 
-			if (-e $ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol") {
-				my $data = join("\n",@{ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol")});
-				$cpd->add("structures",{
-					structure => $data,
-					type => "molfile"
-				});
-			}
+			#if (-e $ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol") {
+			#	my $data = join("\n",@{ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/mol/pH7/".$cpds->[$i]->id().".mol")});
+			#	$cpd->add("structures",{
+			#		structure => $data,
+			#		type => "molfile"
+			#	});
+			#}
 		}
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {

@@ -6,11 +6,10 @@ use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Factories::PPOFactory;
 use ModelSEEDbootstrap;
 
-my $username = "public";
-my $figmodel = ModelSEED::FIGMODEL->new({username => $username,password => "public"});
+my $figmodel = ModelSEED::FIGMODEL->new({username => "public",password => "public"});
 my $ppoFactory = ModelSEED::MS::Factories::PPOFactory->new({
 	figmodel => $figmodel,
-	namespace => $username
+	namespace => "public"
 });
 
 my $biochem = $ppoFactory->createBiochemistry();
