@@ -41,7 +41,6 @@ my $builder = Module::Build->new(
         "File::stat" => 0, # core
         "FileHandle" => 0, # core
         "Getopt::Long" => 0, # core
-        "HTML" => 0,
         "HTTP::Request" => 0,
         "HTTP::Response" => 0,
         "IO::Compress::Gzip" => 0, # core
