@@ -6,7 +6,6 @@
 # Date of module creation: 2012-03-26T23:22:35
 ########################################################################
 use strict;
-use XML::LibXML;
 use ModelSEED::MS::DB::Model;
 package ModelSEED::MS::Model;
 use Moose;
@@ -790,10 +789,9 @@ sub printSBML {
     };
     #clean names
     my $stringToString = sub {
-	my ($name,$value) = @_;
-	#SNames cannot contain angle brackets
-	my $cpy = XML::LibXML::Attr->new($name,$value)->toString();
-		return $cpy;
+		my ($name,$value) = @_;
+		#SNames cannot contain angle brackets
+		return $name.'="'.$value.'"';
     };
 	#Printing header to SBML file
 	my $ModelName = $idToSId->($self->id());
@@ -909,7 +907,7 @@ sub printSBML {
 			$obj = 1;
 		}
 		my $reversibility = "false";
-		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
+		push(@{$output},'<reaction '.$stringToString->("id",$rxn->name()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
 		push(@{$output},"</notes>");
 		my $firstreact = 1;

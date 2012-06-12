@@ -45,5 +45,6 @@ ModelSEED::utilities::PRINTFILE($directory."83333.1.readable",$readable);
 my $mdl = $anno->createStandardFBAModel();
 my $data = $mdl->serializeToDB();
 $mdl->printJSONFile($directory."ReconstructedModel.json");
+my $sbml = $mdl->printSBML();
 $readable = $mdl->createReadableStringArray();
-ModelSEED::utilities::PRINTFILE($directory."ReconstructedModel.readable",$readable);
+ModelSEED::utilities::PRINTFILE($directory."ReconstructedModel.sbml",$sbml);
