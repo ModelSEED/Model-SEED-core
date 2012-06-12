@@ -474,7 +474,7 @@ sub addAliases {
 		$rxn = $biochemistry->getObjectByAlias("reactioninstances",$rxnals->[$i]->REACTION(),"ModelSEED");
 		if (defined($rxn)) {
 			$biochemistry->addAlias({
-				attribute => "reactionsinstances",
+				attribute => "reactioninstances",
 				aliasName => $rxnals->[$i]->type(),
 				alias => $rxnals->[$i]->alias(),
 				uuid => $rxn->uuid()
