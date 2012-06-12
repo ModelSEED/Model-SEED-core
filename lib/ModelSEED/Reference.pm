@@ -277,17 +277,11 @@ sub _buildSchema {
                     }
                 }
             },
-            modelanalysis => {
+            gapfillingFormulation => {
                 type => "collection",
                 id_types => [ 'uuid', 'alias' ],
-                class => "ModelSEED::MS::Annotation",
-                children => {
-                    gapfillingFormulations => {
-                        type => "collection",
-                        id_types => [ 'uuid', 'alias' ],
-                        class => "ModelSEED::MS::GapfillingFormulation",
-                    }
-                }
+                class => "ModelSEED::MS::GapfillingFormulation",
+                children => {}
             },
             user    => {},
         }
