@@ -837,8 +837,9 @@ sub printSBML {
 	push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="b" charge="10000000" boundaryCondition="true"/>');
 	push(@{$output},'</listOfSpecies>');
 	push(@{$output},'<listOfReactions>');
-	for (my $i=0; $i < @{$self->modelreactions()}; $i++) {
-		my $rxn = $self->modelreactions()->[$i];
+	my $mdlrxns = $self->modelreactions();
+	for (my $i=0; $i < @{$mdlrxns}; $i++) {
+		my $rxn = $mdlrxns->[$i];
 		my $reversibility = "true";
 		my $lb = -1000;
 		if ($rxn->direction() ne "=") {
@@ -847,8 +848,8 @@ sub printSBML {
 		}
 		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
-		my $ec = $rxn->getAlias("EC");
-		my $keggID = $rxn->getAlias("KEGG");
+		my $ec = $rxn->reactioninstance()->getAlias("EC");
+		my $keggID = $rxn->reactioninstance()->getAlias("KEGG");
 		my $GeneAssociation = $rxn->gprString();
 		my $ProteinAssociation = $rxn->gprString();
 		push(@{$output},"<html:p>GENE_ASSOCIATION:".$GeneAssociation."</html:p>");
@@ -863,8 +864,9 @@ sub printSBML {
 		my $firstreact = 1;
 		my $firstprod = 1;
 		my $prodoutput = [];
-		for (my $i=0; $i < @{$rxn->modelReactionReagents()}; $i++) {
-			my $rgt = $rxn->modelReactionReagents()->[$i];
+		my $rgts = $rxn->modelReactionReagents();
+		for (my $i=0; $i < @{$rgts}; $i++) {
+			my $rgt = $rgts->[$i];
 			if ($rgt->coefficient() < 0) {
 				if ($firstreact == 1) {
 					$firstreact = 0;
@@ -899,8 +901,9 @@ sub printSBML {
 		push(@{$output},"</kineticLaw>");
 		push(@{$output},'</reaction>');
 	}
-	for (my $i=0; $i < @{$self->biomasses()}; $i++) {
-		my $rxn = $self->biomasses()->[$i];
+	my $bios = $self->biomasses();
+	for (my $i=0; $i < @{$bios}; $i++) {
+		my $rxn = $bios->[$i];
 		my $obj = 0;
 		if ($i==0) {
 			$obj = 1;
@@ -912,8 +915,9 @@ sub printSBML {
 		my $firstreact = 1;
 		my $firstprod = 1;
 		my $prodoutput = [];
-		for (my $i=0; $i < @{$rxn->biomasscompounds()}; $i++) {
-			my $rgt = $rxn->biomasscompounds()->[$i];
+		my $biocpds = $rxn->biomasscompounds();
+		for (my $i=0; $i < @{$biocpds}; $i++) {
+			my $rgt = $biocpds->[$i];
 			if ($rgt->coefficient() < 0) {
 				if ($firstreact == 1) {
 					$firstreact = 0;
@@ -948,8 +952,9 @@ sub printSBML {
 		push(@{$output},"</kineticLaw>");
 		push(@{$output},'</reaction>');
 	}
-	for (my $i=0; $i < @{$self->modelcompounds()}; $i++) {
-		my $cpd = $self->modelcompounds()->[$i];
+	my $cpds = $self->modelcompounds();
+	for (my $i=0; $i < @{$cpds}; $i++) {
+		my $cpd = $cpds->[$i];
 		my $lb = -1000;
 		my $ub = 1000;
 		if ($cpd->modelCompartmentLabel() =~ m/^e/ || $cpd->name() eq "Biomass") {
