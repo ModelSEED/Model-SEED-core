@@ -43,6 +43,9 @@ sub runFBA {
 	my $prob = $self->buildProblem({solver => "cplex"});
 	$prob->printLPfile();
 	my $solution = $prob->submitLPFile();
+	my $readable = $solution->createReadableStringArray();
+	my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
+	ModelSEED::utilities::PRINTFILE($directory."FBASolution.readable",$readable);
 	my $results = $self->add("fbaResults",{
 		name => $self->name()." results",
 		fbaformulation_uuid => $self->uuid(),

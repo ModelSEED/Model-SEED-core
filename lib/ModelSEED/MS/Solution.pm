@@ -53,9 +53,9 @@ sub buildFromCPLEXFile {
 			$self->method($1);
 		} elsif ($data->[$i] =~ m/primalFeasible=\"(.+)\"/) {
 			$self->feasible($1);
-		} elsif ($data->[$i] =~ m/\<constraint\sname=\"(.+)\".+index=\"(.+)\".+slack=\"(.+)\"/) {
+		} elsif ($data->[$i] =~ m/\<constraint\sname=\"([^\"]+)\".+index=\"([^\"]+)\".+slack=\"([^\"]+)\"/) {
 			my $slack = $3;
-			my $constraint = $self->parent()->queryObject("constraints",{"index" => $2});
+			my $constraint = $self->parent()->queryObject("constraints",{"name" => $1});
 			if (defined($constraint)) {
 				$self->add("solutionconstraints",{
 					constraint_uuid => $constraint->uuid(),
@@ -63,9 +63,9 @@ sub buildFromCPLEXFile {
 					slack => $slack
 				});
 			}
-		} elsif ($data->[$i] =~ m/\<variable\sname=\"(.+)\".+index=\"(.+)\".+value=\"(.+)\"/) {
+		} elsif ($data->[$i] =~ m/\<variable\sname=\"([^\"]+)\".+index=\"([^\"]+)\".+value=\"([^\"]+)\"/) {
 			my $value = $3;
-			my $variable = $self->parent()->queryObject("variables",{"index" => $2});
+			my $variable = $self->parent()->queryObject("variables",{"name" => $1});
 			if (defined($variable)) {
 				$self->add("solutionvariables",{
 					variable_uuid => $variable->uuid(),

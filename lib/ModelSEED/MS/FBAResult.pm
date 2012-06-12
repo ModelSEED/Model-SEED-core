@@ -35,8 +35,9 @@ Description:
 sub buildFromOptSolution {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["LinOptSolution"],{});
-	for (my $i=0; $i < @{$args->{LinOptSolution}->solutionvariables()}; $i++) {
-		my $var = $args->{LinOptSolution}->solutionvariables()->[$i];
+	my $solvars = $args->{LinOptSolution}->solutionvariables();
+	for (my $i=0; $i < @{$solvars}; $i++) {
+		my $var = $solvars->[$i];
 		my $type = $var->variable()->type();
 		if ($type eq "flux" || $type eq "forflux" || $type eq "revflux" || $type eq "fluxuse" || $type eq "forfluxuse" || $type eq "revfluxuse") {
 			$self->integrateReactionFluxRawData($var);
@@ -107,7 +108,7 @@ sub integrateReactionFluxRawData {
 			$fbavar->min($solVar->min());
 		}
 		if ($solVar->value() > 0) {
-			$fbavar->value($solVar->value());
+			$fbavar->value($fbavar->value() + $solVar->value());
 		}
 	} elsif ($var->type() eq "rev".$type) {
 		if ($var->upperBound() > 0) {
@@ -123,7 +124,7 @@ sub integrateReactionFluxRawData {
 			$fbavar->max((-1*$solVar->min()));
 		}
 		if ($solVar->value() > 0) {
-			$fbavar->value((-1*$solVar->value()));
+			$fbavar->value($fbavar->value() - $solVar->value());
 		}
 	}
 }
@@ -172,14 +173,14 @@ sub integrateCompoundFluxRawData {
 		if ($var->lowerBound() > 0) {
 			$fbavar->lowerBound($var->lowerBound());
 		}
-		if ($var->max() > 0) {
+		if ($solVar->max() > 0) {
 			$fbavar->max($solVar->max());
 		}
-		if ($var->min() > 0) {
+		if ($solVar->min() > 0) {
 			$fbavar->min($solVar->min());
 		}
-		if ($var->value() > 0) {
-			$fbavar->value($solVar->value());
+		if ($solVar->value() > 0) {
+			$fbavar->value($fbavar->value() + $solVar->value());
 		}
 	} elsif ($var->type() eq "rev".$type) {
 		if ($var->upperBound() > 0) {
@@ -188,14 +189,14 @@ sub integrateCompoundFluxRawData {
 		if ($var->lowerBound() > 0) {
 			$fbavar->upperBound((-1*$var->lowerBound()));
 		}
-		if ($var->max() > 0) {
+		if ($solVar->max() > 0) {
 			$fbavar->min((-1*$solVar->max()));	
 		}
-		if ($var->min() > 0) {
+		if ($solVar->min() > 0) {
 			$fbavar->max((-1*$solVar->min()));
 		}
-		if ($var->value() > 0) {
-			$fbavar->value((-1*$solVar->value()));
+		if ($solVar->value() > 0) {
+			$fbavar->value($fbavar->value() - $solVar->value());
 		}
 	}
 }

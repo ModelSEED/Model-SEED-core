@@ -19,10 +19,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has status => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has method => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has feasible => (is => 'rw', isa => 'Bool', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has objective => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has status => (is => 'rw', isa => 'Str', printOrder => '1', type => 'attribute', metaclass => 'Typed');
+has method => (is => 'rw', isa => 'Str', printOrder => '2', type => 'attribute', metaclass => 'Typed');
+has feasible => (is => 'rw', isa => 'Bool', printOrder => '3', type => 'attribute', metaclass => 'Typed');
+has objective => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -30,8 +30,8 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has solutionconstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionConstraint)', metaclass => 'Typed', reader => '_solutionconstraints', printOrder => '-1');
-has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionVariable)', metaclass => 'Typed', reader => '_solutionvariables', printOrder => '-1');
+has solutionconstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionConstraint)', metaclass => 'Typed', reader => '_solutionconstraints', printOrder => '0');
+has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(SolutionVariable)', metaclass => 'Typed', reader => '_solutionvariables', printOrder => '1');
 
 
 # LINKS:
@@ -54,28 +54,28 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 1,
             'name' => 'status',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 2,
             'name' => 'method',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 3,
             'name' => 'feasible',
             'type' => 'Bool',
             'perm' => 'rw'
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 4,
             'name' => 'objective',
             'type' => 'Num',
             'perm' => 'rw'
@@ -99,13 +99,13 @@ sub _attributes {
 
 my $subobjects = [
           {
-            'printOrder' => -1,
+            'printOrder' => 0,
             'name' => 'solutionconstraints',
             'type' => 'child',
             'class' => 'SolutionConstraint'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 1,
             'name' => 'solutionvariables',
             'type' => 'child',
             'class' => 'SolutionVariable'

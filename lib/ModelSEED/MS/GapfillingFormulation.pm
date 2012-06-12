@@ -266,8 +266,10 @@ sub runGapFilling {
 	}
 	#Running the flux balance analysis for the gapfilling optimization problem
 	my $solution = $gffbaform->runFBA();
+	my $readable = $solution->createReadableStringArray();
+	my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
+	ModelSEED::utilities::PRINTFILE($directory."GapfillSolution.readable",$readable);
 	#Translating te solution into a gapfilling solution
-	print "Done with FBA!\n";
 	my $gfsolution = $self->add("gapfillingSolutions",{
 		solutionCost => $solution->objectiveValue()
 	});
@@ -278,6 +280,7 @@ sub runGapFilling {
 			my $rxn = $var->modelreaction();
 			if ($var->value() < -0.0000001) {
 				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
+					print "New reaction <=!";
 					my $direction = "<";
 					if ($rxn->direction() ne $direction) {
 						$direction = "=";
@@ -288,6 +291,7 @@ sub runGapFilling {
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq ">") {
+					print "Direction change!";
 					$gfsolution->add("gapfillingSolutionReactions",{
 						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
 						reactioninstance => $rxn->reactioninstance(),
@@ -296,6 +300,7 @@ sub runGapFilling {
 				}
 			} elsif ($var->value() > 0.0000001) {
 				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
+					print "New reaction =>!";
 					my $direction = ">";
 					if ($rxn->direction() ne $direction) {
 						$direction = "=";
@@ -306,6 +311,7 @@ sub runGapFilling {
 						direction => $direction
 					});
 				} elsif ($rxn->direction() eq "<") {
+					print "Direction change!";
 					$gfsolution->add("gapfillingSolutionReactions",{
 						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
 						reactioninstance => $rxn->reactioninstance(),
@@ -315,7 +321,7 @@ sub runGapFilling {
 			}
 		}
 	}
-	return $solution;
+	return $gfsolution;
 }
 
 __PACKAGE__->meta->make_immutable;

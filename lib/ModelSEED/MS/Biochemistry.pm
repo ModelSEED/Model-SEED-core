@@ -219,6 +219,52 @@ sub findCreateEquivalentReaction {
 	$outrxn->mapped_uuid($inrxn->uuid());
 	return $outrxn;
 }
+=head3 findCreateEquivalentReactionInstance
+Definition:
+	void ModelSEED::MS::Biochemistry->findCreateEquivalentReactionInstance({
+		reactioninstance => ModelSEED::MS::ReactionInstance(REQUIRED),
+		create => 0/1(1)
+	});
+Description:
+	Search for an equivalent reaction instance for the input biochemistry reaction instance
+=cut
+sub findCreateEquivalentReactionInstance {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["reactioninstance"],{create => 1});
+	my $inrxn = $args->{reactioninstance};
+	my $outrxn = $self->queryObject("reactioninstances",{
+		definition => $inrxn->definition()
+	});
+	if (!defined($outrxn) && $args->{create} == 1) {
+		my $rxn = $self->findCreateEquivalentReaction({reaction => $inrxn->reaction()});
+		my $cmp = $self->findCreateEquivalentCompartment({compartment => $inrxn->compartment()});
+		$outrxn = $self->add("reactioninstances",{
+			reaction_uuid => $rxn->uuid(),
+			reaction => $rxn,
+			direction => $inrxn->direction(),
+			compartment_uuid => $cmp->uuid(),
+			compartment => $cmp,
+			sourceEquation => $inrxn->sourceEquation(),
+			transprotonNature => $inrxn->transprotonNature()
+		});
+		my $trpts = $inrxn->transports();
+		for (my $i=0; $i < @{$trpts}; $i++) {
+			my $cpd = $self->findCreateEquivalentCompound({compound => $trpts->[$i]->compound()});
+			my $cmp = $self->findCreateEquivalentCompartment({compartment => $trpts->[$i]->compartment()});
+			$outrxn->add("transports",{
+				compound_uuid => $cpd->uuid(),
+				compound => $cpd,
+				compartment_uuid => $cmp->uuid(),
+				compartment => $cmp,
+				compartmentIndex => $trpts->[$i]->compartmentIndex(),
+				coefficient => $trpts->[$i]->coefficient()
+			});
+		}
+	}
+	$inrxn->mapped_uuid($outrxn->uuid());
+	$outrxn->mapped_uuid($inrxn->uuid());
+	return $outrxn;
+}
 
 __PACKAGE__->meta->make_immutable;
 1;

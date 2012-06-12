@@ -35,7 +35,7 @@ has current => (is => 'rw', isa => 'Int', printOrder => '4', default => '1', typ
 has mapping_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '8', type => 'attribute', metaclass => 'Typed');
 has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '9', required => 1, type => 'attribute', metaclass => 'Typed');
 has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '10', type => 'attribute', metaclass => 'Typed');
-has modelanalysis_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '11', type => 'attribute', metaclass => 'Typed');
+has modelanalysis_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '11', default => '00000000-0000-0000-0000-000000000000', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -201,6 +201,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 11,
             'name' => 'modelanalysis_uuid',
+            'default' => '00000000-0000-0000-0000-000000000000',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           }

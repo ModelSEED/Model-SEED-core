@@ -18,11 +18,11 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 # ATTRIBUTES:
 has biomass_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has variableType => (is => 'rw', isa => 'Str', printOrder => '2', type => 'attribute', metaclass => 'Typed');
-has lowerBound => (is => 'rw', isa => 'Str', printOrder => '6', type => 'attribute', metaclass => 'Typed');
-has upperBound => (is => 'rw', isa => 'Str', printOrder => '7', type => 'attribute', metaclass => 'Typed');
-has min => (is => 'rw', isa => 'Str', printOrder => '4', type => 'attribute', metaclass => 'Typed');
-has max => (is => 'rw', isa => 'Str', printOrder => '5', type => 'attribute', metaclass => 'Typed');
-has value => (is => 'rw', isa => 'Str', printOrder => '3', type => 'attribute', metaclass => 'Typed');
+has lowerBound => (is => 'rw', isa => 'Num', printOrder => '6', type => 'attribute', metaclass => 'Typed');
+has upperBound => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
+has min => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', metaclass => 'Typed');
+has max => (is => 'rw', isa => 'Num', printOrder => '5', type => 'attribute', metaclass => 'Typed');
+has value => (is => 'rw', isa => 'Num', printOrder => '3', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -60,7 +60,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 6,
             'name' => 'lowerBound',
-            'type' => 'Str',
+            'type' => 'Num',
             'perm' => 'rw'
           },
           {
@@ -68,7 +68,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 7,
             'name' => 'upperBound',
-            'type' => 'Str',
+            'type' => 'Num',
             'perm' => 'rw'
           },
           {
@@ -76,7 +76,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 4,
             'name' => 'min',
-            'type' => 'Str',
+            'type' => 'Num',
             'perm' => 'rw'
           },
           {
@@ -84,7 +84,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 5,
             'name' => 'max',
-            'type' => 'Str',
+            'type' => 'Num',
             'perm' => 'rw'
           },
           {
@@ -92,7 +92,7 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 3,
             'name' => 'value',
-            'type' => 'Str',
+            'type' => 'Num',
             'perm' => 'rw'
           }
         ];

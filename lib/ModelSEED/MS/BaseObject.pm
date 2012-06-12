@@ -138,6 +138,99 @@ sub _buildid {
 ######################################################################
 #Output functions
 ######################################################################
+sub createHTML {
+	my ($self) = @_;
+	my $data = $self->createReadableData();
+	my $output = [
+		'<!doctype HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">',
+		'<html><head>',
+		'<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>',
+		'    <script type="text/javascript">',
+		'        function UpdateTableHeaders() {',
+		'            $("div.divTableWithFloatingHeader").each(function() {',
+		'                var originalHeaderRow = $(".tableFloatingHeaderOriginal", this);',
+		'                var floatingHeaderRow = $(".tableFloatingHeader", this);',
+		'                var offset = $(this).offset();',
+		'                var scrollTop = $(window).scrollTop();',
+		'                if ((scrollTop > offset.top) && (scrollTop < offset.top + $(this).height())) {',
+		'                    floatingHeaderRow.css("visibility", "visible");',
+		'                    floatingHeaderRow.css("top", Math.min(scrollTop - offset.top, $(this).height() - floatingHeaderRow.height()) + "px");',
+		'                    // Copy row width from whole table',
+		'                    floatingHeaderRow.css(\'width\', "2000px");',
+		'                    // Copy cell widths from original header',
+		'                    $("th", floatingHeaderRow).each(function(index) {',
+		'                        var cellWidth = $("th", originalHeaderRow).eq(index).css(\'width\');',
+		'                        $(this).css(\'width\', cellWidth);',
+		'                    });',
+		'                }',
+		'                else {',
+		'                    floatingHeaderRow.css("visibility", "hidden");',
+		'                    floatingHeaderRow.css("top", "0px");',
+		'                }',
+		'            });',
+		'        }',
+		'        $(document).ready(function() {',
+		'            $("table.tableWithFloatingHeader").each(function() {',
+		'                $(this).wrap("<div class=\"divTableWithFloatingHeader\" style=\"position:relative\"></div>");',
+		'                var originalHeaderRow = $("tr:first", this)',
+		'                originalHeaderRow.before(originalHeaderRow.clone());',
+		'                var clonedHeaderRow = $("tr:first", this)',
+		'                clonedHeaderRow.addClass("tableFloatingHeader");',
+		'                clonedHeaderRow.css("position", "absolute");',
+		'                clonedHeaderRow.css("top", "0px");',
+		'                clonedHeaderRow.css("left", $(this).css("margin-left"));',
+		'                clonedHeaderRow.css("visibility", "hidden");',
+		'                originalHeaderRow.addClass("tableFloatingHeaderOriginal");',
+		'            });',
+		'            UpdateTableHeaders();',
+		'            $(window).scroll(UpdateTableHeaders);',
+		'            $(window).resize(UpdateTableHeaders);',
+		'        });',
+		'    </script>',
+		'<style type="text/css">',
+		'h1 {',
+		'    font-size: 16px;',
+		'}',
+		'table.tableWithFloatingHeader {',
+		'    font-size: 12px;',
+		'    text-align: left;',
+		'	 border: 0;',
+		'	 width: 2000px;',
+		'}',
+		'th {',
+		'    font-size: 14px;',
+		'    background: #ddd;',
+		'	 border: 1px solid black;',
+		'    vertical-align: top;',
+		'    padding: 5px 5px 5px 5px;',
+		'}',
+		'td {',
+		'   font-size: 12px;',
+		'	vertical-align: top;',
+		'}',
+		'</style></head>',
+		'<h2>'.$self->_type().' attributes</h2>',
+		'<table class="tableWithFloatingHeader">',
+		'<tr><th>'.join("</th><th>",@{$data->{attributes}->{headings}}).'</th></tr>',
+		'<tr><td>'.join("</td><td>",@{$data->{attributes}->{data}->[0]}).'</td></tr>',
+		'</table>'
+	];
+	foreach my $subobject (@{$data->{subobjects}}) {
+		push(@{$output},(
+			'<h2>'.$subobject->{name}.' subobjects</h2>',
+			'<table class="tableWithFloatingHeader">',
+			'<tr><th>'.join("</th><th>",@{$subobject->{headings}}).'</th></tr>'
+		));
+		foreach my $row (@{$subobject->{data}}) {
+			push(@{$output},'<tr><td>'.join("</td><td>",@{$row}).'</td></tr>');
+		}
+		push(@{$output},'</table>');
+	}
+	push(@{$output},'</html>');
+	my $html = join("\n",@{$output});
+	return $html;
+}
+
 sub createReadableStringArray {
 	my ($self) = @_;
 	my $output = ["Attributes {"];
@@ -273,6 +366,9 @@ sub remove {
 sub getLinkedObject {
     my ($self, $sourceType, $attribute, $uuid) = @_;
    	my $source = lc($sourceType);
+   	if ($source =~ m/store/) {
+   		ModelSEED::utilities::ERROR("Attempting to access store!");	
+   	}
    	my $sourceObj = $self->$source();
    	if (!defined($sourceObj)) {
    		ModelSEED::utilities::ERROR("Cannot obtain source object ".$sourceType." for ".$attribute." link!");

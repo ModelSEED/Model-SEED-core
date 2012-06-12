@@ -119,15 +119,15 @@ sub findCreateEquivalentReaction {
 		definition => $inmdlrxn->definition(),
 	});
 	if (!defined($outrxn) && $args->{create} == 1) {
-		my $biorxn = $self->biochemistry()->findCreateEquivalentReaction({
-			reaction => $inmdlrxn->reaction,
+		my $biorxn = $self->biochemistry()->findCreateEquivalentReactionInstance({
+			reactioninstance => $inmdlrxn->reactioninstance,
 			create => 1
 		});
 		my $mdlcmp = $self->findCreateEquivalentCompartment({
 			modelcompartment => $inmdlrxn->modelcompartment()
 		});
 		$outrxn = $self->add("modelreactions",{
-			reaction_uuid => $biorxn->uuid(),
+			reactioninstance_uuid => $biorxn->uuid(),
 			direction => $inmdlrxn->direction(),
 			protons => $inmdlrxn->protons(),
 			modelcompartment_uuid => $mdlcmp->uuid()
@@ -1006,11 +1006,6 @@ sub gapfillModel {
 		fbaFormulation => $args->{fbaFormulation}
 	});
 	if (defined($solution)) {
-		if (!defined($self->modelanalysis())) {
-			my $mdlanal = ModelSEED::MS::ModelAnalysis->new();
-			$self->modelanalysis_uuid($mdlanal->uuid());
-			$self->modelanalysis($mdlanal);
-		}
 		$self->modelanalysis()->add("gapfillingFormulations",$args->{gapfillingFormulation});
 		if ($args->{integrateSolution} == 1) {
 			$self->integrateGapfillingSolution({gapfillingSolution => $solution});
@@ -1033,19 +1028,22 @@ sub integrateGapfillingSolution {
 	my $gfSolution = $args->{gapfillingSolution};
 	my $solrxns = $gfSolution->gapfillingSolutionReactions();
 	for (my $i=0; $i < @{$solrxns}; $i++) {
+		print "New reaction!\n";
 		my $solrxn = $solrxns->[$i];
 		my $rxninst = $self->biochemistry()->findCreateEquivalentReactionInstance({reactioninstance => $solrxn->reactioninstance()});
 		my $mdlrxn = $self->queryObject("modelreactions",{reactioninstance_uuid => $rxninst->uuid()});
 		if (!defined($mdlrxn)) {
+			print "Adding reaction!\n";
 			$self->addReactionInstanceToModel({
 				reactionInstance => $rxninst,
 				direction => $solrxn->direction()
 			});
-		} elsif ($mdlRxn->direction() ne $solrxn->direction()) {
-			$mdlRxn->direction("=");
+		} elsif ($mdlrxn->direction() ne $solrxn->direction()) {
+			print "Making reaction reversible!\n";
+			$mdlrxn->direction("=");
 		}
 		my $geneCandidates = $solrxn->gfSolutionReactionGeneCandidates();
-		my $prot = $mdlRxn->add("modelReactionProteins",{
+		my $prot = $mdlrxn->add("modelReactionProteins",{
 			complex_uuid => "00000000-0000-0000-0000-000000000000"
 		});
 		my $subunit = $prot->add("modelReactionProteinSubunits",{

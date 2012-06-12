@@ -16,9 +16,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Solution', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
 has constraint_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has slack => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has slack => (is => 'rw', isa => 'Num', printOrder => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -43,7 +43,7 @@ sub _type { return 'SolutionConstraint'; }
 my $attributes = [
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -57,7 +57,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 1,
             'name' => 'slack',
             'type' => 'Num',
             'perm' => 'rw'
