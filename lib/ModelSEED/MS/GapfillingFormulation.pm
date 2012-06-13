@@ -355,7 +355,7 @@ sub emergencyGapfilling {
 		my $rxn = $mdlrxn->[$i];
 		my $line = $rxn->reactioninstance()->id().";".$rxn->direction().";c;";
 		$line .= $rxn->gprString();
-		$line =~ s/fig\|\d+\.\d+\.//g;
+		$line =~ s/[a-zA-Z]+\|\d+\.\d+\.//g;
 		push(@{$mdlData},$line);
 	}
 	push(@{$mdlData},"bio00001;=>;c;UNIVERSAL");
