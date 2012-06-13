@@ -345,7 +345,7 @@ sub emergencyGapfilling {
 	#my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."data/";
 	my $dir = File::Temp::tempdir(DIR => $dataDir."ReactionDB/MFAToolkitOutputFiles")."/";
 	File::Path::mkpath ($dir."reaction");
-	my $directory = substr($dir,62);
+	my $directory = substr($dir,length($dataDir."ReactionDB/MFAToolkitOutputFiles/"));
 	#chop($directory);
 	print $directory;
 	#Print model to Model.tbl
