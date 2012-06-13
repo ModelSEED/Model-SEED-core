@@ -1034,10 +1034,10 @@ sub gapfillModel {
 		fbaFormulation => $args->{fbaFormulation}
 	});
 	if (defined($solution)) {
-		$self->modelanalysis()->add("gapfillingFormulations",$args->{gapfillingFormulation});
-		if ($args->{integrateSolution} == 1) {
+		#$self->modelanalysis()->add("gapfillingFormulations",$args->{gapfillingFormulation});
+		#if ($args->{integrateSolution} == 1) {
 			#$self->integrateGapfillingSolution({gapfillingSolution => $solution});
-		}
+		#}
 		return $solution;	
 	}
 	return undef;
