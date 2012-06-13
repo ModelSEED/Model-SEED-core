@@ -464,15 +464,15 @@ sub emergencyGapfilling {
 							ModelSEED::utilities::ERROR("Could not find gapfilled reaction ".$rxnid."!");
 						}
 						my $mdlrxn = $model->queryObject("modelreactions",{reactioninstance_uuid => $rxn->uuid()});
-						my $direction = ">";
+						my $direction = "=>";
 						if ($sign eq "-") {
-							$direction = "<";
+							$direction = "<=";
 						}
 						if ($rxn->direction() ne $direction) {
-							$direction = "=";
+							$direction = "<=>";
 						}
 						if (defined($mdlrxn)) { 
-							$mdlrxn->direction("=");
+							$mdlrxn->direction("<=>");
 						} else {
 							$model->addReactionInstanceToModel({
 								reactionInstance => $rxn,
