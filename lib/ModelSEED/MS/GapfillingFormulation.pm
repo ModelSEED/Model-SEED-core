@@ -341,8 +341,8 @@ sub emergencyGapfilling {
 	my $model = $args->{model};
 	my $media = $args->{media};
 	#Creating job directory and copying in the default gapfilling job data
-	#my $dataDir = "/vol/model-dev/MODEL_DEV_DB/";
-	my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."data/";
+	my $dataDir = "/vol/model-dev/MODEL_DEV_DB/";
+	#my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."data/";
 	my $dir = File::Temp::tempdir(DIR => $dataDir."ReactionDB/MFAToolkitOutputFiles")."/";
 	File::Path::mkpath ($dir."reaction");
 	my $directory = substr($dir,62);
@@ -439,6 +439,7 @@ sub emergencyGapfilling {
 		ModelSEED::utilities::MODELSEEDCORE().'software/mfatoolkit/bin/mfatoolkit resetparameter "MFA input directory" '.$dataDir.'ReactionDB/ parameterfile "../Parameters/ProductionMFA.txt" parameterfile "../Parameters/GapFilling.txt" parameterfile "'.$dir.'CompleteGapfillingParameters.txt" LoadCentralSystem "'.$dir.'Model.tbl" > "'.$dir.'log.txt"'
 	];
 	ModelSEED::utilities::PRINTFILE($dir."runMFAToolkit.sh",$exec);
+	chmod 0775,$dir."runMFAToolkit.sh";
 	#Run shell script
 	system($dir."runMFAToolkit.sh");
 	#Parse CompleteGapfillingOutput.txt
