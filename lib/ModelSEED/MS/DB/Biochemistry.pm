@@ -25,9 +25,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has defaultNameSpace => (is => 'rw', isa => 'Str', printOrder => '2', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has locked => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '1', type => 'attribute', metaclass => 'Typed');
 has public => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', default => '', type => 'attribute', metaclass => 'Typed');
@@ -53,8 +53,8 @@ has cues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return [];
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

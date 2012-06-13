@@ -19,8 +19,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
 has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
@@ -56,23 +56,23 @@ has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { retu
 
 
 # LINKS:
-has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmedia', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
-has model => (is => 'rw', isa => 'ModelSEED::MS::Model', type => 'link(Store,Model,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodel', weak_ref => 1);
+has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_biochemistry', weak_ref => 1);
+has model => (is => 'rw', isa => 'ModelSEED::MS::Model', type => 'link(Store,Model,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_model', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildmedia {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
+sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
 }
-sub _buildbiochemistry {
+sub _build_biochemistry {
   my ($self) = @_;
   return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
 }
-sub _buildmodel {
+sub _build_model {
   my ($self) = @_;
   return $self->getLinkedObject('Store','Model',$self->model_uuid());
 }

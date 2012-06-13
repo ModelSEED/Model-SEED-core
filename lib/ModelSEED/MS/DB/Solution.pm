@@ -38,7 +38,7 @@ has solutionvariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
+sub _build_uuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:

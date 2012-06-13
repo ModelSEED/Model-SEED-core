@@ -17,8 +17,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Annotation', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 has id => (is => 'rw', isa => 'Str', printOrder => '1', required => 1, type => 'attribute', metaclass => 'Typed');
 has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
@@ -40,13 +40,13 @@ has featureroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { re
 
 
 # LINKS:
-has genome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
+has genome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_genome', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildgenome {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
+sub _build_genome {
   my ($self) = @_;
   return $self->getLinkedObject('Annotation','genomes',$self->genome_uuid());
 }

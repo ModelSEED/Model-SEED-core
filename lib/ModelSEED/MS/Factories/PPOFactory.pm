@@ -5,12 +5,15 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 2012-03-15T16:44:01
 ########################################################################
-use strict;
-use ModelSEED::utilities;
-use ModelSEED::MS::Mapping;
-use ModelSEED::MS::Utilities::GlobalFunctions;
-use ModelSEED::MS::Factories::SEEDFactory;
 package ModelSEED::MS::Factories::PPOFactory;
+use common::sense;
+use ModelSEED::utilities;
+use ModelSEED::MS::Utilities::GlobalFunctions;
+use Class::Autouse qw(
+    ModelSEED::MS::Mapping
+    ModelSEED::MS::Model
+    ModelSEED::MS::Factories::SEEDFactory
+);
 use Moose;
 use namespace::autoclean;
 
@@ -26,48 +29,27 @@ has figmodel => ( is => 'rw', isa => 'ModelSEED::FIGMODEL', required => 1 );
 # FUNCTIONS:
 sub createModel {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["model"],{
-		biochemistry => undef,
-		mapping => undef,
-		annotation => undef
+	$args = ModelSEED::utilities::ARGS($args,["id", "annotation"],{
+        verbose => 0,
 	});
-	#Retrieving model data
-	my $mdl = $self->figmodel()->get_model($args->{model});
-	my $id = $self->namespace()."/".$args->{model};
-	if ($args->{model} =~ m/^Seed\d+\.\d+/) {
-		if ($args->{model} =~ m/(Seed\d+\.\d+)\.\d+$/) {
-			$id = $self->namespace()."/".$1;
-		}
-	} elsif ($args->{model} =~ m/(.+)\.\d+$/) {
-		$id = $self->namespace()."/".$1;
-	}
-	#Creating provenance objects
-	if (!defined($args->{biochemistry})) {
-		$args->{biochemistry} = $self->createBiochemistry({
-			name => $id.".biochemistry",
-			database => $mdl->db()
-		});
-	}
-	if (!defined($args->{mapping})) {
-		$args->{mapping} = $self->createMapping({
-			name => $id.".mapping",
-			biochemistry => $args->{biochemistry},
-			database => $mdl->db()
-		});
-	}
-	
-	if (!defined($args->{annotation})) {
-		$args->{annotation} = $self->createAnnotation({
-			name => $id.".annotation",
-			genome => $mdl->ppo()->genome(),
-			mapping => $args->{mapping}
-		});
-	}
+	# Retrieving model data
+    print "Getting model metadata...\n" if($args->{verbose});
+    my $id = $args->{id};
+	my $mdl = $self->figmodel->get_model($id);
+    unless(defined($mdl)) {
+        die "Unable to find model with id ". $id."\n";
+    }
+    # Set references for biochemistry and mapping to annotation's
+    # version of these objects, since that's the only one we can trust
+    print "Loading linked objects...\n" if($args->{verbose});
+    $args->{biochemistry} = $args->{annotation}->mapping->biochemistry;
+    $args->{mapping} = $args->{annotation}->mapping;
+
 	#Creating the model
 	my $model = ModelSEED::MS::Model->new({
 		locked => 0,
 		public => $mdl->ppo()->public(),
-		id => $id.".model",
+		id => $id,
 		name => $mdl->ppo()->name(),
 		version => $mdl->ppo()->version(),
 		type => "Singlegenome",
@@ -83,6 +65,7 @@ sub createModel {
 	});
 	my $biomassIndex = 1;
 	#Adding reactions
+    print "Getting model reactions...\n" if($args->{verbose});
 	my $rxntbl = $mdl->rxnmdl();
 	for (my $i=0; $i < @{$rxntbl}; $i++) {
 		#Adding biomass reaction
@@ -100,6 +83,12 @@ sub createModel {
 			$biomassIndex++;
 		} else {
 			my $rxn = $args->{biochemistry}->getObjectByAlias("reactioninstances",$rxntbl->[$i]->REACTION(),"ModelSEED");
+            unless(defined($rxn)) {
+                print "Unable to find reaction ".
+                    $rxntbl->[$i]->REACTION() .
+                    ", skipping...\n" if($args->{verbose});
+                next;
+            }
 			my $direction = "=";
 			if ($rxntbl->[$i]->directionality() eq "=>") {
 				$direction = ">";
@@ -474,7 +463,7 @@ sub addAliases {
 		$rxn = $biochemistry->getObjectByAlias("reactioninstances",$rxnals->[$i]->REACTION(),"ModelSEED");
 		if (defined($rxn)) {
 			$biochemistry->addAlias({
-				attribute => "reactionsinstances",
+				attribute => "reactioninstances",
 				aliasName => $rxnals->[$i]->type(),
 				alias => $rxnals->[$i]->alias(),
 				uuid => $rxn->uuid()
@@ -487,7 +476,8 @@ sub createMapping {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["biochemistry"],{
 		name => $self->namespace()."/primary.mapping",
-		database => $self->figmodel()->database()
+		database => $self->figmodel()->database(),
+        verbose => 0,
 	});
 	my $mapping = ModelSEED::MS::Mapping->new({
 		name=>$args->{name},
@@ -703,6 +693,7 @@ sub createMapping {
 		}
 	};
 	my $roles = $args->{database}->get_objects("role");
+    print "Processing ".scalar(@$roles)." roles\n" if($args->{verbose});
 	for (my $i=0; $i < @{$roles}; $i++) {
 		my $role = $mapping->add("roles",{
 			locked => "0",
@@ -717,6 +708,7 @@ sub createMapping {
 		});
 	}
 	my $subsystems = $args->{database}->get_objects("subsystem");
+    print "Processing ".scalar(@$subsystems)." subsystems\n" if($args->{verbose});
 	for (my $i=0; $i < @{$subsystems}; $i++) {
 		my $ss = $mapping->add("rolesets",{
 			public => "1",
@@ -778,6 +770,7 @@ sub createMapping {
 		}
 	}
 	my $reactionRules = $args->{database}->get_objects("rxncpx");
+    print "Processing ".scalar(@$reactionRules)." reactions\n" if($args->{verbose});
 	for (my $i=0; $i < @{$reactionRules}; $i++) {
 		if ($reactionRules->[$i]->master() eq "1") {
 			my $complex = $mapping->getObjectByAlias("complexes",$reactionRules->[$i]->COMPLEX(),"ModelSEED");

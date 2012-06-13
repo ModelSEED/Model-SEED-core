@@ -7,22 +7,23 @@ use Class::Autouse qw(
     ModelSEED::MS::Biochemistry
     ModelSEED::Store
     ModelSEED::Auth::Factory
-    ModelSEED::MS::Factories::SEEDFactory
+    ModelSEED::MS::Factories::PPOFactory
     ModelSEED::Database::Composite
     ModelSEED::Reference
 );
 
 sub abstract { return "Import biochemistry from local or remote database"; }
 
-sub usage_desc { return <<END
-ms import biochemistry [alias] [-s store] [-l location]
-Import biochemistry data (compounds, reactions, media, compartments, etc.)
-Alias, required, is the name that you would like to save the biochemistry as.
+sub usage_desc { return "ms import biochemistry [alias] [-s store] [-l location]"; }
+sub description { return <<END;
+Import biochemistry data (compounds, reactions, media, compartments,
+etc.) Alias, required, is the name that you would like to save the
+biochemistry as.
     
 The [--location name] argument indicates where you are importing
 the biochemistry from. Current supported options are:
     
---location local : import from local sqlite or MySQL database
+--location local      : import from local sqlite or MySQL database
 --location model_seed : import standard biochemistry from the model_seed
 
 END
@@ -64,8 +65,9 @@ sub execute {
             $alias = $auth->username . "/" . $uname;
         }
     }
+    $alias = "biochemistry/" . $alias unless($alias =~ /^biochemistry\//);
     print "Will be saving to $alias...\n" if($opts->{verbose});
-    my $alias_ref = ModelSEED::Reference->new(ref => "biochemistry/".$alias);
+    my $alias_ref = ModelSEED::Reference->new(ref => $alias);
     my $bio;
     if($opts->{location} && $opts->{location} eq 'local') {
         # Cannot go further unless we're using basic auth (legacy)
@@ -77,7 +79,7 @@ sub execute {
             username => $auth->username,
             password => $auth->password,
         });
-        my $factory = ModelSEED::Factories::PPOFactory->new({
+        my $factory = ModelSEED::MS::Factories::PPOFactory->new({
             figmodel => $figmodel,
             namespace => $auth->username,
         });

@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has genome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has description => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute', metaclass => 'Typed');
@@ -29,12 +29,12 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # LINKS:
-has genome => (is => 'rw', isa => 'ModelSEED::MS::genomes', type => 'link(ModelSEED::Store,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildgenome', weak_ref => 1);
+has genome => (is => 'rw', isa => 'ModelSEED::MS::genomes', type => 'link(ModelSEED::Store,genomes,genome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_genome', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildgenome {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_genome {
   my ($self) = @_;
   return $self->getLinkedObject('ModelSEED::Store','genomes',$self->genome_uuid());
 }

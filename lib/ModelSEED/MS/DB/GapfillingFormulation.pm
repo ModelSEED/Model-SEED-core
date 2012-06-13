@@ -19,7 +19,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has balancedReactionsOnly => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
@@ -36,7 +36,7 @@ has noDeltaGMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default 
 has biomassTransporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has singleTransporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has transporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
@@ -51,23 +51,23 @@ has gapfillingSolutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 
 # LINKS:
-has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmedia', weak_ref => 1);
-has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
+has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
+has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_annotation', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_biochemistry', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildmedia {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
+sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
 }
-sub _buildannotation {
+sub _build_annotation {
   my ($self) = @_;
   return $self->getLinkedObject('Store','Annotation',$self->annotation_uuid());
 }
-sub _buildbiochemistry {
+sub _build_biochemistry {
   my ($self) = @_;
   return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
 }

@@ -16,7 +16,34 @@ package ModelSEED::Reference;
 Get information about references.
 TODO : update docs
 
-=head2 Methods
+=head2 Construction
+
+The C<new> function accepts different parameters for constructing
+a reference. These are divided into sets where each set contains the
+complete parameters needed to create a reference:
+
+=over 4
+
+=item Basic string
+
+Pass in a string to the attribute 'ref'.
+
+    my $ref = ModelSEED::Reference->new(ref => "biochemistry/chenry/main");
+
+=item UUID and type
+
+Pass in the attributes 'uuid' and 'type' for a top level object.
+Pass in 'uuid', 'type', 'base_ids', and 'base_types' for deep references: 
+
+    my $ref = ModelSEED::Reference->new(uuid => :uuid, type => 'biochemistry');
+    my $ref = ModelSEED::Reference->new(uuid => :uuid, type => 'compound',
+        base_types => [ 'biochemistry' ], base_ids => [ 'chenry/main' ]
+    );
+
+=item Alias and type
+
+Pass in the attributes 'alias' and 'type' for a top level object.
+Include the 'base_ids' and 'base_types' for deep refernces.
 
 =head3 parse
 
@@ -72,6 +99,50 @@ has alias_string =>  (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_b
 has base_types => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_base_types');
 has parent_objects => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_objects');
 has parent_collections => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_collections');
+
+around BUILDARGS => sub {
+    my $orig = shift @_;
+    my $class = shift @_;
+    my $args;
+    if(ref($_[0]) eq 'HASH') {
+        $args = shift @_;
+    } else {
+        my %args = @_;
+        $args = \%args;
+    }
+    my $delimiter = $args->{delimiter};
+    $delimiter = "/" unless(defined($delimiter));
+    return $class->$orig(ref => $args->{ref}, delimiter => $delimiter) if(defined($args->{ref}));
+    my $ref;
+    if (defined($args->{base_types}) && defined($args->{base_ids})) {
+        my $i = scalar(@{$args->{base_types}});
+        my $j = scalar(@{$args->{base_ids}});
+        my $max = ($i > $j) ? $i : $j;
+        for(my $k = 0; $k<$max; $k++) {
+            $ref .= $delimiter if($k > 0);
+            $ref .= $args->{base_types}->[$k];
+            $ref .= $delimiter;
+            if($k < $j) {
+                $ref .= $args->{base_ids}->[$k];
+            } else {
+                last;
+            }
+        }
+    }
+    if ( defined($args->{type}) ) {
+        $ref .= $args->{type} . $delimiter;
+        if (defined($args->{uuid})) {
+             $ref .= $args->{uuid};
+        } elsif (defined($args->{alias})) {
+            $ref .= $args->{alias};
+        }
+    }
+    # Case of an http:// reference
+    if(defined($args->{scheme}) && defined($args->{authority})) {
+        $ref = uri_join($args->{scheme}, $args->{authority}, $ref);
+    }
+    return $class->$orig(ref => $ref, delimiter => $delimiter);
+};
 
 sub parse {
     my ($self, $ref) = @_;
@@ -178,47 +249,26 @@ sub _buildSchema {
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Media",
                     },
-                    reactioninstanceAliasSets => {
+                    reactioninstances => {
                         type => "collection",
                         id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::ReactioninstanceAliasSets",
-                        children => {
-                            reactioninstanceAliases => {
-                                type => "collection",
-                                id_types => [ 'uuid' ],
-                                class => "ModelSEED::MS::ReactionInstanceAlias"
-                            },
-                        },
+                        class => "ModelSEED::MS::Reactioninstance",
                     },
-                    reactionAliasSets => {
+                    aliasSets => {
                         type => "collection",
                         id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::ReactionAliasSets",
-                        children => {
-                            reactionAliases => {
-                                type => "collection",
-                                id_types => [ 'uuid' ],
-                                class => "ModelSEED::MS::ReactionAlias"
-                            },
-                        },
-                    },
-                    compoundAliasSets => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::CompoundAliasSet",
-                        children => {
-                            compoundAliases => {
-                                type => "collection",
-                                id_types => [ 'uuid' ],
-                                class => "ModelSEED::MS::CompoundAlias",
-                            },
-                        }
+                        class => "ModelSEED::MS::AliasSet",
                     },
                     compartments => {
                         type => "collection",
                         id_types => [ "uuid" ],
                         class => "ModelSEED::MS::Compartment",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Biochemistry",
+                    },
                 }
             },
             model => {
@@ -230,7 +280,27 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Biomass",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Model",
+                    },
+                    modelcompounds => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelCompound",
+                    },
+                    modelcompartments => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelCompartment",
+                    },
+                    modelreactions => {
+                        type => 'collection',
+                        id_types => ['uuid'],
+                        class => "ModelSEED::MS::ModelReaction",
+                    },
                 }
             },
             mapping => {
@@ -257,7 +327,12 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::BiomassTemplate",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Mapping",
+                    },
                 }
             },
             annotation => {
@@ -274,7 +349,12 @@ sub _buildSchema {
                         type => "collection",
                         id_types => [ 'uuid' ],
                         class => "ModelSEED::MS::Genome",
-                    }
+                    },
+                    ancestor_uuids => {
+                        type => 'collection',
+                        id_types => [ 'uuid' ],
+                        class => "ModelSEED::MS::Annotation",
+                    },
                 }
             },
             gapfillingFormulation => {
@@ -397,5 +477,6 @@ sub _build_alias_username {
 sub _build_alias_string {
     return $_[0]->_parsed_ref->{alias_string};
 }
+
 
 1;

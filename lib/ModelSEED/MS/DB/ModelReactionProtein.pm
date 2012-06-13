@@ -26,11 +26,11 @@ has modelReactionProteinSubunits => (is => 'rw', isa => 'ArrayRef[HashRef]', def
 
 
 # LINKS:
-has complex => (is => 'rw', isa => 'ModelSEED::MS::Complex', type => 'link(Mapping,complexes,complex_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildcomplex', weak_ref => 1);
+has complex => (is => 'rw', isa => 'ModelSEED::MS::Complex', type => 'link(Mapping,complexes,complex_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_complex', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildcomplex {
+sub _build_complex {
   my ($self) = @_;
   return $self->getLinkedObject('Mapping','complexes',$self->complex_uuid());
 }

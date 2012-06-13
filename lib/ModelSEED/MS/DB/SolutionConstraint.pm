@@ -26,12 +26,12 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # LINKS:
-has constraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,constraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildconstraint', weak_ref => 1);
+has constraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,constraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_constraint', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildconstraint {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_constraint {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','constraints',$self->constraint_uuid());
 }

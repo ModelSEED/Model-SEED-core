@@ -17,8 +17,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingFormulation', weak_r
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has solutionCost => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
@@ -34,8 +34,8 @@ has gapfillingSolutionReactions => (is => 'rw', isa => 'ArrayRef[HashRef]', defa
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
 
 
 # CONSTANTS:

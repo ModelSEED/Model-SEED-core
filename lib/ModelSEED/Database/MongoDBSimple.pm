@@ -98,7 +98,9 @@ sub save_data {
         return undef unless($auth->username eq $ref->alias_username);
     } elsif($ref->id_type eq 'uuid') {
         # cannot save to existing uuid
-        return undef if($self->has_data($ref, $auth));
+        if($self->has_data($ref, $auth)) {
+             $oldUUID = $ref->id;
+        }
     }
     if(defined($oldUUID)) {
         # We have an existing alias, so must:
@@ -121,10 +123,11 @@ sub save_data {
             $object->{uuid} = Data::UUID->new()->create_str();
         }
         # - update alias, but wait until after object write
-        $update_alias = 1;
+        if($ref->id_type eq 'alias') {
+            $update_alias = 1;
+        }
     }
     # Now save object to collection
-
     my $fh = $self->_object_to_fh($object);
     $self->db->get_gridfs->insert($fh, { uuid => $object->{uuid} });
     if($update_alias) {

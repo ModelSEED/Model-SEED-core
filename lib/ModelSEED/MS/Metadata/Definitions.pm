@@ -1066,7 +1066,7 @@ $objectDefinitions->{Annotation} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping"},
+		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping", weak => 0},
 	]
 };
 
@@ -1147,7 +1147,7 @@ $objectDefinitions->{Mapping} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry"},
+		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry", weak => 0},
 	]
 };
 

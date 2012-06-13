@@ -20,7 +20,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Experiment', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has strain_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has pH => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
@@ -44,17 +44,17 @@ has geneMeasurements => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub 
 
 
 # LINKS:
-has strain => (is => 'rw', isa => 'ModelSEED::MS::strains', type => 'link(Genome,strains,strain_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildstrain', weak_ref => 1);
-has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmedia', weak_ref => 1);
+has strain => (is => 'rw', isa => 'ModelSEED::MS::strains', type => 'link(Genome,strains,strain_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_strain', weak_ref => 1);
+has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildstrain {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_strain {
   my ($self) = @_;
   return $self->getLinkedObject('Genome','strains',$self->strain_uuid());
 }
-sub _buildmedia {
+sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
 }

@@ -244,12 +244,14 @@ sub buildModelFromAnnotation {
 	$args = ModelSEED::utilities::ARGS($args,[],{
 		annotation => $self->annotation(),
 		mapping => $self->mapping(),
+        verbose => 0
 	});
 	my $mapping = $args->{mapping};
 	my $annotaton = $args->{annotation};
 	my $biochem = $mapping->biochemistry();
 	my $roleFeatures;
 	my $features = $annotaton->features();
+    warn "Processing " . scalar(@$features) . " features...\n" if($args->{verbose});
 	for (my $i=0; $i < @{$features}; $i++) {
 		my $ftr = $features->[$i];
 		my $ftrroles = $ftr->featureroles();
@@ -258,6 +260,7 @@ sub buildModelFromAnnotation {
 			push(@{$roleFeatures->{$ftrrole->role_uuid()}->{$ftrrole->compartment()}},$ftr);
 		}
 	}
+    warn "Constructing reactions...\n" if($args->{verbose});
 	my $complexes = $mapping->complexes();
 	for (my $i=0; $i < @{$complexes};$i++) {
 		my $cpx = $complexes->[$i];
@@ -761,6 +764,15 @@ sub labelBiomassCompounds {
 	}
 }
 =head3 parseSBML
+
+# TODO parseSBML() parse error with SIds and UUIDs
+currently the id field on objects COULD output a UUID if
+there is no alias in the prefered alias set. If this is then
+placed in the "id" attribute of a species or reaction, this
+violates the SBML SId restrictions. Need to replace '-' with '_'
+and prefix with "UUID_" since uuids may start with a number while
+SIds cannot.
+
 Definition:
 	void ModelSEED::MS::Model->parseSBML();
 Description:
@@ -847,10 +859,10 @@ sub printSBML {
 		}
 		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
-		my $ec = $rxn->getAlias("EC");
-		my $keggID = $rxn->getAlias("KEGG");
-		my $GeneAssociation = $rxn->gprString();
-		my $ProteinAssociation = $rxn->gprString();
+		my $ec = $rxn->reaction->getAlias("Enzyme Class");
+		my $keggID = $rxn->reaction->getAlias("KEGG");
+		my $GeneAssociation = $rxn->gprString;
+		my $ProteinAssociation = $rxn->gprString;
 		push(@{$output},"<html:p>GENE_ASSOCIATION:".$GeneAssociation."</html:p>");
 		push(@{$output},"<html:p>PROTEIN_ASSOCIATION:".$ProteinAssociation."</html:p>");
 		if (defined($keggID)) {
@@ -906,7 +918,7 @@ sub printSBML {
 			$obj = 1;
 		}
 		my $reversibility = "false";
-		push(@{$output},'<reaction '.$stringToString->("id",$rxn->id()).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
+		push(@{$output},'<reaction '.$stringToString->("id",$rxn->uuid).' '.$stringToString->("name",$rxn->name()).' '.$stringToString->("reversible",$reversibility).'>');
 		push(@{$output},"<notes>");
 		push(@{$output},"</notes>");
 		my $firstreact = 1;
