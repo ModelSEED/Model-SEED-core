@@ -435,8 +435,8 @@ sub emergencyGapfilling {
 	ModelSEED::utilities::PRINTFILE($dir."StringDBFile.txt",$stringdb);
 	#Write shell script
 	my $exec = [
-		"source ".ModelSEED::utilities::MODELSEEDCORE()."bin/source-me.sh",
-		ModelSEED::utilities::MODELSEEDCORE().'software/mfatoolkit/bin/mfatoolkit resetparameter "MFA input directory" '.$dataDir.'ReactionDB/ parameterfile "../Parameters/ProductionMFA.txt" parameterfile "../Parameters/GapFilling.txt" parameterfile "'.$dir.'CompleteGapfillingParameters.txt" LoadCentralSystem "'.$dir.'Model.tbl" > "'.$dir.'log.txt"'
+		"source ".ModelSEED::utilities::MODELSEEDCORE()."/bin/source-me.sh",
+		ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/mfatoolkit resetparameter "MFA input directory" '.$dataDir.'ReactionDB/ parameterfile "../Parameters/ProductionMFA.txt" parameterfile "../Parameters/GapFilling.txt" parameterfile "'.$dir.'CompleteGapfillingParameters.txt" LoadCentralSystem "'.$dir.'Model.tbl" > "'.$dir.'log.txt"'
 	];
 	ModelSEED::utilities::PRINTFILE($dir."runMFAToolkit.sh",$exec);
 	chmod 0775,$dir."runMFAToolkit.sh";
