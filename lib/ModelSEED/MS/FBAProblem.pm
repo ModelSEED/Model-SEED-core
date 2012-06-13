@@ -197,7 +197,7 @@ sub submitLPFile {
 			$solver = "mipopt";
 		}
 		ModelSEED::utilities::PRINTFILE($self->directory()."cplexcommands.txt",[
-			"read",$self->directory()."currentProb.lp",$solver,"write",$self->directory()."solution.txt","sol","quit"
+			"set simplex tolerances feasibility 1e-009","set mip tolerances integrality 1e-009","read",$self->directory()."currentProb.lp",$solver,"write",$self->directory()."solution.txt","sol","quit"
 		]);
 		system(ModelSEED::utilities::CPLEX()." < ".$self->directory()."cplexcommands.txt");
 		$solution->buildFromCPLEXFile({filename => $self->directory()."solution.txt"});

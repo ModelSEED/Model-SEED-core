@@ -61,15 +61,7 @@ sub _builddefinition {
 		}
 		
 	}
-	if ($self->direction() eq "=") {
-		$reactants .= " <=> ";
-	} elsif ($self->direction() eq ">") {
-		$reactants .= " => ";
-	} elsif ($self->direction() eq "<") {
-		$reactants .= " <= ";
-	} else {
-		$reactants .= $self->direction();
-	}
+	$reactants .= " ".$self->direction()." ";
 	return $reactants.$products;
 }
 sub _buildmodelCompartmentLabel {

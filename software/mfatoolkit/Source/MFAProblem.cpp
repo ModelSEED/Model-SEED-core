@@ -6274,7 +6274,7 @@ int MFAProblem::CompleteGapFilling(Data* InData, OptimizationParameter* InParame
 	}
 	this->AddObjective(oldObjective);
 	//Creating forcing constraint
-	constraint = InitializeLinEquation("Forcing inactive reaction to be active",0.01,GREATER,LINEAR);
+	constraint = InitializeLinEquation("Forcing inactive reaction to be active",0.5,GREATER,LINEAR);
 	this->AddConstraint(constraint);
 	//Creating output structures
 	map<MFAVariable*,bool,std::less<Reaction*> > AddedReactions;

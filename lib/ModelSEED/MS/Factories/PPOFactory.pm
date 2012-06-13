@@ -334,7 +334,8 @@ sub createBiochemistry {
 		$rxn->parent($biochemistry);
 		my $rxninstance = $rxn->loadFromEquation({
 			equation => $rxns->[$i]->equation(),
-			aliasType => "ModelSEED"
+			aliasType => "ModelSEED",
+			direction => $rxns->[$i]->thermoReversibility()
 		});
 		my $code = $rxn->equationCode();
 		if (!defined($codeHash->{$code})) {

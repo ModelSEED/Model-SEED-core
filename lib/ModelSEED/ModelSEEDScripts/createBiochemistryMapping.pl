@@ -17,7 +17,9 @@ my $mapping = $ppoFactory->createMapping({
 	biochemistry => $biochem
 });
 
-print $figmodel->config("database root directory")->[0]."exampleObjects/biochemistry.json\n";
-print $figmodel->config("database root directory")->[0]."exampleObjects/mapping.json\n";
 $biochem->printJSONFile($figmodel->config("database root directory")->[0]."exampleObjects/biochemistry.json");
 $mapping->printJSONFile($figmodel->config("database root directory")->[0]."exampleObjects/mapping.json");
+my $readable = $biochem->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE($figmodel->config("database root directory")->[0]."exampleObjects/Biochemistry.readable",$readable);
+$readable = $mapping->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE($figmodel->config("database root directory")->[0]."exampleObjects/Mapping.readable",$readable);

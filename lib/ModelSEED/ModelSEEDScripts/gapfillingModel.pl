@@ -58,9 +58,43 @@ $model->annotation($anno);
 my $mdlanal = ModelSEED::MS::ModelAnalysis->new();
 $model->modelanalysis_uuid($mdlanal->uuid());
 $model->modelanalysis($mdlanal);
+
+my $fbaform = ModelSEED::MS::FBAFormulation->new({
+	name => "Growth test",
+	model_uuid => $model->uuid(),
+	model => $model,
+	media_uuid => $gapform->media_uuid(),
+	media => $gapform->media(),
+	type => "singlegrowth",
+	biochemistry_uuid => $biochem->uuid(),
+	biochemistry => $biochem,
+	description => "Growth test",
+	growthConstraint => "none",
+	thermodynamicConstraints => "none",
+	allReversible => 0,
+	defaultMaxFlux => 1000,
+	defaultMaxDrainFlux => 0,
+	defaultMinDrainFlux => -10000,
+	decomposeReversibleFlux => 0,
+	decomposeReversibleDrainFlux => 0,
+	fluxUseVariables => 0,
+	drainfluxUseVariables => 0,
+	maximizeObjective => 1,
+	fbaObjectiveTerms => [{
+		coefficient => 1,
+		entityType => "Biomass",
+		variableType => "biomassflux",
+		entity_uuid => $model->biomasses()->[0]->uuid()
+	}]			
+});
+my $fbasolution = $fbaform->runFBA();
+$fbasolution->createHTML();
+my $readable = $fbasolution->createHTML();
+ModelSEED::utilities::PRINTFILE($directory."FBASolution.html",[$readable]);
+
 $model->gapfillModel({
 	gapfillingFormulation => $gapform
 });
 $model->printJSONFile($directory."GapfilledModel.json");
-my $readable = $model->createHTML();
+$readable = $model->createHTML();
 ModelSEED::utilities::PRINTFILE($directory."GapfilledModel.html",[$readable]);

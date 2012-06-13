@@ -371,9 +371,12 @@ sub createStandardFBABiomass {
 		my $function = $list->[$i];
 		$bio->$function($template->$function());
 	}
+	$bio->energy(40);
 	my $biomassComps;
 	my $biomassCompByUUID;
 	my $biomassTemplateComponents = $template->biomassTemplateComponents();
+	my $coef;
+	my $cpdHash;
 	for (my $i=0; $i < @{$biomassTemplateComponents}; $i++) {
 		my $tmpComp = $biomassTemplateComponents->[$i];
 		$biomassCompByUUID->{$tmpComp->uuid()} = $tmpComp;
@@ -382,18 +385,57 @@ sub createStandardFBABiomass {
 				annotation => $args->{annotation}
 			}) == 1) {
 			$biomassComps->{$tmpComp->class()}->{$tmpComp->uuid()} = $tmpComp->coefficient();
+			$cpdHash->{$tmpComp->compound_uuid()} = $tmpComp->compound();
+			$coef->{$tmpComp->compound_uuid()} = 0;
 		}
 	}
-	my $coef;
 	my $gc = $anno->genomes()->[0]->gc();
+	if ($gc > 1) {
+		$gc = 0.01*$gc;	
+	}
+	#Setting fractions to appropriate levels
 	foreach my $class (keys(%{$biomassComps})) {
+		my $fractionTotal = 0;
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
 			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
 			if ($templateComp->coefficientType() eq "FRACTION") {
-				$biomassComps->{$class}->{$templateCompUUID} = -1/keys(%{$biomassComps->{$class}});
-				$coef->{$templateComp->compound_uuid()} = $biomassComps->{$class}->{$templateCompUUID};
+				$fractionTotal++;
 			}
 		}
+		my $totalMass = 0;
+		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
+			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
+			if ($templateComp->coefficientType() eq "FRACTION") {
+				$biomassComps->{$class}->{$templateCompUUID} = -1/$fractionTotal;
+			} elsif ($class eq "dna") {
+				if ($templateComp->compound()->id() eq "cpd00241" || $templateComp->compound()->id() eq "cpd00356") {
+					$biomassComps->{$class}->{$templateCompUUID} = -1*$gc/2;
+				} else {
+					$biomassComps->{$class}->{$templateCompUUID} = -1*(1-$gc)/2;
+				}
+			}
+			if ($class ne "energy" && $class ne "macromolecule") {
+				my $mass = $templateComp->compound()->mass();
+				if (!defined($mass) || $mass == 0) {
+					$mass = 1;
+				}
+				if ($biomassComps->{$class}->{$templateCompUUID} < 0) {
+					$totalMass += -1*$mass*$biomassComps->{$class}->{$templateCompUUID};
+				}
+			}
+		}
+		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
+			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
+			if ($class eq "energy") {
+				$biomassComps->{$class}->{$templateCompUUID} = $biomassComps->{$class}->{$templateCompUUID}*$bio->energy();
+			} elsif ($class ne "macromolecule") {
+				$biomassComps->{$class}->{$templateCompUUID} = $biomassComps->{$class}->{$templateCompUUID}*$bio->$class()/$totalMass;
+			}
+			$coef->{$templateComp->compound_uuid()} += $biomassComps->{$class}->{$templateCompUUID};
+		}
+	}
+	#Setting coefficients for dependant biomass components
+	foreach my $class (keys(%{$biomassComps})) {
 		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
 			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
 			if ($templateComp->coefficientType() ne "FRACTION" && $templateComp->coefficientType() ne "NUMBER") {
@@ -404,44 +446,23 @@ sub createStandardFBABiomass {
 						$biomassComps->{$class}->{$templateCompUUID} += -1*($coef->{$array->[$i]});
 					}
 				}
+				$coef->{$templateComp->compound_uuid()} = $biomassComps->{$class}->{$templateCompUUID};
 			}
 		}
-		foreach my $templateCompUUID (keys(%{$biomassComps->{$class}})) {
-			my $templateComp = $biomassCompByUUID->{$templateCompUUID};
-			my $cmp = $biochem->queryObject("compartments",{id => "c"});
-			my $mdlcmp = $self->addCompartmentToModel({compartment => $cmp,pH => 7,potential => 0,compartmentIndex => 0});
-			my $mdlcpd = $self->addCompoundToModel({
-				compound => $templateComp->compound(),
-				modelCompartment => $mdlcmp,
+	}
+	#Setting biomass components
+	foreach my $cpd_uuid (keys(%{$coef})) {
+		my $cmp = $biochem->queryObject("compartments",{id => "c"});
+		my $mdlcmp = $self->addCompartmentToModel({compartment => $cmp,pH => 7,potential => 0,compartmentIndex => 0});
+		my $mdlcpd = $self->addCompoundToModel({
+			compound => $cpdHash->{$cpd_uuid},
+			modelCompartment => $mdlcmp,
+		});
+		if ($coef->{$cpd_uuid} != 0) {
+			$bio->add("biomasscompounds",{
+				modelcompound_uuid => $mdlcpd->uuid(),
+				coefficient => $coef->{$cpd_uuid}
 			});
-			my $mass = $templateComp->compound()->mass();
-			if (!defined($mass) || $mass == 0) {
-				$mass = 1;
-			}
-			my $coefficient = $biomassComps->{$class}->{$templateCompUUID};
-			if ($class ne "macromolecule") {
-				$coefficient = $coefficient*($template->$class())	
-			}
-			if ($class ne "energy" && $class ne "macromolecule") {
-				$coefficient = $coefficient/$mass;	
-			}
-			if ($coefficient != 0) {
-				my $found = 0;
-				my $biomasscompounds = $bio->biomasscompounds();
-				for (my $i=0; $i < @{$biomasscompounds}; $i++) {
-					my $biocpd = $biomasscompounds->[$i];
-					if ($biocpd->modelcompound_uuid() eq $mdlcpd->uuid()) {
-						$found = 1;
-						$biocpd->coefficient($biocpd->coefficient() + $coefficient);
-					}
-				}
-				if ($found == 0) {
-					$bio->add("biomasscompounds",{
-						modelcompound_uuid => $mdlcpd->uuid(),
-						coefficient => $coefficient
-					});	
-				}
-			}
 		}
 	}
 	return $bio;
@@ -610,6 +631,9 @@ sub addReactionInstanceToModel {
 		protons => undef,
 	});
 	my $rxninst = $args->{reactionInstance};
+	if (!defined($args->{direction})) {
+		$args->{direction} = $rxninst->direction();	
+	}
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
 	my $mdlrxn = $self->queryObject("modelreactions",{
 		reactioninstance_uuid => $rxninst->uuid(),
@@ -618,7 +642,7 @@ sub addReactionInstanceToModel {
 	if (!defined($mdlrxn)) {
 		$mdlrxn = $self->add("modelreactions",{
 			reactioninstance_uuid => $rxninst->uuid(),
-			direction => $rxninst->direction(),
+			direction => $args->{direction},
 			protons => $rxninst->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
 		});
@@ -1012,7 +1036,7 @@ sub gapfillModel {
 	if (defined($solution)) {
 		$self->modelanalysis()->add("gapfillingFormulations",$args->{gapfillingFormulation});
 		if ($args->{integrateSolution} == 1) {
-			$self->integrateGapfillingSolution({gapfillingSolution => $solution});
+			#$self->integrateGapfillingSolution({gapfillingSolution => $solution});
 		}
 		return $solution;	
 	}

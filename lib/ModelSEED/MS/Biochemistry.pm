@@ -70,13 +70,64 @@ sub makeDBModel {
 	});
 	my $hashes;
 	for (my $i=0; $i < @{$args->{guaranteedReactions}}; $i++) {
-		$hashes->{guaranteed}->{$args->{guaranteedReactions}->[$i]} = 1;
+		if ($args->{guaranteedReactions}->[$i] =~ /[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/) {
+			$hashes->{guaranteed}->{$args->{guaranteedReactions}->[$i]} = 1;
+		} elsif ($args->{guaranteedReactions}->[$i] =~ /^Reaction\//) {
+			my $array = [split(/\//,$args->{guaranteedReactions}->[$i])];
+			if (defined($array->[2])) {
+				my $rxn;
+				if ($array->[1] eq "name") {
+					$rxn = $self->queryObject("reactioninstances",{$array->[1] => $array->[2]});
+				} else {
+					$rxn = $self->getObjectByAlias("reactioninstances",$array->[2],$array->[1]);
+				}
+				if (defined($rxn)) {
+					$hashes->{guaranteed}->{$rxn->uuid()} = 1;
+				} else {
+					print "Could not find guaranteed reaction ".$args->{guaranteedReactions}->[$i]."\n";	
+				}
+			}
+		}
 	}
 	for (my $i=0; $i < @{$args->{forbiddenReactions}}; $i++) {
-		$hashes->{forbidden}->{$args->{forbiddenReactions}->[$i]} = 1;
+		if ($args->{forbiddenReactions}->[$i] =~ /[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/) {
+			$hashes->{forbidden}->{$args->{forbiddenReactions}->[$i]} = 1;
+		} elsif ($args->{forbiddenReactions}->[$i] =~ /^Reaction\//) {
+			my $array = [split(/\//,$args->{forbiddenReactions}->[$i])];
+			if (defined($array->[2])) {
+				my $rxn;
+				if ($array->[1] eq "name") {
+					$rxn = $self->queryObject("reactioninstances",{$array->[1] => $array->[2]});
+				} else {
+					$rxn = $self->getObjectByAlias("reactioninstances",$array->[2],$array->[1]);
+				}
+				if (defined($rxn)) {
+					$hashes->{forbidden}->{$rxn->uuid()} = 1;
+				} else {
+					print "Could not find forbidden reaction ".$args->{forbiddenReactions}->[$i]."\n";	
+				}
+			}
+		}
 	}
 	for (my $i=0; $i < @{$args->{allowableCompartments}}; $i++) {
-		$hashes->{allowcomp}->{$args->{allowableCompartments}->[$i]} = 1;
+		if ($args->{allowableCompartments}->[$i] =~ /[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}/) {
+			$hashes->{allowcomp}->{$args->{allowableCompartments}->[$i]} = 1;
+		} elsif ($args->{allowableCompartments}->[$i] =~ /^Compartment\//) {
+			my $array = [split(/\//,$args->{allowableCompartments}->[$i])];
+			if (defined($array->[2])) {
+				my $cmp;
+				if ($array->[1] eq "id" || $array->[1] eq "name") {
+					$cmp = $self->queryObject("compartments",{$array->[1] => $array->[2]});
+				} else {
+					$cmp = $self->getObjectByAlias("compartments",$array->[2],$array->[1]);
+				}
+				if (defined($cmp)) {
+					$hashes->{allowcomp}->{$cmp->uuid()} = 1;
+				} else {
+					print "Could not find allowable compartment ".$args->{allowableCompartments}->[$i]."\n";	
+				}
+			}
+		}
 	}
 	my $reactioninstances = $self->reactioninstances();
 	for (my $i=0; $i < @{$reactioninstances}; $i++) {
@@ -85,21 +136,23 @@ sub makeDBModel {
 			my $add = 1;
 			if (!defined($hashes->{guaranteed}->{$rxn->uuid()})) {
 				if (!defined($hashes->{allowcomp}->{$rxn->compartment_uuid()})) {
-					$add = 0;	
+					$add = 0;
 				}
-				my $transports = $rxn->transports();
-				for (my $j=0; $j < @{$transports};$j++) {
-					if (!defined($hashes->{allowcomp}->{$transports->[$j]->compartment_uuid()})) {
-						$add = 0;
-						last;
+				if ($add == 1) {
+					my $transports = $rxn->transports();
+					for (my $j=0; $j < @{$transports};$j++) {
+						if (!defined($hashes->{allowcomp}->{$transports->[$j]->compartment_uuid()})) {
+							$add = 0;
+							last;
+						}
 					}
 				}
-				if ($args->{balancedOnly} == 1 && $rxn->balanced() == 0) {
+				if ($add == 1 && $args->{balancedOnly} == 1 && $rxn->balanced() == 0) {
 					$add = 0;
 				}
 			}
 			if ($add == 1) {
-				my $mdl->addReactionInstanceToModel({
+				$mdl->addReactionInstanceToModel({
 					reactionInstance => $rxn,
 				});
 			}

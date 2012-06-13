@@ -183,13 +183,13 @@ OptSolutionData* CPLEXRunSolver(int ProbType) {
 		}
 		//Setting tolerance to 1e-9 instead of 1e-6
 		double tolerance = atof(GetParameter("Solver tolerance").data());
-		Status = CPXsetdblparam(CPLEXenv,CPX_PARAM_EPRHS, tolerance);
+		Status = CPXsetdblparam(CPLEXenv,CPX_PARAM_EPRHS, 1e-9);
 		if (Status) {
 			FErrorFile() << "Failed to set the optimization method." << endl;
 			FlushErrorFile();
 			return NULL;
 		}
-		Status = CPXsetdblparam(CPLEXenv,CPX_PARAM_EPINT, tolerance);
+		Status = CPXsetdblparam(CPLEXenv,CPX_PARAM_EPINT, 1e-9);
 		if (Status) {
 			FErrorFile() << "Failed to set the optimization method." << endl;
 			FlushErrorFile();

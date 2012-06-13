@@ -130,7 +130,9 @@ Description:
 =cut
 sub loadFromEquation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["equation","aliasType"],{});
+	$args = ModelSEED::utilities::ARGS($args,["equation","aliasType"],{
+		direction => "<=>"
+	});
 	my $bio = $self->parent();
 	my @TempArray = split(/\s/, $args->{equation});
 	my $CurrentlyOnReactants = 1;
@@ -142,7 +144,7 @@ sub loadFromEquation {
 	my $transCpdHash;
 	my $compHash;
 	my $cpdHash;
-	my $direction = "<=>";
+	my $direction = $args->{direction};
 	for (my $i = 0; $i < @TempArray; $i++) {
 		if ($TempArray[$i] =~ m/^\(([\.\d]+)\)$/ || $TempArray[$i] =~ m/^([\.\d]+)$/) {
 			$Coefficient = $1;
@@ -200,7 +202,6 @@ sub loadFromEquation {
 			push(@$parts, $NewRow);
 			$Coefficient = 1;
 		} elsif ($TempArray[$i] =~ m/=/) {
-			$direction = $TempArray[$i];
 			$CurrentlyOnReactants = 0;
 		}
 	}
