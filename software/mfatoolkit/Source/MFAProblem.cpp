@@ -6375,7 +6375,7 @@ int MFAProblem::CompleteGapFilling(Data* InData, OptimizationParameter* InParame
 					constraint->Variables.push_back(InactiveVariables[i][j]);
 					constraint->Coefficient.push_back(InactiveCoeficients[i][j]);
 				}
-				constraint->RightHandSide = 0.01;
+				constraint->RightHandSide = 0.5;
 				for (int j=0; j < int(oldObjective->Variables.size()); j++) {
 					if (oldObjective->Coefficient[j] > 0) {
 						oldObjective->Variables[j]->UpperBound = 1;

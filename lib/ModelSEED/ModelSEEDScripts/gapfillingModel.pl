@@ -85,7 +85,7 @@ my $fbaform = ModelSEED::MS::FBAFormulation->new({
 		entityType => "Biomass",
 		variableType => "biomassflux",
 		entity_uuid => $model->biomasses()->[0]->uuid()
-	}]			
+	}]
 });
 my $fbasolution = $fbaform->runFBA();
 $fbasolution->createHTML();
