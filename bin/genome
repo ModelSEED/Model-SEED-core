@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use ModelSEEDBootstrap;
+use ModelSEEDbootstrap;
 use ModelSEED::App::genome;
 ModelSEED::App::genome->run;
 
