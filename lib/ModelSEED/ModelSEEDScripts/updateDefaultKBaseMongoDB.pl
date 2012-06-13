@@ -13,6 +13,7 @@ use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 use ModelSEED::FIGMODEL;
+use ModelSEED::MS::Factories::PPOFactory;
 
 my $self;
 $self->{_db} =

@@ -20,11 +20,11 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1,
 
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
-has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has balancedReactionsOnly => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has allowableCompartments => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has allowableCompartments => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has numberOfSolutions => (is => 'rw', isa => 'Int', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has reactionActivationBonus => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
@@ -85,7 +85,7 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
+            'req' => 0,
             'printOrder' => 0,
             'name' => 'media_uuid',
             'type' => 'ModelSEED::uuid',
@@ -100,7 +100,7 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
+            'req' => 0,
             'printOrder' => 0,
             'name' => 'guaranteedReactions',
             'default' => 'sub{return [];}',
@@ -108,7 +108,7 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
+            'req' => 0,
             'printOrder' => 0,
             'name' => 'blacklistedReactions',
             'default' => 'sub{return [];}',
@@ -116,7 +116,7 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
+            'req' => 0,
             'printOrder' => 0,
             'name' => 'allowableCompartments',
             'default' => 'sub{return [];}',
