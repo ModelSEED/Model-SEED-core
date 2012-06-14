@@ -50,7 +50,8 @@ sub buildFBAFormulationFromExchange {
 	my $fileArray = [split(/\n/,$text)];
 	#Setting default attributes and subobjects, and enforcing mandatory attributes and subobjects
 	my $data = $self->parseExchangeFileArray({array => $fileArray});
-	$data = ModelSEED::utilities::ARGS($data,["name"],{
+	$data = ModelSEED::utilities::ARGS($data,[],{
+		name => "Default"
 		media => "Media/name/Complete",
 		type => "singlegrowth",
 		description => "None provided",
