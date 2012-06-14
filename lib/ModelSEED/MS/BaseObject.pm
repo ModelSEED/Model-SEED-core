@@ -35,6 +35,7 @@ sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
 package ModelSEED::MS::BaseObject;
 use Moose;
 use namespace::autoclean;
+use ModelSEED::utilities;
 use Scalar::Util qw(weaken);
 
 sub BUILD {

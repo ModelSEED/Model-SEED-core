@@ -1,5 +1,56 @@
 {
    "modules" : {
+      "Any::Moose" : {
+         "dist" : "Any-Moose-0.18",
+         "mymeta" : {
+            "abstract" : "use Moose or Mouse modules",
+            "author" : [
+               "Shawn M Moore <sartak@gmail.com>",
+               "Florian Ragwitz <rafl@debian.org>",
+               "Stevan Little <stevan@iinteractive.com>",
+               "Tokuhiro Matsuno <tokuhirom@gmail.com>",
+               "Goro Fuji <gfuji@cpan.org>",
+               "Ricardo Signes <rjbs@cpan.org>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Dist::Zilla version 4.300002, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Any-Moose",
+            "prereqs" : {
+               "build" : {
+                  "requires" : {}
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.30"
+                  }
+               },
+               "runtime" : {
+                  "requires" : {
+                     "Moose" : 0
+                  }
+               }
+            },
+            "release_status" : "stable",
+            "version" : "0.18"
+         },
+         "name" : "Any::Moose",
+         "pathname" : "S/SA/SARTAK/Any-Moose-0.18.tar.gz",
+         "provides" : {
+            "Any::Moose" : {
+               "file" : "Any/Moose.pm",
+               "version" : "0.18"
+            }
+         },
+         "target" : "Any::Moose",
+         "version" : "0.18"
+      },
       "App::Cmd" : {
          "dist" : "App-Cmd-0.318",
          "mymeta" : {
@@ -982,6 +1033,66 @@
          "target" : "Class::Load::XS",
          "version" : "0.04"
       },
+      "Class::Method::Modifiers" : {
+         "dist" : "Class-Method-Modifiers-1.09",
+         "mymeta" : {
+            "abstract" : "provides Moose-like method modifiers",
+            "author" : [
+               "Shawn M Moore, C<sartak@gmail.com>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Install version 1.06, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Class-Method-Modifiers",
+            "no_index" : {
+               "directory" : [
+                  "inc",
+                  "t"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.36",
+                     "Test::Fatal" : 0,
+                     "Test::More" : 0
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.36"
+                  }
+               },
+               "runtime" : {
+                  "requires" : {}
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "homepage" : "https://github.com/sartak/Class-Method-Modifiers/tree",
+               "license" : [
+                  "http://dev.perl.org/licenses/"
+               ]
+            },
+            "version" : "1.09"
+         },
+         "name" : "Class::Method::Modifiers",
+         "pathname" : "S/SA/SARTAK/Class-Method-Modifiers-1.09.tar.gz",
+         "provides" : {
+            "Class::Method::Modifiers" : {
+               "file" : "Class/Method/Modifiers.pm",
+               "version" : "1.09"
+            }
+         },
+         "target" : "Class::Method::Modifiers",
+         "version" : "1.09"
+      },
       "Class::Singleton" : {
          "dist" : "Class-Singleton-1.4",
          "mymeta" : {
@@ -1726,6 +1837,73 @@
          },
          "target" : "Data::OptList",
          "version" : "0.107"
+      },
+      "Data::Types" : {
+         "dist" : "Data-Types-0.09",
+         "mymeta" : {
+            "abstract" : "Validate and convert data types.",
+            "author" : [
+               "David E. Wheeler <david@justatheory.com>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Build version 0.4, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Data-Types",
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "Module::Build" : "0.2701",
+                     "Test::More" : "0.17"
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "Module::Build" : "0.2701"
+                  }
+               },
+               "runtime" : {
+                  "recommends" : {
+                     "Test::Pod" : "1.41"
+                  }
+               }
+            },
+            "provides" : {
+               "Data::Types" : {
+                  "file" : "lib/Data/Types.pm",
+                  "version" : "0.09"
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "bugtracker" : {
+                  "web" : "http://github.com/theory/data-types/issues/"
+               },
+               "homepage" : "http://search.cpan.org/dist/Data-Types/",
+               "license" : [
+                  "http://dev.perl.org/licenses/"
+               ],
+               "repository" : {
+                  "url" : "http://github.com/theory/data-types/"
+               }
+            },
+            "version" : "0.09"
+         },
+         "name" : "Data::Types",
+         "pathname" : "D/DW/DWHEELER/Data-Types-0.09.tar.gz",
+         "provides" : {
+            "Data::Types" : {
+               "file" : "Data/Types.pm",
+               "version" : "0.09"
+            }
+         },
+         "target" : "Data::Types",
+         "version" : "0.09"
       },
       "Data::UUID" : {
          "dist" : "Data-UUID-1.217",
@@ -8130,6 +8308,52 @@
          "target" : "File::Listing",
          "version" : "6.04"
       },
+      "File::Slurp" : {
+         "dist" : "File-Slurp-9999.19",
+         "mymeta" : {
+            "abstract" : "Simple and Efficient Reading/Writing/Modifying of Complete Files",
+            "author" : [
+               "Uri Guttman <uri@stemsystems.com>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "ExtUtils::MakeMaker version 6.42, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "File-Slurp",
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : 0
+                  }
+               },
+               "runtime" : {
+                  "requires" : {
+                     "Carp" : 0,
+                     "Exporter" : 0,
+                     "Fcntl" : 0,
+                     "POSIX" : 0
+                  }
+               }
+            },
+            "release_status" : "stable",
+            "version" : "9999.19"
+         },
+         "name" : "File::Slurp",
+         "pathname" : "U/UR/URI/File-Slurp-9999.19.tar.gz",
+         "provides" : {
+            "File::Slurp" : {
+               "file" : "File/Slurp.pm",
+               "version" : "9999.19"
+            }
+         },
+         "target" : "File::Slurp",
+         "version" : "9999.19"
+      },
       "File::Which" : {
          "dist" : "File-Which-1.09",
          "mymeta" : {
@@ -8965,6 +9189,52 @@
          },
          "target" : "HTTP::Negotiate",
          "version" : "6.01"
+      },
+      "IO::Prompt" : {
+         "dist" : "IO-Prompt-0.997001",
+         "mymeta" : {
+            "abstract" : "Interactively prompt for user input",
+            "author" : [
+               "Damian Conway <DCONWAY@cpan.org>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Build version 0.4, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "unknown"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "IO-Prompt",
+            "prereqs" : {
+               "runtime" : {
+                  "requires" : {
+                     "IO::Handle" : 0,
+                     "POSIX" : 0,
+                     "Term::ReadKey" : 0,
+                     "Test::More" : 0,
+                     "Want" : 0,
+                     "version" : 0
+                  }
+               }
+            },
+            "release_status" : "stable",
+            "version" : "0.997001"
+         },
+         "name" : "IO::Prompt",
+         "pathname" : "D/DC/DCONWAY/IO-Prompt-0.997001.tar.gz",
+         "provides" : {
+            "IO::Prompt" : {
+               "file" : "IO/Prompt.pm",
+               "version" : "0.997001"
+            },
+            "IO::Prompt::ReturnVal" : {
+               "file" : "IO/Prompt.pm"
+            }
+         },
+         "target" : "IO::Prompt",
+         "version" : "0.997001"
       },
       "IO::Prompt::Tiny" : {
          "dist" : "IO-Prompt-Tiny-0.001",
@@ -10740,6 +11010,128 @@
          },
          "target" : "Module::Runtime",
          "version" : "0.013"
+      },
+      "MongoDB" : {
+         "dist" : "MongoDB-0.45",
+         "mymeta" : {
+            "abstract" : "Mongo Driver for Perl",
+            "author" : [
+               "Florian Ragwitz <rafl@debian.org>",
+               "Kristina Chodorow <kristina@10gen.com>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Install version 1.01, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "apache_2_0"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "MongoDB",
+            "no_index" : {
+               "directory" : [
+                  "ext",
+                  "inc",
+                  "t"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "Data::Types" : 0,
+                     "DateTime" : 0,
+                     "ExtUtils::MakeMaker" : "6.42",
+                     "File::Slurp" : 0,
+                     "File::Temp" : "0.17",
+                     "FileHandle" : 0,
+                     "JSON" : 0,
+                     "Test::Exception" : 0,
+                     "Tie::IxHash" : 0,
+                     "Try::Tiny" : 0,
+                     "boolean" : 0
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.42"
+                  }
+               },
+               "runtime" : {
+                  "requires" : {
+                     "Any::Moose" : 0,
+                     "Class::Method::Modifiers" : 0,
+                     "DateTime" : 0,
+                     "Digest::MD5" : 0,
+                     "Tie::IxHash" : 0,
+                     "XSLoader" : 0,
+                     "boolean" : 0,
+                     "perl" : "5.008004"
+                  }
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "license" : [
+                  "http://apache.org/licenses/LICENSE-2.0"
+               ],
+               "repository" : {
+                  "type" : "git",
+                  "url" : "git://github.com/mongodb/mongo-perl-driver.git"
+               }
+            },
+            "version" : "0.45"
+         },
+         "name" : "MongoDB",
+         "pathname" : "K/KR/KRISTINA/MongoDB-0.45.tar.gz",
+         "provides" : {
+            "MongoDB" : {
+               "file" : "MongoDB.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::BSON" : {
+               "file" : "MongoDB/BSON.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Code" : {
+               "file" : "MongoDB/Code.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Collection" : {
+               "file" : "MongoDB/Collection.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Connection" : {
+               "file" : "MongoDB/Connection.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Cursor" : {
+               "file" : "MongoDB/Cursor.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Database" : {
+               "file" : "MongoDB/Database.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::GridFS" : {
+               "file" : "MongoDB/GridFS.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::GridFS::File" : {
+               "file" : "MongoDB/GridFS/File.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::OID" : {
+               "file" : "MongoDB/OID.pm",
+               "version" : "0.45"
+            },
+            "MongoDB::Timestamp" : {
+               "file" : "MongoDB/Timestamp.pm",
+               "version" : "0.45"
+            }
+         },
+         "target" : "MongoDB",
+         "version" : "0.45"
       },
       "Moose" : {
          "dist" : "Moose-2.0602",
@@ -14492,6 +14884,87 @@
          "target" : "Sub::Name",
          "version" : "0.05"
       },
+      "Sub::Uplevel" : {
+         "dist" : "Sub-Uplevel-0.24",
+         "mymeta" : {
+            "abstract" : "apparently run a function in a higher stack frame",
+            "author" : [
+               "Michael Schwern <mschwern@cpan.org>",
+               "David Golden <dagolden@cpan.org>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Dist::Zilla version 4.300005, CPAN::Meta::Converter version 2.112621, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Sub-Uplevel",
+            "no_index" : {
+               "directory" : [
+                  "t",
+                  "xt",
+                  "examples",
+                  "corpus"
+               ],
+               "package" : [
+                  "DB"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "Exporter" : 0,
+                     "File::Find" : 0,
+                     "File::Temp" : 0,
+                     "Test::More" : 0
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.30"
+                  }
+               },
+               "runtime" : {
+                  "requires" : {
+                     "Carp" : 0,
+                     "constant" : 0,
+                     "strict" : 0,
+                     "warnings" : 0
+                  }
+               }
+            },
+            "provides" : {
+               "Sub::Uplevel" : {
+                  "file" : "lib/Sub/Uplevel.pm",
+                  "version" : "0.24"
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "bugtracker" : {
+                  "web" : "http://rt.cpan.org/Public/Dist/Display.html?Name=Sub-Uplevel"
+               },
+               "homepage" : "https://github.com/dagolden/sub-uplevel",
+               "repository" : {
+                  "url" : "https://github.com/dagolden/sub-uplevel.git"
+               }
+            },
+            "version" : "0.24"
+         },
+         "name" : "Sub::Uplevel",
+         "pathname" : "D/DA/DAGOLDEN/Sub-Uplevel-0.24.tar.gz",
+         "provides" : {
+            "Sub::Uplevel" : {
+               "file" : "Sub/Uplevel.pm",
+               "version" : "0.24"
+            }
+         },
+         "target" : "Sub::Uplevel",
+         "version" : "0.24"
+      },
       "Task::Weaken" : {
          "dist" : "Task-Weaken-1.04",
          "mymeta" : {
@@ -14559,6 +15032,58 @@
          },
          "target" : "Task::Weaken",
          "version" : "1.04"
+      },
+      "Term::ReadKey" : {
+         "dist" : "TermReadKey-2.30",
+         "mymeta" : {
+            "abstract" : "unknown",
+            "author" : [
+               "unknown"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "unknown"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "TermReadKey",
+            "no_index" : {
+               "directory" : [
+                  "t",
+                  "inc"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : 0
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : 0
+                  }
+               },
+               "runtime" : {
+                  "requires" : {}
+               }
+            },
+            "release_status" : "stable",
+            "version" : "2.30"
+         },
+         "name" : "Term::ReadKey",
+         "pathname" : "J/JS/JSTOWE/TermReadKey-2.30.tar.gz",
+         "provides" : {
+            "Term::ReadKey" : {
+               "file" : "Term/ReadKey.pm",
+               "version" : "2.30"
+            }
+         },
+         "target" : "Term::ReadKey",
+         "version" : "2.30"
       },
       "Test::Deep" : {
          "dist" : "Test-Deep-0.109",
@@ -14758,6 +15283,65 @@
          },
          "target" : "Test::Deep",
          "version" : "0.109"
+      },
+      "Test::Exception" : {
+         "dist" : "Test-Exception-0.31",
+         "mymeta" : {
+            "abstract" : "Test exception based code",
+            "author" : [
+               "Adrian Howard <adrianh@quietstars.com>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Build version 0.4, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Test-Exception",
+            "prereqs" : {
+               "configure" : {
+                  "requires" : {
+                     "Module::Build" : "0.36"
+                  }
+               },
+               "runtime" : {
+                  "requires" : {
+                     "Sub::Uplevel" : "0.18",
+                     "Test::Builder" : "0.7",
+                     "Test::Builder::Tester" : "1.07",
+                     "Test::Harness" : "2.03",
+                     "Test::More" : "0.7",
+                     "Test::Simple" : "0.7"
+                  }
+               }
+            },
+            "provides" : {
+               "Test::Exception" : {
+                  "file" : "lib/Test/Exception.pm",
+                  "version" : "0.31"
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "license" : [
+                  "http://dev.perl.org/licenses/"
+               ]
+            },
+            "version" : "0.31"
+         },
+         "name" : "Test::Exception",
+         "pathname" : "A/AD/ADIE/Test-Exception-0.31.tar.gz",
+         "provides" : {
+            "Test::Exception" : {
+               "file" : "Test/Exception.pm",
+               "version" : "0.31"
+            }
+         },
+         "target" : "Test::Exception",
+         "version" : "0.31"
       },
       "Test::Fatal" : {
          "dist" : "Test-Fatal-0.010",
@@ -16178,6 +16762,58 @@
          "target" : "WWW::RobotRules",
          "version" : "6.02"
       },
+      "Want" : {
+         "dist" : "Want-0.21",
+         "mymeta" : {
+            "abstract" : "unknown",
+            "author" : [
+               "unknown"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "ExtUtils::MakeMaker version 6.58, CPAN::Meta::Converter version 2.110930001, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "unknown"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "Want",
+            "no_index" : {
+               "directory" : [
+                  "t",
+                  "inc"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : 0
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : 0
+                  }
+               },
+               "runtime" : {
+                  "requires" : {}
+               }
+            },
+            "release_status" : "stable",
+            "version" : "0.21"
+         },
+         "name" : "Want",
+         "pathname" : "R/RO/ROBIN/Want-0.21.tar.gz",
+         "provides" : {
+            "Want" : {
+               "file" : "Want.pm",
+               "version" : "0.21"
+            }
+         },
+         "target" : "Want",
+         "version" : "0.21"
+      },
       "XML::DOM" : {
          "dist" : "XML-DOM-1.44",
          "mymeta" : {
@@ -17204,6 +17840,74 @@
          },
          "target" : "JSON::Syck",
          "version" : "1.20"
+      },
+      "boolean" : {
+         "dist" : "boolean-0.28",
+         "mymeta" : {
+            "abstract" : "Boolean support for Perl",
+            "author" : [
+               "Ingy döt Net <ingy@cpan.org>"
+            ],
+            "dynamic_config" : 0,
+            "generated_by" : "Module::Install version 1.01, CPAN::Meta::Converter version 2.112150",
+            "license" : [
+               "perl_5"
+            ],
+            "meta-spec" : {
+               "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+               "version" : "2"
+            },
+            "name" : "boolean",
+            "no_index" : {
+               "directory" : [
+                  "inc",
+                  "t"
+               ]
+            },
+            "prereqs" : {
+               "build" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.42"
+                  }
+               },
+               "configure" : {
+                  "requires" : {
+                     "ExtUtils::MakeMaker" : "6.42"
+                  }
+               },
+               "runtime" : {
+                  "recommends" : {
+                     "Readonly" : 0
+                  },
+                  "requires" : {
+                     "perl" : "5.005003"
+                  }
+               }
+            },
+            "release_status" : "stable",
+            "resources" : {
+               "homepage" : "http://github.com/ingydotnet/boolean-pm/tree",
+               "license" : [
+                  "http://dev.perl.org/licenses/"
+               ],
+               "repository" : {
+                  "type" : "git",
+                  "url" : "git://github.com/ingydotnet/boolean-pm.git"
+               }
+            },
+            "version" : "0.28",
+            "x_module_name" : "boolean"
+         },
+         "name" : "boolean",
+         "pathname" : "I/IN/INGY/boolean-0.28.tar.gz",
+         "provides" : {
+            "boolean" : {
+               "file" : "boolean.pm",
+               "version" : "0.28"
+            }
+         },
+         "target" : "boolean",
+         "version" : "0.28"
       },
       "common::sense" : {
          "dist" : "common-sense-3.5",

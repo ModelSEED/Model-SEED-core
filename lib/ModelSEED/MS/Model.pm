@@ -6,7 +6,7 @@
 # Date of module creation: 2012-03-26T23:22:35
 ########################################################################
 use strict;
-use XML::LibXML::Attr;
+use XML::LibXML;
 use ModelSEED::MS::DB::Model;
 package ModelSEED::MS::Model;
 use Moose;
