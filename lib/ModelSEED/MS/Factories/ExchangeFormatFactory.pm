@@ -127,7 +127,7 @@ sub buildFBAFormulationFromExchange {
 			$obj = $model->queryObject("biomasses",{$array->[1] => $array->[2]});
 		}
 		if (defined($obj)) {
-			$data->{fbaConstraints}->[$i] = {
+			$data->{fbaObjectiveTerms}->[$i] = {
 				coefficient => $data->{fbaObjectiveTerms}->[$i]->{coefficient},
 				variableType => $data->{fbaObjectiveTerms}->[$i]->{variableType},
 				entityType => $type,
