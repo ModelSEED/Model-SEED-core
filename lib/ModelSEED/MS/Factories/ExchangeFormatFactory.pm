@@ -7,6 +7,7 @@
 ########################################################################
 use strict;
 use ModelSEED::utilities;
+use Data::Dumper;
 #use ModelSEED::Store;
 package ModelSEED::MS::Factories::ExchangeFormatFactory;
 use Moose;
@@ -135,6 +136,7 @@ sub buildFBAFormulationFromExchange {
 			};
 		}
 	}
+	print STDERR 
 	#Finding (or creating) the media
 	my $media;
 	my $array = [split(/\//,$data->{media})];
@@ -162,6 +164,7 @@ sub buildFBAFormulationFromExchange {
 			}
 		}
 	}
+	print STDERR Data::Dumper->Dump([$data]);
 	#Creating objects and populating with provenance objects
 	my $form = ModelSEED::MS::FBAFormulation->new({
 		name => $data->{name},
