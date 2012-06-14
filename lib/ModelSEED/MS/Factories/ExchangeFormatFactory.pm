@@ -190,7 +190,7 @@ sub buildFBAFormulationFromExchange {
 	$form->media($media);
 	$form->model($model);
 	$form->biochemistry($model->biochemistry());
-	return $data;
+	return $form;
 }
 =head3 parseExchangeFileArray
 Definition:
