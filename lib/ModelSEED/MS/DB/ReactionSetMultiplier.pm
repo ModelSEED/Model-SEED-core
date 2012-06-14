@@ -24,11 +24,11 @@ has multiplier => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attrib
 
 
 # LINKS:
-has reactionset => (is => 'rw', isa => 'ModelSEED::MS::reactionsets', type => 'link(Biochemistry,reactionsets,reactionset_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildreactionset', weak_ref => 1);
+has reactionset => (is => 'rw', isa => 'ModelSEED::MS::reactionsets', type => 'link(Biochemistry,reactionsets,reactionset_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reactionset', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildreactionset {
+sub _build_reactionset {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','reactionsets',$self->reactionset_uuid());
 }

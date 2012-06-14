@@ -49,14 +49,9 @@ sub buildMooseAnnotation {
 	}
     print "Getting genome attributes...\n" if($args->{verbose});
 	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
-	my $annoationObj;
-	if (defined($self->om())) {
-		$annoationObj = $self->om()->add("annotations");
-	} else {
-		$annoationObj = ModelSEED::MS::Annotation->new({
-			name => $genomeData->{name}
-		});
-	}
+    my $annoationObj = ModelSEED::MS::Annotation->new({
+        name => $genomeData->{name}
+    });
 	my $genomeObj = $annoationObj->add("genomes",{
 		id => $args->{genome_id},
 		name => $genomeData->{name},

@@ -17,7 +17,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAProblem', weak_ref => 1, ty
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has rightHandSide => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
@@ -38,17 +38,17 @@ has constraintVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 
 # LINKS:
-has dualConstraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,dualConstraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_builddualConstraint', weak_ref => 1);
-has dualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,dualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_builddualVariable', weak_ref => 1);
+has dualConstraint => (is => 'rw', isa => 'ModelSEED::MS::Constraint', type => 'link(FBAProblem,constraints,dualConstraint_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_dualConstraint', weak_ref => 1);
+has dualVariable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,dualVariable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_dualVariable', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _builddualConstraint {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_dualConstraint {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','constraints',$self->dualConstraint_uuid());
 }
-sub _builddualVariable {
+sub _build_dualVariable {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','variables',$self->dualVariable_uuid());
 }

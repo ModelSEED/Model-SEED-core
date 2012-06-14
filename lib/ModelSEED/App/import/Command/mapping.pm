@@ -7,34 +7,38 @@ use Class::Autouse qw(
     ModelSEED::MS::Mapping
     ModelSEED::Store
     ModelSEED::Auth::Factory
-    ModelSEED::MS::Factories::SEEDFactory
+    ModelSEED::MS::Factories::PPOFactory
     ModelSEED::Database::Composite
     ModelSEED::Reference
 );
 
 sub abstract { return "Import mapping from local or remote database"; }
 
-sub usage_desc { return <<END
-ms import mapping [alias] [-s store] [-l location]
+sub usage_desc { return "ms import mapping [alias] [-s store] [-l location]"; }
+sub description { return <<END;
 Import mapping data (compounds, reactions, media, compartments, etc.)
 Alias, required, is the name that you would like to save the mapping as.
+
+You may supply a biochemistry with -b to use when importing the mapping
+objct. If this is not supplied, the default biochemistry, i.e.
+\$ ms defaults bichemistry
+will be used.
     
 The [--location name] argument indicates where you are importing
 the mapping from. Current supported options are:
     
---location local : import from local sqlite or MySQL database
---location model_seed : import standard mapping from the model_seed
-
+    --location local : import from local sqlite or MySQL database
+    --location model_seed : import standard mapping from the model_seed
 END
 }
 
 sub opt_spec {
     return (
+        ["biochemistry|b:s", "Reference to biochemistry to use for import"],
         ["location|l:s", "Where are you importing from. Defaults to 'model_seed'"],
         ["store|s:s", "Identify which store to save the mapping to"],
         ["verbose|v", "Print detailed output of import status"],
         ["dry|d", "Perform a dry run; that is, do everything but saving"],
-
     );
 }
 
@@ -64,10 +68,18 @@ sub execute {
             $alias = $auth->username . "/" . $uname;
         }
     }
+    $alias = "mapping/".$alias unless($alias =~ /^mapping\//);
     print "Will be saving to $alias...\n" if($opts->{verbose});
-    my $alias_ref = ModelSEED::Reference->new(ref => "mapping/".$alias);
-    my $bio;
+    my $alias_ref = ModelSEED::Reference->new(ref => $alias);
+    my $map;
     if($opts->{location} && $opts->{location} eq 'local') {
+        # Get the biochemistry object
+        my $bio_ref = $opts->{biochemistry};
+        if(!defined($bio_ref)) {
+            $bio_ref = ModelSEED::Configuration->instance->config->{'biochemistry'};
+        }
+        warn "Using $bio_ref biochemistry while importing mapping\n" if($opts->{verbose});
+        my $bio = $store->get_object($bio_ref);
         # Cannot go further unless we're using basic auth (legacy)
         unless(ref($auth) && $auth->isa("ModelSEED::Auth::Basic")) {
             $self->usage_error("Cannot import from local unless you are logged in")
@@ -77,12 +89,14 @@ sub execute {
             username => $auth->username,
             password => $auth->password,
         });
-        my $factory = ModelSEED::Factories::PPOFactory->new({
+        my $factory = ModelSEED::MS::Factories::PPOFactory->new({
             figmodel => $figmodel,
             namespace => $auth->username,
         });
-        $bio = $factory->createMapping({
+        $map = $factory->createMapping({
                 name => $alias,
+                biochemistry => $bio,
+                verbose => $opts->{verbose},
         });
     } else {
         # Just fetch a pre-built mapping from the web
@@ -110,10 +124,10 @@ sub execute {
             $data = JSON->new->utf8->decode($string);
         }
         print "Validating fetched mapping...\n" if($opts->{verbose});
-        $bio = ModelSEED::MS::Mapping->new($data);
+        $map = ModelSEED::MS::Mapping->new($data);
     }
     unless($opts->{dry}) {
-        $store->save_object($alias_ref, $bio);
+        $store->save_object($alias_ref, $map);
     }
     print "Saved mapping to $alias!\n" if($opts->{verbose});
 }

@@ -28,11 +28,11 @@ has modelReactionProteinSubunitGenes => (is => 'rw', isa => 'ArrayRef[HashRef]',
 
 
 # LINKS:
-has role => (is => 'rw', isa => 'ModelSEED::MS::Role', type => 'link(Mapping,roles,role_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildrole', weak_ref => 1);
+has role => (is => 'rw', isa => 'ModelSEED::MS::Role', type => 'link(Mapping,roles,role_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_role', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildrole {
+sub _build_role {
   my ($self) = @_;
   return $self->getLinkedObject('Mapping','roles',$self->role_uuid());
 }

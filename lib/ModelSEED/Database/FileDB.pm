@@ -671,5 +671,19 @@ sub _decode {
     return JSON::Any->decode($data);
 }
 
+# TODO - implement these functions to maintain compatiblity with ModelSEED::Database
+sub add_viewer { ... }
+sub alias_owner { ... }
+sub alias_public { ... }
+sub alias_viewers { ... }
+sub find_data { ... }
+sub get_aliases { ... }
+sub get_data { ... }
+sub has_data { ... }
+sub remove_viewer { ... }
+sub save_data { ... }
+sub set_public { ... }
+sub update_alias { ... }
+
 no Moose;
 __PACKAGE__->meta->make_immutable;

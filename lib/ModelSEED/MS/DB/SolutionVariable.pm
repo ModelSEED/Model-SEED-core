@@ -16,7 +16,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Solution', weak_ref => 1, type
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has variable_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 has value => (is => 'rw', isa => 'Num', printOrder => '2', type => 'attribute', metaclass => 'Typed');
 has min => (is => 'rw', isa => 'Num', printOrder => '3', default => '0', type => 'attribute', metaclass => 'Typed');
@@ -28,12 +28,12 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # LINKS:
-has variable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,variable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildvariable', weak_ref => 1);
+has variable => (is => 'rw', isa => 'ModelSEED::MS::Variable', type => 'link(FBAProblem,variables,variable_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_variable', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildvariable {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_variable {
   my ($self) = @_;
   return $self->getLinkedObject('FBAProblem','variables',$self->variable_uuid());
 }

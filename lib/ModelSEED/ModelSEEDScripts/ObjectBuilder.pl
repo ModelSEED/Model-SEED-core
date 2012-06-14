@@ -92,11 +92,11 @@ foreach my $name (keys(%{$objects})) {
 			}
         }
         if ($attribute->{name} eq "uuid") {
-            push(@$props, "lazy => 1", "builder => '_builduuid'");
+            push(@$props, "lazy => 1", "builder => '_build_uuid'");
             $uuid = 1;
         }
         if ($attribute->{name} eq "modDate") {
-            push(@$props, "lazy => 1", "builder => '_buildmodDate'");
+            push(@$props, "lazy => 1", "builder => '_build_modDate'");
             $modDate = 1;
         }
         push(@$props, "type => 'attribute'", "metaclass => 'Typed'");
@@ -147,59 +147,54 @@ foreach my $name (keys(%{$objects})) {
     }
 
     #Printing object links
-    if (defined($object->{links}) || defined($object->{alias})) {
+    if (defined($object->{links})) {
         push(@$output, "# LINKS:");
-        if (defined($object->{links}) && defined($object->{links}->[0])) {
-            foreach my $subobject (@{$object->{links}}) {
-                my $soname = $subobject->{name};
-                my $parent = $subobject->{parent};
-                my $method = $subobject->{method};
-                my $attr = $subobject->{attribute};
-
-                # find link class
-                my $class;
-                foreach my $parent_so (@{$objects->{$parent}->{subobjects}}) {
-                    if ($parent_so->{name} eq $method) {
-                        $class = $parent_so->{class};
-                        last;
-                    }
+        foreach my $subobject (@{$object->{links}}) {
+            my $soname = $subobject->{name};
+            my $parent = $subobject->{parent};
+            my $method = $subobject->{method};
+            my $attr = $subobject->{attribute};
+            my $weak = (defined($subobject->{weak})) ? $subobject->{weak} : 1;
+            warn "$name $soname is notweak" if(!$weak);
+            # find link class
+            my $class;
+            foreach my $parent_so (@{$objects->{$parent}->{subobjects}}) {
+                if ($parent_so->{name} eq $method) {
+                    $class = $parent_so->{class};
+                    last;
                 }
-
-                if (!defined($class)) {
-                    $class = $method;
-                }
-
-                my $props = [
-                    "is => 'rw'",
-                    "isa => 'ModelSEED::MS::$class'",
-                    "type => 'link($parent,$method,$attr)'",
-                    "metaclass => 'Typed'",
-                    "lazy => 1",
-                    "builder => '_build$soname'",
-                    "weak_ref => 1"
-                ];
-
-                push(@$output, "has $soname => (" . join(", ", @$props) . ");");
             }
+            if (!defined($class)) {
+                $class = $method;
+            }
+            my $props = [
+                "is => 'rw'",
+                "isa => 'ModelSEED::MS::$class'",
+                "type => 'link($parent,$method,$attr)'",
+                "metaclass => 'Typed'",
+                "lazy => 1",
+                "builder => '_build_$soname'",
+            ];
+            push(@$props, "weak_ref => 1") if($weak);
+            push(@$output, "has $soname => (" . join(", ", @$props) . ");");
         }
-
-        if (defined($object->{alias})) {
-            push(@$output,"has id => (is => 'rw', lazy => 1, builder => '_buildid', isa => 'Str', type => 'id', metaclass => 'Typed');");
-        }
-        push(@$output, "", "");
     }
+    if (defined($object->{alias})) {
+        push(@$output,"has id => (is => 'rw', lazy => 1, builder => '_build_id', isa => 'Str', type => 'id', metaclass => 'Typed');");
+    }
+    push(@$output, "", "");
 
     #Printing builders
     push(@$output,("# BUILDERS:"));
     if ($uuid == 1) {
-        push(@$output, "sub _builduuid { return Data::UUID->new()->create_str(); }");
+        push(@$output, "sub _build_uuid { return Data::UUID->new()->create_str(); }");
     }
     if ($modDate == 1) {
-        push(@$output, "sub _buildmodDate { return DateTime->now()->datetime(); }");
+        push(@$output, "sub _build_modDate { return DateTime->now()->datetime(); }");
     }
     foreach my $subobject (@{$object->{links}}) {
         push(@$output,
-            "sub _build".$subobject->{name}." {",
+            "sub _build_".$subobject->{name}." {",
             "$tab my (\$self) = \@_;",
             "$tab return \$self->getLinkedObject('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
             "}"
@@ -212,7 +207,7 @@ foreach my $name (keys(%{$objects})) {
     push(@$output, "sub _type { return '" . $name . "'; }");
 
 
-=head
+=head1
 
 if (defined($typeToFunction)) {
 push(@$output, "", "my \$typeToFunction = {");

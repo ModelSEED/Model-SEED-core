@@ -22,11 +22,11 @@ has method => (is => 'rw', isa => 'Str', printOrder => '0', type => 'attribute',
 
 
 # LINKS:
-has feature => (is => 'rw', isa => 'ModelSEED::MS::features', type => 'link(Genome,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildfeature', weak_ref => 1);
+has feature => (is => 'rw', isa => 'ModelSEED::MS::features', type => 'link(Genome,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_feature', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildfeature {
+sub _build_feature {
   my ($self) = @_;
   return $self->getLinkedObject('Genome','features',$self->feature_uuid());
 }

@@ -20,9 +20,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::Store', type => 'parent', metaclas
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_builduuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has defaultNameSpace => (is => 'rw', isa => 'Str', printOrder => '3', default => 'ModelSEED', type => 'attribute', metaclass => 'Typed');
-has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_buildmodDate', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has locked => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 has public => (is => 'rw', isa => 'Int', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 has id => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '1', required => 1, type => 'attribute', metaclass => 'Typed');
@@ -50,28 +50,28 @@ has modelreactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { 
 
 
 # LINKS:
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildbiochemistry', weak_ref => 1);
-has mapping => (is => 'rw', isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmapping', weak_ref => 1);
-has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(ModelSEED::Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildannotation', weak_ref => 1);
-has modelanalysis => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', type => 'link(ModelSEED::Store,ModelAnalysis,modelanalysis_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodelanalysis', weak_ref => 1);
+has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(ModelSEED::Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_biochemistry');
+has mapping => (is => 'rw', isa => 'ModelSEED::MS::Mapping', type => 'link(ModelSEED::Store,Mapping,mapping_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_mapping');
+has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(ModelSEED::Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_annotation');
+has modelanalysis => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', type => 'link(ModelSEED::Store,ModelAnalysis,modelanalysis_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelanalysis');
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildbiochemistry {
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
+sub _build_biochemistry {
   my ($self) = @_;
   return $self->getLinkedObject('ModelSEED::Store','Biochemistry',$self->biochemistry_uuid());
 }
-sub _buildmapping {
+sub _build_mapping {
   my ($self) = @_;
   return $self->getLinkedObject('ModelSEED::Store','Mapping',$self->mapping_uuid());
 }
-sub _buildannotation {
+sub _build_annotation {
   my ($self) = @_;
   return $self->getLinkedObject('ModelSEED::Store','Annotation',$self->annotation_uuid());
 }
-sub _buildmodelanalysis {
+sub _build_modelanalysis {
   my ($self) = @_;
   return $self->getLinkedObject('ModelSEED::Store','ModelAnalysis',$self->modelanalysis_uuid());
 }

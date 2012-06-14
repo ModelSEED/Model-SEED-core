@@ -145,7 +145,15 @@ my $refs = {
         has_owner          => 1,
         owner              => 'chenry',
     },
-
+    "biochemistry/chenry/main/compounds" => {
+        is_url             => 0,
+        type               => "collection",
+        class              => "ModelSEED::MS::Compound",
+        base_types         => ['biochemistry', 'compounds'],
+        parent_objects     => ['biochemistry/chenry/main'],
+        has_owner          => 1,
+        owner              => 'chenry',
+    },
 };
 
 foreach my $ref (keys %$refs) {

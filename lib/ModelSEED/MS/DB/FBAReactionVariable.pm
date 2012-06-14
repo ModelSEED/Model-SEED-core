@@ -26,11 +26,11 @@ has value => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', 
 
 
 # LINKS:
-has modelreaction => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,modelreactions,modelreaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodelreaction', weak_ref => 1);
+has modelreaction => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,modelreactions,modelreaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelreaction', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildmodelreaction {
+sub _build_modelreaction {
   my ($self) = @_;
   return $self->getLinkedObject('Model','modelreactions',$self->modelreaction_uuid());
 }

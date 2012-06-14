@@ -5,6 +5,7 @@ use Class::Autouse qw(
     ModelSEED::Reference
     ModelSEED::Auth::Factory
     ModelSEED::Store
+    ModelSEED::App::Helpers
 );
 use base 'App::Cmd::Command';
 use Data::Dumper;
@@ -13,6 +14,8 @@ sub execute {
     my ($self, $opts, $args) = @_;
     my $auth = ModelSEED::Auth::Factory->new->from_config();
     my $store  = ModelSEED::Store->new(auth => $auth);
+    my $helpers = ModelSEED::App::Helpers->new;
+
     my $arg = shift @$args;
     my $ref;
     try {
@@ -30,8 +33,16 @@ sub execute {
             my $data = $store->get_data($ref->parent_objects->[0]);
             my @sections = split($ref->delimiter, $ref->base);
             my $subtype = pop @sections;
-            foreach my $o ( @{$data->{$subtype}} ) {
-                print $ref->base . "/" . $o->{uuid} . "\n";
+            # Ancestor_uuids is just a list of uuids, special case
+            if($subtype eq 'ancestor_uuids') {
+                my $grandparent_ref = ModelSEED::Reference->new(ref => $ref->parent_objects->[0]);
+                foreach my $o (@{$data->{$subtype}}) {
+                    print $grandparent_ref->base . "/" . $o . "\n";
+                }
+            } else {
+                foreach my $o ( @{$data->{$subtype}} ) {
+                    print $ref->base . "/" . $o->{uuid} . "\n";
+                }
             }
         # Want a breakdown of the subobjects
         } elsif($ref->type eq 'object') {

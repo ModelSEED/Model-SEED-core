@@ -73,9 +73,13 @@ sub execute {
     my $anno = $factory->buildMooseAnnotation($config);
 
     unless($opts->{dry}) {
+        my $mapping = $anno->mapping;
+        my $mapping_ref = ModelSEED::Reference->new( type => "mapping", uuid => $mapping->uuid );
+        my $uuid = $store->save_object($mapping_ref, $mapping);
+        $anno->mapping_uuid($uuid);
         $store->save_object($alias_ref, $anno);
+        print "Saved annotation to $alias!\n" if(defined($opts->{verbose}));
     }
-    print "Saved annotation to $alias!\n" if(defined($opts->{verbose}));
 }
 
 1;

@@ -48,7 +48,7 @@ sub new {
         username => $c->{login}->{username},
         password => $c->{login}->{password},
     );
-    $self->om(ModelSEED::Store->new( auth => $auth ));
+    $self->store(ModelSEED::Store->new( auth => $auth ));
     return $self;
 }
 =head3 figmodel
@@ -106,7 +106,7 @@ sub loadObjectFromJSONFile {
 	print "Done!";
 	exit();
 	my $objectData = JSON::Any->decode($string);
-	close TEMPFILE;
+	close FILE;
 	print "test3\n";
 	return $class->new($objectData);	
 }
@@ -121,7 +121,7 @@ sub biochemistry {
     my $wanted = $self->environment()->{biochemistry};
     my $got = $self->{_biochemistry};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_biochemistry} = $self->om()->get_object("biochemistry/$wanted");
+        $self->{_biochemistry} = $self->store()->get_object("biochemistry/$wanted");
     }
 	return $self->{_biochemistry};
 }
@@ -136,7 +136,7 @@ sub mapping {
     my $wanted = $self->environment()->{mapping};
     my $got = $self->{_mapping};
     if (!defined($got) || $got->uuid ne $wanted) {
-        $self->{_mapping} = $self->om()->get_object("mapping/$wanted");
+        $self->{_mapping} = $self->store->get_object("mapping/$wanted");
     }
 	return $self->{_mapping};
 }
@@ -335,9 +335,7 @@ sub dbtransfermain {
 	my $args = $self->check([],[@Data],"transfers biochemistry and mapping to new scheme");
     my $username = $self->environment()->{login}->{username};
 	my $ppofactory = ModelSEED::MS::Factories::PPOFactory->new({
-		om => $self->store(),
-		username => $self->environment()->{login}->{username},
-		password => $self->environment()->{login}->{password}	
+        figmodel => $self->figmodel(),
 	});
 	my $bio = $ppofactory->createBiochemistry();
     my $bioAlias = "$username/bio-main";
