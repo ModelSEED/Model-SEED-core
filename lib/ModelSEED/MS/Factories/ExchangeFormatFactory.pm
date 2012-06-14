@@ -125,7 +125,7 @@ sub buildFBAFormulationFromExchange {
 		} elsif ($type eq "Reaction") {
 			$obj = $model->queryObject("modelreactions",{$array->[1] => $array->[2]});
 		} elsif ($type eq "Biomass") {
-			$obj = $model->queryObject("biomasses",{$array->[1] => $array->[2]});
+			$obj = $model->biomasses()->[0];
 		}
 		if (defined($obj)) {
 			$data->{fbaObjectiveTerms}->[$i] = {
@@ -136,7 +136,6 @@ sub buildFBAFormulationFromExchange {
 			};
 		}
 	}
-	print STDERR 
 	#Finding (or creating) the media
 	my $media;
 	my $array = [split(/\//,$data->{media})];
