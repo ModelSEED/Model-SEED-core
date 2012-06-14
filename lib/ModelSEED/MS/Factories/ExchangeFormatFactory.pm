@@ -33,6 +33,164 @@ sub _buildstore {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
+=head3 buildFBAFormulationFromExchange
+Definition:
+	ModelSEED::MS::FBAFormulation = ModelSEED::MS::Biochemistry->buildFBAFormulationFromExchange({
+		text => string(REQ),
+		model => ModelSEED::MS::Model
+	});
+Description:
+	Parses the FBA formulation exchange object
+=cut
+sub buildFBAFormulationFromExchange {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["text","model"],{});
+	my $model = $args->{model};
+	my $text = $args->{model};
+	my $fileArray = [split(/\n/,$text)];
+	#Setting default attributes and subobjects, and enforcing mandatory attributes and subobjects
+	my $data = $self->parseExchangeFileArray({array => $fileArray});
+	$data = ModelSEED::utilities::ARGS($data,["name"],{
+		media => "Media/name/Complete",
+		type => "singlegrowth",
+		description => "None provided",
+		growthConstraint => "none",
+		thermodynamicConstraints => "none",
+		allReversible => 0,
+		dilutionConstraints => 0,
+		uptakeLimits => "none",
+		geneKO => "none",
+		defaultMaxFlux => 100,
+		defaultMaxDrainFlux => 100,
+		defaultMinDrainFlux => -100,
+		maximizeObjective => 1,
+		decomposeReversibleFlux => 0,
+		decomposeReversibleDrainFlux => 0,
+		fluxUseVariables => 0,
+		drainfluxUseVariables => 0,
+		fbaConstraints => [],
+		fbaObjectiveTerms => [{
+			variableType => "biomassflux",
+			id => "Biomass/name/bio00001",
+			coefficient => 1
+		}]
+	});
+	#Translating constraints
+	my $vartrans = {
+		f => "flux",ff => "forflux",rf => "revflux",
+		df => "drainflux",fdf => "fordrainflux",rdf => "revdrainflux",
+		ffu => "forfluxuse",rfu => "reffluxuse"
+	};
+	for (my $i=0; $i < @{$data->{fbaConstraints}};$i++) {
+		my $array = [split(/\+/,$data->{fbaConstraints}->[$i]->{terms})];
+		my $terms;
+		for (my $j=0; $j < @{$array};$j++) {
+			if ($array->[$j] =~ /\((\d+\.*\d*)\)(\w+)_([\w\/]+)\[(w+)\]/) {
+				my $coef = $1;
+				my $vartype = $vartrans->{$2};
+				my $refarray = [split(/\//,$3)];
+				my $type = $refarray->[0];
+				my $obj;
+				if ($type eq "Compound") {
+					$obj = $model->queryObject("modelcompounds",{$refarray->[1] => $refarray->[2]});
+				} elsif ($type eq "Reaction") {
+					$obj = $model->queryObject("modelreactions",{$refarray->[1] => $refarray->[2]});
+				} elsif ($type eq "Biomass") {
+					$obj = $model->biomasses()->[0];
+				}
+				push(@{$terms},{
+					entity_uuid => $obj->uuid(),
+					entityType => $type,
+					variableType => $vartype,
+					coefficient => $coef
+				});
+			}
+		}
+		$data->{fbaConstraints}->[$i] = {
+			name => $data->{fbaConstraints}->[$i]->{name},
+			rhs => $data->{fbaConstraints}->[$i]->{rhs},
+			sign => $data->{fbaConstraints}->[$i]->{sign},
+			fbaConstraintVariables => $terms
+		};
+	}
+	#Translating objective terms
+	for (my $i=0; $i < @{$data->{fbaObjectiveTerms}};$i++) {
+		my $array = [split(/\//,$data->{fbaObjectiveTerms}->[$i]->{id})];
+		my $type = $array->[0];
+		my $obj;
+		if ($type eq "Compound") {
+			$obj = $model->queryObject("modelcompounds",{$array->[1] => $array->[2]});
+		} elsif ($type eq "Reaction") {
+			$obj = $model->queryObject("modelreactions",{$array->[1] => $array->[2]});
+		} elsif ($type eq "Biomass") {
+			$obj = $model->queryObject("biomasses",{$array->[1] => $array->[2]});
+		}
+		if (defined($obj)) {
+			$data->{fbaConstraints}->[$i] = {
+				coefficient => $data->{fbaObjectiveTerms}->[$i]->{coefficient},
+				variableType => $data->{fbaObjectiveTerms}->[$i]->{variableType},
+				entityType => $type,
+				entity_uuid => $obj->uuid(),
+			};
+		}
+	}
+	#Finding (or creating) the media
+	my $media;
+	my $array = [split(/\//,$data->{media})];
+	if (!defined($array->[2]) || $array->[0] ne "Media") {
+		ModelSEED::utilities::ERROR("Bad media reference in exchange format: ".$data->{media});
+	}
+	if ($array->[1] eq "uuid" || $array->[1] eq "name" || $array->[1] eq "id") {
+		$media = $model->biochemistry()->queryObject("media",{$array->[1] => $array->[2]});
+	} elsif ($array->[1] eq "compounds") {
+		
+	} else {
+		$media = $model->biochemistry()->getObjectByAlias("media",$array->[2],$array->[1]);		
+	}
+	if (!defined($media)) {
+		ModelSEED::utilities::ERROR("Media referenced in formulation not found in database: ".$data->{media});
+	}
+	#Parsing uptake limits
+	my $uptakeLim = {};
+	if ($data->{uptakeLimits} ne "none") {
+		my $array = [split(/\|/,$data->{uptakeLimits})];
+		foreach my $item (@{$array}) {
+			my $subarray = [split(/\:/,$item)];
+			if (defined($subarray->[1])) {
+				$uptakeLim->{$subarray->[0]} = $subarray->[1];
+			}
+		}
+	}
+	#Creating objects and populating with provenance objects
+	my $form = ModelSEED::MS::FBAFormulation->new({
+		name => $data->{name},
+		model_uuid => $model->uuid(),
+		media_uuid => $media->uuid(),
+		biochemistry_uuid => $model->biochemistry()->uuid(),
+		type => $data->{type},
+		description => $data->{description},
+		growthConstraint => $data->{growthConstraint},
+		thermodynamicConstraints => $data->{thermodynamicConstraints},
+		allReversible => $data->{allReversible},
+		dilutionConstraints => $data->{allReversible},
+		uptakeLimits => $uptakeLim,
+		geneKO => [split(/\|/,$data->{geneKO})],
+		defaultMaxFlux => $data->{defaultMaxFlux},
+		defaultMaxDrainFlux => $data->{defaultMaxDrainFlux},
+		defaultMinDrainFlux => $data->{defaultMinDrainFlux},
+		maximizeObjective => $data->{maximizeObjective},
+		decomposeReversibleFlux => $data->{decomposeReversibleFlux},
+		decomposeReversibleDrainFlux => $data->{decomposeReversibleDrainFlux},
+		fluxUseVariables => $data->{fluxUseVariables},
+		drainfluxUseVariables => $data->{drainfluxUseVariables},
+		fbaObjectiveTerms => $data->{fbaObjectiveTerms},
+		fbaConstraints => $data->{fbaConstraints}
+	});
+	$form->media($media);
+	$form->model($model);
+	$form->biochemistry($model->biochemistry());
+	return $data;
+}
 =head3 parseExchangeFileArray
 Definition:
 	{} = ModelSEED::MS::Biochemistry->parseExchangeFileArray({
