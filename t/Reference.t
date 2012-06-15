@@ -163,25 +163,6 @@ foreach my $ref (keys %$refs) {
         is_deeply $reference->$key, $expected->{$key}, "Ref: $ref should have correct $key";
         $test_count += 1;
     }
-    # test constructing new reference from parts
-    TODO : {
-        local $TODO =  "Need to clean up reference initialization";
-        my $config = {
-            base => $reference->base,
-            is_url => $reference->is_url,
-            type => $reference->type,
-            has_owner => $reference->has_owner,
-        };
-        $config->{owner} = $reference->owner if($reference->has_owner);
-        $config->{id} = $reference->id if(defined($reference->id));
-        if($reference->is_url) {
-            $config->{scheme} = $reference->scheme;
-            $config->{authority} = $reference->authority;
-        }
-        my $secondRef = ModelSEED::Reference->new($config);
-        is $secondRef->ref, $reference->ref, "Constructing ref should work for $ref";
-        $test_count += 1;
-    }
 }
 
 done_testing($test_count);

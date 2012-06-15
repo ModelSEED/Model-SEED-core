@@ -17,7 +17,8 @@ $objectDefinitions->{ModelAnalysis} = {
 		{name => "fbaProblems",printOrder => 2,class => "FBAProblem",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{FBAFormulation} = {
@@ -59,7 +60,8 @@ $objectDefinitions->{FBAFormulation} = {
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",method=>"Biochemistry"},
 		{name => "model",attribute => "model_uuid",parent => "Store",method=>"Model"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 	
 $objectDefinitions->{FBAConstraint} = {
@@ -124,7 +126,8 @@ $objectDefinitions->{FBAResult} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "Store",method=>"FBAFormulation"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{FBACompoundVariable} = {
@@ -218,7 +221,8 @@ $objectDefinitions->{GapfillingFormulation} = {
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
 		{name => "annotation",attribute => "annotation_uuid",parent => "Store",method=>"Annotation"},
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "Store",method=>"Biochemistry"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{GapfillingGeneCandidate} = {
@@ -255,7 +259,8 @@ $objectDefinitions->{ReactionSetMultiplier} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "reactionset",attribute => "reactionset_uuid",parent => "Biochemistry",method=>"reactionsets"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{GapfillingSolution} = {
@@ -270,7 +275,8 @@ $objectDefinitions->{GapfillingSolution} = {
 		{name => "gapfillingSolutionReactions",class => "GapfillingSolutionReaction",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{GapfillingSolutionReaction} = {
@@ -286,7 +292,8 @@ $objectDefinitions->{GapfillingSolutionReaction} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstances"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{GfSolutionReactionGeneCandidate} = {
@@ -299,7 +306,8 @@ $objectDefinitions->{GfSolutionReactionGeneCandidate} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "feature",attribute => "feature_uuid",parent => "Annotation",method=>"features"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{FBAProblem} = {
@@ -317,7 +325,8 @@ $objectDefinitions->{FBAProblem} = {
 		{name => "solutions",class => "Solution",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ObjectiveTerm} = {
@@ -331,7 +340,8 @@ $objectDefinitions->{ObjectiveTerm} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",method=>"variables"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Constraint} = {
@@ -356,7 +366,8 @@ $objectDefinitions->{Constraint} = {
 	links => [
 		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",method=>"constraints"},
 		{name => "dualVariable",attribute => "dualVariable_uuid",parent => "FBAProblem",method=>"variables"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ConstraintVariable} = {
@@ -370,7 +381,8 @@ $objectDefinitions->{ConstraintVariable} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",method=>"variables"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 	
 $objectDefinitions->{Variable} = {
@@ -397,7 +409,8 @@ $objectDefinitions->{Variable} = {
 		{name => "dualConstraint",attribute => "dualConstraint_uuid",parent => "FBAProblem",method=>"constraints"},
 		{name => "upperBoundDualVariable",attribute => "upperBoundDualVariable_uuid",parent => "FBAProblem",method=>"variables"},
 		{name => "lowerBoundDualVariable",attribute => "lowerBoundDualVariable_uuid",parent => "FBAProblem",method=>"variables"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Solution} = {
@@ -415,7 +428,8 @@ $objectDefinitions->{Solution} = {
 		{name => "solutionvariables",printOrder => 1,class => "SolutionVariable",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{SolutionConstraint} = {
@@ -430,7 +444,8 @@ $objectDefinitions->{SolutionConstraint} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "constraint",attribute => "constraint_uuid",parent => "FBAProblem",method=>"constraints"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{SolutionVariable} = {
@@ -447,7 +462,8 @@ $objectDefinitions->{SolutionVariable} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "variable",attribute => "variable_uuid",parent => "FBAProblem",method=>"variables"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Genome} = {
@@ -468,7 +484,8 @@ $objectDefinitions->{Genome} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{User} = {
@@ -484,7 +501,8 @@ $objectDefinitions->{User} = {
     ],
     subobjects => [],
     primarykeys => [ qw(uuid) ],
-    links => []
+    links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Biochemistry} = {
@@ -510,7 +528,8 @@ $objectDefinitions->{Biochemistry} = {
 		{name => "cues",printOrder => 1,class => "Cue",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{AliasSet} = {
@@ -527,7 +546,8 @@ $objectDefinitions->{AliasSet} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Compartment} = {
@@ -543,7 +563,8 @@ $objectDefinitions->{Compartment} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Cue} = {
@@ -570,7 +591,8 @@ $objectDefinitions->{Cue} = {
 		{name => "pks",class => "CompoundPk",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Compound} = {
@@ -597,7 +619,8 @@ $objectDefinitions->{Compound} = {
 		{name => "pks",class => "CompoundPk",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{CompoundCue} = {
@@ -665,7 +688,8 @@ $objectDefinitions->{Reaction} = {
 		{name => "reagents",class => "Reagent",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ReactionReactionInstance} = {
@@ -732,7 +756,8 @@ $objectDefinitions->{ReactionInstance} = {
 	links => [
 		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",method=>"compartments"},
 		{name => "reaction",attribute => "reaction_uuid",parent => "Biochemistry",method=>"reactions"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{InstanceTransport} = {
@@ -769,7 +794,8 @@ $objectDefinitions->{Media} = {
 		{name => "mediacompounds",class => "MediaCompound",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{MediaCompound} = {
@@ -804,7 +830,8 @@ $objectDefinitions->{CompoundSet} = {
 		{name => "compounds",class => "CompoundSetCompound",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{CompoundSetCompound} = {
@@ -836,7 +863,8 @@ $objectDefinitions->{ReactionSet} = {
 		{name => "reactions",class => "ReactionSetReaction",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ReactionSetReaction} = {
@@ -885,7 +913,8 @@ $objectDefinitions->{Model} = {
 		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping", weak => 0},
 		{name => "annotation",attribute => "annotation_uuid",parent => "ModelSEED::Store",method=>"Annotation", weak => 0},
 		{name => "modelanalysis",attribute => "modelanalysis_uuid",parent => "ModelSEED::Store",method=>"ModelAnalysis", weak => 0},
-	]
+	],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{Biomass} = {
@@ -909,7 +938,8 @@ $objectDefinitions->{Biomass} = {
 		{name => "biomasscompounds",class => "BiomassCompound",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{BiomassCompound} = {
@@ -943,7 +973,8 @@ $objectDefinitions->{ModelCompartment} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",method=>"compartments"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ModelCompound} = {
@@ -962,7 +993,8 @@ $objectDefinitions->{ModelCompound} = {
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",method=>"compounds"},
 		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",method=>"modelcompartments"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ModelReaction} = {
@@ -984,7 +1016,8 @@ $objectDefinitions->{ModelReaction} = {
 	links => [
 		{name => "reactioninstance",attribute => "reactioninstance_uuid",parent => "Biochemistry",method=>"reactioninstances"},
 		{name => "modelcompartment",attribute => "modelcompartment_uuid",parent => "Model",method=>"modelcompartments"}
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ModelReactionReagent} = {
@@ -1067,7 +1100,8 @@ $objectDefinitions->{Annotation} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping", weak => 0},
-	]
+	],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{Feature} = {
@@ -1093,7 +1127,8 @@ $objectDefinitions->{Feature} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "genome",attribute => "genome_uuid",parent => "Annotation",method=>"genomes"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{FeatureRole} = {
@@ -1122,7 +1157,8 @@ $objectDefinitions->{SubsystemState} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Mapping} = {
@@ -1148,7 +1184,8 @@ $objectDefinitions->{Mapping} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry", weak => 0},
-	]
+	],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{UniversalReaction} = {
@@ -1219,7 +1256,8 @@ $objectDefinitions->{Role} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{RoleSet} = {
@@ -1240,7 +1278,8 @@ $objectDefinitions->{RoleSet} = {
 		{name => "rolesetroles",class => "RoleSetRole",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{RoleSetRole} = {
@@ -1271,7 +1310,8 @@ $objectDefinitions->{Complex} = {
 		{name => "complexroles",class => "ComplexRole",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{ComplexRole} = {
@@ -1320,7 +1360,8 @@ $objectDefinitions->{Strain} = {
 		{name => "insertions",class => "Insertion",type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Deletion} = {
@@ -1333,7 +1374,8 @@ $objectDefinitions->{Deletion} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Insertion} = {
@@ -1346,7 +1388,8 @@ $objectDefinitions->{Insertion} = {
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
-	links => []
+	links => [],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{Experiment} = {
@@ -1364,7 +1407,8 @@ $objectDefinitions->{Experiment} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "genome",attribute => "genome_uuid",parent => "ModelSEED::Store",method=>"genomes"},
-	]
+	],
+    reference_id_types => [ qw(uuid alias) ],
 };
 
 $objectDefinitions->{ExperimentDataPoint} = {
@@ -1392,7 +1436,8 @@ $objectDefinitions->{ExperimentDataPoint} = {
 	links => [
 		{name => "strain",attribute => "strain_uuid",parent => "Genome",method=>"strains"},
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
-	]
+	],
+    reference_id_types => [ qw(uuid) ],
 };
 
 $objectDefinitions->{FluxMeasurement} = {
@@ -1409,7 +1454,7 @@ $objectDefinitions->{FluxMeasurement} = {
 	links => [
 		{name => "reaction",attribute => "reacton_uuid",parent => "Biochemistry",method=>"reactions"},
 		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",method=>"compartments"},
-	]
+	],
 };
 
 $objectDefinitions->{UptakeMeasurement} = {
@@ -1424,7 +1469,7 @@ $objectDefinitions->{UptakeMeasurement} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",method=>"compounds"},
-	]
+	],
 };
 
 $objectDefinitions->{MetaboliteMeasurement} = {
@@ -1441,7 +1486,7 @@ $objectDefinitions->{MetaboliteMeasurement} = {
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",method=>"compounds"},
 		{name => "compartment",attribute => "compartment_uuid",parent => "Biochemistry",method=>"compartments"},
-	]
+	],
 };
 
 $objectDefinitions->{GeneMeasurement} = {
@@ -1456,7 +1501,7 @@ $objectDefinitions->{GeneMeasurement} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "feature",attribute => "feature_uuid",parent => "Genome",method=>"features"},
-	]
+	],
 };
 
 sub objectDefinitions {

@@ -1,5 +1,5 @@
 ########################################################################
-# ModelSEED::Auth - Abstract role / interface for authentication
+# ModelSEED::Reference - Class for parsing, generating references
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development locations:
@@ -9,6 +9,7 @@
 # Date of module creation: 2012-05-16
 ########################################################################
 package ModelSEED::Reference;
+use Data::Dumper;
 =pod
 
 =head1 ModelSEED::Reference
@@ -56,6 +57,13 @@ Include the 'base_ids' and 'base_types' for deep refernces.
         class => "ModelSEED::MS::Reaction",
         parent_objects => [ "biochemistry/chenry/main" ],
         parent_collections => [ "biochemistry", "biochemistry/chenry/main/reactions" ],
+        is_url => boolean,
+        scheme  => undef || 'http',
+        authority => undef || 'model-api.theseed.org',
+
+        alias_type
+        alias_username
+        alias_string
     }
 
 Where type is either a collection or an object, base is a reference
@@ -69,41 +77,45 @@ use ModelSEED::MS::Metadata::Definitions;
 use Data::Dumper;
 use common::sense;
 
-has ref => ( is => 'ro', isa => 'Str', required => 1, lazy => 1, builder => '_build_ref' );
+
+## Generally fixed instance variables
 has delimiter => (is => 'ro', isa => 'Str', default => '/');
-has schema => (
-    is => 'ro',
-    isa => 'HashRef',
-    builder => '_buildSchema',
-    lazy => 1
-);
-has _parsed_ref => ( is => 'ro', isa => 'HashRef', lazy => 1, builder => '_build_parsed_ref' );
 
-has is_url => ( is => 'ro', isa => 'Bool', lazy => 1, builder => '_build_is_url' );
-has scheme => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_scheme' );
-has authority => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_authority');
+### Attributes
+####### String representation
+has ref    => (is => 'ro', isa => 'Str');
 
-has type  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_type');
-has base  => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_base');
-has id    => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_id');
-has class => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_class');
+####### URI Info
+has is_url => (is => 'ro', isa => 'Bool');
+has scheme => (is => 'ro', isa => 'Maybe[Str]');
+has authority => (is => 'ro', isa => 'Maybe[Str]');
 
-has has_owner => ( is => 'ro', isa => 'Bool', lazy => 1, builder => '_build_has_owner');
-has owner     => ( is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_owner');
+####### Basic Info 
+has type    => (is => 'ro', isa => 'Str');
+has base    => (is => 'ro', isa => 'Str');
+has id      => (is => 'ro', isa => 'Maybe[Str]');
+has class   => (is => 'ro', isa => 'Str');
+has id_type => (is => 'ro', isa => 'Str');
+
+####### ID Info
+has alias_type     => (is => 'ro', isa => 'Maybe[Str]');
+has alias_username => (is => 'ro', isa => 'Maybe[Str]');
+has alias_string   =>  (is => 'ro', isa => 'Maybe[Str]');
+
+####### Alias Owner Info
+has has_owner => ( is => 'ro', isa => 'Bool');
+has owner     => ( is => 'ro', isa => 'Maybe[Str]');
     
-has id_type    => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_id_type');
-has alias_type => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_type');
-has alias_username => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_username');
-has alias_string =>  (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_alias_string');
-
-has base_types => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_base_types');
-has parent_objects => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_objects');
-has parent_collections => ( is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_parent_collections');
+####### Parent Object References
+has base_types => ( is => 'ro', isa => 'ArrayRef');
+has parent_objects => ( is => 'ro', isa => 'ArrayRef');
+has parent_collections => ( is => 'ro', isa => 'ArrayRef');
 
 around BUILDARGS => sub {
     my $orig = shift @_;
     my $class = shift @_;
     my $args;
+    my $schema = _build_schema();
     if(ref($_[0]) eq 'HASH') {
         $args = shift @_;
     } else {
@@ -112,45 +124,46 @@ around BUILDARGS => sub {
     }
     my $delimiter = $args->{delimiter};
     $delimiter = "/" unless(defined($delimiter));
-    return $class->$orig(ref => $args->{ref}, delimiter => $delimiter) if(defined($args->{ref}));
-    my $ref;
-    if (defined($args->{base_types}) && defined($args->{base_ids})) {
-        my $i = scalar(@{$args->{base_types}});
-        my $j = scalar(@{$args->{base_ids}});
-        my $max = ($i > $j) ? $i : $j;
-        for(my $k = 0; $k<$max; $k++) {
-            $ref .= $delimiter if($k > 0);
-            $ref .= $args->{base_types}->[$k];
-            $ref .= $delimiter;
-            if($k < $j) {
-                $ref .= $args->{base_ids}->[$k];
-            } else {
-                last;
+    my $ref = $args->{ref};
+    unless(defined($ref)) {
+        if (defined($args->{base_types}) && defined($args->{base_ids})) {
+            my $i = scalar(@{$args->{base_types}});
+            my $j = scalar(@{$args->{base_ids}});
+            my $max = ($i > $j) ? $i : $j;
+            for(my $k = 0; $k<$max; $k++) {
+                $ref .= $delimiter if($k > 0);
+                $ref .= $args->{base_types}->[$k];
+                $ref .= $delimiter;
+                if($k < $j) {
+                    $ref .= $args->{base_ids}->[$k];
+                } else {
+                    last;
+                }
             }
         }
-    }
-    if ( defined($args->{type}) ) {
-        $ref .= $args->{type} . $delimiter;
-        if (defined($args->{uuid})) {
-             $ref .= $args->{uuid};
-        } elsif (defined($args->{alias})) {
-            $ref .= $args->{alias};
+        if (!defined($ref) ** defined($args->{type})) {
+            $ref .= $args->{type} . $delimiter;
+            if (defined($args->{uuid})) {
+                 $ref .= $args->{uuid};
+            } elsif (defined($args->{alias})) {
+                $ref .= $args->{alias};
+            }
+        }
+        # Case of an http:// reference
+        if(defined($args->{scheme}) && defined($args->{authority})) {
+            $ref = uri_join($args->{scheme}, $args->{authority}, $ref);
         }
     }
-    # Case of an http:// reference
-    if(defined($args->{scheme}) && defined($args->{authority})) {
-        $ref = uri_join($args->{scheme}, $args->{authority}, $ref);
-    }
-    return $class->$orig(ref => $ref, delimiter => $delimiter);
+    my $hash = parse($ref, $delimiter, $schema);
+    die "Invalid Reference" unless(defined($hash));
+    return $class->$orig($hash);
 };
 
 sub parse {
-    my ($self, $ref) = @_;
+    my ($ref, $delimiter, $schema) = @_;
     my ($scheme, $auth, $query, $frag) = uri_split($ref);
-    my $delimiter = $self->delimiter;
     my $rtv = {};
     my @parts = split(/$delimiter/, $query);
-    my $schema = $self->schema;
     my ($id, $base, $base_types, $id_type, $owner) = ([], [], [], undef, undef);
     my ($parent_objects, $parent_collections) = ([], []);
     my $type = "collection";
@@ -176,7 +189,7 @@ sub parse {
             push(@$parent_collections, join($delimiter, @$base));
             return undef unless(defined($schema->{type}));
             # and a validator for ids within that collection
-            my $result = $self->_validate($schema, @parts);
+            my $result = _validate($schema, @parts);
             my $idParts = $result->{parts};
             $id_type = $result->{type};
             if(@$idParts) {
@@ -203,19 +216,21 @@ sub parse {
     $id = [ grep { defined($_) && $_ ne '' } @$id ];
     return undef unless(defined $schema->{type});
     $rtv = {
+        delimiter => $delimiter,
         type => $type,
-        id_validator => $schema->{id_validator},
         class => $schema->{class},
         parent_collections => $parent_collections,
         parent_objects => $parent_objects,
     };
     $rtv->{scheme} = $scheme if(defined($scheme));
     $rtv->{authority} = $auth if(defined($auth));
+    $rtv->{is_url} = (defined($scheme) && defined($auth)) ? 1 : 0;
     $rtv->{base_types} = $base_types;
     $rtv->{base} = join($delimiter, @$base) if(@$base);
     $rtv->{id} = join($delimiter, @$id) if(@$id);
     $rtv->{id_type} = $id_type if(@$id);
     $rtv->{owner} = $owner if(defined($owner));
+    $rtv->{has_owner} = (defined $owner) ? 1 : 0;
     if($id_type eq 'alias') {
         my $alias_type = $rtv->{parent_collections}->[0];
         my ($alias_username, $alias_string) = @$id;
@@ -226,150 +241,49 @@ sub parse {
     return $rtv;
 }
 
-sub _buildSchema {
-    return {
-        children => {
-            biochemistry => {
-                type         => "collection",
-                id_types     => [ 'uuid', 'alias' ],
-                class        => "ModelSEED::MS::Biochemistry",
-                children     => {
-                    reactions => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Reaction",
-                    },
-                    compounds => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Compound",
-                    },
-                    media => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Media",
-                    },
-                    reactioninstances => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Reactioninstance",
-                    },
-                    aliasSets => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::AliasSet",
-                    },
-                    compartments => {
-                        type => "collection",
-                        id_types => [ "uuid" ],
-                        class => "ModelSEED::MS::Compartment",
-                    },
-                    ancestor_uuids => {
-                        type => 'collection',
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Biochemistry",
-                    },
-                }
-            },
-            model => {
-                type => "collection",
-                id_types => [ 'uuid', 'alias' ],
-                class => "ModelSEED::MS::Model",
-                children => {
-                    biomasses => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Biomass",
-                    },
-                    ancestor_uuids => {
-                        type => 'collection',
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Model",
-                    },
-                    modelcompounds => {
-                        type => 'collection',
-                        id_types => ['uuid'],
-                        class => "ModelSEED::MS::ModelCompound",
-                    },
-                    modelcompartments => {
-                        type => 'collection',
-                        id_types => ['uuid'],
-                        class => "ModelSEED::MS::ModelCompartment",
-                    },
-                    modelreactions => {
-                        type => 'collection',
-                        id_types => ['uuid'],
-                        class => "ModelSEED::MS::ModelReaction",
-                    },
-                }
-            },
-            mapping => {
-                type => "collection",
-                id_types => [ 'uuid', 'alias' ],
-                class => "ModelSEED::MS::Mapping",
-                children => {
-                    roles => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Role",
-                    },
-                    rolesets => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::RoleSet",
-                    },
-                    complexes => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Complex",
-                    },
-                    biomassTemplates => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::BiomassTemplate",
-                    },
-                    ancestor_uuids => {
-                        type => 'collection',
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Mapping",
-                    },
-                }
-            },
-            annotation => {
-                type => "collection",
-                id_types => [ 'uuid', 'alias' ],
-                class => "ModelSEED::MS::Annotation",
-                children => {
-                    features => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Feature",
-                    },
-                    genomes => {
-                        type => "collection",
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Genome",
-                    },
-                    ancestor_uuids => {
-                        type => 'collection',
-                        id_types => [ 'uuid' ],
-                        class => "ModelSEED::MS::Annotation",
-                    },
-                }
-            },
-            gapfillingFormulation => {
-                type => "collection",
-                id_types => [ 'uuid', 'alias' ],
-                class => "ModelSEED::MS::GapfillingFormulation",
-                children => {}
-            },
-            user    => {},
+sub _build_schema {
+    my $defs = ModelSEED::MS::Metadata::Definitions::objectDefinitions();
+    my $schema = { children => {} };
+    foreach my $name (keys %$defs) {
+        my $definition = $defs->{$name};
+        if ( defined($definition->{parents}) &&
+            'ModelSEED::Store' ~~ $definition->{parents}) {
+            my $refName = lc(substr($name, 0,1)).substr($name,1);
+            $schema->{children}->{$refName} =
+                _build_schema_recursive($name, $defs);
         }
+    }
+    return $schema;
+}
+
+sub _build_schema_recursive {
+    my ($name, $definitions) = @_;
+    my $class = "ModelSEED::MS::".$name;
+    my $id_types = $definitions->{$name}->{reference_id_types};
+    unless(@$id_types) {
+        $id_types = [ 'uuid' ];
+    }
+    my $children = {};
+    my $subobjects = $definitions->{$name}->{subobjects};
+    foreach my $subobject (@$subobjects) {
+        my $class = $subobject->{class};
+        my $def   = $definitions->{$class};
+        die "Could not find $class in MS definitions" unless(defined($def));
+        next if($def->{class} eq 'encompassed');
+        my $refName = $subobject->{name};
+        $children->{$refName} =
+            _build_schema_recursive($class, $definitions);
+    }
+    my $object = {
+        type => "collection",
+        id_types => $id_types,
+        class => $class,
+        children => $children
     };
+    return $object;
 }
 
 sub _validate {
-    my $self = shift @_;
     my $schema = shift @_;
     my @args = @_;
     my $validatorMap = {
@@ -404,26 +318,6 @@ sub _uuid {
     return [];
 }
 
-sub _build_parsed_ref {
-    my ($self) = @_;
-    return $self->parse($self->ref);
-}
-
-sub _build_ref {
-    my ($self) = @_;
-
-    my $query = $self->base;
-    if($self->type eq 'collection' && $self->has_owner) {
-        $query .= $self->delimiter . $self->owner;
-    }
-    $query .= $self->delimiter . $self->id if($self->type eq 'object');
-    if ($self->is_url) {
-        return uri_join($self->scheme, $self->authority, $query);
-    } else {
-        return $query;
-    }
-}
-
 sub _build_is_url {
     my ($self) = @_;
     if (defined($self->scheme) && defined($self->authority)) {
@@ -431,52 +325,5 @@ sub _build_is_url {
     }
     return 0;
 }
-
-sub _build_scheme {
-    return $_[0]->_parsed_ref->{scheme};
-}
-sub _build_authority {
-    return $_[0]->_parsed_ref->{authority};
-}
-sub _build_type {
-    return $_[0]->_parsed_ref->{type};
-}
-sub _build_base {
-    return $_[0]->_parsed_ref->{base};
-}
-sub _build_id {
-    return $_[0]->_parsed_ref->{id};
-}
-sub _build_id_type {
-    return $_[0]->_parsed_ref->{id_type};
-}
-sub _build_class {
-    return $_[0]->_parsed_ref->{class};
-}
-sub _build_has_owner {
-    return (defined($_[0]->owner)) ? 1 : 0;
-}
-sub _build_owner {
-    return $_[0]->_parsed_ref->{owner};
-}
-sub _build_base_types {
-    return $_[0]->_parsed_ref->{base_types};
-}
-sub _build_parent_objects {
-    return $_[0]->_parsed_ref->{parent_objects};
-}
-sub _build_parent_collections {
-    return $_[0]->_parsed_ref->{parent_collections};
-}
-sub _build_alias_type {
-    return $_[0]->_parsed_ref->{alias_type};
-}
-sub _build_alias_username {
-    return $_[0]->_parsed_ref->{alias_username};
-}
-sub _build_alias_string {
-    return $_[0]->_parsed_ref->{alias_string};
-}
-
 
 1;
