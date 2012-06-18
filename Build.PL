@@ -13,7 +13,6 @@ my $builder = Module::Build->new(
         'Test::More' => 0,
     },
     requires => {
-        'perl' => ">= 5.12.0",
         "App::Cmd" => 0,
         "Archive::Tar" => 0, # core
         "Carp" => 0, # core
@@ -95,6 +94,7 @@ my $builder = Module::Build->new(
     recursive_test_files => 1,
     add_to_cleanup      => [ 'ModelSeedCore-*' ],
     create_makefile_pl => 'traditional',
+    script_files => [qw( bin/ms bin/mapping bin/genome bin/stores bin/model bin/bio )],
 );
 
 $builder->create_build_script();
