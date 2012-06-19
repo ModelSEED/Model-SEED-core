@@ -230,14 +230,15 @@ $objectDefinitions->{GapfillingGeneCandidate} = {
 		{name => 'orthologGenome_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'similarityScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
 		{name => 'distanceScore',printOrder => -1,perm => 'rw',type => 'Num',req => 0},
-		{name => 'reactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'role_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 	],
 	subobjects => [],
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "feature",attribute => "feature_uuid",parent => "Annotation",method=>"features"},
 		{name => "ortholog",attribute => "ortholog_uuid",parent => "Annotation",method=>"features"},
-		{name => "orthologGenome",attribute => "orthogenome_uuid",parent => "Annotation",method=>"genomes"}
+		{name => "orthologGenome",attribute => "orthogenome_uuid",parent => "Annotation",method=>"genomes"},
+		{name => "role",attribute => "role_uuid",parent => "Mapping",method=>"roles"}
 	]
 };
 

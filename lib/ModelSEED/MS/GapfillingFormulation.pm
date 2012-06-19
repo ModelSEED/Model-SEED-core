@@ -55,17 +55,17 @@ sub calculateReactionCosts {
 	#Handling directionality multiplier
 	if ($rxn->direction() eq ">") {
 		$rcosts = $rcosts*$self->directionalityMultiplier();
-		if ($rxn->reactioninstance()->deltaG() ne 10000000) {
-			$rcosts = $rcosts*(1-$self->deltaGMultiplier()*$rxn->reactioninstance()->deltaG());
+		if ($rxn->reaction()->deltaG() ne 10000000) {
+			$rcosts = $rcosts*(1-$self->deltaGMultiplier()*$rxn->reaction()->deltaG());
 		}
 	} elsif ($rxn->direction() eq "<") {
 		$fcosts = $fcosts*$self->directionalityMultiplier();
-		if ($rxn->reactioninstance()->deltaG() ne 10000000) {
-			$fcosts = $fcosts*(1+$self->deltaGMultiplier()*$rxn->reactioninstance()->deltaG());
+		if ($rxn->reaction()->deltaG() ne 10000000) {
+			$fcosts = $fcosts*(1+$self->deltaGMultiplier()*$rxn->reaction()->deltaG());
 		}
 	}
 	#Checking for structure
-	if (!defined($rxn->reactioninstance()->reaction()->deltaG()) || $rxn->reactioninstance()->reaction()->deltaG() eq 10000000) {
+	if (!defined($rxn->reaction()->deltaG()) || $rxn->reaction()->deltaG() eq 10000000) {
 		$rcosts = $rcosts*$self->noDeltaGMultiplier();
 		$fcosts = $fcosts*$self->noDeltaGMultiplier();
 	}
@@ -91,7 +91,7 @@ sub calculateReactionCosts {
 	for (my $i=0; $i < @{$self->reactionSetMultipliers()}; $i++) {
 		my $setMult = $self->reactionSetMultipliers()->[$i];
 		my $set = $setMult->reactionset();
-		if ($set->containsReaction($rxn->reactioninstance()) == 1) {
+		if ($set->containsReaction($rxn->reaction()) == 1) {
 			if ($setMult->multiplierType() eq "absolute") {
 				$rcosts = $rcosts*$setMult->multiplier();
 				$fcosts = $fcosts*$setMult->multiplier();
@@ -290,15 +290,15 @@ sub runGapFilling {
 #						$direction = "=";
 #					}
 #					$gfsolution->add("gapfillingSolutionReactions",{
-#						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
-#						reactioninstance => $rxn->reactioninstance(),
+#						modelreaction_uuid => $rxn->uuid(),
+#						modelreaction => $rxn,
 #						direction => $direction
 #					});
 #				} elsif ($rxn->direction() eq ">") {
 #					print "Direction change!";
 #					$gfsolution->add("gapfillingSolutionReactions",{
-#						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
-#						reactioninstance => $rxn->reactioninstance(),
+#						modelreaction_uuid => $rxn->uuid(),
+#						modelreaction => $rxn,
 #						direction => "="
 #					});
 #				}
@@ -310,15 +310,15 @@ sub runGapFilling {
 #						$direction = "=";
 #					}
 #					$gfsolution->add("gapfillingSolutionReactions",{
-#						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
-#						reactioninstance => $rxn->reactioninstance(),
+#						modelreaction_uuid => $rxn->uuid(),
+#						modelreaction => $rxn,
 #						direction => $direction
 #					});
 #				} elsif ($rxn->direction() eq "<") {
 #					print "Direction change!";
 #					$gfsolution->add("gapfillingSolutionReactions",{
-#						reactioninstance_uuid => $rxn->reactioninstance_uuid(),
-#						reactioninstance => $rxn->reactioninstance(),
+#						modelreaction_uuid => $rxn->uuid(),
+#						modelreaction => $rxn,
 #						direction => "="
 #					});
 #				}
@@ -353,7 +353,7 @@ sub emergencyGapfilling {
 	my $mdlrxn = $model->modelreactions();
 	for (my $i=0; $i < @{$mdlrxn}; $i++) {
 		my $rxn = $mdlrxn->[$i];
-		my $line = $rxn->reactioninstance()->id().";".$rxn->direction().";c;";
+		my $line = $rxn->reaction()->id().";".$rxn->direction().";c;";
 		$line .= $rxn->gprString();
 		$line =~ s/kb\|g\.\d+\.//g;
 		$line =~ s/fig\|\d+\.\d+\.//g;
@@ -460,11 +460,11 @@ sub emergencyGapfilling {
 					if ($subarray->[$j] =~ m/([\-\+])(rxn\d\d\d\d\d)/) {
 						my $rxnid = $2;
 						my $sign = $1;
-						my $rxn = $model->biochemistry()->queryObject("reactioninstances",{id => $rxnid});
+						my $rxn = $model->biochemistry()->queryObject("reactions",{id => $rxnid});
 						if (!defined($rxn)) {
 							ModelSEED::utilities::ERROR("Could not find gapfilled reaction ".$rxnid."!");
 						}
-						my $mdlrxn = $model->queryObject("modelreactions",{reactioninstance_uuid => $rxn->uuid()});
+						my $mdlrxn = $model->queryObject("modelreactions",{reaction_uuid => $rxn->uuid()});
 						my $direction = "=>";
 						if ($sign eq "-") {
 							$direction = "<=";
@@ -475,15 +475,15 @@ sub emergencyGapfilling {
 						if (defined($mdlrxn)) { 
 							$mdlrxn->direction("<=>");
 						} else {
-							$model->addReactionInstanceToModel({
-								reactionInstance => $rxn,
+							$mdlrxn = $model->addReactionToModel({
+								reaction => $rxn,
 								direction => $direction
 							});
 						}
 						$count++;
 						$gfsolution->add("gapfillingSolutionReactions",{
-							reactioninstance_uuid => $rxn->uuid(),
-							reactioninstance => $rxn,
+							modelreaction_uuid => $mdlrxn->uuid(),
+							modelreaction => $mdlrxn,
 							direction => $direction
 						});
 						

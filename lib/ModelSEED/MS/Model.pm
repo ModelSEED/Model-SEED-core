@@ -120,15 +120,15 @@ sub findCreateEquivalentReaction {
 		definition => $inmdlrxn->definition(),
 	});
 	if (!defined($outrxn) && $args->{create} == 1) {
-		my $biorxn = $self->biochemistry()->findCreateEquivalentReactionInstance({
-			reactioninstance => $inmdlrxn->reactioninstance,
+		my $biorxn = $self->biochemistry()->findCreateEquivalentReaction({
+			reaction => $inmdlrxn->reaction(),
 			create => 1
 		});
 		my $mdlcmp = $self->findCreateEquivalentCompartment({
 			modelcompartment => $inmdlrxn->modelcompartment()
 		});
 		$outrxn = $self->add("modelreactions",{
-			reactioninstance_uuid => $biorxn->uuid(),
+			reaction_uuid => $biorxn->uuid(),
 			direction => $inmdlrxn->direction(),
 			protons => $inmdlrxn->protons(),
 			modelcompartment_uuid => $mdlcmp->uuid()
@@ -265,9 +265,9 @@ sub buildModelFromAnnotation {
 	for (my $i=0; $i < @{$complexes};$i++) {
 		my $cpx = $complexes->[$i];
 		my $compartments;
-		my $complexreactioninstances = $cpx->complexreactioninstances();
-		for (my $j=0; $j < @{$complexreactioninstances}; $j++) {
-			$compartments->{$complexreactioninstances->[$j]->compartment()} = {present => 0,subunits => {}};
+		my $complexreactions = $cpx->complexreactions();
+		for (my $j=0; $j < @{$complexreactions}; $j++) {
+			$compartments->{$complexreactions->[$j]->compartment()} = {present => 0,subunits => {}};
 		}
 		my $complexroles = $cpx->complexroles();
 		for (my $j=0; $j < @{$complexroles}; $j++) {
@@ -304,14 +304,14 @@ sub buildModelFromAnnotation {
 				}
 			}
 		}
-		for (my $j=0; $j < @{$complexreactioninstances}; $j++) {
-			my $cpxrxninst = $complexreactioninstances->[$j];
+		for (my $j=0; $j < @{$complexreactions}; $j++) {
+			my $cpxrxn = $complexreactions->[$j];
 			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
-				my $mdlrxn = $self->addReactionInstanceToModel({
-					reactionInstance => $cpxrxninst->reactioninstance(),
+				my $mdlrxn = $self->addReactionToModel({
+					reaction => $cpxrxn->reaction(),
 				});
 				$mdlrxn->addModelReactionProtein({
-					proteinDataTree => $compartments->{$cpxrxninst->compartment()},
+					proteinDataTree => $compartments->{$cpxrxn->compartment()},
 					complex_uuid => $cpx->uuid()
 				});
 			}
@@ -1104,5 +1104,37 @@ sub integrateGapfillingSolution {
 	$self->uuid(Data::UUID->new()->create_str());
 }
 
+sub printExchangeFormat {
+	my ($self) = @_;
+    my $textArray = [
+    	"Attributes {",
+    	"\tname:".$self->name(),
+    	"\tdefaultNameSapce:".$self->defaultNameSpace(),
+    	"}",
+    	"Biomasses (biomassReaction	compound	coefficient	compartment) {"
+	];
+	my $bios = $self->biomasses();
+	for (my $i=0; $i < @{$bios}; $i++) {
+		my $biocpds = $bios->[$i]->biomasscompounds();
+		for (my $j=0; $j < @{$biocpds}; $j++) {
+			my $items = ["biomass".$i];
+			$items->[1] = "Compound/".$self->defaultNameSpace()."/".$biocpds->[$j]->modelcompound()->compound()->id();
+			$items->[2] = $biocpds->[$j]->coefficient();
+			$items->[3] = $biocpds->[$j]->modelcompound()->compartmentLabel();
+			push(@{$textArray},"\t".join("\t",@{$items}));
+		}
+	}
+	push(@{$textArray},("}","Reactions (reaction	direction	compartment	gpr) {"));
+    my $reactions = $self->modelreactions();
+    foreach my $reaction (@$reactions) {
+        my $rxn_id = $reaction->reactioninstance->id;
+        my $dir    = $reaction->direction;
+        my $cmp_id = $reaction->modelcompartment->label;
+        my $gpr    = $self->_make_GPR_string($reaction);
+        push(@$rows, [$rxn_id, $dir, $cmp_id, $gpr]);
+    }
+   	push(@{$textArray},"}");
+    return join("\n",@{$textArray});
+}
 __PACKAGE__->meta->make_immutable;
 1;
