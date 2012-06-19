@@ -1,10 +1,10 @@
 ########################################################################
-# ModelSEED::MS::DB::ModelAnalysisModel - This is the moose object corresponding to the ModelAnalysisModel object
+# ModelSEED::MS::DB::ComplexReaction - This is the moose object corresponding to the ComplexReaction object
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
-package ModelSEED::MS::DB::ModelAnalysisModel;
+package ModelSEED::MS::DB::ComplexReaction;
 use ModelSEED::MS::BaseObject;
 use Moose;
 use namespace::autoclean;
@@ -12,38 +12,47 @@ extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1, type => 'parent', metaclass => 'Typed');
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Complex', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has compartment => (is => 'rw', isa => 'Str', printOrder => '0', default => 'cytosol', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
-has model => (is => 'rw', isa => 'ModelSEED::MS::models', type => 'link(Store,models,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_buildmodel', weak_ref => 1);
+has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reaction', weak_ref => 1);
 
 
 # BUILDERS:
-sub _buildmodel {
+sub _build_reaction {
   my ($self) = @_;
-  return $self->getLinkedObject('Store','models',$self->model_uuid());
+  return $self->getLinkedObject('Biochemistry','reactions',$self->reaction_uuid());
 }
 
 
 # CONSTANTS:
-sub _type { return 'ModelAnalysisModel'; }
+sub _type { return 'ComplexReaction'; }
 
 my $attributes = [
           {
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'reaction_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'model_uuid',
-            'type' => 'ModelSEED::uuid',
+            'name' => 'compartment',
+            'default' => 'cytosol',
+            'type' => 'Str',
             'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {model_uuid => 0};
+my $attribute_map = {reaction_uuid => 0, compartment => 1};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

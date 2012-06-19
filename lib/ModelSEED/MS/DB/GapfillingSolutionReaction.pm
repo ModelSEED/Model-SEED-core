@@ -17,7 +17,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::GapfillingSolution', weak_ref 
 
 
 # ATTRIBUTES:
-has reactioninstance_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has direction => (is => 'rw', isa => 'Str', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
@@ -26,13 +26,13 @@ has gfSolutionReactionGeneCandidates => (is => 'rw', isa => 'ArrayRef[HashRef]',
 
 
 # LINKS:
-has reactioninstance => (is => 'rw', isa => 'ModelSEED::MS::ReactionInstance', type => 'link(Biochemistry,reactioninstances,reactioninstance_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reactioninstance', weak_ref => 1);
+has modelreaction => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,modelreactions,modelreaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelreaction', weak_ref => 1);
 
 
 # BUILDERS:
-sub _build_reactioninstance {
+sub _build_modelreaction {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','reactioninstances',$self->reactioninstance_uuid());
+  return $self->getLinkedObject('Model','modelreactions',$self->modelreaction_uuid());
 }
 
 
@@ -43,7 +43,7 @@ my $attributes = [
           {
             'req' => 1,
             'printOrder' => 0,
-            'name' => 'reactioninstance_uuid',
+            'name' => 'modelreaction_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
@@ -57,7 +57,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {reactioninstance_uuid => 0, direction => 1};
+my $attribute_map = {modelreaction_uuid => 0, direction => 1};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

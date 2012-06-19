@@ -10,6 +10,8 @@ use ModelSEED::MS::Biomass;
 use ModelSEED::MS::ModelCompartment;
 use ModelSEED::MS::ModelCompound;
 use ModelSEED::MS::ModelReaction;
+use ModelSEED::MS::FBAFormulation;
+use ModelSEED::MS::GapfillingFormulation;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::IndexedObject';
@@ -35,7 +37,6 @@ has current => (is => 'rw', isa => 'Int', printOrder => '4', default => '1', typ
 has mapping_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '8', type => 'attribute', metaclass => 'Typed');
 has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '9', required => 1, type => 'attribute', metaclass => 'Typed');
 has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '10', type => 'attribute', metaclass => 'Typed');
-has modelanalysis_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '11', default => '00000000-0000-0000-0000-000000000000', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -47,6 +48,8 @@ has biomasses => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { retur
 has modelcompartments => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelCompartment)', metaclass => 'Typed', reader => '_modelcompartments', printOrder => '1');
 has modelcompounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelCompound)', metaclass => 'Typed', reader => '_modelcompounds', printOrder => '2');
 has modelreactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelReaction)', metaclass => 'Typed', reader => '_modelreactions', printOrder => '3');
+has fbaformulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaformulations', printOrder => '-1');
+has Gapfillingformulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GapfillingFormulation)', metaclass => 'Typed', reader => '_Gapfillingformulations', printOrder => '-1');
 
 
 # LINKS:
@@ -196,18 +199,10 @@ my $attributes = [
             'name' => 'annotation_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
-          },
-          {
-            'req' => 0,
-            'printOrder' => 11,
-            'name' => 'modelanalysis_uuid',
-            'default' => '00000000-0000-0000-0000-000000000000',
-            'type' => 'ModelSEED::uuid',
-            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, defaultNameSpace => 1, modDate => 2, locked => 3, public => 4, id => 5, name => 6, version => 7, type => 8, status => 9, growth => 10, current => 11, mapping_uuid => 12, biochemistry_uuid => 13, annotation_uuid => 14, modelanalysis_uuid => 15};
+my $attribute_map = {uuid => 0, defaultNameSpace => 1, modDate => 2, locked => 3, public => 4, id => 5, name => 6, version => 7, type => 8, status => 9, growth => 10, current => 11, mapping_uuid => 12, biochemistry_uuid => 13, annotation_uuid => 14};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -246,10 +241,22 @@ my $subobjects = [
             'name' => 'modelreactions',
             'type' => 'child',
             'class' => 'ModelReaction'
+          },
+          {
+            'printOrder' => -1,
+            'name' => 'fbaformulations',
+            'type' => 'child',
+            'class' => 'FBAFormulation'
+          },
+          {
+            'printOrder' => -1,
+            'name' => 'Gapfillingformulations',
+            'type' => 'child',
+            'class' => 'GapfillingFormulation'
           }
         ];
 
-my $subobject_map = {biomasses => 0, modelcompartments => 1, modelcompounds => 2, modelreactions => 3};
+my $subobject_map = {biomasses => 0, modelcompartments => 1, modelcompounds => 2, modelreactions => 3, fbaformulations => 4, Gapfillingformulations => 5};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -281,6 +288,14 @@ around 'modelcompounds' => sub {
 around 'modelreactions' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('modelreactions');
+};
+around 'fbaformulations' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('fbaformulations');
+};
+around 'Gapfillingformulations' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('Gapfillingformulations');
 };
 
 

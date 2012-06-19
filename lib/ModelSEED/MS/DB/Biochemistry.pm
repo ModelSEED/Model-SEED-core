@@ -9,7 +9,6 @@ use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::Compartment;
 use ModelSEED::MS::Compound;
 use ModelSEED::MS::Reaction;
-use ModelSEED::MS::ReactionInstance;
 use ModelSEED::MS::Media;
 use ModelSEED::MS::CompoundSet;
 use ModelSEED::MS::ReactionSet;
@@ -41,7 +40,6 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 has compartments => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compartment)', metaclass => 'Typed', reader => '_compartments', printOrder => '0');
 has compounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Compound)', metaclass => 'Typed', reader => '_compounds', printOrder => '3');
 has reactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Reaction)', metaclass => 'Typed', reader => '_reactions', printOrder => '4');
-has reactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionInstance)', metaclass => 'Typed', reader => '_reactioninstances', printOrder => '5');
 has media => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(Media)', metaclass => 'Typed', reader => '_media', printOrder => '2');
 has compoundSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(CompoundSet)', metaclass => 'Typed', reader => '_compoundSets', printOrder => '-1');
 has reactionSets => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ReactionSet)', metaclass => 'Typed', reader => '_reactionSets', printOrder => '-1');
@@ -145,12 +143,6 @@ my $subobjects = [
             'class' => 'Reaction'
           },
           {
-            'printOrder' => 5,
-            'name' => 'reactioninstances',
-            'type' => 'child',
-            'class' => 'ReactionInstance'
-          },
-          {
             'printOrder' => 2,
             'name' => 'media',
             'type' => 'child',
@@ -182,7 +174,7 @@ my $subobjects = [
           }
         ];
 
-my $subobject_map = {compartments => 0, compounds => 1, reactions => 2, reactioninstances => 3, media => 4, compoundSets => 5, reactionSets => 6, aliasSets => 7, cues => 8};
+my $subobject_map = {compartments => 0, compounds => 1, reactions => 2, media => 3, compoundSets => 4, reactionSets => 5, aliasSets => 6, cues => 7};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -210,10 +202,6 @@ around 'compounds' => sub {
 around 'reactions' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('reactions');
-};
-around 'reactioninstances' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('reactioninstances');
 };
 around 'media' => sub {
   my ($orig, $self) = @_;

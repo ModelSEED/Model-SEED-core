@@ -17,19 +17,25 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Reaction', weak_ref => 1, type
 
 # ATTRIBUTES:
 has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has transportCoefficent => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, default => '0', type => 'attribute', metaclass => 'Typed');
 has cofactor => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has compartmentIndex => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
 has compound => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,compound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compound', weak_ref => 1);
+has compartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,compartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compartment', weak_ref => 1);
 
 
 # BUILDERS:
 sub _build_compound {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','compounds',$self->compound_uuid());
+}
+sub _build_compartment {
+  my ($self) = @_;
+  return $self->getLinkedObject('Biochemistry','compartments',$self->compartment_uuid());
 }
 
 
@@ -46,9 +52,25 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
+            'len' => 36,
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'compartment_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
             'req' => 1,
             'printOrder' => 0,
             'name' => 'coefficient',
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'printOrder' => 0,
+            'name' => 'transportCoefficent',
+            'default' => 0,
             'type' => 'Num',
             'perm' => 'rw'
           },
@@ -59,18 +81,10 @@ my $attributes = [
             'default' => '0',
             'type' => 'Bool',
             'perm' => 'rw'
-          },
-          {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'compartmentIndex',
-            'default' => '0',
-            'type' => 'Int',
-            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {compound_uuid => 0, coefficient => 1, cofactor => 2, compartmentIndex => 3};
+my $attribute_map = {compound_uuid => 0, compartment_uuid => 1, coefficient => 2, transportCoefficent => 3, cofactor => 4};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

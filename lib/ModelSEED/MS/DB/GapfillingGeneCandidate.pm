@@ -21,13 +21,14 @@ has ortholog_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', t
 has orthologGenome_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has similarityScore => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 has distanceScore => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
-has reactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has role_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
 has feature => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,feature_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_feature', weak_ref => 1);
 has ortholog => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,ortholog_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_ortholog', weak_ref => 1);
 has orthologGenome => (is => 'rw', isa => 'ModelSEED::MS::Genome', type => 'link(Annotation,genomes,orthogenome_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_orthologGenome', weak_ref => 1);
+has role => (is => 'rw', isa => 'ModelSEED::MS::Role', type => 'link(Mapping,roles,role_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_role', weak_ref => 1);
 
 
 # BUILDERS:
@@ -42,6 +43,10 @@ sub _build_ortholog {
 sub _build_orthologGenome {
   my ($self) = @_;
   return $self->getLinkedObject('Annotation','genomes',$self->orthogenome_uuid());
+}
+sub _build_role {
+  my ($self) = @_;
+  return $self->getLinkedObject('Mapping','roles',$self->role_uuid());
 }
 
 
@@ -85,16 +90,15 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'reactions',
-            'default' => 'sub{return [];}',
-            'type' => 'ArrayRef',
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'role_uuid',
+            'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {feature_uuid => 0, ortholog_uuid => 1, orthologGenome_uuid => 2, similarityScore => 3, distanceScore => 4, reactions => 5};
+my $attribute_map = {feature_uuid => 0, ortholog_uuid => 1, orthologGenome_uuid => 2, similarityScore => 3, distanceScore => 4, role_uuid => 5};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

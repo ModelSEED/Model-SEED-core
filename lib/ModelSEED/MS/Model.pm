@@ -319,8 +319,8 @@ sub buildModelFromAnnotation {
 	}
 	my $universalReactions = $mapping->universalReactions();
 	foreach my $universalRxn (@{$universalReactions}) {
-		my $mdlrxn = $self->addReactionInstanceToModel({
-			reactionInstance => $universalRxn->reactioninstance(),
+		my $mdlrxn = $self->addReactionToModel({
+			reaction => $universalRxn->reaction(),
 		});
 		$mdlrxn->addModelReactionProtein({
 			proteinDataTree => {note => "Universal reaction"},
@@ -620,10 +620,10 @@ sub testBiomassCondition {
 	return 1;
 }
 
-=head3 addReactionInstanceToModel
+=head3 addReactionToModel
 Definition:
-	ModelSEED::MS::ModelReaction = ModelSEED::MS::Model->addReactionInstanceToModel({
-		reactionInstance => REQUIRED,
+	ModelSEED::MS::ModelReaction = ModelSEED::MS::Model->addReactionToModel({
+		reaction => REQUIRED,
 		direction => undef (default value will be pulled from reaction instance),
 		protons => undef (default value will be pulled from reaction instance),
 		gpr => "UNKNOWN"
@@ -631,26 +631,26 @@ Definition:
 Description:
 	Converts the input reaction instance into a model reaction and adds the reaction and associated compounds to the model.
 =cut
-sub addReactionInstanceToModel {
+sub addReactionToModel {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["reactionInstance"],{
+	$args = ModelSEED::utilities::ARGS($args,["reaction"],{
 		direction => undef,
 		protons => undef,
 	});
-	my $rxninst = $args->{reactionInstance};
+	my $rxn = $args->{reaction};
 	if (!defined($args->{direction})) {
-		$args->{direction} = $rxninst->direction();	
+		$args->{direction} = $rxn->reversibility();	
 	}
-	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxninst->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
+	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxn->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
 	my $mdlrxn = $self->queryObject("modelreactions",{
-		reactioninstance_uuid => $rxninst->uuid(),
+		reaction_uuid => $rxn->uuid(),
 		modelcompartment_uuid => $mdlcmp->uuid()
 	});
 	if (!defined($mdlrxn)) {
 		$mdlrxn = $self->add("modelreactions",{
-			reactioninstance_uuid => $rxninst->uuid(),
+			reaction_uuid => $rxn->uuid(),
 			direction => $args->{direction},
-			protons => $rxninst->reaction()->defaultProtons(),
+			protons => $rxn->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
 		});
 		my $rxn = $rxninst->reaction();
