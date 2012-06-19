@@ -7,7 +7,6 @@
 package ModelSEED::MS::DB::Reaction;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::ReactionCue;
-use ModelSEED::MS::ReactionReactionInstance;
 use ModelSEED::MS::Reagent;
 use Moose;
 use namespace::autoclean;
@@ -39,7 +38,6 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 # SUBOBJECTS:
 has reactionCues => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionCue)', metaclass => 'Typed', reader => '_reactionCues', printOrder => '-1');
-has reactionreactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ReactionReactionInstance)', metaclass => 'Typed', reader => '_reactionreactioninstances', printOrder => '-1');
 has reagents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(Reagent)', metaclass => 'Typed', reader => '_reagents', printOrder => '-1');
 
 
@@ -174,19 +172,13 @@ my $subobjects = [
           },
           {
             'printOrder' => -1,
-            'name' => 'reactionreactioninstances',
-            'type' => 'encompassed',
-            'class' => 'ReactionReactionInstance'
-          },
-          {
-            'printOrder' => -1,
             'name' => 'reagents',
             'type' => 'encompassed',
             'class' => 'Reagent'
           }
         ];
 
-my $subobject_map = {reactionCues => 0, reactionreactioninstances => 1, reagents => 2};
+my $subobject_map = {reactionCues => 0, reagents => 1};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -207,10 +199,6 @@ sub _aliasowner { return 'Biochemistry'; }
 around 'reactionCues' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('reactionCues');
-};
-around 'reactionreactioninstances' => sub {
-  my ($orig, $self) = @_;
-  return $self->_build_all_objects('reactionreactioninstances');
 };
 around 'reagents' => sub {
   my ($orig, $self) = @_;

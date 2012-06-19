@@ -6,7 +6,7 @@
 ########################################################################
 package ModelSEED::MS::DB::Complex;
 use ModelSEED::MS::BaseObject;
-use ModelSEED::MS::ComplexReactionInstance;
+use ModelSEED::MS::ComplexReaction;
 use ModelSEED::MS::ComplexRole;
 use Moose;
 use namespace::autoclean;
@@ -29,7 +29,7 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 
 # SUBOBJECTS:
-has complexreactioninstances => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ComplexReactionInstance)', metaclass => 'Typed', reader => '_complexreactioninstances', printOrder => '-1');
+has complexreactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ComplexReaction)', metaclass => 'Typed', reader => '_complexreactions', printOrder => '-1');
 has complexroles => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ComplexRole)', metaclass => 'Typed', reader => '_complexroles', printOrder => '-1');
 
 
@@ -96,9 +96,9 @@ sub _attributes {
 my $subobjects = [
           {
             'printOrder' => -1,
-            'name' => 'complexreactioninstances',
+            'name' => 'complexreactions',
             'type' => 'encompassed',
-            'class' => 'ComplexReactionInstance'
+            'class' => 'ComplexReaction'
           },
           {
             'printOrder' => -1,
@@ -108,7 +108,7 @@ my $subobjects = [
           }
         ];
 
-my $subobject_map = {complexreactioninstances => 0, complexroles => 1};
+my $subobject_map = {complexreactions => 0, complexroles => 1};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -126,9 +126,9 @@ sub _aliasowner { return 'Mapping'; }
 
 
 # SUBOBJECT READERS:
-around 'complexreactioninstances' => sub {
+around 'complexreactions' => sub {
   my ($orig, $self) = @_;
-  return $self->_build_all_objects('complexreactioninstances');
+  return $self->_build_all_objects('complexreactions');
 };
 around 'complexroles' => sub {
   my ($orig, $self) = @_;

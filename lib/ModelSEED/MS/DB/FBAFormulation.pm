@@ -15,17 +15,15 @@ extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1, type => 'parent', metaclass => 'Typed');
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
-has model_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has description => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
@@ -57,8 +55,6 @@ has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { retu
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_biochemistry', weak_ref => 1);
-has model => (is => 'rw', isa => 'ModelSEED::MS::Model', type => 'link(Store,Model,model_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_model', weak_ref => 1);
 
 
 # BUILDERS:
@@ -67,14 +63,6 @@ sub _build_modDate { return DateTime->now()->datetime(); }
 sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
-}
-sub _build_biochemistry {
-  my ($self) = @_;
-  return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
-}
-sub _build_model {
-  my ($self) = @_;
-  return $self->getLinkedObject('Store','Model',$self->model_uuid());
 }
 
 
@@ -107,13 +95,6 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'model_uuid',
-            'type' => 'ModelSEED::uuid',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 0,
-            'printOrder' => 0,
             'name' => 'regulatorymodel_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -122,13 +103,6 @@ my $attributes = [
             'req' => 1,
             'printOrder' => 0,
             'name' => 'media_uuid',
-            'type' => 'ModelSEED::uuid',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'biochemistry_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
@@ -273,7 +247,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, name => 2, model_uuid => 3, regulatorymodel_uuid => 4, media_uuid => 5, biochemistry_uuid => 6, type => 7, description => 8, expressionData_uuid => 9, growthConstraint => 10, thermodynamicConstraints => 11, allReversible => 12, dilutionConstraints => 13, uptakeLimits => 14, geneKO => 15, defaultMaxFlux => 16, defaultMaxDrainFlux => 17, defaultMinDrainFlux => 18, maximizeObjective => 19, decomposeReversibleFlux => 20, decomposeReversibleDrainFlux => 21, fluxUseVariables => 22, drainfluxUseVariables => 23};
+my $attribute_map = {uuid => 0, modDate => 1, name => 2, regulatorymodel_uuid => 3, media_uuid => 4, type => 5, description => 6, expressionData_uuid => 7, growthConstraint => 8, thermodynamicConstraints => 9, allReversible => 10, dilutionConstraints => 11, uptakeLimits => 12, geneKO => 13, defaultMaxFlux => 14, defaultMaxDrainFlux => 15, defaultMinDrainFlux => 16, maximizeObjective => 17, decomposeReversibleFlux => 18, decomposeReversibleDrainFlux => 19, fluxUseVariables => 20, drainfluxUseVariables => 21};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

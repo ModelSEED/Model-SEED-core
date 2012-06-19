@@ -15,7 +15,7 @@ extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw', isa => 'ModelSEED::MS::ModelAnalysis', weak_ref => 1, type => 'parent', metaclass => 'Typed');
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
@@ -26,7 +26,6 @@ has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', re
 has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has allowableCompartments => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has numberOfSolutions => (is => 'rw', isa => 'Int', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has biochemistry_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has reactionActivationBonus => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has drainFluxMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has directionalityMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
@@ -37,7 +36,6 @@ has biomassTransporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0'
 has singleTransporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has transporterMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has annotation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -52,8 +50,6 @@ has gapfillingSolutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
-has annotation => (is => 'rw', isa => 'ModelSEED::MS::Annotation', type => 'link(Store,Annotation,annotation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_annotation', weak_ref => 1);
-has biochemistry => (is => 'rw', isa => 'ModelSEED::MS::Biochemistry', type => 'link(Store,Biochemistry,biochemistry_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_biochemistry', weak_ref => 1);
 
 
 # BUILDERS:
@@ -62,14 +58,6 @@ sub _build_modDate { return DateTime->now()->datetime(); }
 sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
-}
-sub _build_annotation {
-  my ($self) = @_;
-  return $self->getLinkedObject('Store','Annotation',$self->annotation_uuid());
-}
-sub _build_biochemistry {
-  my ($self) = @_;
-  return $self->getLinkedObject('Store','Biochemistry',$self->biochemistry_uuid());
 }
 
 
@@ -129,13 +117,6 @@ my $attributes = [
             'name' => 'numberOfSolutions',
             'default' => '1',
             'type' => 'Int',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'biochemistry_uuid',
-            'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
@@ -216,17 +197,10 @@ my $attributes = [
             'name' => 'modDate',
             'type' => 'Str',
             'perm' => 'rw'
-          },
-          {
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'annotation_uuid',
-            'type' => 'ModelSEED::uuid',
-            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, media_uuid => 1, balancedReactionsOnly => 2, guaranteedReactions => 3, blacklistedReactions => 4, allowableCompartments => 5, numberOfSolutions => 6, biochemistry_uuid => 7, reactionActivationBonus => 8, drainFluxMultiplier => 9, directionalityMultiplier => 10, deltaGMultiplier => 11, noStructureMultiplier => 12, noDeltaGMultiplier => 13, biomassTransporterMultiplier => 14, singleTransporterMultiplier => 15, transporterMultiplier => 16, modDate => 17, annotation_uuid => 18};
+my $attribute_map = {uuid => 0, media_uuid => 1, balancedReactionsOnly => 2, guaranteedReactions => 3, blacklistedReactions => 4, allowableCompartments => 5, numberOfSolutions => 6, reactionActivationBonus => 7, drainFluxMultiplier => 8, directionalityMultiplier => 9, deltaGMultiplier => 10, noStructureMultiplier => 11, noDeltaGMultiplier => 12, biomassTransporterMultiplier => 13, singleTransporterMultiplier => 14, transporterMultiplier => 15, modDate => 16};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {
