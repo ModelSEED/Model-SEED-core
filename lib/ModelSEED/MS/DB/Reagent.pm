@@ -17,15 +17,15 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Reaction', weak_ref => 1, type
 
 # ATTRIBUTES:
 has compound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has compartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has destinationCompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has transportCoefficent => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, default => '0', type => 'attribute', metaclass => 'Typed');
-has cofactor => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has isTransport => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has isCofactor => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
 has compound => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,compound_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compound', weak_ref => 1);
-has compartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,compartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_compartment', weak_ref => 1);
+has destinationCompartment => (is => 'rw', isa => 'ModelSEED::MS::Compartment', type => 'link(Biochemistry,compartments,destinationCompartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_destinationCompartment', weak_ref => 1);
 
 
 # BUILDERS:
@@ -33,9 +33,9 @@ sub _build_compound {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','compounds',$self->compound_uuid());
 }
-sub _build_compartment {
+sub _build_destinationCompartment {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','compartments',$self->compartment_uuid());
+  return $self->getLinkedObject('Biochemistry','compartments',$self->destinationCompartment_uuid());
 }
 
 
@@ -55,7 +55,7 @@ my $attributes = [
             'len' => 36,
             'req' => 1,
             'printOrder' => 0,
-            'name' => 'compartment_uuid',
+            'name' => 'destinationCompartment_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
@@ -67,24 +67,23 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
             'printOrder' => 0,
-            'name' => 'transportCoefficent',
-            'default' => 0,
-            'type' => 'Num',
+            'name' => 'isTransport',
+            'default' => '0',
+            'type' => 'Bool',
             'perm' => 'rw'
           },
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'cofactor',
+            'name' => 'isCofactor',
             'default' => '0',
             'type' => 'Bool',
             'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {compound_uuid => 0, compartment_uuid => 1, coefficient => 2, transportCoefficent => 3, cofactor => 4};
+my $attribute_map = {compound_uuid => 0, destinationCompartment_uuid => 1, coefficient => 2, isTransport => 3, isCofactor => 4};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

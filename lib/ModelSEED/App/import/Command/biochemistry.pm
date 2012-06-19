@@ -89,6 +89,7 @@ sub execute {
                 addStructuralCues => 1,
                 addStructure => 1,
                 addPk => 1,
+                verbose => $opts->{verbose},
         });
     } else {
         # Just fetch a pre-built biochemistry from the web
