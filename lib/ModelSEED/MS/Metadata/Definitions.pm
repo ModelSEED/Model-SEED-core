@@ -654,7 +654,7 @@ $objectDefinitions->{Reaction} = {
 		{name => 'direction',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
 		{name => 'thermoReversibility',printOrder => 6,perm => 'rw',type => 'Str',len => 1,req => 0},
 		{name => 'defaultProtons',printOrder => 7,perm => 'rw',type => 'Num',req => 0},
-		{name => 'status',printOrder => 10,perm => 'rw',type => 'Str',req => 0}
+		{name => 'status',printOrder => 10,perm => 'rw',type => 'Str',req => 0},
 	],
 	subobjects => [
 		{name => "reactionCues",class => "ReactionCue",type => "encompassed"},

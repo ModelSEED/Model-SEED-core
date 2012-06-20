@@ -103,8 +103,8 @@ sub createModel {
             });
 			$biomassIndex++;
 		} else {
-			my $rxn_instance = $biochemistry->getObjectByAlias(
-                "reactioninstances", 
+			my $rxn = $biochemistry->getObjectByAlias(
+                "reactions", 
                 $id,
                 "ModelSEED"
             );
@@ -116,12 +116,12 @@ sub createModel {
             } else {
                 $direction = "=";
             }
-            if(!defined($rxn_instance)) {
+            if(!defined($rxn)) {
                 warn "Could not find rxn_instance for $id!\n";
                 next;
             }
-			$model->addReactionInstanceToModel({
-				reactionInstance => $rxn_instance,
+			$model->addReactionToModel({
+				reaction => $rxn,
 				direction => $direction,
 				gpr => $rxn->{PEGS}
 			});

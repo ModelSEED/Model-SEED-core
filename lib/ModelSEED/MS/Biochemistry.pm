@@ -77,9 +77,9 @@ sub makeDBModel {
 			if (defined($array->[2])) {
 				my $rxn;
 				if ($array->[1] eq "name") {
-					$rxn = $self->queryObject("reactioninstances",{$array->[1] => $array->[2]});
+					$rxn = $self->queryObject("reactions",{$array->[1] => $array->[2]});
 				} else {
-					$rxn = $self->getObjectByAlias("reactioninstances",$array->[2],$array->[1]);
+					$rxn = $self->getObjectByAlias("reactions",$array->[2],$array->[1]);
 				}
 				if (defined($rxn)) {
 					$hashes->{guaranteed}->{$rxn->uuid()} = 1;
@@ -97,9 +97,9 @@ sub makeDBModel {
 			if (defined($array->[2])) {
 				my $rxn;
 				if ($array->[1] eq "name") {
-					$rxn = $self->queryObject("reactioninstances",{$array->[1] => $array->[2]});
+					$rxn = $self->queryObject("reactions",{$array->[1] => $array->[2]});
 				} else {
-					$rxn = $self->getObjectByAlias("reactioninstances",$array->[2],$array->[1]);
+					$rxn = $self->getObjectByAlias("reactions",$array->[2],$array->[1]);
 				}
 				if (defined($rxn)) {
 					$hashes->{forbidden}->{$rxn->uuid()} = 1;
@@ -129,9 +129,9 @@ sub makeDBModel {
 			}
 		}
 	}
-	my $reactioninstances = $self->reactioninstances();
-	for (my $i=0; $i < @{$reactioninstances}; $i++) {
-		my $rxn = $reactioninstances->[$i];
+	my $reactions = $self->reactions();
+	for (my $i=0; $i < @{$reactions}; $i++) {
+		my $rxn = $reactions->[$i];
 		if (!defined($hashes->{forbidden}->{$rxn->uuid()})) {
 			my $add = 1;
 			if (!defined($hashes->{guaranteed}->{$rxn->uuid()})) {
@@ -152,8 +152,8 @@ sub makeDBModel {
 				}
 			}
 			if ($add == 1) {
-				$mdl->addReactionInstanceToModel({
-					reactionInstance => $rxn,
+				$mdl->addReactionToModel({
+					reaction => $rxn,
 				});
 			}
 		}
@@ -243,11 +243,11 @@ sub findCreateEquivalentReaction {
 	my $outrxn = $self->queryObject("reactions",{
 		definition => $inrxn->definition()
 	});
-	if (!defined($outrxn) && $args->{create} == 1) {
+	if (!defined($outrxn) && $args->{create} == 1) { 
 		$outrxn = $self->biochemistry()->add("reactions",{
 			name => $inrxn->name(),
 			abbreviation => $inrxn->abbreviation(),
-			reversibility => $inrxn->reversibility(),
+			direction => $inrxn->direction(),
 			thermoReversibility => $inrxn->thermoReversibility(),
 			defaultProtons => $inrxn->defaultProtons(),
 			status => $inrxn->status(),
@@ -260,60 +260,28 @@ sub findCreateEquivalentReaction {
 				compound => $rgt->compound(),
 				create => 1
 			});
-			$outrxn->add("reagents",{
-				compound_uuid => $cpd->uuid(),
-				coefficient => $rgt->coefficient(),
-				cofactor => $rgt->cofactor(),
-				compartmentIndex => $rgt->compartmentIndex(),
-			});
+			if ($rgt->isTransport()) {
+				my $transcmp = $self->findCreateEquivalentCompartment({
+					compartment => $rgt->destinationCompartment(),
+					create => 1
+				});
+				$outrxn->add("reagents",{
+					compound_uuid => $cpd->uuid(),
+					destinationCompartment_uuid => $transcmp->uuid(),
+					coefficient => $rgt->coefficient(),
+					isCofactor => $rgt->isCofactor(),
+					isTransport => $rgt->isTransport(),
+				});
+			} else {
+				$outrxn->add("reagents",{
+					compound_uuid => $cpd->uuid(),
+					coefficient => $rgt->coefficient(),
+					isCofactor => $rgt->isCofactor(),
+					isTransport => $rgt->isTransport(),
+				});
+			}
 		}
-	}
-	$inrxn->mapped_uuid($outrxn->uuid());
-	$outrxn->mapped_uuid($inrxn->uuid());
-	return $outrxn;
-}
-=head3 findCreateEquivalentReactionInstance
-Definition:
-	void ModelSEED::MS::Biochemistry->findCreateEquivalentReactionInstance({
-		reactioninstance => ModelSEED::MS::ReactionInstance(REQUIRED),
-		create => 0/1(1)
-	});
-Description:
-	Search for an equivalent reaction instance for the input biochemistry reaction instance
-=cut
-sub findCreateEquivalentReactionInstance {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["reactioninstance"],{create => 1});
-	my $inrxn = $args->{reactioninstance};
-	my $outrxn = $self->queryObject("reactioninstances",{
-		definition => $inrxn->definition()
-	});
-	if (!defined($outrxn) && $args->{create} == 1) {
-		my $rxn = $self->findCreateEquivalentReaction({reaction => $inrxn->reaction()});
-		my $cmp = $self->findCreateEquivalentCompartment({compartment => $inrxn->compartment()});
-		$outrxn = $self->add("reactioninstances",{
-			reaction_uuid => $rxn->uuid(),
-			reaction => $rxn,
-			direction => $inrxn->direction(),
-			compartment_uuid => $cmp->uuid(),
-			compartment => $cmp,
-			sourceEquation => $inrxn->sourceEquation(),
-			transprotonNature => $inrxn->transprotonNature()
-		});
-		my $trpts = $inrxn->transports();
-		for (my $i=0; $i < @{$trpts}; $i++) {
-			my $cpd = $self->findCreateEquivalentCompound({compound => $trpts->[$i]->compound()});
-			my $cmp = $self->findCreateEquivalentCompartment({compartment => $trpts->[$i]->compartment()});
-			$outrxn->add("transports",{
-				compound_uuid => $cpd->uuid(),
-				compound => $cpd,
-				compartment_uuid => $cmp->uuid(),
-				compartment => $cmp,
-				compartmentIndex => $trpts->[$i]->compartmentIndex(),
-				coefficient => $trpts->[$i]->coefficient()
-			});
-		}
-	}
+	}	
 	$inrxn->mapped_uuid($outrxn->uuid());
 	$outrxn->mapped_uuid($inrxn->uuid());
 	return $outrxn;

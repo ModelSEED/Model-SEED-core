@@ -11,7 +11,7 @@ sub toTable {
     my $reactions = $model->modelreactions;
     my $rows = [];
     foreach my $reaction (@$reactions) {
-        my $rxn_id = $reaction->reactioninstance->id;
+        my $rxn_id = $reaction->reaction->id;
         my $dir    = $reaction->direction;
         my $cmp_id = $reaction->modelcompartment->label;
         my $gpr    = $self->_make_GPR_string($reaction);
