@@ -158,8 +158,11 @@ sub loadFromEquation {
 			if ($TempArray[$i] =~ m/^[a-zA-Z0-9]+\[([a-zA-Z]+)\]/) {
 				$NewRow->{compartment} = lc($1);
 			}
-			my $comp = $bio->queryObject("compartments",{id => $NewRow->{compartment}});
-			if (!defined($comp)) {
+            my $comp = $compHash->{$NewRow->{compartment}};
+            unless(defined($comp)) {
+                $comp = $bio->queryObject("compartments", {id => $NewRow->{compartment} });
+            }
+            unless(defined($comp)) {
 				ModelSEED::utilities::USEWARNING("Unrecognized compartment '".$NewRow->{compartment}."' used in reaction!");
 				$comp = $bio->add("compartments",{
 					locked => "0",
@@ -209,60 +212,35 @@ sub loadFromEquation {
 		$rxnComp = $bio->queryObject("compartments",{id => "c"});
 	}
 	foreach my $cpduuid (keys(%{$coreCpdHash})) {
-		if ($coreCpdHash->{$cpduuid} != 0 && $cpdHash->{$cpduuid}->formula() ne "H") {
-			$self->add("reagents",{
-				compound_uuid => $cpduuid,
-				coefficient => $coreCpdHash->{$cpduuid},
-				cofactor => 0,
-				compartmentIndex => 0
-			});
-		}
+        # Do not include reagents with zero coefficients
+        next if $coreCpdHash->{$cpduuid} == 0;
+        # Do not include Hydrogen in reagents
+        next if $cpdHash->{$cpduuid}->formula eq 'H';
+        $self->add("reagents", {
+            compound_uuid               => $cpduuid,
+            destinationCompartment_uuid => $rxnComp->uuid,
+            coefficient                 => $coreCpdHash->{$cpduuid},
+            isTransport                 => 0,
+            isCofactor                  => 0,
+        });
 	}	
-	my $index = 1;
-	#Creating reaction instance
-	my $rxninst = ModelSEED::MS::ReactionInstance->new({
-		locked => 0,
-		compartment_uuid => $rxnComp->uuid(),
-		sourceEquation => $args->{equation},
-		reaction_uuid => $self->uuid(),
-		direction => $direction,
-		reaction => $self,
-		parent => $self->parent()
-	});
-	#Adding to reaction
-	$self->add("reactionreactioninstances",{
-		reactioninstance_uuid => $rxninst->uuid(),
-		reactioninstance => $rxninst
-	});
-	#Creating reaction instance transports and handling transported reagents
-	my $sortedids = [sort(keys(%{$transCpdHash}))];
-	for (my $i=0; $i < @{$sortedids}; $i++) {
-		if ($sortedids->[$i] ne $rxnComp->id()) {
-			foreach my $cpduuid (keys(%{$transCpdHash->{$sortedids->[$i]}})) {
-				if ($transCpdHash->{$sortedids->[$i]}->{$cpduuid} != 0) {
-					my $coef = -1;
-					if ($transCpdHash->{$sortedids->[$i]}->{$cpduuid} > 0) {
-						$coef = 1;
-					}
-					$self->add("reagents",{
-						compound_uuid => $cpduuid,
-						coefficient => $coef,
-						cofactor => 0,
-						compartmentIndex => $index
-					});
-					$rxninst->add("transports",{
-						compound_uuid => $cpduuid,
-						compartment_uuid => $compHash->{$sortedids->[$i]}->uuid(),
-						coefficient => $transCpdHash->{$sortedids->[$i]}->{$cpduuid},
-						compartmentIndex => $index
-					});
-				}
-			}
-			$index++;
-		}
-	}
-	return $rxninst;
+    foreach my $cmp_id (keys %$transCpdHash) {
+        my $cpds_by_cmp = $transCpdHash->{$cmp_id};
+        foreach my $cpd_uuid (keys %$cpds_by_cmp) {
+            my $coff = $cpds_by_cmp->{$cpd_uuid};
+            next if($coff == 0);
+            my $cmp = $compHash->{$cmp_id};
+            $self->add("reagents", {
+                compound_uuid               => $cpd_uuid,
+                destinationCompartment_uuid => $cmp->uuid,
+                coefficient                 => $coff,
+                isCofactor                  => 0,
+                isTransport                 => 1,
+            });
+        }
+    }
 }
+
 =head3 checkReactionMassChargeBalance
 Definition:
 	{

@@ -686,14 +686,14 @@ $objectDefinitions->{Reagent} = {
 		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
         {name => 'destinationCompartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 36, req =>1},
 		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
-        {name => 'transported',printOrder => 0,perm => 'rw',type => 'Bool', req => 1,default => 0},
-		{name => 'cofactor',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 0},
+        {name => 'isTransport', printOrder => 0, perm => 'rw', type => 'Bool', default => "0" },
+		{name => 'isCofactor',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "0"},
 	],
 	subobjects => [],
 	primarykeys => [ qw(reaction_uuid compound_uuid compartment_uuid) ],
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",method=>"compounds"},
-        {name => "destinationCompartment",attribute => "destCompartment_uuid",parent=>"Biochemistry",method=>"compartments"},
+        {name => "destinationCompartment",attribute => "destinationCompartment_uuid",parent=>"Biochemistry",method=>"compartments"},
 	]
 };
 
