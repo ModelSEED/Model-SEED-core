@@ -3,6 +3,7 @@ use base 'App::Cmd::Command';
 use Class::Autouse qw(
     ModelSEED::Store
     ModelSEED::Auth::Factory
+    ModelSEED::App::Helpers
     ModelSEED::MS::Factories::SEEDFactory
     ModelSEED::Database::Composite
     ModelSEED::Reference
@@ -31,6 +32,7 @@ sub execute {
     my ($self, $opts, $args) = @_;
     my $store;
     my $auth = ModelSEED::Auth::Factory->new->from_config();
+    my $helper = ModelSEED::App::Helpers->new;
     # Initialize the store object
     if($opts->{store}) {
         my $store_name = $opts->{store};
@@ -47,15 +49,9 @@ sub execute {
     $self->usage_error("Must supply an id") unless(defined($id));
     $self->usage_error("Must supply an alias") unless(defined($alias));
     # Make sure the alias object is valid "username/alias_string"
-    my ($uname, $alias_string) = split(/\//, $alias);
-    unless(defined($alias_string) && $uname eq $auth->username) {
-        if(defined($alias_string)) {
-            $alias = $auth->username . "/" . $alias_string;
-        } else {
-            $alias = $auth->username . "/" . $uname;
-        }
-    }
-    $alias = "annotation/$alias";
+    $alias = $helper->process_ref_string(
+        $alias, "annotation", $auth->username
+    );
     print "Will be saving to $alias...\n" if(defined($opts->{verbose}));
     my $alias_ref = ModelSEED::Reference->new(ref => $alias);
     # Get the annotation object
@@ -63,15 +59,15 @@ sub execute {
     my $config = { genome_id => $id };
     $config->{verbose} = $opts->{verbose} if(defined($opts->{verbose}));
     if(defined($opts->{mapping})) {
-        my $mapping_alias = $opts->{mapping};
-        $mapping_alias = "mapping/" . $mapping_alias unless($mapping_alias =~ /^mapping\//);
+        my $mapping_alias = $helper->process_ref_string(
+            $opts->{mapping}, "mapping", $auth->username
+        );
         print "Fetching $mapping_alias...\n" if(defined($opts->{verbose}));
         my $mapping_ref = ModelSEED::Reference->new(ref => $mapping_alias);
         $config->{mapping} = $store->get_object($mapping_ref);
     }
     print "Getting annotation...\n" if(defined($opts->{verbose}));
     my $anno = $factory->buildMooseAnnotation($config);
-
     unless($opts->{dry}) {
         my $mapping = $anno->mapping;
         my $mapping_ref = ModelSEED::Reference->new( type => "mapping", uuid => $mapping->uuid );
