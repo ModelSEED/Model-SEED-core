@@ -23,15 +23,15 @@ has reactionDefinition => ( is => 'rw', isa => 'Str',printOrder => '3', type => 
 #***********************************************************************************************************
 sub _buildreactionID {
 	my ($self) = @_;
-	return $self->reactioninstance()->id();
+	return $self->reaction()->id();
 }
 sub _buildreactionName {
 	my ($self) = @_;
-	return $self->reactioninstance()->reaction()->name();
+	return $self->reaction()->reaction()->name();
 }
 sub _buildreactionDefinition {
 	my ($self) = @_;
-	return $self->reactioninstance()->definition();
+	return $self->reaction()->definition();
 }
 
 #***********************************************************************************************************

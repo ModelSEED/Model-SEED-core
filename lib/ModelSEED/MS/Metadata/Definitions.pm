@@ -651,7 +651,7 @@ $objectDefinitions->{Reaction} = {
 		{name => 'cksum',printOrder => -1,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => ""},
 		{name => 'deltaG',printOrder => 8,perm => 'rw',type => 'Num',req => 0},
 		{name => 'deltaGErr',printOrder => 9,perm => 'rw',type => 'Num',req => 0},
-		{name => 'reversibility',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
+		{name => 'direction',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
 		{name => 'thermoReversibility',printOrder => 6,perm => 'rw',type => 'Str',len => 1,req => 0},
 		{name => 'defaultProtons',printOrder => 7,perm => 'rw',type => 'Num',req => 0},
 		{name => 'status',printOrder => 10,perm => 'rw',type => 'Str',req => 0}
@@ -684,16 +684,16 @@ $objectDefinitions->{Reagent} = {
 	class => 'encompassed',
 	attributes => [
 		{name => 'compound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 36,req => 1},
-        {name => 'compartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 36, req =>1},
+        {name => 'destinationCompartment_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',len => 36, req =>1},
 		{name => 'coefficient',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
-        {name => 'transportCoefficent',printOrder => 0,perm => 'rw',type => 'Num', req => 1,default => 0},
-		{name => 'cofactor',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "0"},
+        {name => 'transported',printOrder => 0,perm => 'rw',type => 'Bool', req => 1,default => 0},
+		{name => 'cofactor',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 0},
 	],
 	subobjects => [],
 	primarykeys => [ qw(reaction_uuid compound_uuid compartment_uuid) ],
 	links => [
 		{name => "compound",attribute => "compound_uuid",parent => "Biochemistry",method=>"compounds"},
-        {name => "compartment",attribute => "compartment_uuid",parent=>"Biochemistry",method=>"compartments"},
+        {name => "destinationCompartment",attribute => "destCompartment_uuid",parent=>"Biochemistry",method=>"compartments"},
 	]
 };
 

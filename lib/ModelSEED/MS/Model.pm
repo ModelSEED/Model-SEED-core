@@ -306,7 +306,7 @@ sub buildModelFromAnnotation {
 		}
 		for (my $j=0; $j < @{$complexreactions}; $j++) {
 			my $cpxrxn = $complexreactions->[$j];
-			if ($compartments->{$cpxrxninst->compartment()}->{present} == 1) {
+			if ($compartments->{$cpxrxn->compartment()}->{present} == 1) {
 				my $mdlrxn = $self->addReactionToModel({
 					reaction => $cpxrxn->reaction(),
 				});
@@ -639,7 +639,7 @@ sub addReactionToModel {
 	});
 	my $rxn = $args->{reaction};
 	if (!defined($args->{direction})) {
-		$args->{direction} = $rxn->reversibility();	
+		$args->{direction} = $rxn->direction();	
 	}
 	my $mdlcmp = $self->addCompartmentToModel({compartment => $rxn->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
 	my $mdlrxn = $self->queryObject("modelreactions",{
@@ -653,45 +653,28 @@ sub addReactionToModel {
 			protons => $rxn->reaction()->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
 		});
-		my $rxn = $rxninst->reaction();
 		my $speciesHash;
 		my $cpdHash;
 		my $mdlcpdHash;
 		for (my $i=0; $i < @{$rxn->reagents()}; $i++) {
 			my $rgt = $rxn->reagents()->[$i];
-			if ($rgt->compartmentIndex() == 0) {
-				my $mdlcpd = $self->addCompoundToModel({
+			my $coefficient = $rgt->coefficient();
+			if ($rgt->isTransported() == 1) {
+				my $transCmp = $self->addCompartmentToModel({compartment => $rgt->destinationCompartment(),pH => 7,potential => 0,compartmentIndex => 0});
+				my $transcpd = $self->addCompoundToModel({
 					compound => $rgt->compound(),
-					modelCompartment => $mdlcmp,
+					modelCompartment => $transCmp,
 				});
-				$cpdHash->{$rgt->compound_uuid()}->{$mdlcmp->uuid()} = $mdlcpd;
-				$mdlcpdHash->{$mdlcpd->uuid()} = $mdlcpd;
-				$speciesHash->{$mdlcpd->uuid()} = $rgt->coefficient();
-			}
-		}	
-		for (my $i=0; $i < @{$rxninst->transports()}; $i++) {
-			my $trans = $rxninst->transports()->[$i];
-			my $newmdlcmp = $self->addCompartmentToModel({compartment => $trans->compartment(),pH => 7,potential => 0,compartmentIndex => 0});
-			if (!defined($cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()})) {
-				$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()} = $self->addCompoundToModel({
-					compound => $trans->compound(),
-					modelCompartment => $newmdlcmp,
-				});
-				$mdlcpdHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} = $cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()};
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} = $trans->coefficient();
-			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$newmdlcmp->uuid()}->uuid()} += $trans->coefficient();
-			}
-			if (!defined($cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()})) {
-				$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()} = $self->addCompoundToModel({
-					compound => $trans->compound(),
-					modelCompartment => $mdlcmp,
-				});
-				$mdlcpdHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} = $cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()};
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} = (-1*$trans->coefficient());
-			} else {
-				$speciesHash->{$cpdHash->{$trans->compound_uuid()}->{$mdlcmp->uuid()}->uuid()} += (-1*$trans->coefficient());
-			}
+				$mdlcpdHash->{$transcpd->uuid()} = $transcpd;
+				$speciesHash->{$transcpd->uuid()} = $coefficient;
+				$coefficient = $coefficient*-1;
+			}	
+			my $mdlcpd = $self->addCompoundToModel({
+				compound => $rgt->compound(),
+				modelCompartment => $mdlcmp,
+			});
+			$mdlcpdHash->{$mdlcpd->uuid()} = $mdlcpd;
+			$speciesHash->{$mdlcpd->uuid()} = $coefficient;
 		}
 		foreach my $mdluuid (keys(%{$speciesHash})) {
 			if ($speciesHash->{$mdluuid} != 0) {
@@ -1058,52 +1041,6 @@ sub gapfillModel {
 	}
 	return undef;
 }
-=head3 integrateGapfillingSolution
-Definition:
-	void ModelSEED::MS::Model->integrateGapfillingSolution({
-		gapfillingSolution => ModelSEED::MS::GapfillingSolution,
-	});
-Description:
-	Integrates gapfilling solution into model
-=cut
-sub integrateGapfillingSolution {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["gapfillingSolution"],{});
-	my $gfSolution = $args->{gapfillingSolution};
-	my $solrxns = $gfSolution->gapfillingSolutionReactions();
-	for (my $i=0; $i < @{$solrxns}; $i++) {
-		print "New reaction!\n";
-		my $solrxn = $solrxns->[$i];
-		my $rxninst = $self->biochemistry()->findCreateEquivalentReactionInstance({reactioninstance => $solrxn->reactioninstance()});
-		my $mdlrxn = $self->queryObject("modelreactions",{reactioninstance_uuid => $rxninst->uuid()});
-		if (!defined($mdlrxn)) {
-			print "Adding reaction!\n";
-			$self->addReactionInstanceToModel({
-				reactionInstance => $rxninst,
-				direction => $solrxn->direction()
-			});
-		} elsif ($mdlrxn->direction() ne $solrxn->direction()) {
-			print "Making reaction reversible!\n";
-			$mdlrxn->direction("=");
-		}
-		my $geneCandidates = $solrxn->gfSolutionReactionGeneCandidates();
-		my $prot = $mdlrxn->add("modelReactionProteins",{
-			complex_uuid => "00000000-0000-0000-0000-000000000000"
-		});
-		my $subunit = $prot->add("modelReactionProteinSubunits",{
-			 role_uuid => "00000000-0000-0000-0000-000000000000",
-			 triggering => 1,
-			 optional => 0,
-		});
-		for (my $j=0; $j < @{$geneCandidates}; $j++) {
-			$prot->add("modelReactionProteinSubunits",{
-				feature_uuid => $geneCandidates->[$j]->feature_uuid()
-			});
-		}
-	}
-	$self->uuid(Data::UUID->new()->create_str());
-}
-
 sub printExchangeFormat {
 	my ($self) = @_;
     my $textArray = [
@@ -1126,8 +1063,9 @@ sub printExchangeFormat {
 	}
 	push(@{$textArray},("}","Reactions (reaction	direction	compartment	gpr) {"));
     my $reactions = $self->modelreactions();
-    foreach my $reaction (@$reactions) {
-        my $rxn_id = $reaction->reactioninstance->id;
+	my $rows;
+	foreach my $reaction (@$reactions) {
+        my $rxn_id = $reaction->reaction()->id;
         my $dir    = $reaction->direction;
         my $cmp_id = $reaction->modelcompartment->label;
         my $gpr    = $self->_make_GPR_string($reaction);
