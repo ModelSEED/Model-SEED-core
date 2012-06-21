@@ -11,16 +11,32 @@ use Class::Autouse qw(
 
 sub abstract { return "Import annotation from the SEED or RAST"; }
 
-sub usage_desc { return <<END;
-ms import annotation [id] [alias] [-s store] [-m mapping]
-Import a RAST or SEED genome with "id" to the current enviornemnt
-as "alias". If store is povided, save in with that storage interface.
+sub usage_desc { return "ms import annotation [id] [alias] [-m mapping]"; }
+sub description { return <<END;
+An annotated genome may be imported from the SEED or RAST annotation service.
+To see a list of available models use the --list flag. For a tab-delimited list of
+genome ids and names add the --verbose flag:
 
+    $ ms import annotation --list
+    $ ms import annotation --list --verbose
+
+Note that you will only be able to see RAST annotated genomes if you are
+logged in as the same user that submitted those genomes to the RAST pipeline.
+
+To import an annotated genome, supply the genome's ID, the alias that
+you would like to save it to and a mapping object to use:
+    
+    $ ms import annotation 83333.1 ecoli -m main
+
+If no mapping is supplied, the default mapping will be used:
+
+    $ ms defaults mapping
 END
 }
 
 sub opt_spec {
     return (
+        ["list|l",    "List available annotated genomes"],
         ["store|s:s", "Identify which store to save the annotation to"],
         ["verbose|v", "Print detailed output of import status"],
         ["dry|d", "Perform a dry run; that is, do everything but saving"],
@@ -43,6 +59,19 @@ sub execute {
         $store = ModelSEED::Store->new(auth => $auth, database => $db);
     } else {
         $store = ModelSEED::Store->new(auth => $auth);
+    }
+    # If we are listing, just do that and exit
+    if(defined($opts->{list})) {
+        my $genomeHash = $self->availableGenomes();
+        if($opts->{verbose}) {
+            print join( "\n",
+                map { $_ = "$_\t" . $genomeHash->{$_} }
+                  keys %$genomeHash )
+              . "\n";
+        } else {
+            print join("\n", keys %$genomeHash) . "\n";
+        }
+        exit();
     }
     # Check that required arguments are present
     my ($id, $alias) = @$args;
@@ -76,6 +105,14 @@ sub execute {
         $store->save_object($alias_ref, $anno);
         print "Saved annotation to $alias!\n" if(defined($opts->{verbose}));
     }
+}
+
+sub availableGenomes {
+    my ($self) = @_;
+    my $sap_svr = SAPserver->new;
+    my $support_svr = MSSeedSupportClient->new;
+    my $seed_genome_hash = $sap_svr->all_genomes({-prokaryotic => 0});
+    return $seed_genome_hash;
 }
 
 1;
