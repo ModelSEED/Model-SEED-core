@@ -19,7 +19,9 @@ $ModelSEED::App::stores::typeToArgs = {
 };
 
 $ModelSEED::App::stores::defaultArgValues = {
-    file => {},
+    file => {
+        directory => $ENV{HOME} . "/.modelseed_filedb";
+    },
     mongo => {
         db_name => 'ModelSeed'
     },

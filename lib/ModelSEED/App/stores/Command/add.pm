@@ -1,5 +1,8 @@
 package ModelSEED::App::stores::Command::add;
-use Class::Autouse qw(ModelSEED::Configuration);
+use Class::Autouse qw(
+    ModelSEED::Configuration
+    ModelSEED::Database::FileDB
+);
 use Data::Dumper;
 use base 'App::Cmd::Command';
 
@@ -32,7 +35,7 @@ sub execute {
     my ($self, $opt, $args) = @_;
     my $name = shift @$args;
     my $config = $self->_buildConfig($opt, $name);
-    my $ms = ModelSEED::Configuration->new();    
+    my $ms = ModelSEED::Configuration->new();
     my $stores = $ms->config->{stores};
     my %map = map { $_->{name} => $_ } @$stores; 
     if (defined($map{$name})) {
@@ -41,6 +44,8 @@ sub execute {
     }
     push(@{$ms->config->{stores}}, $config);
     $ms->save();
+
+    $self->_initializeDatabase($opt->{type}, $config);
 }
 
 sub _buildConfig {
@@ -73,7 +78,21 @@ sub _buildConfig {
             return "--$arg required for $type" unless (defined($opt->{$arg}));
         }
     }
-    return $config;    
+    return $config;
+}
+
+# put database specific initialization logic here
+# args are $type and $config
+sub _initializeDatabase {
+    my ($self, $type, $config) = @_;
+
+    print "Initializing database...\n";
+
+    if ($type eq 'file') {
+        print "Database type is FileDB\n";
+        my $db = ModelSEED::Database::FileDB->new({ directory => $config->{directory} });
+        $db->kvstore->save_object("aliases", {});
+    }
 }
 
 1;
