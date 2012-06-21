@@ -20,7 +20,7 @@ $ModelSEED::App::stores::typeToArgs = {
 
 $ModelSEED::App::stores::defaultArgValues = {
     file => {
-        directory => $ENV{HOME} . "/.modelseed_filedb";
+        directory => $ENV{HOME} . "/.modelseed_filedb"
     },
     mongo => {
         db_name => 'ModelSeed'
@@ -28,4 +28,4 @@ $ModelSEED::App::stores::defaultArgValues = {
     rest => {},
 };
 
-1; 
+1;

@@ -34,6 +34,9 @@ sub validate_args {
 sub execute {
     my ($self, $opt, $args) = @_;
     my $name = shift @$args;
+    unless (defined($name)) {
+        $self->usage_error("Must provide name for database.");
+    }
     my $config = $self->_buildConfig($opt, $name);
     my $ms = ModelSEED::Configuration->new();
     my $stores = $ms->config->{stores};
@@ -45,7 +48,7 @@ sub execute {
     push(@{$ms->config->{stores}}, $config);
     $ms->save();
 
-    $self->_initializeDatabase($opt->{type}, $config);
+    $self->_initializeDatabase($name, $opt->{type}, $config);
 }
 
 sub _buildConfig {
@@ -78,21 +81,30 @@ sub _buildConfig {
             return "--$arg required for $type" unless (defined($opt->{$arg}));
         }
     }
+
+    if ($config->{type} eq 'file') {
+        $config->{filename} = $name;
+    }
+
     return $config;
 }
 
 # put database specific initialization logic here
 # args are $type and $config
 sub _initializeDatabase {
-    my ($self, $type, $config) = @_;
+    my ($self, $name, $type, $config) = @_;
 
     print "Initializing database...\n";
 
     if ($type eq 'file') {
-        print "Database type is FileDB\n";
-        my $db = ModelSEED::Database::FileDB->new({ directory => $config->{directory} });
+        my $db = ModelSEED::Database::FileDB->new({
+            directory => $config->{directory},
+            filename  => $name
+        });
         $db->kvstore->save_object("aliases", {});
     }
+
+    print "Database created successfully\n";
 }
 
 1;
