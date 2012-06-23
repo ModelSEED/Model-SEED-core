@@ -49,7 +49,7 @@ sub opt_spec {
 sub execute {
     my ($self, $opts, $args) = @_;
     my $auth = ModelSEED::Auth::Factory->new->from_config();
-    my $helpers = ModelSEED::App::Helpers->new();
+    my $helpers = ModelSEED::App::Helpers->new;
     my $store;
     # Initialize the store object
     if($opts->{store}) {
@@ -117,7 +117,8 @@ sub execute {
     if(defined($opts->{annotation})) {
         $config->{annotation} = $opts->{annotation};
         $config->{annotation} = $helpers->process_ref_string(
-            $config->{annotation}, "annotation", $auth->username);
+            $config->{annotation}, "annotation", $auth->username
+        );
         my $anno = $store->get_object($config->{annotation});
         die "Could not get annotation: " . $config->{annotation} . "\n" unless(defined($anno));
         $config->{annotation} = $anno;

@@ -36,12 +36,12 @@ sub _builddefinition {
 #***********************************************************************************************************
 sub roles {
     my ($self) = @_;
-    my $roles = [];
+    my $roles = {};
     my $features = $self->features;
     foreach my $feature (@$features) {
-        push(@$roles, map { $_->role } @{$feature->featureroles});
+        map { $roles->{$_->role->name} =  $_->role } @{$feature->featureroles};
     }
-    return $roles;
+    return [values %$roles];
 }
 
 sub subsystems {

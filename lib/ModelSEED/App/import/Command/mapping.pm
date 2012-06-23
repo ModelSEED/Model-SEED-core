@@ -7,6 +7,7 @@ use Class::Autouse qw(
     ModelSEED::MS::Mapping
     ModelSEED::Store
     ModelSEED::Auth::Factory
+    ModelSEED::App::Helpers
     ModelSEED::MS::Factories::PPOFactory
     ModelSEED::Database::Composite
     ModelSEED::Reference
@@ -45,6 +46,7 @@ sub opt_spec {
 sub execute {
     my ($self, $opts, $args) = @_;
     my $auth = ModelSEED::Auth::Factory->new->from_config();
+    my $helpers = ModelSEED::App::Helpers->new;
     # Initialize the store object
     if($opts->{store}) {
         my $store_name = $opts->{store};
@@ -60,21 +62,18 @@ sub execute {
     my ($alias) = @$args;
     $self->usage_error("Must supply an alias") unless(defined($alias));
     # Make sure the alias object is valid "username/alias_string"
-    my ($uname, $alias_string) = split(/\//, $alias);
-    unless(defined($alias_string) && $uname eq $auth->username) {
-        if(defined($alias_string)) {
-            $alias = $auth->username . "/" . $alias_string;
-        } else {
-            $alias = $auth->username . "/" . $uname;
-        }
-    }
-    $alias = "mapping/".$alias unless($alias =~ /^mapping\//);
+    $alias = $helpers->process_ref_string(
+        $alias, "mapping", $auth->username
+    );
     print "Will be saving to $alias...\n" if($opts->{verbose});
     my $alias_ref = ModelSEED::Reference->new(ref => $alias);
     my $map;
     if($opts->{location} && $opts->{location} eq 'local') {
         # Get the biochemistry object
         my $bio_ref = $opts->{biochemistry};
+        $bio_ref = $helpers->process_ref_string(
+            $bio_ref, "biochemistry", $auth->username
+        );
         if(!defined($bio_ref)) {
             $bio_ref = ModelSEED::Configuration->instance->config->{'biochemistry'};
         }
