@@ -7873,7 +7873,7 @@ int MFAProblem::FitMicroarrayAssertions(Data* InData) {
 	string Note;
 	double ObjectiveValue = 0;
 	if (OptimizeSingleObjective(InData,Parameters,GetParameter("objective"),false,false,ObjectiveValue,Note) != SUCCESS) {
-		cerr << "Could not build microarray assertion problem!" << endl;
+		cerr << "Could not run microarray assertion problem!" << endl;
 		return FAIL;
 	}
 	if (ObjectiveValue == 0) {
