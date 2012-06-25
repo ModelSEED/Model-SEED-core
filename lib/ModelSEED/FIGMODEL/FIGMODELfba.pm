@@ -2,6 +2,7 @@ use strict;
 package ModelSEED::FIGMODEL::FIGMODELfba;
 use Scalar::Util qw(weaken);
 use Carp qw(cluck);
+use Data::Dumper;
 
 =head1 FIGMODELfba object
 =head2 Introduction
@@ -223,6 +224,7 @@ sub queueFBAJob {
 		$output->{jobid} = $self->filename();
 		return $output;
 	}
+	print STDERR "Calling runfba with filename ", $self->filename(), "\n";
 	$self->figmodel()->queue()->queueJob({
 		function => "runfba",
 		arguments => {
@@ -354,6 +356,7 @@ sub printJobParametersToFile {
 		$self->figmodel()->database()->print_array_to_file($self->directory()."/".$args->{parameterFile},$parameterData);
 		$self->add_parameter_files([$self->directory()."/".$args->{parameterFile}]);
 	}
+        # shin: why do this?
 	$self->clear_parameters();
 	return {success=>1};
 }
@@ -1806,78 +1809,44 @@ sub setGeneActivityAnalysisOld {
 	return $self->queueFBAJob({queue => "fast",priority => 3});
 }
 
-=head3 setGeneActivityAnalysis
+=head3 setGeneActivityAnalysisSlave
 =item Definition:
-	Output:{} = FIGMODELfba->setGeneActivityAnalysis({
+	Output:{} = FIGMODELfba->setGeneActivityAnalysisSlave({
 		geneCalls => {string:gene ID => double:negative for off/positive for on/zero for unknown}
 	});
 =item Description:
 =cut
-sub setGeneActivityAnalysis {
+sub setGeneActivityAnalysisSlave {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,["geneCalls"],{
-		media => [],
-		labels => [],
-		descriptions => [],
+		media => undef,
+		label => undef,
+		descriptions => undef,
 	});
-	if (defined($args->{error})) {return $self->error_message({function => "setGeneActivityAnalysis",args => $args});}
+	if (defined($args->{error})) {return $self->error_message({function => "setGeneActivityAnalysisSlave",args => $args});}
 	#Setting default values for media, labels, and descriptions
 	my $filenameList;
 	my $jobs;
 	$self->parameter_files(["ProductionMFA"]);
-	for (my $i=0; $i < @{$args->{labels}}; $i++) {
-		if (!defined($args->{media}->[$i])) {
-			$args->{media}->[$i] = "Complete";
-		}
-		if (!defined($args->{labels}->[$i])) {
-			$args->{labels}->[$i] = "Experiment ".$i;
-		}
-		if (!defined($args->{descriptions}->[$i])) {
-			$args->{descriptions}->[$i] = "Experiment ".$i;
-		}
 		#Setting simulation parameters 
-		$self->media($args->{media}->[$i]);
+		$self->media($args->{media});
 		my $geneCallData = $self->model().";1";
 		foreach my $gene (keys(%{$args->{geneCalls}})) {
-			if (defined($args->{geneCalls}->{$gene}->[$i])) {
-				$geneCallData .= ";".$gene.":".$args->{geneCalls}->{$gene}->[$i];
+			if (defined($args->{geneCalls}->{$gene})) {
+				$geneCallData .= ";".$gene.":".$args->{geneCalls}->{$gene};
 			}
 		}
 		$self->set_parameters({
-			"FIGMODELfba_type"=>"slave",
-			"FIGMODELfba_label"=>$args->{labels}->[$i],
-			"FIGMODELfba_description"=>$args->{descriptions}->[$i],
+			"FIGMODELfba_label"=>$args->{label},
+			"FIGMODELfba_description"=>$args->{description},
 			"Microarray assertions" => $geneCallData
 		});
-		#Creating a job to analyze a single gene call set
-		delete $self->{_filename};
-		$self->filename($self->figmodel()->filename());
-		$self->filename();
-		my $jobData = $self->queueFBAJob({queue => "cplex",priority => 3});
-		#Saving the job ID so we can check on the status of these jobs later
-		if (defined($jobData->{jobid})) {
-			push(@{$jobs},$jobData->{jobid});
-		}
-		sleep(2);
-	}
-	#Configuring and queueing the master job
-	delete $self->{_filename};
-	$self->filename($self->figmodel()->filename());
-	$self->filename();
-	$self->media("Complete");
-	delete $self->parameters()->{"Microarray assertions"};
-	$self->set_parameters({
-		"classify model genes"=> 1,
-		"FIGMODELfba_type"=>"master",
-		"FIGMODELfba_joblist"=>join(",",@{$jobs})
-	});
-	$self->parsingFunction("parseGeneActivityAnalysis");
-	return $self->queueFBAJob({queue => "fast",priority => 3});
+	$self->parsingFunction("parseGeneActivityAnalysisSlave");
 }
 
-=head3 parseGeneActivityAnalysis
+=head3 parseGeneActivityAnalysisSlave
 =item Definition:
-	Output:{} = FIGMODELfba->parseGeneActivityAnalysis({filename => string});
+	Output:{} = FIGMODELfba->parseGeneActivityAnalysisSlave({filename => string});
     Output: {
 		status => string,(always returned string indicating status of the job as: running, crashed, finished)
 		model => string:model ID,
@@ -1891,125 +1860,127 @@ sub setGeneActivityAnalysis {
 	}     
 =item Description:
 =cut
-sub parseGeneActivityAnalysis {
+sub parseGeneActivityAnalysisSlave {
 	my ($self,$args) = @_;
 	$args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
 	if (defined($args->{error})) {return $self->error_message({function => "parseGeneActivityAnalysis",args => $args});}
 	$self->filename($args->{filename});
-	if (!defined($self->parameters()->{FIGMODELfba_type})) {
-		return $self->error_message({message=>"Cannot find FIGMODELfba_type",function => "parseGeneActivityAnalysis",args => $args});
+	if (-e $self->directory()."/MicroarrayOutput.txt") {
+	    my $result;
+	    my $report = $self->loadProblemReport();
+	    if (defined($report) && defined($report->get_row(0))) {
+		my $row = $report->get_row(0);
+		if (defined($row->{Objective}->[0])) {
+		    $result->{biomass} = $row->{Objective}->[0];
+		}
+	    }
+	    $result->{media} = $self->media();
+	    #$result->{label} = $self->parameters()->{FIGMODELfba_label}; # No parameter at this time.
+	    #$result->{description} = $self->parameters()->{FIGMODELfba_description};
+	    $result->{fluxes} = $self->loadFluxData();
+	    my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/MicroarrayOutput.txt");
+	    if (!defined($data->[1])) {
+		return {error => "parseGeneActivityAnalysis:output file did not contain necessary data"};
+	    }
+	    my @temp = split(/;/,$data->[1]);
+	    if (@temp < 8) {
+		return {error => "parseGeneActivityAnalysis:output file did not contain necessary data"};	
+	    }
+	    my $predictions = {2=>"on",3=>"off",4=>"on",5=>"off",6=>"on",7=>"off"};
+	    my $calls = {2=>"on",3=>"on",4=>"?",5=>"?",6=>"off",7=>"off"};
+	    for (my $i=2; $i < 8; $i++) {
+		if (defined($temp[$i])) {
+		    my @geneList = split(/,/,$temp[$i]);
+		    for (my $j=0; $j < @geneList; $j++) {
+			$result->{geneActivity}->{$geneList[$j]}->{prediction} = $predictions->{$i};
+			$result->{geneActivity}->{$geneList[$j]}->{call} = $calls->{$i};
+		    }
+		}	
+	    }
+	    return $result;
 	}
-	if ($self->parameters()->{FIGMODELfba_type} eq "slave") {
-		if (-e $self->directory()."/MicroarrayOutput.txt") {
-			my $result;
-			my $report = $self->loadProblemReport();
-			if (defined($report) && defined($report->get_row(0))) {
-				my $row = $report->get_row(0);
-				if (defined($row->{Objective}->[0])) {
-					$result->{biomass} = $row->{Objective}->[0];
-				}
-			}
-			$result->{media} = $self->media();
-			$result->{label} = $self->parameters()->{FIGMODELfba_label};
-			$result->{description} = $self->parameters()->{FIGMODELfba_description};
-			$result->{fluxes} = $self->loadFluxData();
-			my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/MicroarrayOutput.txt");
-			if (!defined($data->[1])) {
-				return {error => "parseGeneActivityAnalysis:output file did not contain necessary data"};
-			}
-			my @temp = split(/;/,$data->[1]);
-			if (@temp < 8) {
-				return {error => "parseGeneActivityAnalysis:output file did not contain necessary data"};	
-			}
-			my $predictions = {2=>"on",3=>"off",4=>"on",5=>"off",6=>"on",7=>"off"};
-			my $calls = {2=>"on",3=>"on",4=>"?",5=>"?",6=>"off",7=>"off"};
-			for (my $i=2; $i < 8; $i++) {
-				if (defined($temp[$i])) {
-					my @geneList = split(/,/,$temp[$i]);
-					for (my $j=0; $j < @geneList; $j++) {
-						$result->{geneActivity}->{$geneList[$j]}->{prediction} = $predictions->{$i};
-						$result->{geneActivity}->{$geneList[$j]}->{call} = $calls->{$i};
-					}
-				}	
-			}
-			return $result;
-		}
-	} elsif ($self->parameters()->{FIGMODELfba_type} eq "master") {
-		#Loading the gene classes as determined based on FVA and knockout
-		my $geneClass;
-		if (-e $self->directory()."/GeneClasses.txt") {
-			my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/GeneClasses.txt");
-			for (my $i=1; $i < @{$data}; $i++) {
-				my @temp = split(/\t/,$data->[$i]);
-				if (defined($temp[1])) {
-					$geneClass->{$temp[0]} = $temp[1];
-				}
-			}
-		}
-		#Loading the complete list of genes to identify genes not in model
-		my $mdl = $self->figmodel()->get_model($self->model());
-		my $genome;
-		if (defined($mdl)) {
-			$genome = $mdl->genome();
-			my $ftrs = $mdl->feature_table();
-			for (my $i=0; $i < $ftrs->size(); $i++) {
-				my $row = $ftrs->get_row($i);
-				if (defined($row->{ID}->[0]) && $row->{ID}->[0] =~ m/(peg\.\d+)/) {
-					my $gene = $1;
-					if (!defined($geneClass->{$gene})) {
-						$geneClass->{$gene} = "Not in model";
-					}
-				}
-			}
-		}
-		#Retrieving results from all gene call simulations
-		my $jobList = [split(/,/,$self->parameters()->{FIGMODELfba_joblist})];
-		my $labelList;
-		my $continue = 1;
-		my $jobsDone;
-		my $jobResults;
-		while ($continue) {
-			$continue = 0;
-			for (my $i=0; $i < @{$jobList}; $i++) {
-				if (!defined($jobsDone->{$jobList->[$i]})) {
-					$continue = 1;
-					my $results = $self->returnFBAJobResults({jobid=>$jobList->[$i]});
-					if (!defined($results->{status})) {
-						$jobsDone->{$jobList->[$i]} = 0;
-					}
-					if ($results->{status} eq "complete") {
-						$jobsDone->{$jobList->[$i]} = 1;
-						push(@{$labelList},$results->{results}->{label});
-						$jobResults->{$results->{results}->{label}} = $results->{results};
-					} elsif ($results->{status} eq "failed") {
-						$jobsDone->{$jobList->[$i]} = 0;
-					}
-				}
-			}
-		}
-		#Compiling results into a single output hash
-		my $results;
-		for (my $i=0; $i < @{$labelList}; $i++) {
-			if (defined($jobResults->{$labelList->[$i]})) {
-				push(@{$results->{labels}},$labelList->[$i]);
-				push(@{$results->{model}},$self->model());
-				push(@{$results->{genome}},$genome);
-				push(@{$results->{descriptions}},$jobResults->{$labelList->[$i]}->{description});
-				push(@{$results->{media}},$jobResults->{$labelList->[$i]}->{media});
-				push(@{$results->{biomass}},$jobResults->{$labelList->[$i]}->{biomass});
-				push(@{$results->{fluxes}},$jobResults->{$labelList->[$i]}->{fluxes});
-				foreach my $gene (keys(%{$jobResults->{$labelList->[$i]}->{geneActivity}})) {
-					my $prediction = $jobResults->{$labelList->[$i]}->{geneActivity}->{$gene}->{prediction};
-					if (defined($geneClass->{$gene}) && ($geneClass->{$gene} eq "Not in model" || $geneClass->{$gene} eq "Nonfunctional" || $geneClass->{$gene} eq "Essential")) {
-						$jobResults->{$labelList->[$i]}->{geneActivity}->{$gene}->{prediction} = $geneClass->{$gene};
-					}
-					push(@{$results->{geneActivity}->{$gene}},$jobResults->{$labelList->[$i]}->{geneActivity}->{$gene}->{call}."/".$jobResults->{$labelList->[$i]}->{geneActivity}->{$gene}->{prediction});
-				}
-			}
-		}
-		return $results;
+	return $self->error_message({message=>"Couldn't find MicroarrayOutput.txt in parseGeneActivityAnalysis",args => $args});
+}
+
+
+=head3 setGeneActivityAnalysisMaster
+=item Definition:
+	Output:{} = FIGMODELfba->setGeneActivityAnalysisMaster({
+		geneCalls => {string:gene ID => double:negative for off/positive for on/zero for unknown}
+	});
+=item Description:
+=cut
+sub setGeneActivityAnalysisMaster {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		media => "Complete",
+	});
+	if (defined($args->{error})) {return $self->error_message({function => "setGeneActivityAnalysisMaster",args => $args});}
+	#Setting default values for media, labels, and descriptions
+	my $filenameList;
+	my $jobs;
+	$self->parameter_files(["ProductionMFA"]);
+
+	$self->filename();
+	$self->media($args->{media});
+	$self->set_parameters({
+		"classify model genes"=> 1,
+	});
+	$self->parsingFunction("parseGeneActivityAnalysisMaster");
+}
+
+=head3 parseGeneActivityAnalysisMaster
+=item Definition:
+	Output:{} = FIGMODELfba->parseGeneActivityAnalysisMaster({filename => string});
+    Output: {
+		status => string,(always returned string indicating status of the job as: running, crashed, finished)
+		model => string:model ID,
+		genome => string:genome ID,
+		labels => [string]:input study labels,
+		descriptions => [descriptions]:input study descriptions,
+		media => [string]:media IDs,
+		biomass => [double]:biomass predicted for each study,
+		fluxes => [{string => double}],
+		geneActivity => {string:gene id=>[string]}
+	}     
+=item Description:
+=cut
+sub parseGeneActivityAnalysisMaster {
+    my ($self,$args) = @_;
+    $args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
+    if (defined($args->{error})) {return $self->error_message({function => "parseGeneActivityAnalysisMaster",args => $args});}
+    $self->filename($args->{filename});
+
+    #Loading the gene classes as determined based on FVA and knockout
+    my $geneClass;
+    if (-e $self->directory()."/GeneClasses.txt") {
+	my $data = $self->figmodel()->database()->load_single_column_file($self->directory()."/GeneClasses.txt");
+	for (my $i=1; $i < @{$data}; $i++) {
+	    my @temp = split(/\t/,$data->[$i]);
+	    if (defined($temp[1])) {
+		$geneClass->{$temp[0]} = $temp[1];
+	    }
 	}
-	return $self->error_message({message=>"Unrecognized FIGMODELfba_type:".$self->parameters()->{FIGMODELfba_type},function => "parseGeneActivityAnalysis",args => $args});
+    }
+    #Loading the complete list of genes to identify genes not in model
+    my $mdl = $self->figmodel()->get_model($self->model());
+    my $genome;
+    if (defined($mdl)) {
+	$genome = $mdl->genome();
+	my $ftrs = $mdl->feature_table();
+	for (my $i=0; $i < $ftrs->size(); $i++) {
+	    my $row = $ftrs->get_row($i);
+	    if (defined($row->{ID}->[0]) && $row->{ID}->[0] =~ m/(peg\.\d+)/) {
+		my $gene = $1;
+		if (!defined($geneClass->{$gene})) {
+		    $geneClass->{$gene} = "Not in model";
+		}
+	    }
+	}
+    }
+    my $result->{geneClass} = $geneClass;
+    $result->{media} = $self->media();
+    return $result;
 }
 
 =head3 setMultiPhenotypeStudy
