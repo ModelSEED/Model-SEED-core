@@ -7726,9 +7726,9 @@ sub fbaSubmitGeneActivityAnalysis {
 	my $fbaObj = $self->fba();
 	return $fbaObj->setGeneActivityAnalysis($args);
 }
-=head3 fbaGeneActivityAnalysis
+=head3 fbaGeneActivityAnalysisSlave
 =item Definition:
-	$results = FIGMODELmodel->fbaGeneActivityAnalysis({});
+	$results = FIGMODELmodel->fbaGeneActivityAnalysisSlave({});
 	$arguments = {media => opt string:media ID or "," delimited list of compounds,
 				  geneCalls => {string:gene ID => double:call},
 				  rxnKO => [string::reaction ids],
@@ -7736,20 +7736,20 @@ sub fbaSubmitGeneActivityAnalysis {
 	$results = {jobid => integer:job ID}
 =item Description:
 =cut
-sub fbaGeneActivityAnalysis {
+sub fbaGeneActivityAnalysisSlave {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["geneCalls","labels","descriptions","media"],{
+	$args = $self->figmodel()->process_arguments($args,["geneCalls","label","description","media"],{
 		fbaStartParameters => {},
 	});
 	my $results = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
-			function => "setGeneActivityAnalysis",
+			function => "setGeneActivityAnalysisSlave",
 			arguments => {
 				geneCalls=>$args->{geneCalls},
 				media=>$args->{media},
-				labels=>$args->{labels},
-				descriptions=>$args->{descriptions},
+				label=>$args->{label},
+				description=>$args->{description},
 			} 
 		},
 		problemDirectory => $args->{problemDirectory},
@@ -7762,6 +7762,42 @@ sub fbaGeneActivityAnalysis {
 	});
 	return $results;
 }
+
+=head3 fbaGeneActivityAnalysisMaster
+=item Definition:
+	$results = FIGMODELmodel->fbaGeneActivityAnalysisMaster({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  geneCalls => {string:gene ID => double:call},
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaGeneActivityAnalysisMaster {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+                media => undef,
+		fbaStartParameters => {},
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setGeneActivityAnalysisMaster",
+			arguments => {
+                            media=>$args->{media},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "GeneActivityAnalysis.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+
 =head3 fbaMultiplePhenotypeStudy
 Definition:
 	Output = FIGMODELmodel->fbaMultiplePhenotypeStudy({
