@@ -12,7 +12,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helper = ModelSEED::App::Helpers->new();
-    my $annotation = $helper->get_object("annotation", $args, $store);
+    my ($annotation, $annoRef) = $helper->get_object("annotation", $args, $store);
     $self->usage_error("Must specify an annotation to use") unless(defined($annotation));
     print join("\n", @{$annotation->createReadableStringArray});
 }

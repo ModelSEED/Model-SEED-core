@@ -12,7 +12,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helper = ModelSEED::App::Helpers->new();
-    my $mapping = $helper->get_object("mapping", $args, $store);
+    my ($mapping, $mapRef) = $helper->get_object("mapping", $args, $store);
     $self->usage_error("Must specify an mapping to use") unless(defined($mapping));
     print join("\n", @{$mapping->createReadableStringArray});
 }

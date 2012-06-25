@@ -131,13 +131,14 @@ sub get_base_refs {
     }
     return $refs;
 }
+
 sub get_object {
     my ($self, $type, $args, $store) = @_;
     $ref = $self->get_base_ref($type, $store->auth->username, $args);
     if(defined($ref)) {
-        return $store->get_object($ref);
+        return ($store->get_object($ref), $ref);
     } else {
-        return undef;
+        return (undef, $ref);
     }
 }
 
