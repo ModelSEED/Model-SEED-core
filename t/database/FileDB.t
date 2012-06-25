@@ -1,161 +1,229 @@
-# Unit tests for FileDB.pm 
+# Unit tests for ModelSEED::Database::MongoDBSimple
 use strict;
 use warnings;
 use Test::More;
-use File::Temp qw(tempfile tempdir);
 use ModelSEED::Database::FileDB;
+use ModelSEED::Auth::Basic;
+use ModelSEED::Auth::Public;
+use ModelSEED::Reference;
+use Data::UUID;
+use File::Temp qw(tempdir);
 
-my $TYPE_META = "__type__";
+my $test_count = 0;
 
-my $testCount = 0;
-# test initialization
-{
-    my $dir = tempdir();
-
-    my $type = 'test';
-    my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
-
-    ok defined $db, "Database successfully created";
-
-    # Test methods for non-existant object
-    my $id1 = 'obj1';
-    my $id2 = 'obj2';
-    my $o1 = { hello => 'world1', foo => 'bar1' };
-    my $o2 = { hello => 'world2', foo => 'bar2' };
-
-    ok !$db->has_object($type, $id1), "Database is empty";
-    is undef, $db->get_object($type, $id1), "Cannot get non-existant object";
-    ok !$db->delete_object($type, $id1), "Cannot delete non-existant object";
-
-    ok $db->save_object($type, $id1, $o1), "Save object returns success";
-    ok $db->has_object($type, $id1), "Has object after save";
-    is_deeply $o1, $db->get_object($type, $id1), "Get object returns same object";
-    ok !$db->save_object($type, $id1, $o1), "Cannot save object with existing id";
-    ok $db->delete_object($type, $id1), "Successfully deleted object";
-    ok !$db->has_object($type, $id1), "Object no longer found in database";
-
-    # now test multiple saves/deletes
-    my $large_id = 'obj3';
-    my $large_obj = {};
-    my $num = 100;
-    for (my $i=0; $i<$num; $i++) {
-    	my $obj = { test => "test$i" x 10 };
-	$large_obj->{"test$i"} = int(rand(100000)) x 10;
-	$db->save_object($type, "$i", $obj);
-    }
-
-    $db->save_object($type, $large_id, $large_obj);
-    is_deeply $large_obj, $db->get_object($type, $large_id), "Large object saved and read from database";
-
-    for (my $i=1; $i<$num-1; $i++) {
-    	$db->delete_object($type, $i);
-    }
-
-    is_deeply { test => "test0" x 10 }, $db->get_object($type, 0), "Object ok after add/remove";
-    my $test = "test" . ($num-1);
-    is_deeply { test => "$test" x 10 }, $db->get_object($type, $num-1), "Object ok after add/remove";
-    is undef, $db->get_object($type, 1), "Object gone after delete";
-
-    # now testing metadata
-    $db->save_object($type, $id2, $o2);
-
-    $db->set_metadata($type, $id2, '', {foo => 'bar'});
-    is_deeply $db->get_metadata($type, $id2), {foo => 'bar'}, "Simple metadata test";
-
-    $db->set_metadata($type, $id2, 'foo2', 'bar2');
-    is_deeply $db->get_metadata($type, $id2),
-      {foo => 'bar', foo2 => 'bar2'},
-      "Added to existing metadata";
-    is undef, $db->get_metadata($type, $id2, 'none'), "Non-existant metadata";
-
-    $db->set_metadata($type, $id2, 'foo', {hello => 'world!'});
-    is_deeply {hello => 'world!'}, $db->get_metadata($type, $id2, 'foo'),
-	       "Overwrite existing metadata and get with selection";
-
-    ok !$db->set_metadata($type, $id2, '', 'scalar'), "Overwrite whole metadata must provide hash";
-
-    $db->remove_metadata($type, $id2, 'foo2');
-    is undef, $db->get_metadata($type, $id2, 'foo2'), "Removed metadata successfully";
-
-    $db->remove_metadata($type, $id2);
-    is_deeply $db->get_metadata($type, $id2), {}, "Removed all metadata";
-
-    $db->set_metadata($type, $id2, 'this.is.a', 'test');
-    is_deeply {this => {is => {a => 'test'}}}, $db->get_metadata($type, $id2), "Saved nested metadata";
-    is_deeply {a => 'test'}, $db->get_metadata($type, $id2, 'this.is'), "Got nested metadata";
-
-    # test reserved type_meta
-    is $db->get_metadata($type, $id2, $TYPE_META), undef, "Can't get type metadata";
-    ok !$db->set_metadata($type, $id2, $TYPE_META, "test"), "Can't set type metadata";
-    ok !$db->remove_metadata($type, $id2, $TYPE_META), "Can't remove type metadata";
-
-    $testCount += 26;
+sub _uuid {
+    return Data::UUID->new->create_str();
 }
 
-# test find_objects
+# Basic object initialization
 {
     my $dir = tempdir();
-
     my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
-
-    my $type1 = 'foo';
-    my $type2 = 'bar';
-    my $id1 = 'obj1';
-    my $id2 = 'obj2';
-    my $id3 = 'obj3';
-    my $id4 = 'obj4';
-    my $o1 = { hello => 'world1' };
-    my $o2 = { hello => 'world2' };
-    my $o3 = { hello => 'world3' };
-    my $o4 = { hello => 'world4' };
-    my $meta1 = { string => 'yes', test => 'what' };
-    my $meta2 = { size => 100 };
-    my $meta3 = { size => 50 };
-    my $meta4 = { size => 10 };
-
-    $db->save_object($type1, $id1, $o1);
-    $db->save_object($type2, $id2, $o2);
-    $db->save_object($type1, $id3, $o4);
-    $db->save_object($type2, $id4, $o4);
-
-    $db->set_metadata($type1, $id1, '', $meta1);
-    $db->set_metadata($type2, $id2, '', $meta2);
-    $db->set_metadata($type1, $id3, '', $meta3);
-    $db->set_metadata($type2, $id4, '', $meta4);
-
-    my $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type1)};
-    is_deeply $objs, { $id1 => 1, $id3 => 1}, "Find objects works for empty query (type1)";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type2)};
-    is_deeply $objs, { $id2 => 1, $id4 => 1}, "Find objects works for empty query (type2)";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes' })};
-    is_deeply $objs, { $id1 => 1 }, "Find objects (string 'eq')";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type1, { size => 50 })};
-    is_deeply $objs, { $id3 => 1 }, "Find objects (numeric '==')";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0} })};
-    is_deeply $objs, { $id2 => 1, $id4 => 1 }, "Find objects (numeric '>')";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type2, { size => {'$gt' => 0, '$lte' => 10} })};
-    is_deeply $objs, { $id4 => 1 }, "Find objects (numeric '> and <=')";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'no' })};
-    is_deeply $objs, {}, "Find objects (string multiple 'eq')";
-
-    $objs = {};
-    map {$objs->{$_} = 1} @{$db->find_objects($type1, { string => 'yes', test => 'what' })};
-    is_deeply $objs, { $id1 => 1 }, "Find objects (string multiple 'eq')";
-
-    $testCount += 8;
+    ok defined($db), "Should create a class instance";
+    $test_count += 1;
 }
 
-done_testing($testCount);
+{
+    my $dir = tempdir();
+    my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
+    $db->kvstore->save_object('aliases', {});
+
+    my $ref1 = ModelSEED::Reference->new({
+        ref => "biochemistry/alice/one"
+    });
+    my $ref2 = ModelSEED::Reference->new({
+        ref => "biochemistry/alice/two"
+    });
+    my $auth = ModelSEED::Auth::Basic->new({
+            username => "alice",
+            password => "password",
+    });
+    my $pub = ModelSEED::Auth::Public->new();
+    my $obj1 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj2 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    # Tests on non-existant objects
+    ok !$db->has_data($ref1), "Database is empty";
+    is undef, $db->get_data($ref1, $auth), "Cannot get non-existant object";
+    ok !$db->delete_data($ref1, $auth), "Cannot delete non-existant object";
+    $test_count += 3;
+
+    # Tests on existing objects
+    ok $db->save_data($ref1, $obj1, $auth), "Save object returns success";
+    ok $db->has_data($ref1, $auth), "Has object after save";
+    is_deeply $db->get_data($ref1, $auth), $obj1, "Get object returns same object";
+    $test_count += 3;
+
+    # Test permissions, not authorized
+    ok !$db->has_data($ref1, $pub), "Test has_data, unauthorized";
+    is undef, $db->get_data($ref1, $pub), "Test get_data, unauthorized";
+    ok !$db->save_data($ref1, $obj2, $pub), "Shouldn't be able to save with another person's alias";
+    is_deeply $db->get_data($ref1, $auth), $obj1, "Unauthorized save did not go through";
+    $test_count += 4;
+
+    # Test permissons, set to public (unauthorized)
+    ok !$db->set_public($ref1, 1, $pub), "set_public unauthorized should fail";
+    ok !$db->add_viewer($ref1, 'bob', $pub), "remove_viewer unauthorized should fail";
+    ok !$db->remove_viewer($ref1, 'bob', $pub), "add_viewer unauthorized should fail";
+    ok !$db->alias_owner($ref1, $pub), "getting alias owner, unauthorized should fail";
+    ok !$db->alias_viewers($ref1, $pub), "getting alias viewers, unauthorized should fail";
+    ok !$db->alias_public($ref1, $pub), "getting alias public, unauthorized should fail";
+    ok !$db->alias_uuid($ref1, $pub), "getting alias uuid, unauthorized should fail";
+    $test_count += 7;
+
+    # Set permissions to public, authorized
+    ok $db->set_public($ref1, 1, $auth), "set_public sould return success, auth";
+    ok $db->alias_public($ref1, $auth), "alias_public sould return success, auth";
+    is_deeply $db->alias_viewers($ref1, $auth), [], "no viewers on new alias";
+    ok $db->add_viewer($ref1, "bob", $auth), "add_vewier should return success, auth"; 
+    is_deeply $db->alias_viewers($ref1, $auth), ["bob"], "no viewers on new alias";
+    is $db->alias_owner($ref1, $auth), "alice", "owner should be right on alias";
+    $test_count += 6;
+
+    # Test getting, for perm: public
+    ok $db->has_data($ref1, $pub), "Test has_data, unauthorized, now public";
+    is_deeply $db->get_data($ref1, $pub), $obj1, "Test get_data, unauthorized, now public";
+    ok !$db->save_data($ref1, $obj2, $pub), "Shouldn't be able to save with another person's alias";
+    is_deeply $db->get_data($ref1, $pub), $obj1, "Unauthorized save did not go through";
+    $test_count += 4;
+
+    # Test alter permissiosn, public, unauthorized
+    ok !$db->set_public($ref1, 1, $pub), "set_public public, unauthorized should fail";
+    ok !$db->add_viewer($ref1, 'bob', $pub), "remove_viewer public, unauthorized should fail";
+    ok !$db->remove_viewer($ref1, 'bob', $pub), "add_viewer public, unauthorized should fail";
+    is $db->alias_owner($ref1, $pub), "alice", "getting alias owner, public, unauthorized should work";
+    is_deeply $db->alias_viewers($ref1, $pub), ["bob"], "getting alias viewers, public, unauthorized should work";
+    is $db->alias_public($ref1, $pub), 1, "getting alias public, public, unauthorized should work";
+    ok $db->alias_uuid($ref1, $pub), "getting alias uuid, public, unauthorized should work";
+    $test_count += 7;
+
+    # Test permissions for bob
+    my $bob = ModelSEED::Auth::Basic->new({ username => "bob", password => "password" });
+    $db->set_public($ref1, 0, $auth);
+    is $db->alias_public($ref1, $auth), 0, "Should set correctly";
+    ok $db->has_data($ref1, $bob), "Test has_data, bob";
+    is_deeply $db->get_data($ref1, $bob), $obj1, "Test get_data, bob";
+    ok !$db->save_data($ref1, $obj2, $bob), "Shouldn't be able to save with another person's alias";
+    is_deeply $db->get_data($ref1, $bob), $obj1, "Unauthorized save did not go through";
+
+    $test_count += 5;
+}
+
+## Testing alias listing
+{
+    my $dir = tempdir();
+    my $db = ModelSEED::Database::FileDB->new({ directory => $dir });
+    $db->kvstore->save_object('aliases', {});
+
+    my $alice = ModelSEED::Auth::Basic->new(
+        username => "alice",
+        password => "password",
+    );
+    my $pub = ModelSEED::Auth::Public->new();
+    my $bob = ModelSEED::Auth::Basic->new(
+        username => "bob",
+        password => "password"
+    );
+    my $charlie = ModelSEED::Auth::Basic->new(
+        username => "charlie",
+        password => "password"
+    );
+    # Set up permissions:
+    # alias  type          owner  viewers  public
+    # one    biochemistry  alice           1
+    # two    biochemistry  alice  bob      1
+    # three  biochemistry  alice
+    # four   model         bob    alice    
+    # five   model         alice  bob      1
+    # six    biochemistry  bob    alice     
+    # c      model         charlie
+    # c      biochemistry  charlie
+    my $ref1 = ModelSEED::Reference->new(ref => "biochemistry/alice/one");
+    my $ref2 = ModelSEED::Reference->new(ref => "biochemistry/alice/two");
+    my $ref3 = ModelSEED::Reference->new(ref => "biochemistry/alice/three");
+    my $ref4 = ModelSEED::Reference->new(ref => "model/bob/four");
+    my $ref5 = ModelSEED::Reference->new(ref => "model/alice/five");
+    my $ref6 = ModelSEED::Reference->new(ref => "biochemistry/bob/six");
+    my $ref7 = ModelSEED::Reference->new(ref => "biochemistry/charlie/c");
+    my $ref8 = ModelSEED::Reference->new(ref => "model/charlie/c");
+    my $obj1 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj2 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj3 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj4 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj5 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj6 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj7 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+    my $obj8 = { uuid => _uuid(), compounds => [{ uuid => _uuid() }] };
+
+    $db->save_data($ref1, $obj1, $alice);
+    $db->save_data($ref2, $obj2, $alice);
+    $db->save_data($ref3, $obj3, $alice);
+    {
+        $db->add_viewer($ref2, "bob", $alice);
+        $db->set_public($ref1, 1, $alice);
+        $db->set_public($ref2, 1, $alice);
+    }
+    $db->save_data($ref4, $obj4, $bob);
+    $db->save_data($ref5, $obj5, $alice);
+    $db->save_data($ref6, $obj6, $bob);
+    {
+        $db->add_viewer($ref4, "alice", $bob);
+        $db->add_viewer($ref5, "bob", $alice);
+        $db->set_public($ref5, 1, $alice);
+        $db->add_viewer($ref6, "alice", $bob);
+    }
+    $db->save_data($ref7, $obj7, $charlie);
+    $db->save_data($ref8, $obj8, $charlie);
+
+    # Now test get_aliases for alice
+    {
+        my $all = $db->get_aliases(undef, $alice);
+        my $bio = $db->get_aliases("biochemistry", $alice);
+        my $hers = $db->get_aliases("biochemistry/alice", $alice);
+        is scalar(@$all), 6, "Should get 6 aliases for alice, undef";
+        is scalar(@$bio), 4, "Should get 4 aliases for alice, 'biochemistry'";
+        is scalar(@$hers), 3, "Should get 3 aliases for alice, 'biochemistry/alice'";
+    }
+    # And for bob
+    {
+        my $all  = $db->get_aliases(undef, $bob);
+        my $bio  = $db->get_aliases("biochemistry", $bob);
+        my $hers = $db->get_aliases("biochemistry/alice", $bob);
+        my $his  = $db->get_aliases("model/bob", $bob);
+        is scalar(@$all), 5, "Should get 5 aliases for bob, undef";
+        is scalar(@$bio), 3, "Should get 3 aliases for bob, 'biochemistry'";
+        is scalar(@$hers), 2, "Should get 2 aliases for bob, 'biochemistry/alice'";
+        is scalar(@$his), 1, "Should get 1 aliases for bob, 'model/bob'";
+    }
+    # And for public
+    {
+        my $all  = $db->get_aliases(undef, $pub);
+        my $bio  = $db->get_aliases("biochemistry", $pub);
+        my $model  = $db->get_aliases("model", $pub);
+        my $b_hers = $db->get_aliases("biochemistry/alice", $pub);
+        my $b_his = $db->get_aliases("biochemistry/bob", $pub);
+        my $m_hers = $db->get_aliases("model/alice", $pub);
+        my $m_his = $db->get_aliases("model/bob", $pub);
+
+        is scalar(@$all), 3, "Should get 3 aliases for pub, undef";
+        is scalar(@$bio), 2, "Should get 2 aliases for pub, 'biochemistry'";
+        is scalar(@$model), 1, "Should get 1 aliases for pub, 'model'";
+        is scalar(@$b_hers), 2, "Should get 2 aliases for pub, 'biochemistry/alice'";
+        is scalar(@$b_his), 0, "Should get 0 aliases for pub, 'biochemistry/bob'";
+        is scalar(@$m_hers), 1, "Should get 1 aliases for pub, 'model/alice'";
+        is scalar(@$m_his), 0, "Should get 0 aliases for pub, 'model/bob'";
+    }
+    $test_count += 14;
+
+    # Now test that get_aliases for charlie returns correct ammount for different refs
+    {
+        my $bio    = $db->get_aliases("biochemistry", $charlie);
+        my $model  = $db->get_aliases("model", $charlie);
+        my $all    = $db->get_aliases(undef, $charlie);
+        is scalar(@$bio), 3, "Should get 3 for charlie 2 public + 1 private";
+        is scalar(@$model), 2, "Should get 2 for charlie 1 public + 1 private";
+        is scalar(@$all), 5, "Should get 5 for charlie, the total of last two tests";
+
+        $test_count += 3;
+    }
+}
+done_testing($test_count);
