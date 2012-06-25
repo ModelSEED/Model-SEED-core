@@ -845,7 +845,9 @@ sub sqblastgenomes {
     ];
     my $output = [join("\t",@{$headings})];
     foreach my $sequence (keys(%{$results})) {
+    	print "Sequence:".$sequence."\n";
     	foreach my $genome (keys(%{$results->{$sequence}})) {
+    		print "Hit:".$genome."\n";
     		my $line = $sequence."\t".$genome;
     		for (my $i=0; $i < @{$headings}; $i++) {
     			$line .= "\t".$results->{$sequence}->{$genome}->{$headings->[$i]};

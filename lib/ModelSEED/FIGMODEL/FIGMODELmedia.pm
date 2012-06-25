@@ -570,10 +570,13 @@ sub printDatabaseTable {
 					$line .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->entity();
 					if ($mediacpds->{$args->{printList}->[$i]->id()}->[$j]->type() eq "COMPOUND") {
 						$types .= "DRAIN_FLUX";
+						$comps .= "e";
+					} elsif ($mediacpds->{$args->{printList}->[$i]->id()}->[$j]->type() eq "REACTION") {
+						$types .= "FLUX";
+						$comps .= "c";
 					}
 					$maxes .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->maxFlux();
 					$mins .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->minFlux();
-					$comps .= "e";
 				}
 			}
 			push(@{$output},$line."\t".$types."\t".$maxes."\t".$mins."\t".$comps);
