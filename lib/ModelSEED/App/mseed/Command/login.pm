@@ -28,7 +28,9 @@ sub execute {
         IO::Prompt::prompt("Password: ", -e => "*");
         $password = $_;
     } else {
-        $password = IO::Prompt::Tiny::prompt("Password: ");
+        #$password = IO::Prompt::Tiny::prompt("Password: ");
+        print "Enter password:";
+        $password = <STDIN>;
     }
     my $fm = ModelSEED::FIGMODEL->new();
     my $usrObj = $fm->database->get_object("user", {login => $username});

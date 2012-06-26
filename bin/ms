@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use ModelSEEDbootstrap;
 use ModelSEED::App::mseed;
+$|=1;
 ModelSEED::App::mseed->run;
 =pod
 
