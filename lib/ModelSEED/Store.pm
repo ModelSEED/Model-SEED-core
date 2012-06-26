@@ -173,27 +173,32 @@ sub _build_database {
     return ModelSEED::Database::Composite->new({use_config => 1});
 };
 
-sub _addAuthToArgs { push(@_, $_[0]->auth); return @_ }
+sub _addAuthToArgs {
+    my $self = shift;
+    my @args = @_;
+    push(@args, $self->auth);
+    return @args;
+}
 
 # Data Functions
-sub has_data { return $_[0]->database->has_data($_[0]->_addAuthToArgs(@_)); }
-sub get_data { return $_[0]->database->get_data($_[0]->_addAuthToArgs(@_)); }
+sub has_data { return $_[0]->database->has_data(_addAuthToArgs(@_)); }
+sub get_data { return $_[0]->database->get_data(_addAuthToArgs(@_)); }
 sub save_data {
     my ($self, $ref, $data, $config) = @_;
     $config = {} unless(defined($config));
     return $self->database->save_data($ref, $data, $config, $self->auth);
 }
-sub delete_data { return $_[0]->database->delete_data($_[0]->_addAuthToArgs(@_)); }
+sub delete_data { return $_[0]->database->delete_data(_addAuthToArgs(@_)); }
 
 # Alias Functions
-sub get_aliases { return $_[0]->database->get_aliases($_[0]->_addAuthToArgs(@_)); }
-sub update_alias { return $_[0]->database->update_alias($_[0]->_addAuthToArgs(@_)); }
-sub alias_viewers { return $_[0]->database->alias_viewers($_[0]->_addAuthToArgs(@_)); }
-sub alias_owner { return $_[0]->database->alias_owner($_[0]->_addAuthToArgs(@_)); }
-sub alias_public { return $_[0]->database->alias_public($_[0]->_addAuthToArgs(@_)); }
-sub add_viewer { return $_[0]->database->add_viewer($_[0]->_addAuthToArgs(@_)); }
-sub remove_viewer { return $_[0]->database->remove_viewer($_[0]->_addAuthToArgs(@_)); }
-sub set_public { return $_[0]->database->set_public($_[0]->_addAuthToArgs(@_)); }
+sub get_aliases { return $_[0]->database->get_aliases(_addAuthToArgs(@_)); }
+sub update_alias { return $_[0]->database->update_alias(_addAuthToArgs(@_)); }
+sub alias_viewers { return $_[0]->database->alias_viewers(_addAuthToArgs(@_)); }
+sub alias_owner { return $_[0]->database->alias_owner(_addAuthToArgs(@_)); }
+sub alias_public { return $_[0]->database->alias_public(_addAuthToArgs(@_)); }
+sub add_viewer { return $_[0]->database->add_viewer(_addAuthToArgs(@_)); }
+sub remove_viewer { return $_[0]->database->remove_viewer(_addAuthToArgs(@_)); }
+sub set_public { return $_[0]->database->set_public(_addAuthToArgs(@_)); }
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

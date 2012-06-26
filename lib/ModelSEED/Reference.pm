@@ -8,8 +8,6 @@
 #
 # Date of module creation: 2012-05-16
 ########################################################################
-package ModelSEED::Reference;
-use Data::Dumper;
 =pod
 
 =head1 ModelSEED::Reference
@@ -71,10 +69,10 @@ that will return the parent object or collection, id is the identifier
 for the object, class is the class pointed to by the reference and
 id_validator is a subroutine that will validate the id.
 =cut
+package ModelSEED::Reference;
 use Moose;
 use URI::Split qw(uri_split uri_join);
 use ModelSEED::MS::Metadata::Definitions;
-use Data::Dumper;
 use common::sense;
 
 
@@ -216,6 +214,7 @@ sub parse {
     $id = [ grep { defined($_) && $_ ne '' } @$id ];
     return undef unless(defined $schema->{type});
     $rtv = {
+        ref => $ref,
         delimiter => $delimiter,
         type => $type,
         class => $schema->{class},

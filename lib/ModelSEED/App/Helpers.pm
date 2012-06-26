@@ -1,4 +1,5 @@
 package ModelSEED::App::Helpers;
+use Try::Tiny;
 use Class::Autouse qw(
     ModelSEED::Reference
     ModelSEED::Configuration
@@ -65,24 +66,38 @@ sub get_base_ref {
     my $from_stdin  = $options->{stdin} // 1;
     my $from_config = $options->{config} // 1;
     my $from_argv   = $options->{argv} // 1;
-    my $arg = $args->[0];
-    if($from_argv && $arg =~ /^$type\//) {
-        $ref = ModelSEED::Reference->new(ref => $arg);
-    } elsif($from_argv && $arg && $arg ne '-') {
-        $ref = $self->process_ref_string($arg, $type, $username);
-        $ref = ModelSEED::Reference->new(ref => $ref);
-    } elsif($from_argv && $from_stdin && $arg && $arg eq '-' && ! -t STDIN) {
-        my $str = <STDIN>;
-        chomp $str;
-        if($str =~ /^$type\//) {
-            $ref = ModelSEED::Reference->new(ref => $str);
-        } else {
-            $ref = ModelSEED::Reference->new(ref => "$type/$str");
+    if($type ne "*") {
+        my $arg = $args->[0];
+        if($from_argv && $arg =~ /^$type\//) {
+            $ref = ModelSEED::Reference->new(ref => $arg);
+        } elsif($from_argv && $arg && $arg ne '-') {
+            $ref = $self->process_ref_string($arg, $type, $username);
+            $ref = ModelSEED::Reference->new(ref => $ref);
+        } elsif($from_argv && $from_stdin && $arg && $arg eq '-' && ! -t STDIN) {
+            my $str = <STDIN>;
+            chomp $str;
+            if($str =~ /^$type\//) {
+                $ref = ModelSEED::Reference->new(ref => $str);
+            } else {
+                $ref = ModelSEED::Reference->new(ref => "$type/$str");
+            }
         }
     } else {
-        unshift @$args, $arg;
+        my $arg = $args->[0];
+        if($from_argv && $arg && $arg ne '-') {
+            try {
+                $ref = ModelSEED::Reference->new(ref => $arg);
+            };
+        }
+        if(!defined($ref) && $from_stdin && $arg eq '-' && ! -t STDIN) {
+            my $str = <STDIN>;
+            chomp $str;
+            try {
+                $ref = ModelSEED::Reference->new(ref => $str);
+            };
+        }
     }
-    if(!defined($ref) && $from_config) {
+    if(!defined($ref) && $from_config && $type ne "*") {
         my $config = ModelSEED::Configuration->instance;
         $ref = $config->config->{$type};
         return undef unless(defined($ref));
@@ -132,6 +147,7 @@ sub get_base_refs {
     return $refs;
 }
 
+
 sub get_object {
     my ($self, $type, $args, $store) = @_;
     $ref = $self->get_base_ref($type, $store->auth->username, $args);
@@ -146,9 +162,9 @@ sub get_data {
     my ($self, $type, $args, $store) = @_;
     $ref = $self->get_base_ref($type, $store->auth->username, $args);
     if(defined($ref)) {
-        return $store->get_data($ref);
+        return ($store->get_data($ref), $ref);
     } else {
-        return undef;
+        return (undef, $ref);
     }
 }
 
