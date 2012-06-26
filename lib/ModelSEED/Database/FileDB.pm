@@ -39,7 +39,7 @@ sub get_data {
 }
 
 sub save_data {
-    my ($self, $ref, $object, $auth) = @_;
+    my ($self, $ref, $object, $config, $auth) = @_;
     $ref = $self->_cast_ref($ref);
     my ($oldUUID, $update_alias);
     if ($ref->id_type eq 'alias') {
@@ -54,19 +54,12 @@ sub save_data {
     }
     if(defined($oldUUID)) {
         # We have an existing alias, so must:
-        # - insert uuid in ancestors
+        # - insert uuid in ancestors if we're not merging
         if(!defined($object->{ancestor_uuids})) {
             $object->{ancestor_uuids} = [];
         }
-        my $found = 0;
-        foreach my $uuid (@{$object->{ancestor_uuids}}) {
-            if($uuid eq $oldUUID) {
-                $found = 1;
-                last;
-            }
-        }
-        if(!$found) {
-            push(@{$object->{ancestor_uuids}}, $oldUUID);
+        unless($config->{is_merge}) {
+            $object->{ancestor_uuids} = [ $oldUUID ];
         }
         # - set to new UUID if that hasn't been done
         if($object->{uuid} eq $oldUUID) {
