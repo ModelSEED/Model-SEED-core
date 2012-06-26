@@ -4367,6 +4367,7 @@ int MFAProblem::OptimizeSingleObjective(Data* InData, OptimizationParameter* InP
 
 			//Running the solver to obtain a solution with minimal fluxes
 			NewSolution = RunSolver(true,true,true);
+			NewSolution->Objective = ObjectiveValue;
 			ObjFunct = CurrentObjective;
 		}
 		if (OptimizeMedia) {

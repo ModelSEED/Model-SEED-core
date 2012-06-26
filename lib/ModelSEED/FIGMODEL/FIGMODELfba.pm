@@ -1334,7 +1334,10 @@ sub setSingleGrowthStudy {
 	$args = $self->figmodel()->process_arguments($args,[],{});
 	if (defined($args->{error})) {return $self->error_message({function => "setSingleGrowthStudy",args => $args});}
 	$self->parameter_files(["ProductionMFA"]);
-	$self->set_parameters({"flux minimization"=>1});
+	$self->set_parameters({
+		"flux minimization"=>1,
+		"Constrain objective to this fraction of the optimal value"=>1,
+	});
 	$self->parsingFunction("parseSingleGrowthStudy");
 	return {};
 }
