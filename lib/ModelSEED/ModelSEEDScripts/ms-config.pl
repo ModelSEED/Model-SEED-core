@@ -306,6 +306,7 @@ SCRIPT
 		"fba-fva",
 		"fba-minimalmedia",
 		"fba-simphenotypes",
+	        "fba-geneactivityanalysis",
 		"bc-addbiochemistry",
 		"bc-printmedia",
 		"bc-loadmedia",

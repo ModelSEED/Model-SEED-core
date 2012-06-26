@@ -34,7 +34,21 @@ An abstract role / interface for database drivers.
 
 =head3 save_data
 
-    $ref = $db->save_data(ref, data, auth);
+    $ref = $db->save_data(ref, data, config, auth);
+
+Where config is a hash that currently accepts one parameter:
+
+=over 4
+
+=item is_merge
+
+This is a boolean value that, if true, results in the save operation
+not overwriting the ancestor_uuids field in the object. If it is
+false or not present, the ancestor_uuids field will be overwritten
+with the current object's uuid if that object already exists in the
+data store.
+
+=back
 
 =head3 save_data_collection
 

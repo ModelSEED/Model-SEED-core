@@ -135,9 +135,9 @@ sub get_object {
 }
 
 sub save_object {
-    my ($self, $ref, $object) = @_;
+    my ($self, $ref, $object, $config) = @_;
     my $data = $object->serializeToDB(); 
-    return $self->save_data($ref, $data);
+    return $self->save_data($ref, $data, $config);
 }
 
 sub find_objects {
@@ -173,21 +173,32 @@ sub _build_database {
     return ModelSEED::Database::Composite->new({use_config => 1});
 };
 
-sub AUTOLOAD {
-    my $self = shift @_;
-    my $call = our $AUTOLOAD;
-    return if $AUTOLOAD =~ /::DESTROY$/;
-    $call =~ s/.*://;
-    my $rtv;
-    push(@_, $self->auth);
+sub _addAuthToArgs {
+    my $self = shift;
     my @args = @_;
-    try {
-        $rtv = $self->database->$call(@args);
-    } catch {
-        confess $_;
-    };
-    return $rtv;
+    push(@args, $self->auth);
+    return @args;
 }
+
+# Data Functions
+sub has_data { return $_[0]->database->has_data(_addAuthToArgs(@_)); }
+sub get_data { return $_[0]->database->get_data(_addAuthToArgs(@_)); }
+sub save_data {
+    my ($self, $ref, $data, $config) = @_;
+    $config = {} unless(defined($config));
+    return $self->database->save_data($ref, $data, $config, $self->auth);
+}
+sub delete_data { return $_[0]->database->delete_data(_addAuthToArgs(@_)); }
+
+# Alias Functions
+sub get_aliases { return $_[0]->database->get_aliases(_addAuthToArgs(@_)); }
+sub update_alias { return $_[0]->database->update_alias(_addAuthToArgs(@_)); }
+sub alias_viewers { return $_[0]->database->alias_viewers(_addAuthToArgs(@_)); }
+sub alias_owner { return $_[0]->database->alias_owner(_addAuthToArgs(@_)); }
+sub alias_public { return $_[0]->database->alias_public(_addAuthToArgs(@_)); }
+sub add_viewer { return $_[0]->database->add_viewer(_addAuthToArgs(@_)); }
+sub remove_viewer { return $_[0]->database->remove_viewer(_addAuthToArgs(@_)); }
+sub set_public { return $_[0]->database->set_public(_addAuthToArgs(@_)); }
 
 no Moose;
 __PACKAGE__->meta->make_immutable;

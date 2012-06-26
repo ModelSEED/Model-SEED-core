@@ -1221,40 +1221,178 @@ Flux Balance Analysis Operations
 
 =cut
 sub fbageneactivityanalysis {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"Full ID of the model to be analyzed"],
-		["geneCalls",1,undef,"File with gene calls"],
-		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
-		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
-		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
-	],[@Data],"");
-	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["geneCalls",1,undef,"File with gene calls"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."]
+			    ],[@Data],"");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
-		ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
     }
     if (!-e $self->ws()->directory().$args->{geneCalls}) {
     	ModelSEED::utilities::ERROR("Could not find gene call file ".$self->ws()->directory().$args->{geneCalls});
     }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
     my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{geneCalls});
-    my $calls;
+    my $input = {};
     for (my $i=0; $i < @{$data}; $i++) {
-    	my $array = [split(/\t/,$data->[$i])];
-    	for (my $j=1; $j < @{$array}; $j++) {
-    		push(@{$calls->{$array->[0]}},$array->[$j]);
-    	}
+	my @tempArray = split(/\t/,$data->[$i]);
+	if (@tempArray >= 2) {
+	    for (my $i=1; $i < @tempArray; $i++) {
+		if ($tempArray[0] eq "Labels") {
+		    my $inner_input = {
+			fbaStartParameters => {},
+			findTightBounds => 0,
+			deleteNoncontributingRxn => 0,
+			identifyCriticalBiomassCpd => 0,
+			label => $tempArray[$i]
+		    };
+		    $input->{$i} = $inner_input;
+		} elsif ($tempArray[0] eq "Descriptions") {
+		    $input->{$i}->{description} = $tempArray[$i];
+		} elsif ($tempArray[0] eq "Media") {
+		    if (length($tempArray[$i]) == 0) {
+			$tempArray[$i] = "Complete";
+		    }
+		    $input->{$i}->{media} = $tempArray[$i];
+		} else {
+		    if (!defined($input->{$i}->{media})) {
+			$input->{$i}->{media} = "Complete";
+		    }
+		    if (!defined($input->{$i}->{description})) {
+			$input->{$i}->{description} = "NONE";
+		    }
+		    if (!defined($input->{$i}->{label})) {
+			$input->{$i}->{label} = "Experiment ".$i;
+		    }
+		    $input->{$i}->{geneCalls}->{$tempArray[0]} = $tempArray[$i];
+		}
+	    }
+	}
     }
-    my $result = $mdl->fbaGeneActivityAnalysis({
-    	fbaStartParameters => $fbaStartParameters,
-    	geneCalls => $calls
-    });
-	#if (defined($result->{})) {
-		my $output;
-		ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{model}."-GeneActivityAnalysis.txt",$output);
-	#}
+
+    # need to run an fbaGeneActivityAnalysis for each experiment
+    my $jobList;
+    foreach my $column_num (sort { $a <=> $b } keys %{$input}) {
+	# Put results in this way for backwards compatibility purpose. 
+	my $inner_results = $mdl->fbaGeneActivityAnalysisSlave($input->{$column_num});
+        my $success;
+        if (defined $inner_results->{success} && $inner_results->{success} == 0) {
+            $success = "failed";
+            $inner_results->{media} = $input->{$column_num}->{media};
+            $inner_results->{biomass} = "No growth";
+        }
+	push @$jobList, {results => $inner_results,
+			status=>$success};
+    }
+
+    # then run the "master" analysis, which is a gene classification on Complete media
+    my $master_results = $mdl->fbaGeneActivityAnalysisMaster();
+
+    # Conduct master analysis for every experimental media.
+    for (@$jobList) {
+	if ($_->{results}->{media} eq "Complete") {
+	    $_->{results}->{master} = $master_results;
+	    next;
+	}
+	$_->{results}->{master} = $mdl->fbaGeneActivityAnalysisMaster($_->{results}) unless ($_->{status} eq "failed");
+    }
+
+    # then collate the results
+    # Retrieve label and description of results from inputs.
+    for (my $i=0; $i < @$jobList; $i++) {
+	my $result = $jobList->[$i]->{results};
+	$result->{label} = $input->{$i + 1}->{label};
+	$result->{description} = $input->{$i + 1}->{description};                
+    }
+
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my ($genome, $geneClass) = ($obj->genome(), $master_results->{geneClass});
+
+    #Compiling results into a single output hash
+    my $results;
+    for (my $i=0; $i < @{$jobList}; $i++) {
+	$results->{labels}->[$i] = $jobList->[$i]->{results}->{label};
+	$results->{model}->[$i] = $args->{model};
+	$results->{genome}->[$i] = $genome;
+	$results->{descriptions}->[$i] = $jobList->[$i]->{results}->{description};
+	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
+	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
+	$results->{fluxes}->[$i] = $jobList->[$i]->{results}->{fluxes};
+	foreach my $gene (keys(%{$jobList->[$i]->{results}->{geneActivity}})) {
+	    my $prediction_ref = \$jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction};
+	    if (defined($geneClass->{$gene}) && ($geneClass->{$gene} eq "Not in model" || $geneClass->{$gene} eq "Nonfunctional" || $geneClass->{$gene} eq "Essential")) {
+		${$prediction_ref} = $geneClass->{$gene}; 
+	    }
+	    # Differentiate using master data in each media.
+	    if (my $thisGeneClass = $jobList->[$i]->{results}->{master}->{geneClass}->{$gene}) {
+		if ((${$prediction_ref} eq "Essential") && ($thisGeneClass eq "Essential")) {
+		    ${$prediction_ref} = "Essential:Complete";
+		}
+		# Only essential in that media.
+		if ((${$prediction_ref} eq "on") && ($thisGeneClass eq "Essential")) {
+		    ${$prediction_ref} = "Essential:".$jobList->[$i]->{results}->{media};
+		}
+		# Only nonfunctional in that media.
+		elsif ((${$prediction_ref} eq "off") && ($thisGeneClass eq "Nonfunctional")) {
+		    ${$prediction_ref} = "Inactive";
+		}
+	    }
+	    # These may not happen. But if happens, they would mess up the result.
+	    warn "No gene classification for gene $gene in Complete Media.\n" if !defined($geneClass->{$gene});
+	    warn "No gene classification for gene $gene in ". $jobList->[$i]->{results}->{media}." Media.\n" if (!defined($jobList->[$i]->{results}->{master}->{geneClass}->{$gene}));
+	    
+	    $results->{geneActivity}->{$gene}->[$i] = $jobList->[$i]->{results}->{geneActivity}->{$gene}->{call}."/".$jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction};
+	}
+    }
+
+#Printing results
+    my $headings = ["Labels","Descriptions","Media","Model","Genome","Fluxes","Biomass"];
+    my $translation = {Labels => "labels",Descriptions => "descriptions",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass"};
+    my $filename = "GeneActivityResults-".$args->{model}.".txt";
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+    my $count = 1;
+
+    # what is this supposed to do?
+    for (my $i=0; $i < @{$headings}; $i++) {
+	if (defined($results->{$translation->{$headings->[$i]}})) {
+	    print OUTPUT $headings->[$i];
+	    if ($headings->[$i] eq "Fluxes") {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t";
+		    foreach my $entity (keys(%{$results->{fluxes}->[$j]})) { # was Fluxes
+			print OUTPUT $entity.":".$results->{fluxes}->[$j]->{$entity}.";";
+		    }
+		}
+	    } else {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+		}
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+
+
+    if (defined($results->{geneActivity})) {
+	foreach my $gene (keys(%{$results->{geneActivity}})) {
+	    # here we need to print the results for each experiment	    next;
+	    print OUTPUT $gene;
+	    for (my $j=0; $j < @{$results->{geneActivity}->{$gene}}; $j++) {
+		print OUTPUT "\t".$results->{geneActivity}->{$gene}->[$j];
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
 }
 =head
 =CATEGORY

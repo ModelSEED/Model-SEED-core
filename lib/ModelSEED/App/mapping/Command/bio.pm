@@ -19,7 +19,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helpers = ModelSEED::App::Helpers->new();
-    my $map = $helpers->get_object($args, "mapping", $store);
+    my ($map, $mapRef) = $helpers->get_object($args, "mapping", $store);
     $self->usage_error("Must specify a mapping to use") unless(defined($map));
     print $helpers->handle_ref_lookup(
         $store, $map, "biochemistry_uuid", "biochemistry", $opts
