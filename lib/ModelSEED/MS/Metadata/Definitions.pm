@@ -9,18 +9,18 @@ $objectDefinitions->{FBAFormulation} = {
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'name',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
 		{name => 'regulatorymodel_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'type',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
-		{name => 'description',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'fva',printOrder => 0,perm => 'rw',type => 'Bool',default => 0},
+		{name => 'comboDeletions',printOrder => 0,perm => 'rw',type => 'Int',default => 0},
+		{name => 'fluxMinimization',printOrder => 0,perm => 'rw',type => 'Bool',default => 0},
+		{name => 'findMinimalMedia',printOrder => 0,perm => 'rw',type => 'Bool',default => 0},
+		{name => 'notes',printOrder => 0,perm => 'rw',type => 'Str',req => 0,default => ""},
 		{name => 'expressionData_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'growthConstraint',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
+		{name => 'objectiveConstraintFraction',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
 		{name => 'thermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'ModelSEED::varchar',req => 0,default => "none"},
 		{name => 'allReversible',printOrder => 0,perm => 'rw',type => 'Int',len => 255,req => 0,default => "0"},
 		{name => 'dilutionConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "0"},
-		{name => 'uptakeLimits',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
-		{name => 'geneKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
 		{name => 'defaultMaxFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
 		{name => 'defaultMaxDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => 1000},
 		{name => 'defaultMinDrainFlux',printOrder => 0,perm => 'rw',type => 'Int',req => 1,default => -1000},
@@ -29,15 +29,29 @@ $objectDefinitions->{FBAFormulation} = {
 		{name => 'decomposeReversibleDrainFlux',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
 		{name => 'fluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
 		{name => 'drainfluxUseVariables',printOrder => 0,perm => 'rw',type => 'Bool',len => 32,req => 0,default => 0},
+		{name => 'geneKO_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'reactionKO_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'parameters',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
+		{name => 'uptakeLimits',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
+		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => 1},
+		{name => 'simpleThermoConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
+		{name => 'thermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
+		{name => 'noErrorThermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
+		{name => 'minimizeErrorThermodynamicConstraints',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => 1},
 	],
 	subobjects => [
 		{name => "fbaObjectiveTerms",class => "FBAObjectiveTerm",type => "encompassed"},
 		{name => "fbaConstraints",class => "FBAConstraint",type => "encompassed"},
+		{name => "fbaReactionBounds",class => "FBAReactionBound",type => "encompassed"},
+		{name => "fbaCompoundBounds",class => "FBACompoundBound",type => "encompassed"},
 		{name => "fbaResults",class => "FBAResult",type => "encompassed"},
+		{name => "fbaPhenotypeSimulations",class => "FBAPhenotypeSimulation",type => "encompassed"},
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
+		{name => "geneKOs",attribute => "geneKO_uuids",parent => "Annotation",method=>"features"},
+		{name => "reactionKOs",attribute => "reactionKO",parent => "Biochemistry",method=>"media"},
 	],
     reference_id_types => [ qw(uuid) ],
 };
@@ -71,6 +85,51 @@ $objectDefinitions->{FBAConstraintVariable} = {
 	links => []
 };
 
+$objectDefinitions->{FBAReactionBound} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(reaction_uuid, variableType) ],
+	links => []
+};
+
+$objectDefinitions->{FBACompoundBound} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'variableType',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'upperBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+	],
+	subobjects => [],
+	primarykeys => [ qw(reaction_uuid, variableType) ],
+	links => []
+};
+
+$objectDefinitions->{FBAPhenotypeSimulation} = {
+	parents => ['FBAFormulation'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'label',printOrder => 0,perm => 'rw',type => 'Str',req => 1},
+		{name => 'geneKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'reactionKO',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1,default => "sub{return [];}"},
+		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'observedGrowthFraction',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
+	],
+	subobjects => [],
+	primarykeys => [ qw(reaction_uuid, variableType) ],
+	links => [
+		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"}
+	]
+};
+
 $objectDefinitions->{FBAObjectiveTerm} = {
 	parents => ['FBAFormulation'],
 	class => 'encompassed',
@@ -90,21 +149,21 @@ $objectDefinitions->{FBAResult} = {
 	class => 'indexed',
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'name',printOrder => 1,perm => 'rw',type => 'ModelSEED::varchar',req => 1,default => ""},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'fbaformulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'resultNotes',printOrder => 3,perm => 'rw',type => 'Str',req => 1,default => ""},
-		{name => 'objectiveValue',printOrder => 2,perm => 'rw',type => 'Num',req => 1,default => ""},
+		{name => 'resultNotes',printOrder => 3,perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'objectiveValue',printOrder => 2,perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [
 		{name => "fbaCompoundVariables",printOrder => 2,class => "FBACompoundVariable",type => "encompassed"},
 		{name => "fbaReactionVariables",printOrder => 1,class => "FBAReactionVariable",type => "encompassed"},
 		{name => "fbaBiomassVariables",printOrder => 0,class => "FBABiomassVariable",type => "encompassed"},
+		{name => "fbaPhenotypeSimultationResults",printOrder => 0,class => "FBAPhenotypeSimultationResult",type => "encompassed"},
+		{name => "fbaDeletionResults",printOrder => 0,class => "fbaDeletionResult",type => "encompassed"},
+		{name => "minimalMediaResults",printOrder => 0,class => "FBAMinimalMediaResult",type => "encompassed"},
+		{name => "fbaMetaboliteProductionResults",printOrder => 0,class => "FBAMetaboliteProductionResult",type => "encompassed"}
 	],
 	primarykeys => [ qw(uuid) ],
-	links => [
-		{name => "fbaformulation",attribute => "fbaformulation_uuid",parent => "Store",method=>"FBAFormulation"}
-	],
+	links => [],
     reference_id_types => [ qw(uuid) ],
 };
 
@@ -165,17 +224,81 @@ $objectDefinitions->{FBAReactionVariable} = {
 	]
 };
 
+$objectDefinitions->{FBAPhenotypeSimultationResult} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'simulatedGrowthFraction',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+		{name => 'simulatedGrowth',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+		{name => 'class',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 1},
+		{name => 'noGrowthCompounds',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'dependantReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'dependantGenes',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'fluxes',printOrder => 0,perm => 'rw',type => 'HashRef',req => 0,default => "sub{return {};}"},
+		{name => 'fbaPhenotypeSimulation_uuid',printOrder => 4,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+	],	
+	subobjects => [],
+	primarykeys => [ qw(fbaPhenotypeSimulation_uuid) ],
+	links => [
+		{name => "fbaPhenotypeSimulation",attribute => "fbaPhenotypeSimulation_uuid",parent => "FBAFormulation",method=>"fbaPhenotypeSimulations"},
+	]
+};
+
+$objectDefinitions->{fbaDeletionResult} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'geneko_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1},
+		{name => 'growthFraction',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+	],	
+	subobjects => [],
+	primarykeys => [ qw(geneko_uuids) ],
+	links => [
+		{name => "genekos",attribute => "geneko_uuids",parent => "Annotation",method=>"features"},
+	]
+};
+
+$objectDefinitions->{FBAMinimalMediaResult} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'minimalMedia_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'essentialNutrient_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1},
+		{name => 'optionalNutrient_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 1},
+	],	
+	subobjects => [],
+	primarykeys => [ qw(minimalMedia_uuid) ],
+	links => [
+		{name => "minimalMedia",attribute => "minimalMedia_uuid",parent => "Biochemistry",method=>"media"},
+		{name => "essentialNutrients",attribute => "essentialNutrient_uuids",parent => "Biochemistry",method=>"compounds"},
+		{name => "optionalNutrients",attribute => "optionalNutrient_uuids",parent => "Biochemistry",method=>"compounds"}
+	]
+};
+
+$objectDefinitions->{FBAMetaboliteProductionResult} = {
+	parents => ['FBAResult'],
+	class => 'encompassed',
+	attributes => [
+		{name => 'modelCompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
+		{name => 'maximumProduction',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
+	],	
+	subobjects => [],
+	primarykeys => [ qw(minimalMedia_uuid) ],
+	links => [
+		{name => "modelCompound",attribute => "modelCompound_uuid",parent => "Model",method=>"modelcompounds"},
+	]
+};
+
 $objectDefinitions->{GapfillingFormulation} = {
 	parents => ['Model'],
 	class => 'child',
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
-		{name => 'media_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
+		{name => 'fbaFormulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
 		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
 		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
 		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
-		{name => 'numberOfSolutions',printOrder => 0,perm => 'rw',type => 'Int',req => 0,default => "1"},
 		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
 		{name => 'drainFluxMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'directionalityMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
@@ -194,7 +317,7 @@ $objectDefinitions->{GapfillingFormulation} = {
 	],
 	primarykeys => [ qw(uuid) ],
 	links => [
-		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
+		{name => "fbaFormulation",attribute => "fbaFormulation_uuid",parent => "Model",method=>"fbaFormulations"},
 	],
     reference_id_types => [ qw(uuid) ],
 };
@@ -853,7 +976,8 @@ $objectDefinitions->{Biomass} = {
 		{name => 'cellwall',printOrder => 6,perm => 'rw',type => 'Num',req => 0,default => "0.15"},
 		{name => 'lipid',printOrder => 7,perm => 'rw',type => 'Num',req => 0,default => "0.05"},
 		{name => 'cofactor',printOrder => 8,perm => 'rw',type => 'Num',req => 0,default => "0.15"},
-		{name => 'energy',printOrder => 9,perm => 'rw',type => 'Num',req => 0,default => "40"}
+		{name => 'energy',printOrder => 9,perm => 'rw',type => 'Num',req => 0,default => "40"},
+		{name => 'index',printOrder => -1,perm => 'rw',type => 'Int',req => 0}
 	],
 	subobjects => [
 		{name => "biomasscompounds",class => "BiomassCompound",type => "encompassed"}

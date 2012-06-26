@@ -18,6 +18,7 @@ has definition => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata'
 has equation => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequation' );
 has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
+has id  => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildid' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -37,6 +38,23 @@ sub _buildequationcode {
 sub _buildmapped_uuid {
 	my ($self) = @_;
 	return "00000000-0000-0000-0000-000000000000";
+}
+sub _buildid {
+	my ($self) = @_;
+	my $prefix = "bio";
+	if ($self->index() < 10000) {
+		$prefix .= "0";
+	}
+	if ($self->index() < 1000) {
+		$prefix .= "0";
+	}
+	if ($self->index() < 100) {
+		$prefix .= "0";
+	}
+	if ($self->index() < 10) {
+		$prefix .= "0";
+	}
+	return $prefix.$self->index();
 }
 
 #***********************************************************************************************************
