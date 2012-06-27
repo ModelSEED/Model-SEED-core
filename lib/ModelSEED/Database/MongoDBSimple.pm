@@ -11,19 +11,12 @@
 package ModelSEED::Database::MongoDBSimple;
 use Moose;
 use common::sense;
-
 use MongoDB;
-use MongoDB::Connection;
-use MongoDB::Database;
 use JSON;
 use Tie::IxHash;
 use FileHandle;
 use Data::UUID;
-
 use ModelSEED::Reference;
-use ModelSEED::MS::Metadata::Definitions;
-
-use Data::Dumper;
 
 with 'ModelSEED::Database';
 
@@ -179,7 +172,6 @@ sub get_aliases {
     } 
     return $self->_aliases_query($query, $auth);
 }
-
 
 sub alias_uuid {
     my ($self, $ref, $auth) = @_;
