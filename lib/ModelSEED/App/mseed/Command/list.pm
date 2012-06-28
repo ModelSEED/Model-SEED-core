@@ -60,6 +60,7 @@ sub execute {
     } else {
         # ref was an empty string or completely invalid 
         my $aliases = $store->get_aliases({});
+        exit unless(@$aliases);
         my $types = {};
         # Print counts for aliased objects
         foreach my $alias (@$aliases) {

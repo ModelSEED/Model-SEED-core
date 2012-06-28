@@ -1,9 +1,10 @@
 package ModelSEED::App::stores::Command::add;
+use Try::Tiny;
+use Module::Load;
 use Class::Autouse qw(
     ModelSEED::Configuration
     ModelSEED::Database::FileDB
 );
-use Data::Dumper;
 use base 'App::Cmd::Command';
 
 $typeToClass = $ModelSEED::App::stores::typeToClass;
@@ -61,16 +62,13 @@ sub _buildConfig {
     # Set the type
     return "--type required" unless(defined($type));
     $config->{type} = $type;
-
     # Set the class
     return "unknown type $type" unless(defined($typeToClass->{$type}));
     $config->{class} = $typeToClass->{$type};
-
     # Check the args
     return "unknown type $type" unless(defined($typeToArgs->{$type}));
     my $requiredArgs = $typeToArgs->{$type};
     my $defaults = $defaultArgValues->{$type};
-
     foreach my $arg (keys %$requiredArgs) {
         my $spec = $requiredArgs->{$arg};
         if (defined($opt->{$arg})) {
@@ -81,11 +79,21 @@ sub _buildConfig {
             return "--$arg required for $type" unless (defined($opt->{$arg}));
         }
     }
-
+    if($config->{type} eq 'mongo') {
+        my $success;
+        try {
+            load MongoDB;
+            $success = 1;
+        };
+        unless($success) {
+            $self->usage_error(
+                "You must install perl module MongoDB to use this interface"
+            );
+        }
+    }
     if ($config->{type} eq 'file') {
         $config->{filename} = $name;
     }
-
     return $config;
 }
 
@@ -93,9 +101,6 @@ sub _buildConfig {
 # args are $type and $config
 sub _initializeDatabase {
     my ($self, $name, $type, $config) = @_;
-
-    print "Initializing database...\n";
-
     if ($type eq 'file') {
         my $db = ModelSEED::Database::FileDB->new({
             directory => $config->{directory},
@@ -103,8 +108,6 @@ sub _initializeDatabase {
         });
         $db->kvstore->save_object("aliases", {});
     }
-
-    print "Database created successfully\n";
 }
 
 1;
