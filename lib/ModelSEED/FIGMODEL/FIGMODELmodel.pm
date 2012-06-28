@@ -2994,7 +2994,7 @@ sub reconstruction {
 		checkpoint => 1,
 		autocompletion => 1,
 		biochemSource => undef
-		});
+	});
 	#Getting genome data and feature table
 	$self->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
@@ -5582,10 +5582,14 @@ sub BuildSpecificBiomassReaction {
 			$originalEssReactions = $bioObj->essentialRxn();
 			$originalPackages = $bioObj->cofactorPackage().$bioObj->lipidPackage().$bioObj->cellWallPackage();
 		}
-	}
-	#Getting genome stats
+	}	
 	my $genomestats = $self->genomeObj()->genome_stats();
 	my $Class = $self->ppo()->cellwalltype();
+	if (defined($self->figmodel()->config("Gram positive")->{$self->genome()})) {
+		$Class = "Gram positive";
+	} elsif (defined($self->figmodel()->config("Gram negative")->{$self->genome()})) {
+		$Class = "Gram negative";
+	}
 	#Setting global coefficients based on cell wall type
 	my $biomassCompounds;
 	my $compounds;

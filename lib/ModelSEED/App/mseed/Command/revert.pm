@@ -1,12 +1,12 @@
 package ModelSEED::App::mseed::Command::revert;
 use base 'App::Cmd::Command';
 use Try::Tiny;
+use Data::UUID;
 use Class::Autouse qw(
     ModelSEED::Auth::Factory
     ModelSEED::Store
     ModelSEED::App::Helpers
     ModelSEED::Reference
-    Data::UUID
 );
 
 sub abstract { return "Revert an object to the previous version" }
