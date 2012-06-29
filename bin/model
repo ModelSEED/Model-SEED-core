@@ -1,5 +1,1 @@
-#!/usr/bin/env perl
-use ModelSEEDbootstrap;
-use ModelSEED::App::model;
-ModelSEED::App::model->run;
-
+mscli.exe model $*

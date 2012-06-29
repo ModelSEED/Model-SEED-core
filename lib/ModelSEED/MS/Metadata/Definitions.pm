@@ -158,7 +158,7 @@ $objectDefinitions->{FBAResult} = {
 		{name => "fbaReactionVariables",printOrder => 1,class => "FBAReactionVariable",type => "encompassed"},
 		{name => "fbaBiomassVariables",printOrder => 0,class => "FBABiomassVariable",type => "encompassed"},
 		{name => "fbaPhenotypeSimultationResults",printOrder => 0,class => "FBAPhenotypeSimultationResult",type => "encompassed"},
-		{name => "fbaDeletionResults",printOrder => 0,class => "fbaDeletionResult",type => "encompassed"},
+		{name => "fbaDeletionResults",printOrder => 0,class => "FBADeletionResult",type => "encompassed"},
 		{name => "minimalMediaResults",printOrder => 0,class => "FBAMinimalMediaResult",type => "encompassed"},
 		{name => "fbaMetaboliteProductionResults",printOrder => 0,class => "FBAMetaboliteProductionResult",type => "encompassed"}
 	],
@@ -244,7 +244,7 @@ $objectDefinitions->{FBAPhenotypeSimultationResult} = {
 	]
 };
 
-$objectDefinitions->{fbaDeletionResult} = {
+$objectDefinitions->{FBADeletionResult} = {
 	parents => ['FBAResult'],
 	class => 'encompassed',
 	attributes => [

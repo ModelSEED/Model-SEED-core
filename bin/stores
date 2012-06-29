@@ -1,4 +1,1 @@
-#!/usr/bin/env perl
-use ModelSEEDbootstrap;
-use ModelSEED::App::stores;
-ModelSEED::App::stores->run;
+mscli.exe stores $*

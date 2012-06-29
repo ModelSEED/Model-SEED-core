@@ -28,6 +28,7 @@ has cellwall => (is => 'rw', isa => 'Num', printOrder => '6', default => '0.15',
 has lipid => (is => 'rw', isa => 'Num', printOrder => '7', default => '0.05', type => 'attribute', metaclass => 'Typed');
 has cofactor => (is => 'rw', isa => 'Num', printOrder => '8', default => '0.15', type => 'attribute', metaclass => 'Typed');
 has energy => (is => 'rw', isa => 'Num', printOrder => '9', default => '40', type => 'attribute', metaclass => 'Typed');
+has index => (is => 'rw', isa => 'Int', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -136,10 +137,17 @@ my $attributes = [
             'default' => '40',
             'type' => 'Num',
             'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'index',
+            'type' => 'Int',
+            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, dna => 4, rna => 5, protein => 6, cellwall => 7, lipid => 8, cofactor => 9, energy => 10};
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, dna => 4, rna => 5, protein => 6, cellwall => 7, lipid => 8, cofactor => 9, energy => 10, index => 11};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

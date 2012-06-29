@@ -26,7 +26,7 @@ has abbreviation => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '2',
 has cksum => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
 has deltaG => (is => 'rw', isa => 'Num', printOrder => '8', type => 'attribute', metaclass => 'Typed');
 has deltaGErr => (is => 'rw', isa => 'Num', printOrder => '9', type => 'attribute', metaclass => 'Typed');
-has reversibility => (is => 'rw', isa => 'Str', printOrder => '5', default => '=', type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '5', default => '=', type => 'attribute', metaclass => 'Typed');
 has thermoReversibility => (is => 'rw', isa => 'Str', printOrder => '6', type => 'attribute', metaclass => 'Typed');
 has defaultProtons => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
 has status => (is => 'rw', isa => 'Str', printOrder => '10', type => 'attribute', metaclass => 'Typed');
@@ -119,7 +119,7 @@ my $attributes = [
             'len' => 1,
             'req' => 0,
             'printOrder' => 5,
-            'name' => 'reversibility',
+            'name' => 'direction',
             'default' => '=',
             'type' => 'Str',
             'perm' => 'rw'
@@ -148,7 +148,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, abbreviation => 4, cksum => 5, deltaG => 6, deltaGErr => 7, reversibility => 8, thermoReversibility => 9, defaultProtons => 10, status => 11};
+my $attribute_map = {uuid => 0, modDate => 1, locked => 2, name => 3, abbreviation => 4, cksum => 5, deltaG => 6, deltaGErr => 7, direction => 8, thermoReversibility => 9, defaultProtons => 10, status => 11};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

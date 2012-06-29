@@ -8,7 +8,10 @@ package ModelSEED::MS::DB::FBAFormulation;
 use ModelSEED::MS::BaseObject;
 use ModelSEED::MS::FBAObjectiveTerm;
 use ModelSEED::MS::FBAConstraint;
+use ModelSEED::MS::FBAReactionBound;
+use ModelSEED::MS::FBACompoundBound;
 use ModelSEED::MS::FBAResult;
+use ModelSEED::MS::FBAPhenotypeSimulation;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::BaseObject';
@@ -21,18 +24,18 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has name => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', required => 1, default => '', type => 'attribute', metaclass => 'Typed');
 has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has type => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has description => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
+has fva => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has comboDeletions => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has fluxMinimization => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has findMinimalMedia => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has notes => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has growthConstraint => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
+has objectiveConstraintFraction => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
 has thermodynamicConstraints => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
 has allReversible => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has dilutionConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has uptakeLimits => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
-has geneKO => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has defaultMaxFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMinDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
@@ -41,6 +44,15 @@ has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '0', de
 has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has geneKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has reactionKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has parameters => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has uptakeLimits => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has numberOfSolutions => (is => 'rw', isa => 'Int', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has simpleThermoConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has thermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has noErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has minimizeErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -50,11 +62,16 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 # SUBOBJECTS:
 has fbaObjectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed', reader => '_fbaObjectiveTerms', printOrder => '-1');
 has fbaConstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraint)', metaclass => 'Typed', reader => '_fbaConstraints', printOrder => '-1');
+has fbaReactionBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionBound)', metaclass => 'Typed', reader => '_fbaReactionBounds', printOrder => '-1');
+has fbaCompoundBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundBound)', metaclass => 'Typed', reader => '_fbaCompoundBounds', printOrder => '-1');
 has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAResult)', metaclass => 'Typed', reader => '_fbaResults', printOrder => '-1');
+has fbaPhenotypeSimulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAPhenotypeSimulation)', metaclass => 'Typed', reader => '_fbaPhenotypeSimulations', printOrder => '-1');
 
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
+has geneKOs => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,geneKO_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_geneKOs', weak_ref => 1);
+has reactionKOs => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,reactionKO)', metaclass => 'Typed', lazy => 1, builder => '_build_reactionKOs', weak_ref => 1);
 
 
 # BUILDERS:
@@ -63,6 +80,14 @@ sub _build_modDate { return DateTime->now()->datetime(); }
 sub _build_media {
   my ($self) = @_;
   return $self->getLinkedObject('Biochemistry','media',$self->media_uuid());
+}
+sub _build_geneKOs {
+  my ($self) = @_;
+  return $self->getLinkedObject('Annotation','features',$self->geneKO_uuids());
+}
+sub _build_reactionKOs {
+  my ($self) = @_;
+  return $self->getLinkedObject('Biochemistry','media',$self->reactionKO());
 }
 
 
@@ -85,14 +110,6 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'name',
-            'default' => '',
-            'type' => 'ModelSEED::varchar',
-            'perm' => 'rw'
-          },
-          {
             'req' => 0,
             'printOrder' => 0,
             'name' => 'regulatorymodel_uuid',
@@ -107,16 +124,37 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 1,
             'printOrder' => 0,
-            'name' => 'type',
-            'type' => 'Str',
+            'name' => 'fva',
+            'default' => 0,
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'printOrder' => 0,
+            'name' => 'comboDeletions',
+            'default' => 0,
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'printOrder' => 0,
+            'name' => 'fluxMinimization',
+            'default' => 0,
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'printOrder' => 0,
+            'name' => 'findMinimalMedia',
+            'default' => 0,
+            'type' => 'Bool',
             'perm' => 'rw'
           },
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'description',
+            'name' => 'notes',
             'default' => '',
             'type' => 'Str',
             'perm' => 'rw'
@@ -131,7 +169,7 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'growthConstraint',
+            'name' => 'objectiveConstraintFraction',
             'default' => 'none',
             'type' => 'ModelSEED::varchar',
             'perm' => 'rw'
@@ -159,22 +197,6 @@ my $attributes = [
             'name' => 'dilutionConstraints',
             'default' => '0',
             'type' => 'Bool',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'uptakeLimits',
-            'default' => 'sub{return {};}',
-            'type' => 'HashRef',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 1,
-            'printOrder' => 0,
-            'name' => 'geneKO',
-            'default' => 'sub{return [];}',
-            'type' => 'ArrayRef',
             'perm' => 'rw'
           },
           {
@@ -244,10 +266,82 @@ my $attributes = [
             'default' => 0,
             'type' => 'Bool',
             'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'geneKO_uuids',
+            'default' => 'sub{return [];}',
+            'type' => 'ArrayRef',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'reactionKO_uuids',
+            'default' => 'sub{return [];}',
+            'type' => 'ArrayRef',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'parameters',
+            'default' => 'sub{return {};}',
+            'type' => 'HashRef',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'uptakeLimits',
+            'default' => 'sub{return {};}',
+            'type' => 'HashRef',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'numberOfSolutions',
+            'default' => 1,
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'simpleThermoConstraints',
+            'default' => 1,
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'thermodynamicConstraints',
+            'default' => 1,
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'noErrorThermodynamicConstraints',
+            'default' => 1,
+            'type' => 'Bool',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'minimizeErrorThermodynamicConstraints',
+            'default' => 1,
+            'type' => 'Bool',
+            'perm' => 'rw'
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, name => 2, regulatorymodel_uuid => 3, media_uuid => 4, type => 5, description => 6, expressionData_uuid => 7, growthConstraint => 8, thermodynamicConstraints => 9, allReversible => 10, dilutionConstraints => 11, uptakeLimits => 12, geneKO => 13, defaultMaxFlux => 14, defaultMaxDrainFlux => 15, defaultMinDrainFlux => 16, maximizeObjective => 17, decomposeReversibleFlux => 18, decomposeReversibleDrainFlux => 19, fluxUseVariables => 20, drainfluxUseVariables => 21};
+my $attribute_map = {uuid => 0, modDate => 1, regulatorymodel_uuid => 2, media_uuid => 3, fva => 4, comboDeletions => 5, fluxMinimization => 6, findMinimalMedia => 7, notes => 8, expressionData_uuid => 9, objectiveConstraintFraction => 10, thermodynamicConstraints => 11, allReversible => 12, dilutionConstraints => 13, defaultMaxFlux => 14, defaultMaxDrainFlux => 15, defaultMinDrainFlux => 16, maximizeObjective => 17, decomposeReversibleFlux => 18, decomposeReversibleDrainFlux => 19, fluxUseVariables => 20, drainfluxUseVariables => 21, geneKO_uuids => 22, reactionKO_uuids => 23, parameters => 24, uptakeLimits => 25, numberOfSolutions => 26, simpleThermoConstraints => 27, thermodynamicConstraints => 28, noErrorThermodynamicConstraints => 29, minimizeErrorThermodynamicConstraints => 30};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -277,13 +371,31 @@ my $subobjects = [
           },
           {
             'printOrder' => -1,
+            'name' => 'fbaReactionBounds',
+            'type' => 'encompassed',
+            'class' => 'FBAReactionBound'
+          },
+          {
+            'printOrder' => -1,
+            'name' => 'fbaCompoundBounds',
+            'type' => 'encompassed',
+            'class' => 'FBACompoundBound'
+          },
+          {
+            'printOrder' => -1,
             'name' => 'fbaResults',
             'type' => 'encompassed',
             'class' => 'FBAResult'
+          },
+          {
+            'printOrder' => -1,
+            'name' => 'fbaPhenotypeSimulations',
+            'type' => 'encompassed',
+            'class' => 'FBAPhenotypeSimulation'
           }
         ];
 
-my $subobject_map = {fbaObjectiveTerms => 0, fbaConstraints => 1, fbaResults => 2};
+my $subobject_map = {fbaObjectiveTerms => 0, fbaConstraints => 1, fbaReactionBounds => 2, fbaCompoundBounds => 3, fbaResults => 4, fbaPhenotypeSimulations => 5};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -308,9 +420,21 @@ around 'fbaConstraints' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('fbaConstraints');
 };
+around 'fbaReactionBounds' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('fbaReactionBounds');
+};
+around 'fbaCompoundBounds' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('fbaCompoundBounds');
+};
 around 'fbaResults' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('fbaResults');
+};
+around 'fbaPhenotypeSimulations' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('fbaPhenotypeSimulations');
 };
 
 

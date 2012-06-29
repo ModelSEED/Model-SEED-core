@@ -1,6 +1,5 @@
 use strict;
 use ModelSEED::utilities;
-use DateTime;
 
 my $packages = {
 	fbaModelServices => {

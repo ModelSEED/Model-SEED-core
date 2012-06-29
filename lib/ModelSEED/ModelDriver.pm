@@ -1,7 +1,3 @@
-
-
-#!/usr/bin/perl -w
-
 ########################################################################
 # Driver module that holds all functions that govern user interaction with the Model SEED
 # Author: Christopher Henry
@@ -17,8 +13,190 @@ use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
 use YAML;
 use YAML::Dumper;
+use File::Temp;
+use Cwd;
 
 package ModelSEED::ModelDriver;
+use Try::Tiny;
+
+sub run {
+	my @args = @_;
+	my $class = shift(@args);
+	#First checking to see if at least one argument has been provided
+	my $driv;
+	ModelSEED::Interface::interface::LOADENVIRONMENT();
+	$driv = ModelSEED::ModelDriver->new();
+	if (!defined($args[0]) || $args[0] eq "help" || $args[0] eq "-man" || $args[0] eq "-help") {
+	    print "Welcome to the Model SEED! You are currently logged in as: ".ModelSEED::Interface::interface::USERNAME().".\n";
+	    print "ModelDriver is the primary executable for the Model SEED.\n\n";
+	    print "Possible usage:\n\n";
+	    print "1.) ModelDriver usage \"name of function\"\n";
+	    print "Prints the arguments list expected by the function\n\n";
+	    print "2.) ModelDriver \"name of function\" \"-argument name\" \"argument value\" \"-argument name\" \"argument value\"\n";
+	    print "This is the standard notation, useful to know exactly what arguments you're submitting, but it's also alot of typing.\n\n";
+	    print "3.) ModelDriver \"name of function?argument value?argument value\"\n";
+	    print "This is the alternative notation. Argument values are input directly in the same order specified by the \"usage\" command.\n";
+		exit(0);
+	}
+	
+	#This variable will hold the name of a file that will be printed when a job finishes
+	my $Status = "";
+	#Cleaning out some weird characters Cygwin sometimes adds to input
+	for (my $i=0; $i < @args; $i++) {
+		$args[$i] =~ s/\x{d}//g;
+	}
+	#Parsing arguments into a list of function calls
+	my $currentFunction;
+	my $functions;
+	my $lastKey;
+	my $lastKeyType;
+	my $prefixes = ["ms","mdl","db","bc","fba","gen","sq"];
+	for (my $i=0; $i < @args; $i++) {
+		for (my $j=0; $j < @{$prefixes}; $j++) {
+			my $search = "^".$prefixes->[$j]."-";
+			my $prefix = $prefixes->[$j];
+			$args[$i] =~ s/$search/$prefix/g;
+		}
+		$args[$i] =~ s/___/ /g;
+	    $args[$i] =~ s/\.\.\./(/g;
+	    $args[$i] =~ s/,,,/)/g;
+		if ($args[$i] =~ m/^finish\?(.+)/) {
+			$driv->finishfile($1);
+		} elsif ($args[$i] =~ m/\?/) {
+			my $subarray = [split(/\?/,$args[$i])];
+			if (length($subarray->[0]) > 0) {
+				if ($driv->isCommandLineFunction($subarray->[0]) == 1) {
+					if (defined($currentFunction)) {
+						push(@{$functions},$currentFunction);
+					}
+					$currentFunction = {
+						name => shift(@{$subarray}),
+						argHash => {},
+						argList => []	
+					};
+				}
+			}
+			push(@{$currentFunction->{argList}},@{$subarray});
+			$lastKey = @{$currentFunction->{argList}}-1;
+			$lastKeyType = "argList";
+	    } elsif ($args[$i] =~ m/\^finish$/ && defined($args[$i+1])) {
+	    	$driv->finishfile($args[$i+1]);
+	    	$i++;
+	    } elsif ($args[$i] =~ m/^usage\?(.+)/) {
+	    	my $function = $1;
+	    	$driv->usage($function);
+	    } elsif ($args[$i] =~ m/^usage$/ && defined($args[$i+1])) {
+	    	$driv->usage($args[$i+1]);
+	    	$i++;
+	    } elsif ($args[$i] =~ m/^-usage$/ || $args[$i] =~ m/^-help$/ ||  $args[$i] =~ m/^-man$/) {
+	    	if (defined($currentFunction->{name})) {
+	    		$driv->usage($currentFunction->{name});
+	    	}
+	    	$i++;
+		} elsif ($args[$i] =~ m/^\-(.+)/) {
+			$lastKey = $1;
+			$lastKeyType = "argHash";
+			$currentFunction->{argHash}->{$lastKey} = $args[$i+1];
+			$i++;
+		} elsif ($driv->isCommandLineFunction($args[$i]) == 1) {
+			if (defined($currentFunction)) {
+				push(@{$functions},$currentFunction);
+			}
+			$currentFunction = {
+				name => $args[$i],
+				argHash => {},
+				argList => []	
+			};
+		} else {
+			if ($lastKeyType eq "argHash") {
+				$currentFunction->{argHash}->{$lastKey} .= " ".$args[$i];
+			}  elsif ($lastKeyType eq "argList") {
+				$currentFunction->{argList}->[$lastKey] .= " ".$args[$i];
+			} else {
+				push(@{$currentFunction->{argList}},$args[$i]);	
+			}
+		}
+	}
+	if (defined($currentFunction)) {
+		push(@{$functions},$currentFunction);
+	}
+	#Calling functions
+	for (my $i=0; $i < @{$functions}; $i++) {
+		my $function = $functions->[$i]->{name};
+		print $function."\n";
+		my @Data = ($function);
+		if (keys(%{$functions->[$i]->{argHash}}) > 0) {
+			push(@Data,$functions->[$i]->{argHash});
+		} else {
+			push(@Data,@{$functions->[$i]->{argList}});
+		}
+		try {
+	    	$Status .= $driv->$function(@Data);
+	    	print $Status."\n";
+	   	} catch {
+	        printErrorLog($_);
+	    };
+	}
+	#Printing the finish file if specified
+	$driv->finish($Status);
+}
+
+sub printErrorLog {
+    my $errorMessage = shift @_;
+    my $actualMessage;
+    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+        $actualMessage = $1;
+    }
+    {
+        # Pad error message with four spaces
+        $errorMessage =~ s/\n/\n    /g;
+        $errorMessage = "    ".$errorMessage; 
+    }
+    my $gitSha = "";
+    {
+        my $cwd = Cwd::getcwd();
+        chdir $ENV{'MODEL_SEED_CORE'};
+        $gitSha = `git show-ref --hash HEAD`;
+        chdir $cwd;
+    }
+    
+    chomp $gitSha;
+    my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
+    mkdir $errorDir unless(-d $errorDir);
+    my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
+    $errorFilename =~ s/\\/\//g;
+    ModelSEED::Interface::interface::LASTERROR($errorFilename);
+    ModelSEED::Interface::interface::SAVEENVIRONMENT();
+    print $errorFH <<MSG;
+> ModelDriver encountered an unrecoverable error:
+
+$errorMessage
+
+> Model-SEED-core revision: $gitSha
+MSG
+    my $viewerMessage = <<MSG;
+Whoops! We encountered an unrecoverable error.
+
+MSG
+    if(defined($actualMessage)) {
+        $viewerMessage .= $actualMessage."\n\n";
+    }
+    $viewerMessage .= <<MSG;
+
+View error using the "ms-lasterror" command.
+
+Have you updated recently? ( git pull )
+Have you changed your configuration? ( ms-config )
+
+If you are still having problems, please submit a ticket
+copying the contents of the error file printed above to:
+
+https://github.com/ModelSEED/Model-SEED-core/issues/new
+
+Thanks!
+MSG
+    print $viewerMessage;
+}
 
 =head3 new
 Definition:

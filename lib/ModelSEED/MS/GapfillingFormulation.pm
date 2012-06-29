@@ -401,14 +401,14 @@ sub emergencyGapfilling {
 		"use database fields|1|MFA parameters"
 	];
 	
-	my $params = [
-		"Reaction activation bonus|0|MFA parameters",
-		"Objective coefficient file|NONE|MFA parameters",
-		"Minimum flux for use variable positive constraint|0.01|MFA parameters",
-		"Allowable unbalanced reactions|".$gauranteedRxn."|MFA parameters",
-		"dissapproved compartments|p;n;m;x;g;r;v|MFA parameters",
-		"Complete gap filling|1|MFA parameters",
-	];
+#	my $params = [
+#		"Reaction activation bonus|0|MFA parameters",
+#		"Objective coefficient file|NONE|MFA parameters",
+#		"Minimum flux for use variable positive constraint|0.01|MFA parameters",
+#		"Allowable unbalanced reactions|".$gauranteedRxn."|MFA parameters",
+#		"dissapproved compartments|p;n;m;x;g;r;v|MFA parameters",
+#		"Complete gap filling|1|MFA parameters",
+#	];
 	
 	ModelSEED::utilities::PRINTFILE($dir."CompleteGapfillingParameters.txt",$params);
 	#Write media formulation

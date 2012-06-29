@@ -7,10 +7,12 @@
 ########################################################################
 use strict;
 use namespace::autoclean;
-use ModelSEED::utilities;
-use ModelSEED::MS::Mapping;
-use ModelSEED::MS::Annotation;
-use ModelSEED::MS::Utilities::GlobalFunctions;
+use Class::Autouse qw(
+	ModelSEED::MS::Mapping
+	ModelSEED::MS::Annotation
+	ModelSEED::utilities
+	ModelSEED::MS::Utilities::GlobalFunctions
+);
 package ModelSEED::MS::Factories::SEEDFactory;
 use Moose;
 use SAPserver;
