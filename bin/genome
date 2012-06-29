@@ -1,1 +1,1 @@
-mscli.exe genome $*
+ms genome $*

@@ -1,1 +1,1 @@
-mscli.exe model $*
+ms model $*

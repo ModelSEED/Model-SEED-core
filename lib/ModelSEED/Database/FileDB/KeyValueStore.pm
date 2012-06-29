@@ -160,11 +160,13 @@ sub _perform_transaction {
     if (defined($data_mode)) {
 	if ($data_mode eq 'r') {
 	    open DATA, "<$file.$DATA_EXT" or die "Couldn't open file: $!";
+	    binmode DATA;
 	    $data = *DATA;
 	    $sub_data->{data} = $data;
 	} elsif ($data_mode eq 'w') {
 	    # open r/w, '+>' clobbers the file
 	    open DATA, "+<$file.$DATA_EXT" or die "Couldn't open file: $!";
+	    binmode DATA;
 	    $data = *DATA;
 	    $sub_data->{data} = $data;
 	}
