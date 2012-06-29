@@ -23,7 +23,6 @@ END
 sub opt_spec {
     return (
         ["verbose|v", "Print detailed infomation"],
-        ["raw|r", "Print raw JSON output"],
         ["table|t", "Print as a tab-delimited table"],
         ["header|h", "Print as a tab-delimited table with a header row"],
         ["file|f:s", "Print output to a file"],
@@ -58,30 +57,26 @@ sub execute {
     my $JSON = JSON->new->utf8(1);
     foreach my $ref (@$refs) {
         my $o = $self->get_object_deep($cache, $store, $ref);
-        if($opts->{raw}) {
-            if(ref($o) eq 'ARRAY') {
-                push(@$output, @$o);
-            } else {
-                push(@$output, $o);
-            }
-        }
-    }
-    if($opts->{raw}) {
-        my $fh = *STDOUT;
-        if($opts->{file}) {
-            open($fh, "<", $opts->{file}) or
-                die "Could not open file: " .$opts->{file} . ", $@\n";
-        }
-        my $delimiter;
-        $delimiter = "\0" if($opts->{0});
-        $delimiter = "\n" if($opts->{newline});
-        if (defined $delimiter) {
-            print $fh join($delimiter, map { $JSON->encode($_) } @$output);
+        if(ref($o) eq 'ARRAY') {
+            push(@$output, @$o);
         } else {
-            print $fh $JSON->encode($output);
+            push(@$output, $o);
         }
-        close($fh);
     }
+    my $fh = *STDOUT;
+    if($opts->{file}) {
+        open($fh, "<", $opts->{file}) or
+            die "Could not open file: " .$opts->{file} . ", $@\n";
+    }
+    my $delimiter;
+    $delimiter = "\0" if($opts->{0});
+    $delimiter = "\n" if($opts->{newline});
+    if (defined $delimiter) {
+        print $fh join($delimiter, map { $JSON->encode($_) } @$output);
+    } else {
+        print $fh $JSON->encode($output);
+    }
+    close($fh);
     return;
 }
 
