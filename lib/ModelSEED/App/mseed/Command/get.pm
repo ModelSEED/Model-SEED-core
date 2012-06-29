@@ -22,11 +22,8 @@ END
 
 sub opt_spec {
     return (
-        ["verbose|v", "Print detailed infomation"],
-        ["table|t", "Print as a tab-delimited table"],
-        ["header|h", "Print as a tab-delimited table with a header row"],
         ["file|f:s", "Print output to a file"],
-        ["eof|0", "Separate objects with EOF"],
+        ["pretty|p", "Pretty-print JSON"],
     );
 }
 sub execute {
@@ -55,6 +52,7 @@ sub execute {
     my $cache = {};
     my $output = [];
     my $JSON = JSON->new->utf8(1);
+    $JSON->pretty(1) if($opts->{pretty});
     foreach my $ref (@$refs) {
         my $o = $self->get_object_deep($cache, $store, $ref);
         if(ref($o) eq 'ARRAY') {
