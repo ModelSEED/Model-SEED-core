@@ -3,8 +3,6 @@ use base 'App::Cmd::Command';
 use Class::Autouse qw(
     ModelSEED::Store
     ModelSEED::Auth::Factory
-    ModelSEED::Reference
-    ModelSEED::Configuration
     ModelSEED::App::Helpers
 );
 sub abstract { return "Construct a model using this annotated genome" }
@@ -31,7 +29,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helpers = ModelSEED::App::Helpers->new();
-    my $annotation = $self->_getAnnotation($args, $opts, $store, $helpers);
+    my ($annotation, $ref) = $helpers->get_object("annotation", $args, $store);
     $self->usage_error("Must specify an annotation to use") unless(defined($annotation));
     my $mapping;
     if(defined($opts->{mapping})) {
@@ -56,15 +54,6 @@ sub execute {
         return;
     }
     die "Unable to create model: $model_ref\n" unless($model_ref);
-}
-
-sub _getAnnotation {
-    my ($self, $args, $opts, $store, $helpers) = @_;
-    my $ref = $helpers->get_base_ref("annotation", $args);
-    if (defined($ref)) {
-        print "Getting annotation ". $ref->ref ."...\n" if($opts->{verbose});
-        return $store->get_object($ref);
-    }
 }
 
 1;

@@ -19,7 +19,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helpers = ModelSEED::App::Helpers->new();
-    my ($anno, $annoRef) = $helpers->get_object($args, "annotation", $store);
+    my ($anno, $annoRef) = $helpers->get_object("annotation", $args, $store);
     $self->usage_error("Must specify an annotation to use") unless(defined($anno));
     print $helpers->handle_ref_lookup(
         $store, $anno, "mapping_uuid", "mapping", $opts

@@ -20,7 +20,7 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helper= ModelSEED::App::Helpers->new();
-    my ($model, $modelRef) = $helper->get_object($args, "model", $store);
+    my ($model, $modelRef) = $helper->get_object("model", $args, $store);
     $self->usage_error("Must specify a model to use") unless(defined($model));
     print $helper->handle_ref_lookup(
         $store, $model, "annotation_uuid", "annotation", $opts
