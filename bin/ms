@@ -1,1 +1,27 @@
-mscli.exe ms $*
+#!/usr/bin/env perl
+use ModelSEEDbootstrap;
+use ModelSEED::App::mseed;
+$|=1;
+ModelSEED::App::mseed->run;
+=pod
+
+=head1 NAME
+
+ms - Model SEED Command Line Client
+
+
+=head1 SYNOPSIS
+
+ms [command] [options]
+
+
+=head1 DESCRIPTION
+
+Use the B<commands> command for a list of avaiable commands.
+For help with a specfic command, use the B<help> command
+followed by the name of the command you are interested in.
+
+    $ ms commands
+    $ ms help login
+
+=cut
