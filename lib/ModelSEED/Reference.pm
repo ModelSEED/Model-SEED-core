@@ -12,8 +12,38 @@
 
 =head1 ModelSEED::Reference
 
-Get information about references.
-TODO : update docs
+Parse and construct ModelSEED data references.
+
+=head2 ABSTRACT
+
+    my $ref = ModelSEED::Reference->new( ref => "biochemistry/chenry/main" );
+    print $ref->type;                     # 'object'
+    print $ref->id;                       # 'chenry/main'
+    print $ref->id_type;                  # 'alias'
+    print $ref->alias_string;             # 'main'
+    print $ref->alias_username;           # 'chenry'
+    print $ref->alias_type;               # 'biochemistry';
+    print $ref->base;                     # 'biochemistry/'
+    print $ref->class;                    # 'ModelSEED::MS::Biochemistry'
+
+    my $ref = ModelSEED::Reference->new(
+        ref => "http://model-api.theseed.org/biochemistry/chenry/main/reactions"
+    );
+    print $ref->type;                      # 'collection'
+    print $ref->authority if $ref->is_url; # 'model-api.theseed.org'
+    print $ref->scheme if $ref->is_url;    # 'http'
+    
+    # Construct ref from type, alias
+    my $ref = ModelSEED::Reference->new('alias' => 'chenry/main', type => 'biochemsitry');
+    print $ref->ref; # '/biochemistry/chenry/main'
+
+    # Construct ref from type, uuid, with base type and id
+    my $ref = ModelSEED::Reference->new(
+        base_types => [ 'biochemistry' ], base_ids => [ 'chenry/main' ],
+        uuid => "550e8400-e29b-41d4-a716-446655440000",
+        type => 'compound'
+    );
+    print $ref->ref; # '/biochemistry/chenry/main/compound/550e8400-e29b-41d4-a716-446655440000'
 
 =head2 Construction
 
@@ -44,30 +74,93 @@ Pass in 'uuid', 'type', 'base_ids', and 'base_types' for deep references:
 Pass in the attributes 'alias' and 'type' for a top level object.
 Include the 'base_ids' and 'base_types' for deep refernces.
 
-=head3 parse
+=back
 
-    ModelSEED::Reference->new( ref => "biochemistry/chenry/main/reactions/:uuid");
-    {
-        type => "collection" || "object",
-        base => "biochemistry/chenry/main/reactions"
-        id   => ":uuid"
-        id_type => "uuid" || "alias"
-        class => "ModelSEED::MS::Reaction",
-        parent_objects => [ "biochemistry/chenry/main" ],
-        parent_collections => [ "biochemistry", "biochemistry/chenry/main/reactions" ],
-        is_url => boolean,
-        scheme  => undef || 'http',
-        authority => undef || 'model-api.theseed.org',
+=head4 Errors
 
-        alias_type
-        alias_username
-        alias_string
-    }
+If the data provided during reference construction results in an
+invalid reference object, an error C<Invalid Reference> will be
+thrown.
 
-Where type is either a collection or an object, base is a reference
-that will return the parent object or collection, id is the identifier
-for the object, class is the class pointed to by the reference and
-id_validator is a subroutine that will validate the id.
+=head3 Instance Attributes 
+
+A reference instance has many attributes that can be used to
+act on that reference. These should all be treated as read-only
+accessors:
+
+=head4 Basic Attributes
+
+=over 4
+
+=item ref
+
+The complete reference as a string. Can be passed into a new
+constructor.
+
+=item type 
+
+A string that is either C<collection> or C<object>. This indicates
+whether the reference points to a single object, e.g. a reaction,
+or a collection of objects, e.g. all of the reactions in a biochemistry
+object.
+
+=item base
+
+If the C<type> is an object, this would return the non-id portion
+of the ref string.  If the C<type> is a collection, this would
+correspond to the whole C<ref> string.
+
+=item id
+
+This is defined if the C<type> is an object. It is a string contianing
+the id portion of the reference.
+
+=back
+
+=head4 ID Attributes
+
+=over 4
+
+=item id_type
+
+A string that is either C<uuid> or C<alias> indicating whether
+the id portion should be treated as a UUID or as an alias string.
+
+=item alias_username 
+
+If C<id_type> is "alias", this returns the username portion of the alias.
+
+=item alias_string
+
+If C<id_type> is "alias", this returns the unrestricted portion of the
+alias string.
+
+=item alias_type
+
+If C<id_type> is "alias", this returns the type associated with the alias.
+
+=back
+
+=head4 URL Attributes
+
+A reference can be passed in as a URL string, e.g.
+
+    http://model-api.theseed.org/biochemistry/alice/main
+
+If this is the case, C<is_url> will be true and the following attributes will be defined:
+
+=over 4
+
+=item scheme
+
+The URL schema, usually "http".
+
+=item authority
+
+The "domain" portion of the url, e.g. "model-api.theseed.org"
+
+=back
+
 =cut
 package ModelSEED::Reference;
 use Moose;
