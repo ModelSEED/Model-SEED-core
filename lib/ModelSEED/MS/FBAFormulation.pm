@@ -257,6 +257,16 @@ sub createJobDirectory {
 		"determine minimal required media" => $self->findMinimalMedia(),
 		"Recursive MILP solution limit" => $self->numberOfSolutions()
 	};
+	if ($^O eq "MSWin32") {
+		$parameters->{"scip executable"} = "../../optimization/scip.exe";
+		$parameters->{"perl directory"} = "C:/Perl/bin/perl.exe";
+		$parameters->{"os"} = "windows";
+	} else {
+		$parameters->{"scip executable"} = "../../optimization/scip";
+		$parameters->{"perl directory"} = "/usr/bin/perl";
+		$parameters->{"os"} = $^O;
+		
+	}
 	#Setting thermodynamic constraints
 	if ($self->thermodynamicConstraints() eq "none") {
 		$parameters->{"Thermodynamic constraints"} = 0;

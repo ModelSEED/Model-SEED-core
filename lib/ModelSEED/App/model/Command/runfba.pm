@@ -9,7 +9,7 @@ use Class::Autouse qw(
     ModelSEED::MS::Factories::ExchangeFormatFactory
 );
 sub abstract { return "Fill gaps in the reaction network for a model"; }
-sub usage_desc { return "model gapfill [ model || - ] [options]"; }
+sub usage_desc { return "model runfba [ model || - ] [options]"; }
 sub opt_spec {
     return (
         ["config|c:s", "Configuration filename for formulating the gapfilling"],

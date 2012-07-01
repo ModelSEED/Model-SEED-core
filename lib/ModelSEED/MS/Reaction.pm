@@ -20,6 +20,7 @@ has equation => ( is => 'rw',printOrder => 4, isa => 'Str', type => 'msdata', me
 has equationCode => ( is => 'rw', isa => 'Str', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has balanced => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbalanced' );
 has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
+has compartment  => ( is => 'rw', isa => 'ModelSEED::MS::Compartment',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildcompartment' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -44,6 +45,20 @@ sub _buildbalanced {
 sub _buildmapped_uuid {
 	my ($self) = @_;
 	return "00000000-0000-0000-0000-000000000000";
+}
+sub _buildcompartment {
+	my ($self) = @_;
+	my $rgt = $self->reagents();
+	for (my $i=0; $i < @{$rgt}; $i++) {
+		if (!$rgt->[$i]->isTransport()) {
+			return $rgt->[$i]->destinationCompartment();
+		}
+	}
+	my $comp = $self->biochemistry()->queryObject("compartments",{name => "Cytosol"});
+	if (!defined($comp)) {
+		ModelSEED::utilities::ERROR("Could not find cytosol compartment in biochemistry!");	
+	}
+	return $comp;
 }
 
 #***********************************************************************************************************
@@ -70,6 +85,7 @@ sub createEquation {
 	});
 	my $rgt = $self->reagents();
 	my $rgtHash;
+	my $rxnCompID = $self->compartment()->id();
 	for (my $i=0; $i < @{$rgt}; $i++) {
 		my $id = $rgt->[$i]->compound_uuid();
 		if ($args->{format} eq "name" || $args->{format} eq "id") {
@@ -78,39 +94,52 @@ sub createEquation {
 		} elsif ($args->{format} ne "uuid") {
 			$id = $rgt->[$i]->compound()->getAlias($args->{format});
 		}
-		if (!defined($rgtHash->{$id}->{$rgt->[$i]->compartmentIndex()})) {
-			$rgtHash->{$id}->{$rgt->[$i]->compartmentIndex()} = 0;
+		if (!defined($rgtHash->{$id}->{$rgt->[$i]->destinationCompartment()->id()})) {
+			$rgtHash->{$id}->{$rgt->[$i]->destinationCompartment()->id()} = 0;
 		}
-		$rgtHash->{$id}->{$rgt->[$i]->compartmentIndex()} += $rgt->[$i]->coefficient();
-		if ($rgt->[$i]->compartmentIndex() > 0) {
-			if (!defined($rgtHash->{$id}->{0})) {
-				$rgtHash->{$id}->{0} = 0;
+		if ($rgt->[$i]->isTransport()) {
+			if (!defined($rgtHash->{$id}->{$rxnCompID})) {
+				$rgtHash->{$id}->{$rxnCompID} = 0;
 			}
-			$rgtHash->{$id}->{0} += -1*$rgt->[$i]->coefficient();
+			$rgtHash->{$id}->{$rgt->[$i]->destinationCompartment()->id()} += $rgt->[$i]->coefficient();
+			$rgtHash->{$id}->{$rxnCompID} += (-1*$rgt->[$i]->coefficient());
+		} else {
+			$rgtHash->{$id}->{$rxnCompID} += $rgt->[$i]->coefficient();
 		}
+	}
+	if (defined($self->defaultProtons()) && $self->defaultProtons() != 0) {
+		my $hcpd = $self->biochemistry()->queryObject("compounds",{name => "H+"});
+		if (!defined($hcpd)) {
+			ModelSEED::utilities::ERROR("Could not find proton in biochemistry!");
+		}
+		my $id = $hcpd->uuid();
+		if ($args->{format} eq "name" || $args->{format} eq "id") {
+			my $function = $args->{format};
+			$id = $hcpd->$function();
+		} elsif ($args->{format} ne "uuid") {
+			$id = $hcpd->getAlias($args->{format});
+		}
+		$rgtHash->{$id}->{$rxnCompID} += $self->defaultProtons();
 	}
 	my $reactcode = "";
 	my $productcode = "";
-	my $sign = "<=>";
+	my $sign = " <=> ";
 	my $sortedCpd = [sort(keys(%{$rgtHash}))];
 	for (my $i=0; $i < @{$sortedCpd}; $i++) {
-		my $indecies = [sort(keys(%{$rgtHash->{$sortedCpd->[$i]}}))];
-		for (my $j=0; $j < @{$indecies}; $j++) {
-			my $compartment = "";
-			if ($indecies->[$j] != 0) {
-				$compartment = "[".$indecies->[$j]."]";
-			}
-			if ($rgtHash->{$sortedCpd->[$i]}->{$indecies->[$j]} < 0) {
-				my $coef = -1*$rgtHash->{$sortedCpd->[$i]}->{$indecies->[$j]};
+		my $comps = [sort(keys(%{$rgtHash->{$sortedCpd->[$i]}}))];
+		for (my $j=0; $j < @{$comps}; $j++) {
+			my $compartment = "[".$comps->[$j]."]";
+			if ($rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]} < 0) {
+				my $coef = -1*$rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]};
 				if (length($reactcode) > 0) {
-					$reactcode .= "+";	
+					$reactcode .= " + ";	
 				}
 				$reactcode .= "(".$coef.")".$sortedCpd->[$i].$compartment;
-			} elsif ($rgtHash->{$sortedCpd->[$i]}->{$indecies->[$j]} > 0) {
+			} elsif ($rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]} > 0) {
 				if (length($productcode) > 0) {
-					$productcode .= "+";	
+					$productcode .= " + ";	
 				}
-				$productcode .= "(".$rgtHash->{$sortedCpd->[$i]}->{$indecies->[$j]}.")".$sortedCpd->[$i].$compartment;
+				$productcode .= "(".$rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]}.")".$sortedCpd->[$i].$compartment;
 			} 
 		}
 	}

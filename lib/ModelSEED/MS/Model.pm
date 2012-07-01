@@ -650,7 +650,7 @@ sub addReactionToModel {
 		$mdlrxn = $self->add("modelreactions",{
 			reaction_uuid => $rxn->uuid(),
 			direction => $args->{direction},
-			protons => $rxn->reaction()->defaultProtons(),
+			protons => $rxn->defaultProtons(),
 			modelcompartment_uuid => $mdlcmp->uuid(),
 		});
 		my $speciesHash;
@@ -659,7 +659,7 @@ sub addReactionToModel {
 		for (my $i=0; $i < @{$rxn->reagents()}; $i++) {
 			my $rgt = $rxn->reagents()->[$i];
 			my $coefficient = $rgt->coefficient();
-			if ($rgt->isTransported() == 1) {
+			if ($rgt->isTransport() == 1) {
 				my $transCmp = $self->addCompartmentToModel({compartment => $rgt->destinationCompartment(),pH => 7,potential => 0,compartmentIndex => 0});
 				my $transcpd = $self->addCompoundToModel({
 					compound => $rgt->compound(),

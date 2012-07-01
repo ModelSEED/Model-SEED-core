@@ -346,6 +346,16 @@ sub printJobParametersToFile {
 	$self->setOptionParameters();
 	$self->parameters()->{"output folder"} = $self->filename()."/";
 	$self->parameters()->{"Network output location"} = "/scratch/" if ($args->{printToScratch} == 1);
+	if ($^O eq "MSWin32") {
+		$self->parameters()->{"scip executable"} = "../../optimization/scip.exe";
+		$self->parameters()->{"perl directory"} = "C:/Perl/bin/perl.exe";
+		$self->parameters()->{"os"} = "windows";
+	} else {
+		$self->parameters()->{"scip executable"} = "../../optimization/scip";
+		$self->parameters()->{"perl directory"} = "/usr/bin/perl";
+		$self->parameters()->{"os"} = $^O;
+		
+	}
 	$self->makeOutputDirectory() if (!-d $self->directory());
 	my $parameterData;
 	my $parameterList = [keys(%{$self->parameters()})];
