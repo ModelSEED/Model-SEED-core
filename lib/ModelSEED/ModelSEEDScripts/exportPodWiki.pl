@@ -17,7 +17,61 @@ code for details.
 HEREDOC
 
 my $dest   = shift @ARGV;
-die $usage;
+die $usage unless(defined($dest) && -d $dest);
+
+# Ignore packages that match these regexes
+my $ignores = [
+    qr/::DB::.*/,                # DB implementation classes
+    qr/::FIGMODEL.*/,            # FIGMODEL (Legacy)
+    qr/::ModelSEEDScripts.*/,    # Scripts
+    qr/::ServerBackends.*/,      # Server backends (Legacy)
+    qr/::App.*/,                 # App hierarchy
+    qr/::[a-z]/,                 # any non-class object
+    qr/::ModelDB.*/,             # ModelDB classes (Legacy)
+    qr/::ModelSEEDUtilities.*/,  # Utilities (Legacy)
+    qr/ModelDriver.*/,           # ModelDriver (Legacy)
+    qr/[Uu]tilities/,               # anything with utilities
+];
+# Get the initial set
+my $name2path = Pod::Simple::Search->new->limit_glob('ModelSEED::*')->survey;
+# Filter out all ignores
+foreach my $name (sort keys %$name2path ) {
+    foreach my $ignore (@$ignores) {
+        if($name =~ /$ignore/) {
+            delete $name2path->{$name};
+            last;
+        }
+    }
+}
+# Define the rename settings
+my $name2rename = {};
+foreach my $name ( keys %$name2path ) {
+    my $rename = $name;
+    $rename =~ s/::/-/g;
+    $name2rename->{$name} = $rename;
+}
+# Print output for each package now
+foreach my $name (keys %$name2path) {
+    my $path = $name2path->{$name};
+    # Get the raw POD
+    my $parser = Pod::Select->new();
+    my $tmpfile;
+    {
+        my $fh;
+        ($fh, $tmpfile) = tempfile();
+        close($fh);
+    }
+    $parser->parse_from_file($path, $tmpfile);
+    open(my $fh, "<", $tmpfile);
+    my $rows = processPackageLinks($fh, $name2rename);
+    close($fh);
+    my $finalPath = "$dest/".$name2rename->{$name}.".pod";
+    unlink $finalPath;
+    next unless(@$rows);
+    open($fh, ">", $finalPath);
+    print $fh @$rows;
+    close($fh);
+}
 
 sub processPackageLinks {
     my ($filehandle, $packageConversions) = @_;
@@ -50,57 +104,3 @@ sub processPackageLinks {
     return $rtv;
 }
 
-# Ignore packages that match these regexes
-my $ignores = [
-    qr/::DB::.*/,                # DB implementation classes
-    qr/::FIGMODEL.*/,            # FIGMODEL (Legacy)
-    qr/::ModelSEEDScripts.*/,    # Scripts
-    qr/::ServerBackends.*/,      # Server backends (Legacy)
-    qr/::App.*/,                 # App hierarchy
-    qr/::[a-z]/,                 # any non-class object
-    qr/::ModelDB.*/,             # ModelDB classes (Legacy)
-    qr/::ModelSEEDUtilities.*/,  # Utilities (Legacy)
-    qr/ModelDriver.*/,           # ModelDriver (Legacy)
-    qr/[Uu]tilities/,               # anything with utilities
-];
-
-# Get the initial set
-my $name2path = Pod::Simple::Search->new->limit_glob('ModelSEED::*')->survey;
-# Filter out all ignores
-foreach my $name (sort keys %$name2path ) {
-    foreach my $ignore (@$ignores) {
-        if($name =~ /$ignore/) {
-            delete $name2path->{$name};
-            last;
-        }
-    }
-}
-
-# Define the rename settings
-my $name2rename = {};
-foreach my $name ( keys %$name2path ) {
-    my $rename = $name;
-    $rename =~ s/::/-/g;
-    $name2rename->{$name} = $rename;
-}
-
-# Print output for each package now
-foreach my $name (keys %$name2path) {
-    my $path = $name2path->{$name};
-    # Get the raw POD
-    my $parser = Pod::Select->new();
-    my $tmpfile;
-    {
-        my $fh;
-        ($fh, $tmpfile) = tempfile();
-        close($fh);
-    }
-    $parser->parse_from_file($path, $tmpfile);
-    open(my $fh, "<", $tmpfile);
-    my $rows = processPackageLinks($fh, $name2rename);
-    close($fh);
-    my $finalPath = "$dest/".$name2rename->{$name}.".pod";
-    open($fh, ">", $finalPath);
-    print $fh @$rows;
-    close($fh);
-}
