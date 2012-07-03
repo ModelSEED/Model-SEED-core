@@ -752,7 +752,7 @@ sub user {
 	if (defined($self->{_user_acount}->[0])) {
 		return $self->{_user_acount}->[0]->login();	
 	}
-	return "PUBLIC";
+	return "public";
 }
 
 =head3 setuser
