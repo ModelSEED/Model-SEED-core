@@ -499,7 +499,7 @@ sub get_object_rights {
     if (defined($object->attributes()->{public}) && $object->public() eq 1) {
         $rights->{view} = 1;
     }
-    if($login ne "PUBLIC" && defined($user) && defined($object->attributes()->{id})) {
+    if($login ne "public" && defined($user) && defined($object->attributes()->{id})) {
         my $permission = $self->get_object("permissions", { type => $type, id => $object->id(), user => $login});
         if(defined($permission)) {
             $rights = {};

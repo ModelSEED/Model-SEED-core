@@ -14,7 +14,7 @@
 
 Parse and construct ModelSEED data references.
 
-=head2 ABSTRACT
+=head2 SYNOPSIS 
 
     my $ref = ModelSEED::Reference->new( ref => "biochemistry/chenry/main" );
     print $ref->type;                     # 'object'

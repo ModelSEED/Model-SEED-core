@@ -374,7 +374,7 @@ sub getRastGenomeData {
 	}
 	#Checking for rights
 	if ($output->{source} =~ m/^MGRAST/ || $output->{source} =~ m/^RAST/ || $output->{source} =~ m/^TESTRAST/) {
-		if ($figmodel->user() eq "PUBLIC") {
+		if ($figmodel->user() eq "public") {
 			ModelSEED::utilities::WARNING("Must be authenticated to access model");
 			return undef;
 		} elsif (!defined($figmodel->config("model administrators")->{$figmodel->user()})) {

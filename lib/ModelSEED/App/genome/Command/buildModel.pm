@@ -29,18 +29,24 @@ sub execute {
     my $auth  = ModelSEED::Auth::Factory->new->from_config;
     my $store = ModelSEED::Store->new(auth => $auth);
     my $helpers = ModelSEED::App::Helpers->new();
-    my ($annotation, $ref) = $helpers->get_object("annotation", $args, $store);
-    $self->usage_error("Must specify an annotation to use") unless(defined($annotation));
+    my $anno_ref = $helpers->process_ref_string(shift @$args, "annotation", $auth->username);
+    my $model_ref = $helpers->process_ref_string(shift @$args, "model", $auth->username);
+    unless(defined($anno_ref)) {
+        $self->usage_error("Must specify an annotation to use");
+    }
+    unless(defined($model_ref)) {
+        $self->usage_error("Must supply a name for model");
+    }
+    my $annotation = $store->get_object($anno_ref);
+    unless(defined($annotation)) {
+        $self->usage_error("Annotation " . $anno_ref->ref . " not found");
+    }
     my $mapping;
     if(defined($opts->{mapping})) {
         $mapping = $helpers->process_ref_string($opts->{mapping}, "mapping", $auth->username);
         $mapping = $store->get_object($mapping);
     } else {
         $mapping = $annotation->mapping;
-    }
-    my $model_ref = shift @$args;
-    unless(defined($model_ref)) {
-        $self->usage_error("Must supply a name for model");
     }
     my $verbose = (defined $opts->{verbose}) ? 1 : 0;
     my $model = $annotation->createStandardFBAModel({
