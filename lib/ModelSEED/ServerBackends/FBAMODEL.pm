@@ -100,6 +100,7 @@ sub methods {
 			"classify_model_entities",
 			"simulate_all_single_gene_knockout",
 			"simulate_model_growth",
+			"get_model_fba_results",
 			"get_model_reaction_classification_table",
             "get_role_to_complex",
             "get_complex_to_reaction",
