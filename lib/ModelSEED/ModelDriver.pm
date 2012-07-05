@@ -2709,6 +2709,10 @@ sub mdlprintcytoseed {
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
 	print "Reaction class data printed...\n";
+	open(FH, ">".$cmdir."/fba_results") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_model_fba_results({ "model" => [$args->{model}] }));
+	close FH;
+	print "FBA results printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 
