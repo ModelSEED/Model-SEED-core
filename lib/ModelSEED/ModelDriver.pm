@@ -1055,7 +1055,8 @@ sub fbacheckgrowth {
 		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
-		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."],
+		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."]
 	],[@Data],"tests if a model is growing under a specific media");
 	$args->{media} =~ s/\_/ /g;
 	my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
@@ -1107,6 +1108,39 @@ sub fbacheckgrowth {
                 }
             }
 		}
+	}
+	if ($args->{savetodb} == 1) {
+		my $flux = "";
+		my $drainFlux = "";
+		if ($results->{growth} > 0.000001) {
+			my $fluxes = $results->{fbaObj}->loadFluxData();
+			foreach my $entity (keys(%{$fluxes})) {
+				if (abs($fluxes->{$entity}) > 0.00000001) {
+					if ($entity =~ m/cpd/) {
+						$drainFlux .= $entity.":".$fluxes->{$entity}.";";
+					} else {
+						$flux .= $entity.":".$fluxes->{$entity}.";";
+					}
+				}
+			}
+		} else {
+			$flux = "none";
+			$drainFlux = "none";
+		}
+		my $newFBAResult = {
+			"time" => time(),
+			owner => ModelSEED::Interface::interface::USERNAME(),
+			model => $args->{model},
+			media => $args->{media},
+			method => "SINGLEGROWTH",
+			rxnKO => $args->{rxnKO},
+			pegKO => $args->{geneKO},
+			growth => $results->{growth},
+			flux => $flux,
+			drainFlux => $drainFlux,
+			results => $message
+		};
+		$self->figmodel()->database()->create_object("fbaresult",$newFBAResult);	
 	}
 	return $message;
 }
