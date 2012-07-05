@@ -37,31 +37,47 @@ sub _buildstore {
 =head3 buildFBAFormulationFromExchange
 Definition:
 	ModelSEED::MS::FBAFormulation = ModelSEED::MS::Biochemistry->buildFBAFormulationFromExchange({
-		text => string(REQ),
+		array => [string],
+		filename => string,
+		text => string,
 		model => ModelSEED::MS::Model
 	});
 Description:
 	Parses the FBA formulation exchange object
 =cut
-sub buildFBAFormulationFromExchange {
+sub buildFBAFormulation {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["text","model"],{});
+	$args = ModelSEED::utilities::ARGS($args,["model"],{
+		text => undef,
+		filename => undef,
+		overrides => {}
+	});
 	my $model = $args->{model};
-	my $text = $args->{model};
-	my $fileArray = [split(/\n/,$text)];
-	#Setting default attributes and subobjects, and enforcing mandatory attributes and subobjects
-	my $data = $self->parseExchangeFileArray({array => $fileArray});
+	my $data = $self->parseExchangeFileArray($args);
+	#Setting default values for exchange format attributes
 	$data = ModelSEED::utilities::ARGS($data,[],{
 		name => "Default",
 		media => "Media/name/Complete",
 		type => "singlegrowth",
 		description => "None provided",
 		growthConstraint => "none",
-		thermodynamicConstraints => "none",
+		simpleThermoConstraints => 0,
+		thermodynamicConstraints => 0,
+		noErrorThermodynamicConstraints => 0,
+		minimizeErrorThermodynamicConstraints => 0,
+		fva => 0,
+		notes => "",
+		comboDeletions => 0,
+		fluxMinimization => 0,
+		findMinimalMedia => 0,
+		objectiveConstraintFraction => 0.1,
 		allReversible => 0,
 		dilutionConstraints => 0,
 		uptakeLimits => "none",
 		geneKO => "none",
+		reactionKO => "none",
+		parameters => "none",
+		numberOfSolutions => 1,
 		defaultMaxFlux => 100,
 		defaultMaxDrainFlux => 100,
 		defaultMinDrainFlux => -100,
@@ -73,7 +89,7 @@ sub buildFBAFormulationFromExchange {
 		fbaConstraints => [],
 		fbaObjectiveTerms => [{
 			variableType => "biomassflux",
-			id => "Biomass/name/bio00001",
+			id => "Biomass/name/bio1",
 			coefficient => 1
 		}]
 	});
@@ -197,17 +213,30 @@ sub buildFBAFormulationFromExchange {
 =head3 parseExchangeFileArray
 Definition:
 	{} = ModelSEED::MS::Biochemistry->parseExchangeFileArray({
-		array => [string](REQ)
+		array => [string](undef),
+		text => string(undef),
+		filename => string(undef)
 	});
 Description:
 	Parses the exchange file array into a attribute and subobject hash
 =cut
 sub parseExchangeFileArray {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["array"],{});
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		text => undef,
+		filename => undef,
+		array => []
+	});
+	if (defined($args->{filename}) && -e $args->{filename}) {
+		$args->{array} = ModelSEED::utilities::LOADFILE($args->{filename}); 
+		delete $args->{text};
+	}
+	if (defined($args->{text})) {
+		$args->{array} = [split(/\n/,$args->{text})];
+	}
 	my $array = $args->{array};
+	my $data = {};
 	my $section = "none";
-	my $data;
 	my $headings;
 	for (my $i=0; $i < @{$array}; $i++) {
 		if ($array->[$i] =~ m/^Attributes/) {

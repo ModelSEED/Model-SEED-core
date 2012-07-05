@@ -33,9 +33,7 @@ has findMinimalMedia => (is => 'rw', isa => 'Bool', printOrder => '0', default =
 has notes => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has objectiveConstraintFraction => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
-has thermodynamicConstraints => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
 has allReversible => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has dilutionConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has defaultMaxFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
 has defaultMinDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
@@ -175,28 +173,12 @@ my $attributes = [
             'perm' => 'rw'
           },
           {
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'thermodynamicConstraints',
-            'default' => 'none',
-            'type' => 'ModelSEED::varchar',
-            'perm' => 'rw'
-          },
-          {
             'len' => 255,
             'req' => 0,
             'printOrder' => 0,
             'name' => 'allReversible',
             'default' => '0',
             'type' => 'Int',
-            'perm' => 'rw'
-          },
-          {
-            'req' => 0,
-            'printOrder' => 0,
-            'name' => 'dilutionConstraints',
-            'default' => '0',
-            'type' => 'Bool',
             'perm' => 'rw'
           },
           {
@@ -341,7 +323,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, regulatorymodel_uuid => 2, media_uuid => 3, fva => 4, comboDeletions => 5, fluxMinimization => 6, findMinimalMedia => 7, notes => 8, expressionData_uuid => 9, objectiveConstraintFraction => 10, thermodynamicConstraints => 11, allReversible => 12, dilutionConstraints => 13, defaultMaxFlux => 14, defaultMaxDrainFlux => 15, defaultMinDrainFlux => 16, maximizeObjective => 17, decomposeReversibleFlux => 18, decomposeReversibleDrainFlux => 19, fluxUseVariables => 20, drainfluxUseVariables => 21, geneKO_uuids => 22, reactionKO_uuids => 23, parameters => 24, uptakeLimits => 25, numberOfSolutions => 26, simpleThermoConstraints => 27, thermodynamicConstraints => 28, noErrorThermodynamicConstraints => 29, minimizeErrorThermodynamicConstraints => 30};
+my $attribute_map = {uuid => 0, modDate => 1, regulatorymodel_uuid => 2, media_uuid => 3, fva => 4, comboDeletions => 5, fluxMinimization => 6, findMinimalMedia => 7, notes => 8, expressionData_uuid => 9, objectiveConstraintFraction => 10, allReversible => 11, defaultMaxFlux => 12, defaultMaxDrainFlux => 13, defaultMinDrainFlux => 14, maximizeObjective => 15, decomposeReversibleFlux => 16, decomposeReversibleDrainFlux => 17, fluxUseVariables => 18, drainfluxUseVariables => 19, geneKO_uuids => 20, reactionKO_uuids => 21, parameters => 22, uptakeLimits => 23, numberOfSolutions => 24, simpleThermoConstraints => 25, thermodynamicConstraints => 26, noErrorThermodynamicConstraints => 27, minimizeErrorThermodynamicConstraints => 28};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

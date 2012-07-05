@@ -8,7 +8,7 @@
 use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
-use JSON::Any;
+use JSON;
 use Module::Load;
 
 package ModelSEED::Meta::Attribute::Typed;
@@ -94,11 +94,19 @@ sub serializeToDB {
     return $data;
 }
 
-sub printJSONFile {
-    my ($self,$filename) = @_;
+sub toJSON {
+    my ($self,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
     my $data = $self->serializeToDB();
-    my $jsonData = JSON::Any->encode($data);
-    ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
+    my $JSON = JSON->new->utf8(1);
+    $JSON->pretty(1) if($args->{pretty});
+    return $JSON->encode($data)
+}
+sub printJSONFile {
+    my ($self,$filename,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
+    my $text = $self->toJSON($args);
+    ModelSEED::utilities::PRINTFILE($filename,[$text]);
 }
 
 ######################################################################

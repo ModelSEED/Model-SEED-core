@@ -5585,10 +5585,22 @@ sub BuildSpecificBiomassReaction {
 	}	
 	my $genomestats = $self->genomeObj()->genome_stats();
 	my $Class = $self->ppo()->cellwalltype();
+	#Checking for overrides on the class of the cell wall
 	if (defined($self->figmodel()->config("Gram positive")->{$self->genome()})) {
 		$Class = "Gram positive";
 	} elsif (defined($self->figmodel()->config("Gram negative")->{$self->genome()})) {
 		$Class = "Gram negative";
+	} else {
+		my $cellwalltypes = ["Gram positive","Gram negative"];
+		for (my $j=0; $j < @{$cellwalltypes}; $j++) {
+			for (my $i=0; $i < @{$self->figmodel()->config($cellwalltypes->[$j]." families")}; $i++) {
+				my $family = $self->figmodel()->config($cellwalltypes->[$j]." families")->[$i];
+				if ($self->name() =~ m/$family/) {
+					$Class = $cellwalltypes->[$j];
+					last;
+				}
+			}
+		}
 	}
 	#Setting global coefficients based on cell wall type
 	my $biomassCompounds;

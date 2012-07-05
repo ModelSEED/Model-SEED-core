@@ -73,17 +73,17 @@ sub execute {
 		}
 	}
 	my $exchange_factory = ModelSEED::MS::Factories::ExchangeFormatFactory->new();
-	my $fbaform = $exchange_factory->buildFBAFormulation($input);#TODO
+	my $fbaform = $exchange_factory->buildFBAFormulation($input);
     #Running FBA
-    print "Running FBA..." if($opts->{verbose});
+    print STDERR "Running FBA..." if($opts->{verbose});
     my $fbaResult = $fbaform->runFBA();
-	print $out_fh $fbaResult->printToJSON({pp => 1});#TODO
+	print $out_fh $fbaResult->toJSON({pp => 1});
     #Standard commands that save results of the analysis to the database
     if ($opts->{overwrite}) {
-    	print "Saving FBA results in original model..." if($opts->{verbose});
+    	print STDERR "Saving FBA results in original model..." if($opts->{verbose});
     } elsif ($opts->{save}) {
 		$ref = $helper->process_ref_string($opts->{save}, "model", $auth->username);
-		print "Saving FBA results in new model ".$ref."..." if($opts->{verbose});
+		print STDERR "Saving FBA results in new model ".$ref."..." if($opts->{verbose});
 		$model->save($ref);
     }
 }
