@@ -7690,6 +7690,41 @@ sub fbaCalculateGrowth {
 	$result->{fbaObj}->clearOutput();
 	return $result;
 }
+=head3 fbaCalculateMinimalPathways
+Definition:
+	{}:Output = FIGMODELmodel->fbaCalculateMinimalPathways({
+		growth => double,
+		noGrowthCompounds => [string]:compound list	
+	});
+Description:
+	Calculating minimal pathways to reach some objective
+=cut
+sub fbaCalculateMinimalPathways {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		numsolutions => 5,
+		objective => undef,
+		additionalexchange => undef,
+		fbaStartParameters => {},
+	});
+	return $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setMinimalPathwaysStudy",
+			arguments => {
+				numsolutions=>$args->{numsolutions},
+				"objective" => $args->{objective},
+				"additionalexchange" => $args->{additionalexchange},
+			} 
+		},
+		saveLPfile => 1,
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+}
 =head3 fbaCalculateMinimalMedia
 =item Definition:
 	Output = FBAMODELmodel->fbaCalculateMinimalMedia({

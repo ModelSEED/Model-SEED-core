@@ -1680,6 +1680,36 @@ sub parseCombinatorialDeletionStudy {
 	return {error => "parseCombinatorialDeletionStudy:could not find specified output directory"};
 }
 
+=head3 setMinimalPathwaysStudy
+=item Definition:
+	string:error = FIGMODELfba->setMinimalPathwaysStudy(optional integer:number of formulations);
+=item Description:
+=cut
+sub setMinimalPathwaysStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{numsolutions => 5, objective => "no objective supplied", additionalexchange => "no additional exchange supplied"});
+	$self->set_parameters({
+		"objective" => $args->{objective},
+		"exchange species" => $args->{additionalexchange},
+		"MFASolver"=>"CPLEX",
+		"Recursive MILP solution limit" => $args->{numsolutions},
+		"Generate pathways to objective" => 1
+	});
+	$self->parsingFunction("parseMinimalPathwaysStudy");
+	return {};
+}
+
+sub parseMinimalPathwaysStudy {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{filename=>$self->filename()});
+	if (defined($args->{error})) {return {error => $args->{error}};}
+	$self->filename($args->{filename});
+
+	#Loading problem report
+	my $result =  $self->loadProblemReport($args);
+	return $result;
+}
+
 =head3 setMinimalMediaStudy
 =item Definition:
 	string:error = FIGMODELfba->setMinimalMediaStudy(optional integer:number of formulations);

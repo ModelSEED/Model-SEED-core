@@ -1036,6 +1036,150 @@ sub sqblastgenomes {
 	ModelSEED::utilities::PRINTFILE($self->ws->directory().$args->{"filename"},$output);
 }
 
+sub fbafindminimalpathways {
+   my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."],
+		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."],
+	        ["objective",0,0,"One of: ALL, ENERGY, or a rxn or cpd id"]
+				],[@Data],"tests if a model is growing under a specific media");
+	$args->{media} =~ s/\_/ /g;
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+
+	my ($media,$objective,$solutionnum,$AllReversible,$additionalexchange) = (
+	    $args->{media}, $args->{objective}, $args->{numSolutions}, $args->{allReversible},
+	    $args->{additionalExchange});
+
+	#Setting default media
+	if (!defined($media)) {
+		$media = "Complete";
+	}
+
+	#Setting default solution number
+	if (!defined($solutionnum)) {
+		$solutionnum = "5";
+	}
+
+	#Setting additional exchange fluxes
+	if (!defined($additionalexchange) || length($additionalexchange) == 0) {
+	    $additionalexchange = $self->figmodel()->config("default exchange fluxes")->[0];
+	}
+
+	#Translating objective
+	my $objectivestring;
+	if ($objective eq "ALL") {
+		#Getting the list of universal building blocks
+		my $buildingblocks = $self->config("universal building blocks");
+		my @objectives = keys(%{$buildingblocks});
+		#Getting the nonuniversal building blocks
+		my $otherbuildingblocks = $self->config("nonuniversal building blocks");
+		my @array = keys(%{$otherbuildingblocks});
+		if (defined($self->get_biomass()) && defined($self->figmodel()->get_reaction($self->get_biomass()->{"LOAD"}->[0]))) {
+			my $equation = $self->figmodel()->get_reaction($self->get_biomass()->{"LOAD"}->[0])->{"EQUATION"}->[0];
+			if (defined($equation)) {
+				for (my $i=0; $i < @array; $i++) {
+					if (CORE::index($equation,$array[$i]) > 0) {
+						push(@objectives,$array[$i]);
+					}
+				}
+			}
+		}
+		for (my $i=0; $i < @objectives; $i++) {
+			$self->find_minimal_pathways($media,$objectives[$i]);
+		}
+		return;
+	} elsif ($objective eq "ENERGY") {
+		$objectivestring = "MAX;FLUX;rxn00062;c;1";
+	} elsif ($objective =~ m/cpd\d\d\d\d\d/) {
+		if ($objective =~ m/\[(\w)\]/) {
+			$objectivestring = "MIN;DRAIN_FLUX;".$objective.";".$1.";1";
+			$additionalexchange .= ";".$objective."[".$1."]:-100:0";
+		} else {
+			$objectivestring = "MIN;DRAIN_FLUX;".$objective.";c;1";
+			$additionalexchange .= ";".$objective."[c]:-100:0";
+		}
+	} elsif ($objective =~ m/(rxn\d\d\d\d\d)/) {
+		my ($Reactants,$Products) = $self->figmodel()->GetReactionSubstrateData($objective);
+		for (my $i=0; $i < @{$Products};$i++) {
+			my $temp = $Products->[$i]->{"DATABASE"}->[0];
+			if ($additionalexchange !~ m/$temp/) {
+				#$additionalexchange .= ";".$temp."[c]:-100:0";
+			}
+		}
+		for (my $i=0; $i < @{$Reactants};$i++) {
+			print $Reactants->[$i]->{"DATABASE"}->[0]." started\n";
+			$self->find_minimal_pathways($media,$Reactants->[$i]->{"DATABASE"}->[0],$additionalexchange);
+			print $Reactants->[$i]->{"DATABASE"}->[0]." done\n";
+		}
+		return;
+	}
+
+	#Adding additional drains
+	if (($objective eq "cpd15665" || $objective eq "cpd15667" || $objective eq "cpd15668" || $objective eq "cpd15669") && $additionalexchange !~ m/cpd15666/) {
+		$additionalexchange .= ";cpd15666[c]:0:100";
+	} elsif ($objective eq "cpd11493" && $additionalexchange !~ m/cpd12370/) {
+		$additionalexchange .= ";cpd12370[c]:0:100";
+	} elsif ($objective eq "cpd00166" && $additionalexchange !~ m/cpd01997/) {
+		$additionalexchange .= ";cpd01997[c]:0:100;cpd03422[c]:0:100";
+	}
+
+
+
+   my $results = $mdl->fbaCalculateMinimalPathways({
+       "fbaStartParameters" => $fbaStartParameters,
+       "numsolutions" => $solutionnum,
+       "objective" => $objectivestring,
+       "additionalexchange" => $additionalexchange,
+       "problemDirectory" => $fbaStartParameters->{filename},
+       "saveLPfile" => $args->{"save lp file"}
+   });
+
+	#Parsing output
+	my @Array;
+	my $row = $results->get_row(1);
+	if (defined($row->{"Notes"}->[0])) {
+		$_ = $row->{"Notes"}->[0];
+		@Array = /\d+:([^\|]+)\|/g;
+	}
+	
+   foreach (@Array)
+   {   
+       if (/rxn10042/) {
+	   print "\n\nContains ATP Synthase\n\n";
+       } else {
+	   print "\n\nDoes not contain ATP Synthase\n\n";
+       }
+       chomp;
+       my @reactions = split ",";
+
+       foreach my $reaction (@reactions)
+       {
+	   my $dir = substr $reaction, 0, 1;
+	   my $rxn = substr $reaction, 1;
+	   my $rxnobj = $self->figmodel->database()->get_objects("reaction", { "id" => $rxn } );
+	   my $def = $rxnobj->[0]->definition();
+	   print $reaction, "\t", $def, "\n";
+       }
+   }
+
+
+#Writing output to file
+$self->figmodel()->database()->print_array_to_file($self->ws->directory()."MinimalPathways-".$media."-".$objective."-".$mdl->id()."-".$AllReversible.".txt",[join("|",@Array)]);
+
+}
+
 =head
 =CATEGORY
 Flux Balance Analysis Operations
