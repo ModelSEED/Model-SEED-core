@@ -1,7 +1,3 @@
-
-
-#!/usr/bin/perl -w
-
 ########################################################################
 # Driver module that holds all functions that govern user interaction with the Model SEED
 # Author: Christopher Henry
@@ -17,8 +13,190 @@ use ModelSEED::ServerBackends::FBAMODEL;
 use Getopt::Long qw(GetOptionsFromArray);
 use YAML;
 use YAML::Dumper;
+use File::Temp;
+use Cwd;
 
 package ModelSEED::ModelDriver;
+use Try::Tiny;
+
+sub run {
+	my @args = @_;
+	my $class = shift(@args);
+	#First checking to see if at least one argument has been provided
+	my $driv;
+	ModelSEED::Interface::interface::LOADENVIRONMENT();
+	$driv = ModelSEED::ModelDriver->new();
+	if (!defined($args[0]) || $args[0] eq "help" || $args[0] eq "-man" || $args[0] eq "-help") {
+	    print "Welcome to the Model SEED! You are currently logged in as: ".ModelSEED::Interface::interface::USERNAME().".\n";
+	    print "ModelDriver is the primary executable for the Model SEED.\n\n";
+	    print "Possible usage:\n\n";
+	    print "1.) ModelDriver usage \"name of function\"\n";
+	    print "Prints the arguments list expected by the function\n\n";
+	    print "2.) ModelDriver \"name of function\" \"-argument name\" \"argument value\" \"-argument name\" \"argument value\"\n";
+	    print "This is the standard notation, useful to know exactly what arguments you're submitting, but it's also alot of typing.\n\n";
+	    print "3.) ModelDriver \"name of function?argument value?argument value\"\n";
+	    print "This is the alternative notation. Argument values are input directly in the same order specified by the \"usage\" command.\n";
+		exit(0);
+	}
+	
+	#This variable will hold the name of a file that will be printed when a job finishes
+	my $Status = "";
+	#Cleaning out some weird characters Cygwin sometimes adds to input
+	for (my $i=0; $i < @args; $i++) {
+		$args[$i] =~ s/\x{d}//g;
+	}
+	#Parsing arguments into a list of function calls
+	my $currentFunction;
+	my $functions;
+	my $lastKey;
+	my $lastKeyType;
+	my $prefixes = ["ms","mdl","db","bc","fba","gen","sq"];
+	for (my $i=0; $i < @args; $i++) {
+		for (my $j=0; $j < @{$prefixes}; $j++) {
+			my $search = "^".$prefixes->[$j]."-";
+			my $prefix = $prefixes->[$j];
+			$args[$i] =~ s/$search/$prefix/g;
+		}
+		$args[$i] =~ s/___/ /g;
+	    $args[$i] =~ s/\.\.\./(/g;
+	    $args[$i] =~ s/,,,/)/g;
+		if ($args[$i] =~ m/^finish\?(.+)/) {
+			$driv->finishfile($1);
+		} elsif ($args[$i] =~ m/\?/) {
+			my $subarray = [split(/\?/,$args[$i])];
+			if (length($subarray->[0]) > 0) {
+				if ($driv->isCommandLineFunction($subarray->[0]) == 1) {
+					if (defined($currentFunction)) {
+						push(@{$functions},$currentFunction);
+					}
+					$currentFunction = {
+						name => shift(@{$subarray}),
+						argHash => {},
+						argList => []	
+					};
+				}
+			}
+			push(@{$currentFunction->{argList}},@{$subarray});
+			$lastKey = @{$currentFunction->{argList}}-1;
+			$lastKeyType = "argList";
+	    } elsif ($args[$i] =~ m/\^finish$/ && defined($args[$i+1])) {
+	    	$driv->finishfile($args[$i+1]);
+	    	$i++;
+	    } elsif ($args[$i] =~ m/^usage\?(.+)/) {
+	    	my $function = $1;
+	    	$driv->usage($function);
+	    } elsif ($args[$i] =~ m/^usage$/ && defined($args[$i+1])) {
+	    	$driv->usage($args[$i+1]);
+	    	$i++;
+	    } elsif ($args[$i] =~ m/^-usage$/ || $args[$i] =~ m/^-help$/ ||  $args[$i] =~ m/^-man$/) {
+	    	if (defined($currentFunction->{name})) {
+	    		$driv->usage($currentFunction->{name});
+	    	}
+	    	$i++;
+		} elsif ($args[$i] =~ m/^\-(.+)/) {
+			$lastKey = $1;
+			$lastKeyType = "argHash";
+			$currentFunction->{argHash}->{$lastKey} = $args[$i+1];
+			$i++;
+		} elsif ($driv->isCommandLineFunction($args[$i]) == 1) {
+			if (defined($currentFunction)) {
+				push(@{$functions},$currentFunction);
+			}
+			$currentFunction = {
+				name => $args[$i],
+				argHash => {},
+				argList => []	
+			};
+		} else {
+			if ($lastKeyType eq "argHash") {
+				$currentFunction->{argHash}->{$lastKey} .= " ".$args[$i];
+			}  elsif ($lastKeyType eq "argList") {
+				$currentFunction->{argList}->[$lastKey] .= " ".$args[$i];
+			} else {
+				push(@{$currentFunction->{argList}},$args[$i]);	
+			}
+		}
+	}
+	if (defined($currentFunction)) {
+		push(@{$functions},$currentFunction);
+	}
+	#Calling functions
+	for (my $i=0; $i < @{$functions}; $i++) {
+		my $function = $functions->[$i]->{name};
+		print $function."\n";
+		my @Data = ($function);
+		if (keys(%{$functions->[$i]->{argHash}}) > 0) {
+			push(@Data,$functions->[$i]->{argHash});
+		} else {
+			push(@Data,@{$functions->[$i]->{argList}});
+		}
+		try {
+	    	$Status .= $driv->$function(@Data);
+	    	print $Status."\n";
+	   	} catch {
+	        printErrorLog($_);
+	    };
+	}
+	#Printing the finish file if specified
+	$driv->finish($Status);
+}
+
+sub printErrorLog {
+    my $errorMessage = shift @_;
+    my $actualMessage;
+    if($errorMessage =~ /^\"\"(.*)\"\"/) {
+        $actualMessage = $1;
+    }
+    {
+        # Pad error message with four spaces
+        $errorMessage =~ s/\n/\n    /g;
+        $errorMessage = "    ".$errorMessage; 
+    }
+    my $gitSha = "";
+    {
+        my $cwd = Cwd::getcwd();
+        chdir $ENV{'MODEL_SEED_CORE'};
+        $gitSha = `git show-ref --hash HEAD`;
+        chdir $cwd;
+    }
+    
+    chomp $gitSha;
+    my $errorDir= $ENV{'MODEL_SEED_CORE'}."/.errors/";
+    mkdir $errorDir unless(-d $errorDir);
+    my ($errorFH, $errorFilename) = File::Temp::tempfile("error-XXXXX", DIR => $errorDir);
+    $errorFilename =~ s/\\/\//g;
+    ModelSEED::Interface::interface::LASTERROR($errorFilename);
+    ModelSEED::Interface::interface::SAVEENVIRONMENT();
+    print $errorFH <<MSG;
+> ModelDriver encountered an unrecoverable error:
+
+$errorMessage
+
+> Model-SEED-core revision: $gitSha
+MSG
+    my $viewerMessage = <<MSG;
+Whoops! We encountered an unrecoverable error.
+
+MSG
+    if(defined($actualMessage)) {
+        $viewerMessage .= $actualMessage."\n\n";
+    }
+    $viewerMessage .= <<MSG;
+
+View error using the "ms-lasterror" command.
+
+Have you updated recently? ( git pull )
+Have you changed your configuration? ( ms-config )
+
+If you are still having problems, please submit a ticket
+copying the contents of the error file printed above to:
+
+https://github.com/ModelSEED/Model-SEED-core/issues/new
+
+Thanks!
+MSG
+    print $viewerMessage;
+}
 
 =head3 new
 Definition:
@@ -277,11 +455,9 @@ sub dblistobjects {
     my $attributes = [keys(%{$objs->[0]->attributes()})];
     my $output = [join("\t",@{$attributes})];
     for (my $i=0; $i < @{$objs}; $i++) {
-    	my $line;
+    	my $line = $objs->[$i]->_id();
     	for (my $j=0; $j < @{$attributes}; $j++) {
-    		if ($j > 0) {
-    			$line .= "\t";	
-    		}
+    		$line .= "\t";	
     		my $function = $attributes->[$j];
     		$line .= $objs->[$i]->$function();
     	}
@@ -847,7 +1023,9 @@ sub sqblastgenomes {
     ];
     my $output = [join("\t",@{$headings})];
     foreach my $sequence (keys(%{$results})) {
+    	print "Sequence:".$sequence."\n";
     	foreach my $genome (keys(%{$results->{$sequence}})) {
+    		print "Hit:".$genome."\n";
     		my $line = $sequence."\t".$genome;
     		for (my $i=0; $i < @{$headings}; $i++) {
     			$line .= "\t".$results->{$sequence}->{$genome}->{$headings->[$i]};
@@ -856,6 +1034,150 @@ sub sqblastgenomes {
     	}
     }
 	ModelSEED::utilities::PRINTFILE($self->ws->directory().$args->{"filename"},$output);
+}
+
+sub fbafindminimalpathways {
+   my($self,@Data) = @_;
+	my $args = $self->check([
+		["model",1,undef,"Full ID of the model to be analyzed"],
+		["media",0,"Complete","Name of the media condition in the Model SEED database in which the analysis should be performed. May also provide the name of a [[Media File]] in the workspace where media has been defined. This file MUST have a '.media' extension."],
+		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."],
+		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."],
+	        ["objective",0,0,"One of: ALL, ENERGY, or a rxn or cpd id"]
+				],[@Data],"tests if a model is growing under a specific media");
+	$args->{media} =~ s/\_/ /g;
+	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+
+	my ($media,$objective,$solutionnum,$AllReversible,$additionalexchange) = (
+	    $args->{media}, $args->{objective}, $args->{numSolutions}, $args->{allReversible},
+	    $args->{additionalExchange});
+
+	#Setting default media
+	if (!defined($media)) {
+		$media = "Complete";
+	}
+
+	#Setting default solution number
+	if (!defined($solutionnum)) {
+		$solutionnum = "5";
+	}
+
+	#Setting additional exchange fluxes
+	if (!defined($additionalexchange) || length($additionalexchange) == 0) {
+	    $additionalexchange = $self->figmodel()->config("default exchange fluxes")->[0];
+	}
+
+	#Translating objective
+	my $objectivestring;
+	if ($objective eq "ALL") {
+		#Getting the list of universal building blocks
+		my $buildingblocks = $self->config("universal building blocks");
+		my @objectives = keys(%{$buildingblocks});
+		#Getting the nonuniversal building blocks
+		my $otherbuildingblocks = $self->config("nonuniversal building blocks");
+		my @array = keys(%{$otherbuildingblocks});
+		if (defined($self->get_biomass()) && defined($self->figmodel()->get_reaction($self->get_biomass()->{"LOAD"}->[0]))) {
+			my $equation = $self->figmodel()->get_reaction($self->get_biomass()->{"LOAD"}->[0])->{"EQUATION"}->[0];
+			if (defined($equation)) {
+				for (my $i=0; $i < @array; $i++) {
+					if (CORE::index($equation,$array[$i]) > 0) {
+						push(@objectives,$array[$i]);
+					}
+				}
+			}
+		}
+		for (my $i=0; $i < @objectives; $i++) {
+			$self->find_minimal_pathways($media,$objectives[$i]);
+		}
+		return;
+	} elsif ($objective eq "ENERGY") {
+		$objectivestring = "MAX;FLUX;rxn00062;c;1";
+	} elsif ($objective =~ m/cpd\d\d\d\d\d/) {
+		if ($objective =~ m/\[(\w)\]/) {
+			$objectivestring = "MIN;DRAIN_FLUX;".$objective.";".$1.";1";
+			$additionalexchange .= ";".$objective."[".$1."]:-100:0";
+		} else {
+			$objectivestring = "MIN;DRAIN_FLUX;".$objective.";c;1";
+			$additionalexchange .= ";".$objective."[c]:-100:0";
+		}
+	} elsif ($objective =~ m/(rxn\d\d\d\d\d)/) {
+		my ($Reactants,$Products) = $self->figmodel()->GetReactionSubstrateData($objective);
+		for (my $i=0; $i < @{$Products};$i++) {
+			my $temp = $Products->[$i]->{"DATABASE"}->[0];
+			if ($additionalexchange !~ m/$temp/) {
+				#$additionalexchange .= ";".$temp."[c]:-100:0";
+			}
+		}
+		for (my $i=0; $i < @{$Reactants};$i++) {
+			print $Reactants->[$i]->{"DATABASE"}->[0]." started\n";
+			$self->find_minimal_pathways($media,$Reactants->[$i]->{"DATABASE"}->[0],$additionalexchange);
+			print $Reactants->[$i]->{"DATABASE"}->[0]." done\n";
+		}
+		return;
+	}
+
+	#Adding additional drains
+	if (($objective eq "cpd15665" || $objective eq "cpd15667" || $objective eq "cpd15668" || $objective eq "cpd15669") && $additionalexchange !~ m/cpd15666/) {
+		$additionalexchange .= ";cpd15666[c]:0:100";
+	} elsif ($objective eq "cpd11493" && $additionalexchange !~ m/cpd12370/) {
+		$additionalexchange .= ";cpd12370[c]:0:100";
+	} elsif ($objective eq "cpd00166" && $additionalexchange !~ m/cpd01997/) {
+		$additionalexchange .= ";cpd01997[c]:0:100;cpd03422[c]:0:100";
+	}
+
+
+
+   my $results = $mdl->fbaCalculateMinimalPathways({
+       "fbaStartParameters" => $fbaStartParameters,
+       "numsolutions" => $solutionnum,
+       "objective" => $objectivestring,
+       "additionalexchange" => $additionalexchange,
+       "problemDirectory" => $fbaStartParameters->{filename},
+       "saveLPfile" => $args->{"save lp file"}
+   });
+
+	#Parsing output
+	my @Array;
+	my $row = $results->get_row(1);
+	if (defined($row->{"Notes"}->[0])) {
+		$_ = $row->{"Notes"}->[0];
+		@Array = /\d+:([^\|]+)\|/g;
+	}
+	
+   foreach (@Array)
+   {   
+       if (/rxn10042/) {
+	   print "\n\nContains ATP Synthase\n\n";
+       } else {
+	   print "\n\nDoes not contain ATP Synthase\n\n";
+       }
+       chomp;
+       my @reactions = split ",";
+
+       foreach my $reaction (@reactions)
+       {
+	   my $dir = substr $reaction, 0, 1;
+	   my $rxn = substr $reaction, 1;
+	   my $rxnobj = $self->figmodel->database()->get_objects("reaction", { "id" => $rxn } );
+	   my $def = $rxnobj->[0]->definition();
+	   print $reaction, "\t", $def, "\n";
+       }
+   }
+
+
+#Writing output to file
+$self->figmodel()->database()->print_array_to_file($self->ws->directory()."MinimalPathways-".$media."-".$objective."-".$mdl->id()."-".$AllReversible.".txt",[join("|",@Array)]);
+
 }
 
 =head
@@ -877,7 +1199,8 @@ sub fbacheckgrowth {
 		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
-		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."]
+		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."],
+		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."]
 	],[@Data],"tests if a model is growing under a specific media");
 	$args->{media} =~ s/\_/ /g;
 	my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
@@ -929,6 +1252,39 @@ sub fbacheckgrowth {
                 }
             }
 		}
+	}
+	if ($args->{savetodb} == 1) {
+		my $flux = "";
+		my $drainFlux = "";
+		if ($results->{growth} > 0.000001) {
+			my $fluxes = $results->{fbaObj}->loadFluxData();
+			foreach my $entity (keys(%{$fluxes})) {
+				if (abs($fluxes->{$entity}) > 0.00000001) {
+					if ($entity =~ m/cpd/) {
+						$drainFlux .= $entity.":".$fluxes->{$entity}.";";
+					} else {
+						$flux .= $entity.":".$fluxes->{$entity}.";";
+					}
+				}
+			}
+		} else {
+			$flux = "none";
+			$drainFlux = "none";
+		}
+		my $newFBAResult = {
+			"time" => time(),
+			owner => ModelSEED::Interface::interface::USERNAME(),
+			model => $args->{model},
+			media => $args->{media},
+			method => "SINGLEGROWTH",
+			rxnKO => $args->{rxnKO},
+			pegKO => $args->{geneKO},
+			growth => $results->{growth},
+			flux => $flux,
+			drainFlux => $drainFlux,
+			results => $message
+		};
+		$self->figmodel()->database()->create_object("fbaresult",$newFBAResult);	
 	}
 	return $message;
 }
@@ -1221,40 +1577,178 @@ Flux Balance Analysis Operations
 
 =cut
 sub fbageneactivityanalysis {
-	my($self,@Data) = @_;
-	my $args = $self->check([
-		["model",1,undef,"Full ID of the model to be analyzed"],
-		["geneCalls",1,undef,"File with gene calls"],
-		["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
-		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
-		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
-		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
-	],[@Data],"");
-	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["geneCalls",1,undef,"File with gene calls"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."]
+			    ],[@Data],"");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
-		ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
     }
     if (!-e $self->ws()->directory().$args->{geneCalls}) {
     	ModelSEED::utilities::ERROR("Could not find gene call file ".$self->ws()->directory().$args->{geneCalls});
     }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
     my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{geneCalls});
-    my $calls;
+    my $input = {};
     for (my $i=0; $i < @{$data}; $i++) {
-    	my $array = [split(/\t/,$data->[$i])];
-    	for (my $j=1; $j < @{$array}; $j++) {
-    		push(@{$calls->{$array->[0]}},$array->[$j]);
-    	}
+	my @tempArray = split(/\t/,$data->[$i]);
+	if (@tempArray >= 2) {
+	    for (my $i=1; $i < @tempArray; $i++) {
+		if ($tempArray[0] eq "Labels") {
+		    my $inner_input = {
+			fbaStartParameters => {},
+			findTightBounds => 0,
+			deleteNoncontributingRxn => 0,
+			identifyCriticalBiomassCpd => 0,
+			label => $tempArray[$i]
+		    };
+		    $input->{$i} = $inner_input;
+		} elsif ($tempArray[0] eq "Descriptions") {
+		    $input->{$i}->{description} = $tempArray[$i];
+		} elsif ($tempArray[0] eq "Media") {
+		    if (length($tempArray[$i]) == 0) {
+			$tempArray[$i] = "Complete";
+		    }
+		    $input->{$i}->{media} = $tempArray[$i];
+		} else {
+		    if (!defined($input->{$i}->{media})) {
+			$input->{$i}->{media} = "Complete";
+		    }
+		    if (!defined($input->{$i}->{description})) {
+			$input->{$i}->{description} = "NONE";
+		    }
+		    if (!defined($input->{$i}->{label})) {
+			$input->{$i}->{label} = "Experiment ".$i;
+		    }
+		    $input->{$i}->{geneCalls}->{$tempArray[0]} = $tempArray[$i];
+		}
+	    }
+	}
     }
-    my $result = $mdl->fbaGeneActivityAnalysis({
-    	fbaStartParameters => $fbaStartParameters,
-    	geneCalls => $calls
-    });
-	#if (defined($result->{})) {
-		my $output;
-		ModelSEED::utilities::PRINTFILE($self->ws()->directory().$args->{model}."-GeneActivityAnalysis.txt",$output);
-	#}
+
+    # need to run an fbaGeneActivityAnalysis for each experiment
+    my $jobList;
+    foreach my $column_num (sort { $a <=> $b } keys %{$input}) {
+	# Put results in this way for backwards compatibility purpose. 
+	my $inner_results = $mdl->fbaGeneActivityAnalysisSlave($input->{$column_num});
+        my $success;
+        if (defined $inner_results->{success} && $inner_results->{success} == 0) {
+            $success = "failed";
+            $inner_results->{media} = $input->{$column_num}->{media};
+            $inner_results->{biomass} = "No growth";
+        }
+	push @$jobList, {results => $inner_results,
+			status=>$success};
+    }
+
+    # then run the "master" analysis, which is a gene classification on Complete media
+    my $master_results = $mdl->fbaGeneActivityAnalysisMaster();
+
+    # Conduct master analysis for every experimental media.
+    for (@$jobList) {
+	if ($_->{results}->{media} eq "Complete") {
+	    $_->{results}->{master} = $master_results;
+	    next;
+	}
+	$_->{results}->{master} = $mdl->fbaGeneActivityAnalysisMaster($_->{results}) unless ($_->{status} eq "failed");
+    }
+
+    # then collate the results
+    # Retrieve label and description of results from inputs.
+    for (my $i=0; $i < @$jobList; $i++) {
+	my $result = $jobList->[$i]->{results};
+	$result->{label} = $input->{$i + 1}->{label};
+	$result->{description} = $input->{$i + 1}->{description};                
+    }
+
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my ($genome, $geneClass) = ($obj->genome(), $master_results->{geneClass});
+
+    #Compiling results into a single output hash
+    my $results;
+    for (my $i=0; $i < @{$jobList}; $i++) {
+	$results->{labels}->[$i] = $jobList->[$i]->{results}->{label};
+	$results->{model}->[$i] = $args->{model};
+	$results->{genome}->[$i] = $genome;
+	$results->{descriptions}->[$i] = $jobList->[$i]->{results}->{description};
+	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
+	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
+	$results->{fluxes}->[$i] = $jobList->[$i]->{results}->{fluxes};
+	foreach my $gene (keys(%{$jobList->[$i]->{results}->{geneActivity}})) {
+	    my $prediction_ref = \$jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction};
+	    if (defined($geneClass->{$gene}) && ($geneClass->{$gene} eq "Not in model" || $geneClass->{$gene} eq "Nonfunctional" || $geneClass->{$gene} eq "Essential")) {
+		${$prediction_ref} = $geneClass->{$gene}; 
+	    }
+	    # Differentiate using master data in each media.
+	    if (my $thisGeneClass = $jobList->[$i]->{results}->{master}->{geneClass}->{$gene}) {
+		if ((${$prediction_ref} eq "Essential") && ($thisGeneClass eq "Essential")) {
+		    ${$prediction_ref} = "Essential:Complete";
+		}
+		# Only essential in that media.
+		if ((${$prediction_ref} eq "on") && ($thisGeneClass eq "Essential")) {
+		    ${$prediction_ref} = "Essential:".$jobList->[$i]->{results}->{media};
+		}
+		# Only nonfunctional in that media.
+		elsif ((${$prediction_ref} eq "off") && ($thisGeneClass eq "Nonfunctional")) {
+		    ${$prediction_ref} = "Inactive";
+		}
+	    }
+	    # These may not happen. But if happens, they would mess up the result.
+	    warn "No gene classification for gene $gene in Complete Media.\n" if !defined($geneClass->{$gene});
+	    warn "No gene classification for gene $gene in ". $jobList->[$i]->{results}->{media}." Media.\n" if (!defined($jobList->[$i]->{results}->{master}->{geneClass}->{$gene}));
+	    
+	    $results->{geneActivity}->{$gene}->[$i] = $jobList->[$i]->{results}->{geneActivity}->{$gene}->{call}."/".$jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction};
+	}
+    }
+
+#Printing results
+    my $headings = ["Labels","Descriptions","Media","Model","Genome","Fluxes","Biomass"];
+    my $translation = {Labels => "labels",Descriptions => "descriptions",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass"};
+    my $filename = "GeneActivityResults-".$args->{model}.".txt";
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+    my $count = 1;
+
+    # what is this supposed to do?
+    for (my $i=0; $i < @{$headings}; $i++) {
+	if (defined($results->{$translation->{$headings->[$i]}})) {
+	    print OUTPUT $headings->[$i];
+	    if ($headings->[$i] eq "Fluxes") {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t";
+		    foreach my $entity (keys(%{$results->{fluxes}->[$j]})) { # was Fluxes
+			print OUTPUT $entity.":".$results->{fluxes}->[$j]->{$entity}.";";
+		    }
+		}
+	    } else {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+		}
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+
+
+    if (defined($results->{geneActivity})) {
+	foreach my $gene (keys(%{$results->{geneActivity}})) {
+	    # here we need to print the results for each experiment	    next;
+	    print OUTPUT $gene;
+	    for (my $j=0; $j < @{$results->{geneActivity}->{$gene}}; $j++) {
+		print OUTPUT "\t".$results->{geneActivity}->{$gene}->[$j];
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
 }
 =head
 =CATEGORY
@@ -2359,6 +2853,10 @@ sub mdlprintcytoseed {
 	print FH $dumper->dump($fbaObj->get_model_reaction_classification_table({ "model" => [$args->{model}] }));
 	close FH;
 	print "Reaction class data printed...\n";
+	open(FH, ">".$cmdir."/fba_results") or ModelSEED::utilities::ERROR("Could not open file: $!\n");
+	print FH $dumper->dump($fbaObj->get_model_fba_results({ "model" => [$args->{model}] }));
+	close FH;
+	print "FBA results printed...\n";
 	return "Successfully printed cytoseed data for ".$args->{model}." in directory:\n".$args->{directory}."\n";
 }
 

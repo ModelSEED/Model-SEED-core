@@ -108,15 +108,17 @@ sub align_sequences {
         my ($b, $e) = ($opts2->{global_beg}, $opts2->{global_end});
         # print STDERR "b, e, l = $b, $e, ". length($ali->[0]->[2])."\n";
         if (defined $b && defined $e && $b < $e) {
-            my $len  = length $ali->[0]->[2];
-
-            my @head = map { [ $_->[0], $_->[1], substr($_->[2], 0, $b) ] } @$ali if $b > 0;
-            my @tail = map { [ $_->[0], $_->[1], substr($_->[2], $e+1)  ] } @$ali if $e < $len-1;
-
-            my %head = map { $_->[0] => $_->[2] } gjoalignment::align_with_clustal(@head) if @head;
-            my %tail = map { $_->[0] => $_->[2] } gjoalignment::align_with_clustal(@tail) if @tail;
-
-            $_->[2]  = $head{$_->[0]} . substr($_->[2], $b, $e-$b+1) . $tail{$_->[0]} for @$ali;
+            my %inner;
+            my @padded = @$ali;
+            my $padstr = 'PADDINGPADDING';
+            for (@padded) {
+                $inner{$_->[0]} = substr($_->[2], $b, $e-$b+1);
+                substr($_->[2], $b, $e-$b+1) = $padstr;
+            }
+            $ali = gjoalignment::align_with_clustal(@padded);
+            for (@$ali) {
+                $_->[2] =~ s/$padstr/$inner{$_->[0]}/e;
+            }
         }
     }
 
@@ -134,7 +136,6 @@ sub align_sequences {
 #     win_size        => size    # size of sliding window used in scoring domain conservation
 #     domain_conserv  => thresh  # min mean domain conservation (D = 0.3)
 #     residue_conserv => thresh  # min residule conservation for trimmed end sites (D = 0.1)
-#     gap_tolerance   => frac    # max fraction of nongap rows allowed for extending trimmed ends (D = 0.05)
 #     global_coords   => bool    # return coordinates of the internal region
 #                                  between the relatively conserved end domains:
 #                                    $opts->{global_beg} = first site
@@ -148,7 +149,6 @@ sub trim_ali_to_conserved_domains {
     my $winsize = $opts->{win_size}        || 10;
     my $domain  = $opts->{domain_conserv}  || 0.3;
     my $residue = $opts->{residue_conserv} || 0.1;
-    my $nongap  = $opts->{gap_tolerance}   || 0.05;
 
     my $conserv = residue_conserv_scores($ali);
     my $len = length($ali->[0]->[2]);
@@ -172,26 +172,6 @@ sub trim_ali_to_conserved_domains {
     }
     $b = max($b-$winsize+1, 0);      $b++ while $conserv->[$b] < $residue;
     $e = min($e+$winsize-1, $len-1); $e-- while $conserv->[$e] < $residue;
-
-    # extend both ends beyond columns with extremely high fraction of gaps (badly aligned columns)
-    my ($bb, $ee) = ($b, $e);
-    my $chars = qr/^[A-Za-z]$/;
-
-    while ($bb-- > 0) {
-        my @nongaps = grep { /$chars/ } map { substr($_->[2], $bb, 1) } @$ali;
-        my $frac = @nongaps / @$ali;
-        $frac = 1 if $frac > $nongap;
-        $b = $bb if $conserv->[$bb] >= $residue;
-        last if $conserv->[$bb] < $residue * $frac * $frac; # basically allow columns with nearly all gaps to pass through
-    }
-
-    while ($ee++ < $len-1) {
-        my @nongaps = grep { /$chars/ } map { substr($_->[2], $ee, 1) } @$ali;
-        my $frac = @nongaps / @$ali;
-        $frac = 1 if $frac > $nongap;
-        $e = $ee if $conserv->[$ee] >= $residue;
-        last if $conserv->[$ee] < $residue * $frac * $frac;
-    }
 
     my @ali2 = map { [@$_[0,1], substr($_->[2], $b, $e-$b+1)] } @$ali;
 
@@ -453,7 +433,7 @@ sub trim_alignment {
 #
 #     $profile can be $profile_file_name or \@profile_seqs
 #     $db      can be $db_file_name      or \@db_seqs, or
-#              'SEED', 'PSEED' or 'PUBSEED', for protein seqs in complete genomes in annotator's SEED, PSEED or PUBLIC-PSEED
+#              'SEED', 'PSEED' or 'PPSEED', for protein seqs in complete genomes in annotator's SEED, PSEED or PUBLIC-PSEED
 #
 #     If supplied as file, profile is pseudoclustal
 #
@@ -515,11 +495,10 @@ sub psiblast_search {
     my $psi_dir = $ENV{PsiblastDB} || "/home/fangfang/WB/PsiblastDB";
 
     if (ref $db ne 'ARRAY') {
-        if ($db =~ /^(\d+\.\d+)$/)  { $db = "$org_dir/$1/Features/peg/fasta" }
-        elsif (uc $db eq 'PPSEED')  { $db = "$psi_dir/public-pseed.complete" }
-        elsif (uc $db eq 'PUBSEED') { $db = "$psi_dir/public-pseed.complete" }
-        elsif (uc $db eq 'PSEED')   { $db = "$psi_dir/ppseed.NR" }
-        elsif (uc $db eq 'SEED')    { $db = "$psi_dir/SEED.complete.fasta" }
+        if ($db =~ /^(\d+\.\d+)$/) { $db = "$org_dir/$1/Features/peg/fasta" }
+        elsif (uc $db eq 'PPSEED') { $db = "$psi_dir/public-pseed.complete" }
+        elsif (uc $db eq 'PSEED')  { $db = "$psi_dir/ppseed.NR" }
+        elsif (uc $db eq 'SEED')   { $db = "$psi_dir/SEED.complete.fasta" }
     }
 
     my $inc = $opts->{incremental} || $opts->{inc};
@@ -535,11 +514,10 @@ sub db_name_to_file {
     my ($db) = @_;
     my $org_dir = "/vol/public-pseed/FIGdisk/FIG/Data/Organisms"; # complete genomes only
     my $psi_dir = "/home/fangfang/WB/PsiblastDB/";
-    if ($db =~ /^(\d+\.\d+)$/)  { $db = "$org_dir/$1/Features/peg/fasta" }
-    elsif (uc $db eq 'PPSEED')  { $db = "$psi_dir/public-pseed.complete" }
-    elsif (uc $db eq 'PUBSEED') { $db = "$psi_dir/public-pseed.complete" }
-    elsif (uc $db eq 'PSEED')   { $db = "$psi_dir/ppseed.NR" }
-    elsif (uc $db eq 'SEED')    { $db = "$psi_dir/SEED.complete.fasta" }
+    if ($db =~ /^(\d+\.\d+)$/) { $db = "$org_dir/$1/Features/peg/fasta" }
+    elsif (uc $db eq 'PPSEED') { $db = "$psi_dir/public-pseed.complete" }
+    elsif (uc $db eq 'PSEED')  { $db = "$psi_dir/ppseed.NR" }
+    elsif (uc $db eq 'SEED')   { $db = "$psi_dir/SEED.complete.fasta" }
     return $db;
 }
 

@@ -7,7 +7,7 @@
 ########################################################################
 use strict;
 use ModelSEED::globals;
-
+use ModelSEED::MooseDB::object;
 use ModelSEED::MooseDB::mediacpd;
 package ModelSEED::MooseDB::media;
 use Moose;

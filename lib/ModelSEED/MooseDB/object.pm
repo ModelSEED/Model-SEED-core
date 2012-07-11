@@ -7,7 +7,7 @@
 ########################################################################
 use strict;
 use ModelSEED::globals;
-
+use ModelSEED::MooseDB::object;
 package MyApp::Meta::Attribute::Indexed;
 use Moose;
 extends 'Moose::Meta::Attribute';

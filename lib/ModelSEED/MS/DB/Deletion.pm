@@ -5,35 +5,92 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::Deletion;
+use ModelSEED::MS::BaseObject;
 use Moose;
-use Moose::Util::TypeConstraints;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Genome', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Genome', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
-has start => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', printOrder => '0' );
-has stop => ( is => 'rw', isa => 'Int', type => 'attribute', metaclass => 'Typed', default => '', printOrder => '0' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has start => (is => 'rw', isa => 'Int', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has stop => (is => 'rw', isa => 'Int', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # LINKS:
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
+sub _build_uuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:
 sub _type { return 'Deletion'; }
+
+my $attributes = [
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'start',
+            'type' => 'Int',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'stop',
+            'default' => '',
+            'type' => 'Int',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, start => 1, stop => 2};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
+}
+
+my $subobjects = [];
+
+my $subobject_map = {};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
 
 
 __PACKAGE__->meta->make_immutable;

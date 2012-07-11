@@ -4367,6 +4367,7 @@ int MFAProblem::OptimizeSingleObjective(Data* InData, OptimizationParameter* InP
 
 			//Running the solver to obtain a solution with minimal fluxes
 			NewSolution = RunSolver(true,true,true);
+			NewSolution->Objective = ObjectiveValue;
 			ObjFunct = CurrentObjective;
 		}
 		if (OptimizeMedia) {
@@ -6266,7 +6267,7 @@ int MFAProblem::CompleteGapFilling(Data* InData, OptimizationParameter* InParame
 	}
 	this->AddObjective(oldObjective);
 	//Creating forcing constraint
-	constraint = InitializeLinEquation("Forcing inactive reaction to be active",0.01,GREATER,LINEAR);
+	constraint = InitializeLinEquation("Forcing inactive reaction to be active",0.5,GREATER,LINEAR);
 	this->AddConstraint(constraint);
 	//Creating output structures
 	map<MFAVariable*,bool,std::less<Reaction*> > AddedReactions;
@@ -6367,7 +6368,7 @@ int MFAProblem::CompleteGapFilling(Data* InData, OptimizationParameter* InParame
 					constraint->Variables.push_back(InactiveVariables[i][j]);
 					constraint->Coefficient.push_back(InactiveCoeficients[i][j]);
 				}
-				constraint->RightHandSide = 0.01;
+				constraint->RightHandSide = 0.5;
 				for (int j=0; j < int(oldObjective->Variables.size()); j++) {
 					if (oldObjective->Coefficient[j] > 0) {
 						oldObjective->Variables[j]->UpperBound = 1;
@@ -7865,7 +7866,7 @@ int MFAProblem::FitMicroarrayAssertions(Data* InData) {
 	string Note;
 	double ObjectiveValue = 0;
 	if (OptimizeSingleObjective(InData,Parameters,GetParameter("objective"),false,false,ObjectiveValue,Note) != SUCCESS) {
-		cerr << "Could not build microarray assertion problem!" << endl;
+		cerr << "Could not run microarray assertion problem!" << endl;
 		return FAIL;
 	}
 	if (ObjectiveValue == 0) {

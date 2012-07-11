@@ -324,7 +324,7 @@ sub assign_function_to_prot
     my $req_bytes = 1_000_000;
     #my $req_bytes = $blast ? 1000 : 1_000_000;
 
-    return ResultHandler->new($self, $wq, $self->{server_url}, 'assign_function_to_prot', \&id_seq_pair_bundler,
+    return ResultHandler->new($wq, $self->{server_url}, 'assign_function_to_prot', \&id_seq_pair_bundler,
 			      #\&tab_delimited_output_parser,
 			      \&YAML::Load,
 			      $params, $req_bytes);
@@ -591,7 +591,7 @@ sub assign_functions_to_dna
 
     my $req_bytes = 500_000;
 
-    return ResultHandler->new($self, $wq, $self->{server_url}, 'assign_functions_to_DNA',
+    return ResultHandler->new($wq, $self->{server_url}, 'assign_functions_to_DNA',
 			      \&id_seq_pair_bundler,
 			      \&tab_delimited_output_parser, $params, $req_bytes);
 }
@@ -611,12 +611,11 @@ sub run_query_form
 {
     my($self, $form, $raw) = @_;
 
-    my $res = $self->_send_request($form);
-    #my $res = $self->{ua}->post($self->{server_url}, $form);
+    my $res = $self->{ua}->post($self->{server_url}, $form);
     
-    if ($res)
+    if ($res->is_success)
     {
-	my $content = $res;
+	my $content = $res->content;
 	if ($raw)
 	{
 	    return $content;
@@ -635,7 +634,7 @@ sub run_query_form
     }
     else
     {
-	die "run_query_form: error encountered";
+	die "error on post " . $res->status_line . " " . $res->content;
     }
 }
 
@@ -708,10 +707,9 @@ use Data::Dumper;
 
 sub new
 {
-    my($class, $server_obj, $work_queue, $server_url, $function, $input_bundler, $output_parser, $form_vars, $req_bytes) = @_;
+    my($class, $work_queue, $server_url, $function, $input_bundler, $output_parser, $form_vars, $req_bytes) = @_;
 
     my $self = {
-	server_obj => $server_obj,
 	work_queue => $work_queue,
 	server_url => $server_url,
 	function => $function,
@@ -745,20 +743,19 @@ sub get_next
 	    my $form = [@{$self->{form_vars}}];
 	    push(@$form, function => $self->{function},
 			 map { &{$self->{input_bundler}}($_) } @inp);
-	    #print "Invoke " .Dumper($form);
+	    # print "Invoke " .Dumper($form);
 
-#	    my $res = $self->{ua}->post($self->{server_url}, $form);
-	    my $res = $self->{server_obj}->_send_request($form);
-	    if (defined($res))
+	    my $res = $self->{ua}->post($self->{server_url}, $form);
+	    if ($res->is_success)
 	    {
 		eval { 
-		    $self->{cur_result} = [YAML::Load($res)];
+		    $self->{cur_result} = [YAML::Load($res->content)];
 		};
 		if ($@)
 		{
 		    die "Query returned unparsable content ($@): " . $res->content;
 		}
-		#print "res: " . Dumper($self->{cur_result});
+		# print "res: " . Dumper($self->{cur_result});
 		my $oneres =  $self->get_next_from_result();
 		if ($oneres)
 		{
@@ -767,7 +764,7 @@ sub get_next
 	    }
 	    else
 	    {
-		die "error on post";
+		die "error " . $res->status_line . " on post " . $res->content;
 	    }
 	}
 	return;

@@ -89,7 +89,7 @@ sub get_model_overview_tbl {
     #Getting the user name
     my $username = "";
     my $userid = "NONE";
-    if ($self->figmodel()->user() ne "PUBLIC") {
+    if ($self->figmodel()->user() ne "public") {
 		$userid = $self->figmodel()->user();
 		$username = "&username=".$self->figmodel()->user();
     }

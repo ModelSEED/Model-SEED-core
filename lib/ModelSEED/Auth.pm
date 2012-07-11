@@ -35,7 +35,14 @@ Given a HTTP::Request object, wrap that object in authentication
 info and return success (1). If there are problems, this returns
 false (0). The request object is modified by this call.
 
+=head2 username
+
+    $string = $auth->username();
+
+Return a username.
+
 =cut
+use HTTP::Request;
 package ModelSEED::Auth;
 use Moose::Role;
 use common::sense;
@@ -43,6 +50,6 @@ use namespace::autoclean;
 
 requires 'wrap_http_request';
 
-1;
- 
+requires 'username';
 
+1;

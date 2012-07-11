@@ -5,62 +5,160 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::ModelReaction;
+use ModelSEED::MS::BaseObject;
+use ModelSEED::MS::ModelReactionProtein;
+use ModelSEED::MS::ModelReactionReagent;
 use Moose;
-use Moose::Util::TypeConstraints;
-use ModelSEED::MS::LazyHolder::ModelReactionRawGPR;
-use ModelSEED::MS::LazyHolder::ModelReactionReagent;
-extends 'ModelSEED::MS::BaseObject';
 use namespace::autoclean;
+extends 'ModelSEED::MS::BaseObject';
 
 
 # PARENT:
-has parent => (is => 'rw',isa => 'ModelSEED::MS::Model', type => 'parent', metaclass => 'Typed',weak_ref => 1);
+has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type => 'parent', metaclass => 'Typed');
 
 
 # ATTRIBUTES:
-has uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_builduuid', printOrder => '0' );
-has modDate => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', lazy => 1, builder => '_buildmodDate', printOrder => '-1' );
-has reaction_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '-1' );
-has direction => ( is => 'rw', isa => 'Str', type => 'attribute', metaclass => 'Typed', default => '=', printOrder => '-1' );
-has protons => ( is => 'rw', isa => 'Num', type => 'attribute', metaclass => 'Typed', default => '0', printOrder => '-1' );
-has modelcompartment_uuid => ( is => 'rw', isa => 'ModelSEED::uuid', type => 'attribute', metaclass => 'Typed', required => 1, printOrder => '-1' );
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
+has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '-1', default => '=', type => 'attribute', metaclass => 'Typed');
+has protons => (is => 'rw', isa => 'Num', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has modelcompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
-has ancestor_uuid => (is => 'rw',isa => 'uuid', type => 'acestor', metaclass => 'Typed');
+has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
-has gpr => (is => 'bare', coerce => 1, handles => { gpr => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionRawGPR::Lazy', type => 'encompassed(ModelReactionRawGPR)', metaclass => 'Typed');
-has modelReactionReagents => (is => 'bare', coerce => 1, handles => { modelReactionReagents => 'value' }, default => sub{return []}, isa => 'ModelSEED::MS::ModelReactionReagent::Lazy', type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed');
+has modelReactionProteins => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionProtein)', metaclass => 'Typed', reader => '_modelReactionProteins', printOrder => '-1');
+has modelReactionReagents => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(ModelReactionReagent)', metaclass => 'Typed', reader => '_modelReactionReagents', printOrder => '-1');
 
 
 # LINKS:
-has reaction => (is => 'rw',lazy => 1,builder => '_buildreaction',isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,Reaction,uuid,reaction_uuid)', metaclass => 'Typed',weak_ref => 1);
-has modelcompartment => (is => 'rw',lazy => 1,builder => '_buildmodelcompartment',isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,ModelCompartment,uuid,modelcompartment_uuid)', metaclass => 'Typed',weak_ref => 1);
+has reaction => (is => 'rw', isa => 'ModelSEED::MS::Reaction', type => 'link(Biochemistry,reactions,reaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_reaction', weak_ref => 1);
+has modelcompartment => (is => 'rw', isa => 'ModelSEED::MS::ModelCompartment', type => 'link(Model,modelcompartments,modelcompartment_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelcompartment', weak_ref => 1);
 
 
 # BUILDERS:
-sub _builduuid { return Data::UUID->new()->create_str(); }
-sub _buildmodDate { return DateTime->now()->datetime(); }
-sub _buildreaction {
-	my ($self) = @_;
-	return $self->getLinkedObject('Biochemistry','Reaction','uuid',$self->reaction_uuid());
+sub _build_uuid { return Data::UUID->new()->create_str(); }
+sub _build_modDate { return DateTime->now()->datetime(); }
+sub _build_reaction {
+  my ($self) = @_;
+  return $self->getLinkedObject('Biochemistry','reactions',$self->reaction_uuid());
 }
-sub _buildmodelcompartment {
-	my ($self) = @_;
-	return $self->getLinkedObject('Model','ModelCompartment','uuid',$self->modelcompartment_uuid());
+sub _build_modelcompartment {
+  my ($self) = @_;
+  return $self->getLinkedObject('Model','modelcompartments',$self->modelcompartment_uuid());
 }
 
 
 # CONSTANTS:
 sub _type { return 'ModelReaction'; }
-sub _typeToFunction {
-	return {
-		ModelReactionRawGPR => 'gpr',
-		ModelReactionReagent => 'modelReactionReagents',
-	};
+
+my $attributes = [
+          {
+            'req' => 0,
+            'printOrder' => 0,
+            'name' => 'uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'modDate',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'printOrder' => -1,
+            'name' => 'reaction_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          },
+          {
+            'len' => 1,
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'direction',
+            'default' => '=',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => -1,
+            'name' => 'protons',
+            'default' => 0,
+            'type' => 'Num',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 1,
+            'printOrder' => -1,
+            'name' => 'modelcompartment_uuid',
+            'type' => 'ModelSEED::uuid',
+            'perm' => 'rw'
+          }
+        ];
+
+my $attribute_map = {uuid => 0, modDate => 1, reaction_uuid => 2, direction => 3, protons => 4, modelcompartment_uuid => 5};
+sub _attributes {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $attribute_map->{$key};
+    if (defined($ind)) {
+      return $attributes->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $attributes;
+  }
 }
+
+my $subobjects = [
+          {
+            'printOrder' => -1,
+            'name' => 'modelReactionProteins',
+            'type' => 'encompassed',
+            'class' => 'ModelReactionProtein'
+          },
+          {
+            'printOrder' => -1,
+            'name' => 'modelReactionReagents',
+            'type' => 'encompassed',
+            'class' => 'ModelReactionReagent'
+          }
+        ];
+
+my $subobject_map = {modelReactionProteins => 0, modelReactionReagents => 1};
+sub _subobjects {
+  my ($self, $key) = @_;
+  if (defined($key)) {
+    my $ind = $subobject_map->{$key};
+    if (defined($ind)) {
+      return $subobjects->[$ind];
+    } else {
+      return undef;
+    }
+  } else {
+    return $subobjects;
+  }
+}
+
+
+# SUBOBJECT READERS:
+around 'modelReactionProteins' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('modelReactionProteins');
+};
+around 'modelReactionReagents' => sub {
+  my ($orig, $self) = @_;
+  return $self->_build_all_objects('modelReactionReagents');
+};
 
 
 __PACKAGE__->meta->make_immutable;

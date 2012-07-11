@@ -96,7 +96,7 @@ sub SAVEENVIRONMENT {
 	}
 	my $env = ModelSEED::Interface::interface::ENVIRONMENT();
 	my $seeddata = "NONE";
-	if (defined(ModelSEED::Interface::interface::REGISTEREDSEED()) && keys(%{ModelSEED::Interface::interface::REGISTEREDSEED()}) > 0) {
+	if (defined(ModelSEED::Interface::interface::REGISTEREDSEED()) && ref(ModelSEED::Interface::interface::REGISTEREDSEED()) eq "HASH" && keys(%{ModelSEED::Interface::interface::REGISTEREDSEED()}) > 0) {
 		foreach my $seedid (keys(%{ModelSEED::Interface::interface::REGISTEREDSEED()})) {
 			if ($seeddata eq "NONE") {
 				$seeddata = $seedid.":".ModelSEED::Interface::interface::REGISTEREDSEED()->{$seedid};

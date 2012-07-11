@@ -24,9 +24,10 @@ use SAPserver;
 use ModelSEED::globals;
 package ModelSEED::FIGMODEL;
 our $VERSION = '0.01';
+$MODELSEED::FIGMODEL::VERSION = $VERSION;
 use ModelSEED::FIGMODEL::FIGMODELTable;
 use ModelSEED::FIGMODEL::FIGMODELObject;
-use Time::ParseDate;
+#use Time::ParseDate;
 use ModelSEED::ModelSEEDUtilities::FileIOFunctions;
 use ModelSEED::FIGMODEL::FIGMODELmodel;
 use ModelSEED::FIGMODEL::FIGMODELdatabase;
@@ -751,7 +752,7 @@ sub user {
 	if (defined($self->{_user_acount}->[0])) {
 		return $self->{_user_acount}->[0]->login();	
 	}
-	return "PUBLIC";
+	return "public";
 }
 
 =head3 setuser
@@ -2639,10 +2640,19 @@ sub import_model_file {
 	}
 	#Clearing current model data in the database
 	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
-		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
+		my $rxnmdlobjs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
+		for (my $i=0; $i < @{$rxnmdlobjs}; $i++) {
+			$rxnmdlobjs->[$i]->delete();	
 		}
+		my $fvaobjs = $mdl->figmodel()->database()->get_objects("mdlfva",{MODEL => $args->{id}});
+		for (my $i=0; $i < @{$fvaobjs}; $i++) {
+			$fvaobjs->[$i]->delete();	
+		}
+		my $fbaobjs = $mdl->figmodel()->database()->get_objects("fbaresult",{model => $args->{id}});
+		for (my $i=0; $i < @{$fbaobjs}; $i++) {
+			$fbaobjs->[$i]->delete();	
+		}
+		
 	}
 	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table_from_array("",$args->{modelfiledata},"[;\\t]","|",1,["LOAD"]);
 	my $found = 0;

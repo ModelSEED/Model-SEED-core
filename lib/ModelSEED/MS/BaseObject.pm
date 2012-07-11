@@ -5,13 +5,11 @@
 # Author affiliation: Mathematics and Computer Science Division, Argonne National Lab
 # Date of module creation: 3/11/2012
 ########################################################################
-use strict;
+use ModelSEED::MS::Metadata::Types;
 use DateTime;
 use Data::UUID;
-use JSON::Any;
-use Digest::MD5 qw(md5_hex);
+use JSON;
 use Module::Load;
-use Carp qw(confess);
 
 package ModelSEED::Meta::Attribute::Typed;
 use Moose;
@@ -31,104 +29,214 @@ has printOrder => (
       default => '-1',
 );
 
-1;
-
 package Moose::Meta::Attribute::Custom::Typed;
 sub register_implementation { 'ModelSEED::Meta::Attribute::Typed' }
 
 package ModelSEED::MS::BaseObject;
 use Moose;
-use ModelSEED::MS::Metadata::Types;
 use namespace::autoclean;
+use ModelSEED::utilities;
+use Scalar::Util qw(weaken);
 
 sub BUILD {
     my ($self,$params) = @_;
-    return;
+    # replace subobject data with info hash
+    foreach my $subobj (@{$self->_subobjects}) {
+        my $name = $subobj->{name};
+        my $class = $subobj->{class};
+        my $method = "_$name";
+        my $subobjs = $self->$method();
+
+        for (my $i=0; $i<scalar @$subobjs; $i++) {
+            my $data = $subobjs->[$i];
+            # create the info hash
+            my $info = {
+                created => 0,
+                class   => $class,
+                data    => $data
+            };
+
+            $data->{parent} = $self; # set the parent
+            weaken($data->{parent}); # and make it weak
+            $subobjs->[$i] = $info; # reset the subobject with info hash
+        }
+    }
 }
 
 sub serializeToDB {
-	my ($self) = @_;
-	my $data = {};
-	my $class = 'ModelSEED::MS::DB::'.$self->_type();
-	for my $attr ( $class->meta->get_all_attributes ) {
-		if ($attr->isa('ModelSEED::Meta::Attribute::Typed')) {
-			my $name = $attr->name();
-			if ($attr->type() eq "attribute") {
-				if (defined($self->$name())) {
-					$data->{$name} = $self->$name();
+    my ($self) = @_;
+    my $data = {};
+    my $attributes = $self->_attributes();
+    foreach my $item (@{$attributes}) {
+    	my $name = $item->{name};	
+		if (defined($self->$name())) {
+    		$data->{$name} = $self->$name();	
+    	}
+    }
+    my $subobjects = $self->_subobjects();
+    foreach my $item (@{$subobjects}) {
+    	my $name = "_".$item->{name};
+    	my $arrayRef = $self->$name();
+    	foreach my $subobject (@{$arrayRef}) {
+			if ($subobject->{created} == 1) {
+				push(@{$data->{$item->{name}}},$subobject->{object}->serializeToDB());	
+			} else {
+				my $newData;
+				foreach my $key (keys(%{$subobject->{data}})) {
+					if ($key ne "parent") {
+						$newData->{$key} = $subobject->{data}->{$key};
+					}
 				}
-			} elsif ($attr->type() =~ m/child\((.+)\)/ || $attr->type() =~ m/encompassed\((.+)\)/ ) {
-				my $arrayRef = $self->$name();
-				foreach my $subobject (@{$arrayRef}) {
-					push(@{$data->{$name}},$subobject->serializeToDB());
-				}
-			} elsif ($attr->type() =~ m/hasharray\((.+)\)/) {
-				my $hashRef = $self->$name();
-				foreach my $key (keys(%{$hashRef})) {
-					foreach my $obj (@{$hashRef->{$key}}) {
-						push(@{$data->{$name}},$obj->serializeToDB());
-					}	
-				}
+				push(@{$data->{$item->{name}}},$newData);
 			}
 		}
-	}
-	return $data;
+    }
+    return $data;
 }
 
+sub toJSON {
+    my ($self,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
+    my $data = $self->serializeToDB();
+    my $JSON = JSON->new->utf8(1);
+    $JSON->pretty(1) if($args->{pretty});
+    return $JSON->encode($data)
+}
 sub printJSONFile {
-	my ($self,$filename) = @_;
-	my $data = $self->serializeToDB();
-	my $jsonData = JSON::Any->encode($data);
-	ModelSEED::utilities::PRINTFILE($filename,[$jsonData]);
+    my ($self,$filename,$args) = @_;
+    $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
+    my $text = $self->toJSON($args);
+    ModelSEED::utilities::PRINTFILE($filename,[$text]);
 }
 
 ######################################################################
 #Alias functions
 ######################################################################
 sub getAlias {
-	my ($self,$set) = @_;
-	my $aliases = $self->getAliases($set);
-	if (defined($aliases->[0])) {
-		return $aliases->[0];
-	}
-	print "No alias of type ".$set."!\n";
-	return $self->uuid();
+    my ($self,$set) = @_;
+    my $aliases = $self->getAliases($set);
+    return (@$aliases) ? $aliases->[0] : undef;
 }
 
 sub getAliases {
-	my ($self,$aliasSet) = @_;
-	if (!defined($aliasSet)) {
-		ModelSEED::utilities::ERROR("The 'getAliases' function requires a 'set' as input!");
-	}
-	my $aliasowner = lc($self->_aliasowner());
-	my $owner = $self->$aliasowner();
-	my $aliasSetClass = $self->_type()."AliasSet";
-	my $aliasset = $owner->getObject($aliasSetClass,{type => $aliasSet});
-	if (!defined($aliasset)) {
-		print "Alias set ".$aliasset." not found!\n";
-		return [];
-	}
-	my $aliasObjects = $aliasset->getObjects($self->_type()."Alias",{lc($self->_type())."_uuid" => $self->uuid()});
-	my $aliases = [];
-	for (my $i=0; $i < @{$aliasObjects}; $i++) {
-		push(@{$aliases},$aliasObjects->[$i]->alias());
-	}
-	return $aliases;
+    my ($self,$setName) = @_;
+    return [] unless(defined($setName));
+    my $aliasRootClass = lc($self->_aliasowner());
+    my $rootClass = $self->$aliasRootClass();
+    my $aliasSet = $rootClass->queryObject("aliasSets",{
+    	name => $setName,
+    	class => $self->_type()
+    });
+    return [] unless(defined($aliasSet));
+    my $aliases = $aliasSet->aliasesByuuid->{$self->uuid()};
+    return (defined($aliases)) ? $aliases : [];
 }
 
-sub _buildid {
-	my ($self) = @_;
-	my $aliasSetClass = $self->_type()."AliasSet";
-	my $set = $self->objectmanager()->getSelectedAliases($aliasSetClass);
-	if (!defined($set)) {
-		return $self->uuid();
-	}
-	return $self->getAlias($set);
+sub defaultNameSpace {
+    return $_[0]->parent->defaultNameSpace();
 }
 
+sub _build_id {
+    my ($self) = @_;
+    my $alias = $self->getAlias($self->defaultNameSpace());
+    return (defined($alias)) ? $alias : $self->uuid;
+}
 ######################################################################
 #Output functions
 ######################################################################
+sub createHTML {
+	my ($self) = @_;
+	my $data = $self->createReadableData();
+	my $output = [
+		'<!doctype HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">',
+		'<html><head>',
+		'<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>',
+		'    <script type="text/javascript">',
+		'        function UpdateTableHeaders() {',
+		'            $("div.divTableWithFloatingHeader").each(function() {',
+		'                var originalHeaderRow = $(".tableFloatingHeaderOriginal", this);',
+		'                var floatingHeaderRow = $(".tableFloatingHeader", this);',
+		'                var offset = $(this).offset();',
+		'                var scrollTop = $(window).scrollTop();',
+		'                if ((scrollTop > offset.top) && (scrollTop < offset.top + $(this).height())) {',
+		'                    floatingHeaderRow.css("visibility", "visible");',
+		'                    floatingHeaderRow.css("top", Math.min(scrollTop - offset.top, $(this).height() - floatingHeaderRow.height()) + "px");',
+		'                    // Copy row width from whole table',
+		'                    floatingHeaderRow.css(\'width\', "2000px");',
+		'                    // Copy cell widths from original header',
+		'                    $("th", floatingHeaderRow).each(function(index) {',
+		'                        var cellWidth = $("th", originalHeaderRow).eq(index).css(\'width\');',
+		'                        $(this).css(\'width\', cellWidth);',
+		'                    });',
+		'                }',
+		'                else {',
+		'                    floatingHeaderRow.css("visibility", "hidden");',
+		'                    floatingHeaderRow.css("top", "0px");',
+		'                }',
+		'            });',
+		'        }',
+		'        $(document).ready(function() {',
+		'            $("table.tableWithFloatingHeader").each(function() {',
+		'                $(this).wrap("<div class=\"divTableWithFloatingHeader\" style=\"position:relative\"></div>");',
+		'                var originalHeaderRow = $("tr:first", this)',
+		'                originalHeaderRow.before(originalHeaderRow.clone());',
+		'                var clonedHeaderRow = $("tr:first", this)',
+		'                clonedHeaderRow.addClass("tableFloatingHeader");',
+		'                clonedHeaderRow.css("position", "absolute");',
+		'                clonedHeaderRow.css("top", "0px");',
+		'                clonedHeaderRow.css("left", $(this).css("margin-left"));',
+		'                clonedHeaderRow.css("visibility", "hidden");',
+		'                originalHeaderRow.addClass("tableFloatingHeaderOriginal");',
+		'            });',
+		'            UpdateTableHeaders();',
+		'            $(window).scroll(UpdateTableHeaders);',
+		'            $(window).resize(UpdateTableHeaders);',
+		'        });',
+		'    </script>',
+		'<style type="text/css">',
+		'h1 {',
+		'    font-size: 16px;',
+		'}',
+		'table.tableWithFloatingHeader {',
+		'    font-size: 12px;',
+		'    text-align: left;',
+		'	 border: 0;',
+		'	 width: 2000px;',
+		'}',
+		'th {',
+		'    font-size: 14px;',
+		'    background: #ddd;',
+		'	 border: 1px solid black;',
+		'    vertical-align: top;',
+		'    padding: 5px 5px 5px 5px;',
+		'}',
+		'td {',
+		'   font-size: 12px;',
+		'	vertical-align: top;',
+		'}',
+		'</style></head>',
+		'<h2>'.$self->_type().' attributes</h2>',
+		'<table class="tableWithFloatingHeader">',
+		'<tr><th>'.join("</th><th>",@{$data->{attributes}->{headings}}).'</th></tr>',
+		'<tr><td>'.join("</td><td>",@{$data->{attributes}->{data}->[0]}).'</td></tr>',
+		'</table>'
+	];
+	foreach my $subobject (@{$data->{subobjects}}) {
+		push(@{$output},(
+			'<h2>'.$subobject->{name}.' subobjects</h2>',
+			'<table class="tableWithFloatingHeader">',
+			'<tr><th>'.join("</th><th>",@{$subobject->{headings}}).'</th></tr>'
+		));
+		foreach my $row (@{$subobject->{data}}) {
+			push(@{$output},'<tr><td>'.join("</td><td>",@{$row}).'</td></tr>');
+		}
+		push(@{$output},'</table>');
+	}
+	push(@{$output},'</html>');
+	my $html = join("\n",@{$output});
+	return $html;
+}
+
 sub createReadableStringArray {
 	my ($self) = @_;
 	my $output = ["Attributes {"];
@@ -168,15 +276,15 @@ sub createReadableData {
 			for (my $j=0; $j < @{$objects}; $j++) {
 				for (my $k=0; $k < @{$sortedAtt}; $k++) {
 					my $att = $sortedAtt->[$k];
-					$soData->{data}->[$j]->[$k] = $objects->[$j]->$att();
+					$soData->{data}->[$j]->[$k] = ($objects->[$j]->$att() || "");
 				}
 			}
 			push(@{$data->{subobjects}},$soData);
 		}
 	}
 	return $data;
-}
-
+ }
+ 
 sub getReadableAttributes {
 	my ($self) = @_;
 	my $priority = {};
@@ -197,172 +305,139 @@ sub getReadableAttributes {
 	my $sortedSO = [sort { $prioritySO->{$a} <=> $prioritySO->{$b} } @{$attributesSO}];
 	return ($sortedAtt,$sortedSO);
 }
-
 ######################################################################
-#Object addition functions
+#SubObject manipulation functions
 ######################################################################
-sub create {
-	my ($self,$type,$data) = @_;
-   	foreach my $key (keys(%{$data})) {
-   		if (!defined($data->{$key})) {
-   			delete $data->{$key};
-   		}
-   	}
-	my $attribute = $self->_typeToFunction()->{$type};
-	if (!defined($attribute)) {
-    	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
-    }
-	my $package = "ModelSEED::MS::$type";
-    Module::Load::load $package;
-	my $object = $package->new($data);
-	$self->add($attribute, $object);
-	return $object;
+sub clearSubObject {
+    my ($self, $attribute) = @_;
+	$self->$attribute([]);	
 }
 
 sub add {
-    my ($self, $attribute, $object) = @_;
-    my $type = $object->_type();
-    if (!defined($self->_typeToFunction()) || !defined($self->_typeToFunction()->{$type})) {
-    	ModelSEED::utilities::ERROR("Object doesn't have a subobject of type ".$type);	
+    my ($self, $attribute, $data_or_object) = @_;
+
+    my $attr_info = $self->_subobjects($attribute);
+    if (!defined($attr_info)) {
+        ModelSEED::utilities::ERROR("Object doesn't have subobject with name: $attribute");
     }
-    $attribute = $self->_typeToFunction()->{$type};
-    my $attrMeta;
-    {
-        my $class = 'ModelSEED::MS::DB::' . $self->_type;
-        $attrMeta = $class->meta->find_attribute_by_name($attribute);
-        ModelSEED::utilities::ERROR("Unknown attribute: $attribute!")
-            unless (defined($attrMeta));
-    }
-    if($attrMeta->isa('ModelSEED::Meta::Attribute::Typed')) {
-        $object->parent($self);
-        # Case of simple array of objects (linked or encompassed)
-        if ($attrMeta->type() =~ m/child\((.+)\)/ || $attrMeta->type() =~ m/encompassed\((.+)\)/ ) {
-            push(@{$self->$attribute}, $object);
-        # Case of hashed array of objects (aliases and the like)
-        } elsif ($attrMeta->type() =~ m/hasharray\((.+)\)/) {
-            my ($subType, $hashOn) = split(/,/,$1);
-            unless(defined($subType) && defined($hashOn)) {
-                ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type());
-            }
-            my $key = $object->$hashOn;
-            $self->$attribute->{$key} = [] unless(defined($self->$attribute->{$key}));
-            push(@{$self->$attribute->{$key}}, $object);
-        } else {
-            ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type . "!");
-        }
+
+    my $obj_info = {
+        created => 0,
+        class => $attr_info->{class}
+    };
+
+    my $ref = ref($data_or_object);
+    if ($ref eq "HASH") {
+        # need to create object first
+        $obj_info->{data} = $data_or_object;
+        $self->_build_object($attribute, $obj_info);
+    } elsif ($ref =~ m/ModelSEED::MS/) {
+        $obj_info->{object} = $data_or_object;
+        $obj_info->{created} = 1;
     } else {
-        ModelSEED::utilities::ERROR("Unable to call add on attribute that is not typed!")
+        ModelSEED::utilities::ERROR("Neither data nor object passed into " . ref($self) . "->add");
     }
-    return $self;
+
+    $obj_info->{object}->parent($self);
+    my $method = "_$attribute";
+    push(@{$self->$method}, $obj_info);
+    return $obj_info->{object};
 }
 
 sub remove {
-    my ($self, $type, $object) = @_;
-    my $attribute = $self->_typeToFunction()->{$type};
+    my ($self, $attribute, $object) = @_;
+
+    my $attr_info = $self->_attributes($attribute);
+    if (!defined($attr_info)) {
+        ModelSEED::utilities::ERROR("Object doesn't have attribute with name: $attribute");
+    }
+
     my $removedCount = 0;
-    my $attrMeta;
-    {
-        my $class = 'ModelSEED::MS::DB::' . $self->_type;
-        $attrMeta = $class->meta->find_attribute_by_name($attribute);
-        ModelSEED::utilities::ERROR("Unknown attribute: $attribute!")
-            unless (defined($attrMeta));
-    }
-    if($attrMeta->isa('ModelSEED::Meta::Attribute::Typed')) {
-        # Case of simple array of objects (linked or encompassed)
-        if ($attrMeta->type() =~ m/child\((.+)\)/ || $attrMeta->type() =~ m/encompassed\((.+)\)/ ) {
-            my $array = $self->$attribute;
-            for(my $i=0; $i<@$array; $i++) {
-                my $obj = $array->[$i];
-                if($object eq $obj) {
-                    splice(@$array, $i, 1); 
-                    $removedCount += 1;
-                }
+    my $method = "_$attribute";
+    my $array = $self->$method;
+    for (my $i=0; $i<@$array; $i++) {
+        my $obj_info = $array->[$i];
+        if ($obj_info->{created}) {
+            if ($object eq $obj_info->{object}) {
+                splice(@$array, $i, 1);
+                $removedCount += 1;
             }
-        # Case of hashed array of objects (aliases and the like)
-        } elsif ($attrMeta->type() =~ m/hasharray\((.+)\)/) {
-            foreach my $key (keys %{$self->$attribute}) {
-                my $array = $self->$attribute->{$key};
-                for(my $i=0; $i<@$array; $i++) {
-                    my $obj = $array->[$i];
-                    if($object eq $obj) {
-                        splice(@$array, $i, 1);
-                        $removedCount += 1;
-                    }
-                }
-            }
-        } else {
-            ModelSEED::utilities::ERROR("Unknown type " . $attrMeta->type . "!");
         }
-    } else {
-        ModelSEED::utilities::ERROR("Unable to call add on attribute that is not typed!")
     }
+
     return $removedCount;
 }
 
+# can only get via uuid
 sub getLinkedObject {
-	my ($self,$sourceType,$type,$attribute,$value) = @_;
-	my $sourceTypeLC = lc($sourceType);
-    if(ref($self) =~ /:$sourceType$/) {
-        return $self->getObject($type, {$attribute => $value}); 
-    } elsif (defined($self->$sourceTypeLC())) {
-        return $self->$sourceTypeLC()->getLinkedObject($sourceType, $type, $attribute, $value);;
-    } elsif(ref($self->parent) eq 'ModelSEED::Store') {
-        if($attribute eq 'uuid') {
-            my $o = $self->parent->get_object_by_uuid($type, $value);
-            warn "Getting object ".ref($o);
-            return $o;
-        } else {
-            return $self->parent->get_object($type, $value);
-        }
-    } elsif (!defined($self->parent)) {
-    	ModelSEED::utilities::ERROR("Attempting to get linked object from parent that doesn't exist!");
+    my ($self, $sourceType, $attribute, $uuid) = @_;
+    my $source = lc($attribute);
+    if ($sourceType eq 'ModelSEED::Store') {
+        my $ref = ModelSEED::Reference->new(uuid => $uuid, type => $source);
+        return $self->store->get_object($ref);
     } else {
-        return $self->parent->getLinkedObject($sourceType, $type, $attribute, $value);
+        my $source = lc($sourceType);
+        my $sourceObj = $self->$source();
+        if (!defined($sourceObj)) {
+            ModelSEED::utilities::ERROR("Cannot obtain source object ".$sourceType." for ".$attribute." link!");
+        }
+        return $sourceObj->getObject($attribute,$uuid);
     }
 }
 
 sub biochemistry {
-	my ($self) = @_;
-	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
-		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::Biochemistry") {
+        return $parent;
+    } elsif (defined($parent)) {
         return $parent->biochemistry();
-	}
-	ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
+    }
+    ModelSEED::utilities::ERROR("Cannot find Biochemistry object in tree!");
 }
 
 sub model {
-	my ($self) = @_;
-	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
-		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::Model") {
+        return $parent;
+    } elsif (defined($parent)) {
         return $parent->model();
-	}
-	ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
+    }
+    ModelSEED::utilities::ERROR("Cannot find Model object in tree!");
 }
 
 sub annotation {
-	my ($self) = @_;
-	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
-		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::Annotation") {
+        return $parent;
+    } elsif (defined($parent)) {
         return $parent->annotation();
-	}
-	ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
+    }
+    ModelSEED::utilities::ERROR("Cannot find Annotation object in tree!");
 }
 
 sub mapping {
-	my ($self) = @_;
-	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
-		return $parent;
-	} elsif (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::Mapping") {
+        return $parent;
+    } elsif (defined($parent)) {
         return $parent->mapping();
-	}
-	ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
+    }
+    ModelSEED::utilities::ERROR("Cannot find mapping object in tree!");
+}
+
+sub fbaproblem {
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) eq "ModelSEED::MS::FBAProblem") {
+        return $parent;
+    } elsif (defined($parent)) {
+        return $parent->fbaproblem();
+    }
+    ModelSEED::utilities::ERROR("Cannot find fbaproblem object in tree!");
 }
 
 sub objectmanager {
@@ -370,12 +445,46 @@ sub objectmanager {
 }
 
 sub store {
-	my ($self) = @_;
-	my $parent = $self->parent();
-	if (defined($parent) && ref($parent) ne "ModelSEED::Store") {
-		return $parent->store();
-	}
-	return $parent;
+    my ($self) = @_;
+    my $parent = $self->parent();
+    if (defined($parent) && ref($parent) ne "ModelSEED::Store") {
+        return $parent->store();
+    }
+    return $parent;
+}
+
+sub _build_object {
+    my ($self, $attribute, $obj_info) = @_;
+
+    if ($obj_info->{created}) {
+        return $obj_info->{object};
+    }
+	my $attInfo = $self->_subobjects($attribute);
+    if (!defined($attInfo->{class})) {
+    	ModelSEED::utilities::ERROR("No class for attribute ".$attribute);	
+    }
+    my $class = 'ModelSEED::MS::' . $attInfo->{class};
+    Module::Load::load $class;
+    my $obj = $class->new($obj_info->{data});
+
+    $obj_info->{created} = 1;
+    $obj_info->{object} = $obj;
+    delete $obj_info->{data};
+
+    return $obj;
+}
+
+sub _build_all_objects {
+    my ($self, $attribute) = @_;
+
+    my $objs = [];
+    my $method = "_$attribute";
+    my $subobjs = $self->$method();
+    foreach my $subobj (@$subobjs) {
+        push(@$objs, $self->_build_object($attribute, $subobj));
+    }
+
+    return $objs;
 }
 
 __PACKAGE__->meta->make_immutable;

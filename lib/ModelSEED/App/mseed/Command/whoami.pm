@@ -7,7 +7,7 @@ sub execute {
     my ($self, $opts, $args) = @_;
     my $conf = ModelSEED::Configuration->new();
     my $username = $conf->config->{login}->{username};
-    $username = "PUBLIC" unless(defined($username));
+    $username = "public" unless(defined($username));
     print $username ."\n";
 }
 

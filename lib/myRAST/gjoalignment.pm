@@ -161,7 +161,6 @@ sub align_with_mafft
     my %prog_flag = map { $_ => 1 }
                     qw( 6merpair
                         amino
-                        anysymbol
                         auto
                         clustalout
                         dpparttree
@@ -689,7 +688,7 @@ sub add_to_alignment
 #  Insert a new sequence into an alignment without altering the relative
 #  alignment of the existing sequences.  The alignment is based on a profile
 #  of those sequences that are not significantly less similar than the most
-#  similar sequence.  This differs from v2a in that it removes the shared gap
+#  similar sequence.  This differs from v2 in that it removes the shared gap
 #  columns in the subset of sequences before doing the profile alignment.
 #
 #    \@align = add_to_alignment_v2( $seq, \@ali, \%options )
@@ -978,7 +977,7 @@ sub add_to_alignment_v2a
     foreach ( @$ali )
     {
         next if $_->[0] ne $id;
-        print STDERR "Warning: add_to_alignment_v2a not adding sequence with duplicate id:\n$id\n" if ! $silent;
+        print STDERR "Warning: add_to_alignment_v2 not adding sequence with duplicate id:\n$id\n" if ! $silent;
         return wantarray ? @$ali : $ali;
     }
 

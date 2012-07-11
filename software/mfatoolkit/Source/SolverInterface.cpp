@@ -47,6 +47,25 @@ void ClearSolverVariables() {
 }
 
 int SelectSolver(int ProbType, int CurrentSolver) {
+	if (CurrentSolver == CPLEX) {
+		bool licenseFound = false;
+		char* licenseCString = getenv("ILOG_LICENSE_FILE");
+		if (licenseCString != NULL) {
+			string licenseString(licenseCString);
+			if (FileExists(licenseString)) {
+				licenseFound = true;
+			}
+		}
+		if (licenseFound) {
+			return CPLEX;
+		} else {
+			if (ProbType == LP) {
+				return GLPK;
+			} else {
+				return SOLVER_SCIP;
+			}
+		}
+	}
 	if (ProbType == MILP || ProbType == LP) {
 		return CurrentSolver;
 	} else if (ProbType == QP || ProbType == MIQP) {

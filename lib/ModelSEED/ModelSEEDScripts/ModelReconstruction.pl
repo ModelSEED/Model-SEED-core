@@ -7,68 +7,43 @@ use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
 use ModelSEED::MS::Factories::SEEDFactory;
 use Time::HiRes qw(time);
-use IO::Compress::Gzip qw(gzip);
-use IO::Uncompress::Gunzip qw(gunzip);
+use Data::Dumper;
 
-#open MAPPING, "<c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json";
-#my $string = <MAPPING>;
-#close MAPPING;
-#my $gzipString;
-#gzip \$string => \$gzipString;
-#open DATA, ">c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json.zip";
-#print DATA $gzipString;
-#close DATA;
+$| = 1;
 
-my $string;
-my $gzipString;
-open DATATWO, "<c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.json.zip";
-read DATATWO,$gzipString,10000000;
-close DATATWO;
-gunzip \$gzipString => \$string;
+#Loading biochemistry
+my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
+open BIOCHEM, "<".$directory."biochemistry.json";
+my $string = join("\n",<BIOCHEM>);
+close BIOCHEM;
 my $objectData = JSON::Any->decode($string);
 my $biochem = ModelSEED::MS::Biochemistry->new($objectData);
-exit();
-
-#open BIOCHEM, "<c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.json";
-#$string = <BIOCHEM>;
-#close BIOCHEM;
-#
-#gzip \$string => \$gzipString;
-#my $length = length($gzipString);
-#open DATA, ">c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.json.zip";
-#print DATA $gzipString;
-#close DATA;
-
-
-#$gzipString = <DATATWO>;
-
-
-
-
-my $readable = $biochem->createReadableStringArray();
-ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/FullBiochemistry.readable",$readable); 
-print "Loaded biochemistry!\n";
-open MODEL, "<c:/Code/Model-SEED-core/data/exampleObjects/FullModel.json";
-$string = <MODEL>;
-$objectData = JSON::Any->decode($string);
-my $mdl = ModelSEED::MS::Model->new($objectData);
-close MODEL;
-$mdl->biochemistry($biochem);
-$readable = $mdl->createReadableStringArray();
-ModelSEED::utilities::PRINTFILE("c:/Code/Model-SEED-core/data/exampleObjects/FullModel.readable",$readable); 
-exit();
-open MAPPING, "<c:/Code/Model-SEED-core/data/exampleObjects/FullMapping.json";
-$string = <MAPPING>;
+#Loading mapping
+open MAPPING, "<".$directory."mapping.json";
+$string = join("\n",<MAPPING>);
+close MAPPING;
 $objectData = JSON::Any->decode($string);
 my $mapping = ModelSEED::MS::Mapping->new($objectData);
-close MAPPING;
 $mapping->biochemistry($biochem);
-print "Loaded mapping!\n";
+#Retrieving annotation
+#open ANNO, "<".$directory."FullAnnotation.json";
+#$string = join("\n",<ANNO>);
+#close ANNO;
+#$objectData = JSON::Any->decode($string);
+#my $anno = ModelSEED::MS::Annotation->new($objectData);
+#$anno->mapping($mapping);
 my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
 my $anno = $seedFactory->buildMooseAnnotation({
 	genome_id => "83333.1",
 	mapping => $mapping
 });
-print "Created annotation!\n";
-$mdl = $anno->createStandardFBAModel();
-$mdl->printJSONFile("c:/Code/Model-SEED-core/data/exampleObjects/ReconstructedModel.json");
+$anno->printJSONFile($directory."83333.1.json");
+$mapping->printJSONFile($directory."83333.1.mapping.json");
+my $readable = $anno->createReadableStringArray();
+ModelSEED::utilities::PRINTFILE($directory."83333.1.readable",$readable);
+##Building model
+my $mdl = $anno->createStandardFBAModel();
+my $data = $mdl->serializeToDB();
+$mdl->printJSONFile($directory."ReconstructedModel.json");
+my $html = $mdl->createHTML();
+ModelSEED::utilities::PRINTFILE($directory."ReconstructedModel.html",[$html]);

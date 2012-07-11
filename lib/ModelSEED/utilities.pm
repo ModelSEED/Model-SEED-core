@@ -260,7 +260,56 @@ sub MODELSEEDCORE {
 	return $ENV{MODEL_SEED_CORE};
 }
 
+=head3 GLPK
+Definition:
+	string = ModelSEED::utilities::GLPK();
+Description:
+	Returns location of glpk executable
+Example:
+=cut
+sub GLPK {
+	return $ENV{GLPK};
+}
 
-
+=head3 CPLEX
+Definition:
+	string = ModelSEED::utilities::CPLEX();
+Description:
+	Returns location of cplex executable
+Example:
+=cut
+sub CPLEX {
+	return $ENV{CPLEX};
+}
+=head3 Explore
+Definition:
+	string = ModelSEED::utilities::Explore($tree);
+Description:
+	Scans the input data tree for anomalies
+Example:
+=cut
+sub Explore {
+	my ($data,$count) = @_;
+	foreach my $key (keys(%{$data})) {
+		print "Attribute:".$key.".".$count."\n";
+		if (ref($data->{$key}) eq "ARRAY") {
+			foreach my $obj (@{$data->{$key}}) {
+				if (ref($obj) =~ m/^HASH/) {
+					ModelSEED::utilities::Explore($obj,($count+1));
+				} elsif (ref($obj) =~ m/^ModelSEED/) {
+					print $count.".3!\n";
+				}
+			}
+		} elsif (ref($data->{$key}) =~ m/^HASH/) {
+			foreach my $keytwo (keys(%{$data->{$key}})) {
+				if (ref($data->{$key}) =~ m/ModelSEED/) {
+					print $count.".2!\n";
+				}
+			}
+		} elsif (ref($data->{$key}) =~ m/^ModelSEED/) {
+			print $count.".1!\n";
+		}
+	}
+}
 
 1;

@@ -3000,7 +3000,7 @@ sub reconstruction {
 		checkpoint => 1,
 		autocompletion => 1,
 		biochemSource => undef
-		});
+	});
 	#Getting genome data and feature table
 	$self->GenerateModelProvenance({
 		biochemSource => $args->{biochemSource}
@@ -5588,10 +5588,26 @@ sub BuildSpecificBiomassReaction {
 			$originalEssReactions = $bioObj->essentialRxn();
 			$originalPackages = $bioObj->cofactorPackage().$bioObj->lipidPackage().$bioObj->cellWallPackage();
 		}
-	}
-	#Getting genome stats
+	}	
 	my $genomestats = $self->genomeObj()->genome_stats();
 	my $Class = $self->ppo()->cellwalltype();
+	#Checking for overrides on the class of the cell wall
+	if (defined($self->figmodel()->config("Gram positive")->{$self->genome()})) {
+		$Class = "Gram positive";
+	} elsif (defined($self->figmodel()->config("Gram negative")->{$self->genome()})) {
+		$Class = "Gram negative";
+	} else {
+		my $cellwalltypes = ["Gram positive","Gram negative"];
+		for (my $j=0; $j < @{$cellwalltypes}; $j++) {
+			for (my $i=0; $i < @{$self->figmodel()->config($cellwalltypes->[$j]." families")}; $i++) {
+				my $family = $self->figmodel()->config($cellwalltypes->[$j]." families")->[$i];
+				if ($self->name() =~ m/$family/) {
+					$Class = $cellwalltypes->[$j];
+					last;
+				}
+			}
+		}
+	}
 	#Setting global coefficients based on cell wall type
 	my $biomassCompounds;
 	my $compounds;
@@ -7728,6 +7744,41 @@ sub fbaCalculateGrowth {
 	$result->{fbaObj}->clearOutput();
 	return $result;
 }
+=head3 fbaCalculateMinimalPathways
+Definition:
+	{}:Output = FIGMODELmodel->fbaCalculateMinimalPathways({
+		growth => double,
+		noGrowthCompounds => [string]:compound list	
+	});
+Description:
+	Calculating minimal pathways to reach some objective
+=cut
+sub fbaCalculateMinimalPathways {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		numsolutions => 5,
+		objective => undef,
+		additionalexchange => undef,
+		fbaStartParameters => {},
+	});
+	return $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setMinimalPathwaysStudy",
+			arguments => {
+				numsolutions=>$args->{numsolutions},
+				"objective" => $args->{objective},
+				"additionalexchange" => $args->{additionalexchange},
+			} 
+		},
+		saveLPfile => 1,
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+}
 =head3 fbaCalculateMinimalMedia
 =item Definition:
 	Output = FBAMODELmodel->fbaCalculateMinimalMedia({
@@ -7780,9 +7831,9 @@ sub fbaSubmitGeneActivityAnalysis {
 	my $fbaObj = $self->fba();
 	return $fbaObj->setGeneActivityAnalysis($args);
 }
-=head3 fbaGeneActivityAnalysis
+=head3 fbaGeneActivityAnalysisSlave
 =item Definition:
-	$results = FIGMODELmodel->fbaGeneActivityAnalysis({});
+	$results = FIGMODELmodel->fbaGeneActivityAnalysisSlave({});
 	$arguments = {media => opt string:media ID or "," delimited list of compounds,
 				  geneCalls => {string:gene ID => double:call},
 				  rxnKO => [string::reaction ids],
@@ -7790,20 +7841,20 @@ sub fbaSubmitGeneActivityAnalysis {
 	$results = {jobid => integer:job ID}
 =item Description:
 =cut
-sub fbaGeneActivityAnalysis {
+sub fbaGeneActivityAnalysisSlave {
 	my ($self,$args) = @_;
-	$args = $self->figmodel()->process_arguments($args,["geneCalls","labels","descriptions","media"],{
+	$args = $self->figmodel()->process_arguments($args,["geneCalls","label","description","media"],{
 		fbaStartParameters => {},
 	});
 	my $results = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
-			function => "setGeneActivityAnalysis",
+			function => "setGeneActivityAnalysisSlave",
 			arguments => {
 				geneCalls=>$args->{geneCalls},
 				media=>$args->{media},
-				labels=>$args->{labels},
-				descriptions=>$args->{descriptions},
+				label=>$args->{label},
+				description=>$args->{description},
 			} 
 		},
 		problemDirectory => $args->{problemDirectory},
@@ -7816,6 +7867,42 @@ sub fbaGeneActivityAnalysis {
 	});
 	return $results;
 }
+
+=head3 fbaGeneActivityAnalysisMaster
+=item Definition:
+	$results = FIGMODELmodel->fbaGeneActivityAnalysisMaster({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  geneCalls => {string:gene ID => double:call},
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaGeneActivityAnalysisMaster {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+                media => undef,
+		fbaStartParameters => {},
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setGeneActivityAnalysisMaster",
+			arguments => {
+                            media=>$args->{media},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "GeneActivityAnalysis.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+
 =head3 fbaMultiplePhenotypeStudy
 Definition:
 	Output = FIGMODELmodel->fbaMultiplePhenotypeStudy({
