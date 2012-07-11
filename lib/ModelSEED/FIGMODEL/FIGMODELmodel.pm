@@ -2011,10 +2011,6 @@ sub completeGapfilling {
 	my $biomass=$self->ppo()->biomassReaction();
 	$args->{fbaStartParameters}->{parameters}->{"metabolites to optimize"}="REACTANTS;".$biomass;
 
-	if($self->figmodel->user() eq "seaver"){
-	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
-	}
-
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 	#Printing list of inactive reactions
 	if ($args->{iterative} == 0) {
@@ -5815,6 +5811,7 @@ sub PrintSBMLFile {
     if (-e $self->directory().$self->id().".xml") {
 	unlink($self->directory().$self->id().".xml");	
     }
+
     # convert ids to SIds
     my $idToSId = sub {
         my $id = shift @_;
@@ -5839,6 +5836,7 @@ sub PrintSBMLFile {
     if ($args->{media} ne "Complete") {
 	$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
     }
+
     if (!defined($args->{media})) {
 	$args->{media} = "Complete";
     }
@@ -5978,6 +5976,27 @@ sub PrintSBMLFile {
 			push(@{$output},'<species '.$stringToString->("id",$Compound.'_'.$Compartment).' '.$stringToString->("name",$Name).' '.$stringToString->("compartment",$cmpObj->id()).' '.$stringToString->("charge",$Charge).' boundaryCondition="false"/>');
 		}
 	}
+
+    if($biomassDrainC) {
+        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+    }
+
+    #get drains
+    my $drains = $self->drains();
+    my %DrainHash=();
+    foreach my $dr (split(/;/,$drains)){
+	my @drs=split(/:/,$dr);
+	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
+	$ExchangeHash->{$drs[0]}="e";
+    }
+
+    #Add media to exchange hash if necessary
+    foreach my $cpd (keys %$mediaCpd){
+	if(!exists($ExchangeHash->{$cpd})){
+	    $ExchangeHash->{$cpd}="e";
+	}
+    }
+
 	
 	#Printing the boundary species
 	foreach my $Compound (keys(%{$ExchangeHash})) {
@@ -6005,9 +6024,6 @@ sub PrintSBMLFile {
 	}
 
 	#Add compounds for specific biomass drain if we haven't added them already
-    if($biomassDrainC) {
-        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-    }
     if($biomassDrainB) {
         push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
     }
@@ -6145,7 +6161,6 @@ sub PrintSBMLFile {
 	}
 
 	#Adding exchange fluxes based on input media formulation
-        $ExchangeHash->{cpd11416}='c' if $biomassDrainB;
 	my @ExchangeList = keys(%{$ExchangeHash});
 	foreach my $ExCompound (@ExchangeList) {
 		my $cpdObj;
@@ -6154,7 +6169,7 @@ sub PrintSBMLFile {
 		}
 		if ($ExCompound ne "cpd11416" && !defined($cpdObj)) {
 		    print STDERR "Skipping $ExCompound\n";
-		    next;	
+		    next;
 		}
 		my $ExCompoundName = $cpdObj->name() if defined($cpdObj);
 		$ExCompoundName = "Biomass" if $ExCompound eq "cpd11416";
@@ -6168,7 +6183,16 @@ sub PrintSBMLFile {
 				$min = -10000;
 			}
 		}
-		push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("name",'EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}).' reversible="true">');
+
+		my $reversible = "true";
+		if(exists($DrainHash{$ExCompound})){
+		    $min=$DrainHash{$ExCompound}{Min};
+		    $max=$DrainHash{$ExCompound}{Max};
+		    $reversible = "false" if($max == 0 || $min == 0);
+		}
+
+
+		push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("name",'EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("reversible",$reversible).'>');
 		push(@{$output},"\t".'<notes>');
 		push(@{$output},"\t\t".'<html:p>GENE_ASSOCIATION: </html:p>');
 		push(@{$output},"\t\t".'<html:p>PROTEIN_ASSOCIATION: </html:p>');
@@ -7371,6 +7395,12 @@ sub runFBAStudy {
 		clearOutput=>0
 	});	
 	#Setting the problem directory
+
+	if($self->figmodel->user() eq "seaver"){
+	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
+	    $args->{fbaStartParameters}->{parameters}->{"Allowable unbalanced reactions"}="rxn13428";
+	}
+
 	my $fbaObj = $self->fba($args->{fbaStartParameters});
 
 	if (!defined($args->{problemDirectory})) {
