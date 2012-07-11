@@ -2403,10 +2403,16 @@ sub parseMolAnalysisStudy {
     for (my $i=0; $i < $tbl->size(); $i++) {
 	my $row = $tbl->get_row($i);
 	my $id;
+
 	if (defined($row->{id}->[0])) {
 	    $id = $row->{id}->[0];
 	    for (my $j=0; $j < @{$heading}; $j++) {
-		$results->{$id}->{$heading->[$j]} = join("|",@{$row->{$heading->[$j]}});
+		if(!defined($row->{$heading->[$j]})){
+		    print STDERR "Undefined results for ".$heading->[$j]." in compound ".$id."\n";
+		    $results->{$id}->{$heading->[$j]}="";
+		}else{
+		    $results->{$id}->{$heading->[$j]} = join("|",@{$row->{$heading->[$j]}});
+		}
 	    }
 	}
     }
