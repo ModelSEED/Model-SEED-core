@@ -31,7 +31,6 @@ generateTablesForKbase --dir <directory> [ arguments ]
 use strict;
 use warnings;
 use Getopt::Long;
-use Data::Dumper;
 use Pod::Usage;
 use Cwd qw(abs_path);
 use ModelSEED::Store;
@@ -40,7 +39,6 @@ use ModelSEED::Configuration;
 use ModelSEED::Database::Composite;
 use Tie::Hash::Sorted;
 use Carp qw(confess);
-$Data::Dumper::Maxdepth = 1;
 
 my ($mapping, $biochem, $directory, $store, $help, @models);
 GetOptions(
@@ -122,7 +120,6 @@ sub buildTable {
     }
     my $allColumns = { map { $_ => 1 } keys %$columns };
     my $preimages = [];
-    confess "Not an array" unless(ref($dataObjects) eq 'ARRAY');
     for(my $i=0; $i<@$dataObjects; $i++) {
         foreach my $key (sort keys %$columns) {
             my $val = $columns->{$key};
