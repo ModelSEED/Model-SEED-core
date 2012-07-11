@@ -264,7 +264,6 @@ int LoadTextDatabase() {
 	while (!Input.eof()) {
 		vector<string>* Strings = GetStringsFileline(Input, "|");
 		if (Strings->size() == 1 && (*Strings)[0].compare("NEW") == 0) {
-			cout << (*Strings)[0] << "\tValue1" << endl;		
 			New = true;
 		} else if (Strings->size() == 2) {
 			if (New) {
