@@ -2037,16 +2037,13 @@ void Reaction::PrintExpaInputFileLine(ofstream& Output) {
 
 //Manipultion	
 void Reaction::PerformAllCalculations(){
-  if(GetParameter("use database objects seaver").compare("1")!=0){
 	if (GetParameter("balance reactions").compare("1") == 0) {
 		BalanceReaction(GetParameter("automatically add H to balance").compare("1") ==0,GetParameter("automatically add electrons to balance").compare("1") ==0);
 	}
-  }
 	MakeCode("DATABASE",false);
 	if (GetData("DEFINITION",STRING).length() == 0) {
 		Query("DEFINITION");
 	}
-  if(GetParameter("use database objects seaver").compare("1")!=0){
 	if (GetParameter("calculate group change").compare("1") == 0) {
 		CalculateGroupChange();
 	} 
@@ -2060,7 +2057,6 @@ void Reaction::PerformAllCalculations(){
 	if (GetParameter("Calculations:Reactions:transported atoms").compare("1") == 0) {
 		this->CalculateTransportedAtoms();
 	}
-  }
 }
 
 void Reaction::AdjustDeltaGpH(double NewpH, double OriginalpH, double ionicStr) {
