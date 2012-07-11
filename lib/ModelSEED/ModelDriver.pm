@@ -922,7 +922,7 @@ sub fbacheckgrowth {
 			$message .= "The following biomass compounds could not be generated:\n";
             foreach my $cpdId (@{$results->{noGrowthCompounds}}) {
                 my $cpd = $self->figmodel()->get_compound($cpdId);
-                if(defined($cpd)) {
+		if(defined($cpd) && defined($cpd->ppo)) {
                     $message .= join("\t", ($cpd->ppo->id, $cpd->ppo->name)) . "\n";
                 } else {
                     $message .= $cpdId . "\n"
