@@ -1,1 +1,3 @@
-mscli stores $*
+#!/usr/bin/env perl
+use FindBin qw($Bin);
+print `perl $Bin/mscli.pl stores @ARGV`;

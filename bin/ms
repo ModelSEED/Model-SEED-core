@@ -1,1 +1,3 @@
-mscli ms $*
+#!/usr/bin/env perl
+use FindBin qw($Bin);
+print `perl $Bin/mscli.pl ms @ARGV`;
