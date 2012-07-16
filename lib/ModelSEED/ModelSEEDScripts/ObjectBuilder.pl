@@ -167,9 +167,14 @@ foreach my $name (keys(%{$objects})) {
             if (!defined($class)) {
                 $class = $method;
             }
+            my $type = 'ModelSEED::MS::'.$class;
+            if (defined($subobject->{array}) && $subobject->{array} == 1) {
+            	$weak = 0;
+            	$type = "ArrayRef[".$type."]";
+            }
             my $props = [
                 "is => 'rw'",
-                "isa => 'ModelSEED::MS::$class'",
+                "isa => '".$type."'",
                 "type => 'link($parent,$method,$attr)'",
                 "metaclass => 'Typed'",
                 "lazy => 1",
@@ -193,12 +198,21 @@ foreach my $name (keys(%{$objects})) {
         push(@$output, "sub _build_modDate { return DateTime->now()->datetime(); }");
     }
     foreach my $subobject (@{$object->{links}}) {
-        push(@$output,
-            "sub _build_".$subobject->{name}." {",
-            "$tab my (\$self) = \@_;",
-            "$tab return \$self->getLinkedObject('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
-            "}"
-        );
+        if (defined($subobject->{array}) && $subobject->{array} == 1) {
+	        push(@$output,
+	            "sub _build_".$subobject->{name}." {",
+	            "$tab my (\$self) = \@_;",
+	            "$tab return \$self->getLinkedObjectArray('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
+	            "}"
+	        );
+        } else {
+        	push(@$output,
+	            "sub _build_".$subobject->{name}." {",
+	            "$tab my (\$self) = \@_;",
+	            "$tab return \$self->getLinkedObject('" . $subobject->{parent} . "','" . $subobject->{method} . "',\$self->" . $subobject->{attribute} . "());",
+	            "}"
+	        );
+        }
     }
     push(@$output, "", "");
 

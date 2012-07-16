@@ -21,13 +21,13 @@ has growthFraction => (is => 'rw', isa => 'Num', printOrder => '0', required => 
 
 
 # LINKS:
-has genekos => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,geneko_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_genekos', weak_ref => 1);
+has genekos => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Feature]', type => 'link(Annotation,features,geneko_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_genekos');
 
 
 # BUILDERS:
 sub _build_genekos {
   my ($self) = @_;
-  return $self->getLinkedObject('Annotation','features',$self->geneko_uuids());
+  return $self->getLinkedObjectArray('Annotation','features',$self->geneko_uuids());
 }
 
 

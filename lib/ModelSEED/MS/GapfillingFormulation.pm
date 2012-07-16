@@ -103,6 +103,109 @@ sub calculateReactionCosts {
 	}
 	return {forwardDirection => $fcosts,reverseDirection => $rcosts};
 }
+=head3 prepareFBAFormulation
+Definition:
+	void prepareFBAFormulation();
+Description:
+	Ensures that an FBA formulation exists for the gapfilling, and that it is properly configured for gapfilling
+=cut
+sub prepareFBAFormulation {
+	my ($self,$args) = @_;
+	my $form;
+	if (!defined($self->fbaFormulation_uuid())) {
+		my $exFact = ModelSEED::MS::Factories::ExchangeFormatFactory->new();
+		$form = $exFact->buildFBAFormulation({model => $self->parent(),overrides => {
+			media => "Media/name/Complete",
+			notes => "Default gapfilling FBA formulation",
+			allReversible => 1,
+			reactionKO => "none",
+			numberOfSolutions => 1,
+			maximizeObjective => 1,
+			fbaObjectiveTerms => [{
+				variableType => "biomassflux",
+				id => "Biomass/id/bio00001",
+				coefficient => 1
+			}]
+		}});
+	} else {
+		$form = $self->fbaFormulation();
+	}
+	if ($form->media()->name() eq "Complete") {
+		if ($form->defaultMaxDrainFlux() < 10000) {
+			$form->defaultMaxDrainFlux(10000);
+		}	
+	}
+	$form->objectiveConstraintFraction(0.1);
+	$form->defaultMaxFlux(10000);
+	$form->defaultMinDrainFlux(-10000);
+	$form->fluxUseVariables(1);
+	$form->decomposeReversibleFlux(1);
+	#Setting up dissapproved compartments
+	my $badCompList = [];
+	my $approvedHash = {};
+	my $cmps = $self->allowableCompartments();
+	for (my $i=0; $i < @{$cmps}; $i++) {
+		$approvedHash->{$cmps->[$i]->id()} = 1;	
+	}
+	$cmps = $self->biochemistry()->compartments();
+	for (my $i=0; $i < @{$cmps}; $i++) {
+		if (!defined($approvedHash->{$cmps->[$i]->id()})) {
+			push(@{$badCompList},$cmps->[$i]->id());
+		}	
+	}
+	$form->parameters()->{"dissapproved compartments"} = join(";",@{$badCompList});
+	#Adding blacklisted reactions to KO list
+	my $rxnhash = {};
+	my $rxns = $form->reactionKOs();
+	for (my $i=0; $i < @{$rxns}; $i++) {
+		$rxnhash->{$rxns->[$i]->id()} = 1;	
+	}
+	$rxns = $self->guaranteedReactions();
+	for (my $i=0; $i < @{$rxns}; $i++) {
+		if (!defined($rxnhash->{$rxns->[$i]->id()})) {
+			push(@{$form->reactionKOs()},$rxns->[$i]);
+			push(@{$form->reactionKO_uuids()},$rxns->[$i]->uuid());
+			$rxnhash->{$rxns->[$i]->id()} = 1;
+		}	
+	}
+	#Setting up gauranteed reactions
+	my $rxnlist = [];
+	$rxns = $self->guaranteedReactions();
+	for (my $i=0; $i < @{$rxns}; $i++) {
+		push(@{$rxnlist},$rxns->[$i]->id());	
+	}
+	$form->parameters()->{"Allowable unbalanced reactions"} = join(",",@{$rxnlist});
+	#Setting other important parameters
+	$form->parameters()->{"Complete gap filling"} = 1;
+	$form->parameters()->{"Reaction activation bonus"} = $self->reactionActivationBonus();
+	$form->parameters()->{"Minimum flux for use variable positive constraint"} = 1;
+	$form->parameters()->{"Objective coefficient file"} = "NONE";
+	$form->parameters()->{"just print LP file"} = "0";
+	$form->parameters()->{"use database fields"} = "1";
+	$form->parameters()->{"REVERSE_USE;FORWARD_USE;REACTION_USE"} = "1";
+	$form->parameters()->{"CPLEX solver time limit"} = "82800";
+	$form->parameters()->{"Perform gap filling"} = "1";
+	$form->parameters()->{"Add DB reactions for gapfilling"} = "1";
+	$form->parameters()->{"Balanced reactions in gap filling only"} = $self->balancedReactionsOnly();
+	$form->parameters()->{"drain flux penalty"} = $self->drainFluxMultiplier();#Penalty doesn't exist in MFAToolkit yet
+	$form->parameters()->{"directionality penalty"} = $self->directionalityMultiplier();#5
+	$form->parameters()->{"delta G multiplier"} = $self->deltaGMultiplier();#Penalty doesn't exist in MFAToolkit yet
+	$form->parameters()->{"unknown structure penalty"} = $self->noStructureMultiplier();#1
+	$form->parameters()->{"no delta G penalty"} = $self->noDeltaGMultiplier();#1
+	$form->parameters()->{"biomass transporter penalty"} = $self->biomassTransporterMultiplier();#3
+	$form->parameters()->{"single compound transporter penalty"} = $self->singleTransporterMultiplier();#3
+	$form->parameters()->{"transporter penalty"} = $self->transporterMultiplier();#0
+	$form->parameters()->{"unbalanced penalty"} = 10;
+	$form->parameters()->{"no functional role penalty"} = 2;
+	$form->parameters()->{"no KEGG map penalty"} = 1;
+	$form->parameters()->{"non KEGG reaction penalty"} = 1;
+	$form->parameters()->{"no subsystem penalty"} = 1;
+	$form->parameters()->{"subsystem coverage bonus"} = 1;
+	$form->parameters()->{"scenario coverage bonus"} = 1;
+	$form->parameters()->{"Add positive use variable constraints"} = 0;
+	return $form;	
+}
+
 =head3 runGapFilling
 Definition:
 	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->runGapFilling({
@@ -113,354 +216,33 @@ Description:
 =cut
 sub runGapFilling {
 	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["model"],{
-		fbaFormulation => undef
-	});
-	my $model = $args->{model};
-	return $self->emergencyGapfilling({
-		model => $model,
-		media => $self->media()
-	});
-#	my $fbaform = $args->{fbaFormulation};
-#	#Creating default FBAFormulation if one was not provided
-#	if (!defined($fbaform)) {
-#		my $maxDrain = 0;
-#		if ($self->media()->name() eq "Complete") {
-#			$maxDrain = 10000;
-#		}
-#		$fbaform = ModelSEED::MS::FBAFormulation->new({
-#			name => "Gapfilling growth test",
-#			model_uuid => $model->uuid(),
-#			model => $model,
-#			media_uuid => $self->media_uuid(),
-#			media => $self->media(),
-#			type => "singlegrowth",
-#			biochemistry_uuid => $self->biochemistry_uuid(),
-#			biochemistry => $self->biochemistry(),
-#			description => "Gapfilling growth test",
-#			growthConstraint => "none",
-#			thermodynamicConstraints => "none",
-#			allReversible => 0,
-#			defaultMaxFlux => 1000,
-#			defaultMaxDrainFlux => $maxDrain,
-#			defaultMinDrainFlux => -10000,
-#			decomposeReversibleFlux => 0,
-#			decomposeReversibleDrainFlux => 0,
-#			fluxUseVariables => 0,
-#			drainfluxUseVariables => 0,
-#			maximizeObjective => 1,
-#			fbaObjectiveTerms => [{
-#				coefficient => 1,
-#				entityType => "Biomass",
-#				variableType => "biomassflux",
-#				entity_uuid => $model->biomasses()->[0]->uuid()
-#			}]			
-#		});
-#	}
-#	#Testing if the object function is already greater than zero
-#	print "Testing for zero objective!\n";
-#	my $fbasolution = $fbaform->runFBA();
-#	if ($fbasolution->objectiveValue() > 0.0000001) {
-#		print "Objective is already greater than zero. No gapfilling needed!\n";
-#		return undef;
-#	}
-#	print "Objective is zero. Proceeding with gapfilling!\n";
-#	#Creating the database model
-#	my $dbmodel = $self->biochemistry()->makeDBModel({
-#		balancedOnly => $self->balancedReactionsOnly(),
-#		allowableCompartments => $self->allowableCompartments(),
-#		guaranteedReactions => $self->guaranteedReactions(),
-#		forbiddenReactions => $self->blacklistedReactions()
-#	});
-#	#Merging in the model selected for gapfilling
-#	$dbmodel->mergeModel({
-#		model => $model
-#	});
-#	#Creating gapfilling FBAFormulation
-#	my $gffbaform = ModelSEED::MS::FBAFormulation->new({
-#		name => "Gapfilling simulation",
-#		model_uuid => $dbmodel->uuid(),
-#		model => $dbmodel,
-#		media_uuid => $self->media_uuid(),
-#		media => $self->media(),
-#		type => "gapfilling",
-#		biochemistry_uuid => $self->biochemistry_uuid(),
-#		biochemistry => $self->biochemistry(),
-#		description => "Gapfilling simulation",
-#		growthConstraint => "none",
-#		thermodynamicConstraints => "none",
-#		allReversible => 1,
-#		defaultMaxFlux => 1000,
-#		defaultMaxDrainFlux => $fbaform->defaultMaxDrainFlux(),
-#		defaultMinDrainFlux => -10000,
-#		decomposeReversibleFlux => 1,
-#		decomposeReversibleDrainFlux => 0,
-#		fluxUseVariables => 1,
-#		drainfluxUseVariables => 0,
-#		maximizeObjective => 0,			
-#	});
-#	my $typesToAttribute = {
-#		ModelReaction => "modelreactions",
-#		ModelCompound => "modelcompounds",
-#		Biomass => "biomasses"
-#	};
-#	#Copying all constraints from previous FBAFormulation
-#	for (my $i=0; $i < @{$fbaform->fbaConstraints()}; $i++) {
-#		my $oldConst = $fbaform->fbaConstraints()->[$i];
-#		my $const = $gffbaform->add("fbaConstraints",{
-#			name => $oldConst->name(),
-#			rhs => $oldConst->rhs(),
-#			sign => $oldConst->sign()
-#		});
-#		for (my $j=0; $j < @{$oldConst->fbaConstraintVariables()}; $j++) {
-#			my $term = $fbaform->fbaObjectiveTerms()->[$j];
-#			my $obj = $dbmodel->queryObject($typesToAttribute->{$term->entityType()},{mapped_uuid => $term->entity_uuid()});
-#			$const->add("fbaConstraintVariables",{
-#				entity_uuid => $obj->entity_uuid(),
-#				entityType => $term->entityType(),
-#				variableType => $term->variableType(),
-#				coefficient => $term->coefficient()
-#			});
-#		}
-#	}
-#	#Making a constraint forcing the previous objective to be greater than zero
-#	my $const = $gffbaform->add("fbaConstraints",{
-#		name => "ObjectiveConstraint",
-#		rhs => 0.01,
-#		sign => ">"
-#	});
-#	for (my $i=0; $i < @{$fbaform->fbaObjectiveTerms()}; $i++) {
-#		my $term = $fbaform->fbaObjectiveTerms()->[$i];
-#		my $obj = $dbmodel->queryObject($typesToAttribute->{$term->entityType()},{mapped_uuid => $term->entity_uuid()});
-#		$const->add("fbaConstraintVariables",{
-#			entity_uuid => $obj->uuid(),
-#			entityType => $term->entityType(),
-#			variableType => $term->variableType(),
-#			coefficient => $term->coefficient()
-#		});
-#	}
-#	#Labeling all dbmodel reactions as candidates and creating objective terms
-#	my $mdlrxns = $dbmodel->modelreactions();
-#	for (my $i=0; $i < @{$mdlrxns}; $i++) {
-#		my $rxn = $mdlrxns->[$i];
-#		if (!defined($rxn->modelReactionProteins()->[0])) {
-#			print "Adding candidate protein!\n";
-#			$rxn->add("modelReactionProteins",{
-#				complex_uuid => "00000000-0000-0000-0000-000000000000",
-#				note => "CANDIDATE"
-#			});
-#		}
-#		my $costs = $self->calculateReactionCosts({modelreaction => $rxn});
-#		if ($costs->{forwardDirection} != 0) {
-#			$gffbaform->add("fbaObjectiveTerms",{
-#				entity_uuid => $rxn->uuid(),
-#				entityType => "ModelReaction",
-#				variableType => "forfluxuse",
-#				coefficient => $costs->{forwardDirection}
-#			});
-#		}
-#		if ($costs->{reverseDirection} != 0) {
-#			$gffbaform->add("fbaObjectiveTerms",{
-#				entity_uuid => $rxn->uuid(),
-#				entityType => "ModelReaction",
-#				variableType => "revfluxuse",
-#				coefficient => $costs->{reverseDirection}
-#			});
-#		}
-#	}
-#	#Running the flux balance analysis for the gapfilling optimization problem
-#	my $solution = $gffbaform->runFBA();
-#	my $readable = $solution->createReadableStringArray();
-#	my $directory = "C:/Code/Model-SEED-core/data/exampleObjects/";
-#	ModelSEED::utilities::PRINTFILE($directory."GapfillSolution.readable",$readable);
-#	#Translating te solution into a gapfilling solution
-#	my $gfsolution = $self->add("gapfillingSolutions",{
-#		solutionCost => $solution->objectiveValue()
-#	});
-#	my $rxnvars = $solution->fbaReactionVariables();
-#	for (my $i=0; $i < @{$rxnvars}; $i++) {
-#		my $var = $rxnvars->[$i];
-#		if ($var->variableType() eq "flux") {
-#			my $rxn = $var->modelreaction();
-#			if ($var->value() < -0.0000001) {
-#				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
-#					print "New reaction <=!";
-#					my $direction = "<";
-#					if ($rxn->direction() ne $direction) {
-#						$direction = "=";
-#					}
-#					$gfsolution->add("gapfillingSolutionReactions",{
-#						modelreaction_uuid => $rxn->uuid(),
-#						modelreaction => $rxn,
-#						direction => $direction
-#					});
-#				} elsif ($rxn->direction() eq ">") {
-#					print "Direction change!";
-#					$gfsolution->add("gapfillingSolutionReactions",{
-#						modelreaction_uuid => $rxn->uuid(),
-#						modelreaction => $rxn,
-#						direction => "="
-#					});
-#				}
-#			} elsif ($var->value() > 0.0000001) {
-#				if (defined($rxn->modelReactionProteins()->[0]) && $rxn->modelReactionProteins()->[0]->note() eq "CANDIDATE") {
-#					print "New reaction =>!";
-#					my $direction = ">";
-#					if ($rxn->direction() ne $direction) {
-#						$direction = "=";
-#					}
-#					$gfsolution->add("gapfillingSolutionReactions",{
-#						modelreaction_uuid => $rxn->uuid(),
-#						modelreaction => $rxn,
-#						direction => $direction
-#					});
-#				} elsif ($rxn->direction() eq "<") {
-#					print "Direction change!";
-#					$gfsolution->add("gapfillingSolutionReactions",{
-#						modelreaction_uuid => $rxn->uuid(),
-#						modelreaction => $rxn,
-#						direction => "="
-#					});
-#				}
-#			}
-#		}
-#	}
-#	return $gfsolution;
-}
-=head3 emergencyGapfilling
-Definition:
-	ModelSEED::MS::GapfillingSolution = ModelSEED::MS::GapfillingFormulation->emergencyGapfilling({
-		model => ModelSEED::MS::Model(REQ)
-	});
-Description:
-	Identifies the solution that gapfills the input model - written quickly to use MFAToolkit when performance issues were discovered in FBAProblem
-=cut
-sub emergencyGapfilling {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["model","media"],{});
-	my $model = $args->{model};
-	my $media = $args->{media};
-	#Creating job directory and copying in the default gapfilling job data
-	my $dataDir = "/vol/model-dev/MODEL_DEV_DB/";
-	#my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."data/";
-	my $dir = File::Temp::tempdir(DIR => $dataDir."ReactionDB/MFAToolkitOutputFiles")."/";
-	File::Path::mkpath ($dir."reaction");
-	my $directory = substr($dir,length($dataDir."ReactionDB/MFAToolkitOutputFiles/"));
-	#chop($directory);
-	print $directory;
-	#Print model to Model.tbl
-	my $mdlData = ["REACTIONS","LOAD;DIRECTIONALITY;COMPARTMENT;ASSOCIATED PEG"];
-	my $mdlrxn = $model->modelreactions();
-	for (my $i=0; $i < @{$mdlrxn}; $i++) {
-		my $rxn = $mdlrxn->[$i];
-		my $line = $rxn->reaction()->id().";".$rxn->direction().";c;";
-		$line .= $rxn->gprString();
-		$line =~ s/kb\|g\.\d+\.//g;
-		$line =~ s/fig\|\d+\.\d+\.//g;
-		push(@{$mdlData},$line);
+	#Preparing fba formulation describing gapfilling problem
+	my $form = $self->prepareFBAFormulation();
+	my $directory = $form->jobDirectory()."/";
+	#Printing list of inactive reactions based on settings and fba formulation objective
+	my $inactiveList = [];
+	my $objterms = $form->fbaObjectiveTerms();
+	for (my $i=0; $i < @{$objterms}; $i++) {
+		my $term = $objterms->[$i];
+		if ($term->entityType() eq "Reaction" || $term->entityType() eq "Biomass") {
+			(my $obj) = $self->interpretReference($term->entityType()."/uuid/".$term->entity_uuid());
+			if (defined($obj)) {
+				push(@{$inactiveList},$obj->id());
+			}
+		}
 	}
-	push(@{$mdlData},"bio00001;=>;c;UNIVERSAL");
-	ModelSEED::utilities::PRINTFILE($dir."Model.tbl",$mdlData);
-	#Print biomass reaction to:
-	my $equation = $model->biomasses()->[0]->equation();
-	$equation =~ s/\+/ + /g;
-	$equation =~ s/\)cpd/) cpd/g;
-	$equation =~ s/=\>/ => /g;
-	my $bioData = ["NAME\tBiomass","DATABASE\tbio00001","EQUATION\t".$equation];
-	ModelSEED::utilities::PRINTFILE($dir."reaction/bio00001",$bioData);
-	ModelSEED::utilities::PRINTFILE($dir."InactiveModelReactions.txt",["bio00001"]);
-	#Set CompleteGapfillingParameters.txt
-	my $defaultMax = 0;
-	if ($media->name() eq "Complete") {
-		$defaultMax = 10000;
-	}
-	my $gauranteedRxn = join(",",@{$self->guaranteedReactions()});
-	my $blacklistedRxn = join(";",@{$self->blacklistedReactions()});
-	$gauranteedRxn =~ s/Reaction\/ModelSEED\///g;
-	$blacklistedRxn =~ s/Reaction\/ModelSEED\///g;
-	my $name = $media->name();
-	my $params = [
-		"Default max drain flux|".$defaultMax."|MFA parameters",
-		"Reaction activation bonus|0|MFA parameters",
-		"MFASolver|CPLEX|MFA parameters",
-		"create file on completion|GapfillingComplete.txt|MFA parameters",
-		"Allowable unbalanced reactions|".$gauranteedRxn."|MFA parameters",
-		"output folder|2678472/|MFA parameters",
-		"just print LP file|0|MFA parameters",
-		"Default min drain flux|-10000|MFA parameters",
-		"Objective coefficient file|NONE|MFA parameters",
-		"Minimum flux for use variable positive constraint|0.01|MFA parameters",
-		"exchange species|cpd11416[c]:-10000:0|MFA parameters",
-		"Reactions to knockout|".$blacklistedRxn."|MFA parameters",
-		"Complete gap filling|1|MFA parameters",
-		"user bounds filename|Complete|MFA parameters",
-		"dissapproved compartments|p;n;m;x;g;r;v|MFA parameters",
-		"output folder|".$directory."|MFA parameters",
-		"user bounds filename|".$name."|MFA parameters",
-		"database spec file|".$dir."StringDBFile.txt|MFA parameters",
-		"use database fields|1|MFA parameters"
-	];
-	
-#	my $params = [
-#		"Reaction activation bonus|0|MFA parameters",
-#		"Objective coefficient file|NONE|MFA parameters",
-#		"Minimum flux for use variable positive constraint|0.01|MFA parameters",
-#		"Allowable unbalanced reactions|".$gauranteedRxn."|MFA parameters",
-#		"dissapproved compartments|p;n;m;x;g;r;v|MFA parameters",
-#		"Complete gap filling|1|MFA parameters",
-#	];
-	
-	ModelSEED::utilities::PRINTFILE($dir."CompleteGapfillingParameters.txt",$params);
-	#Write media formulation
-	my $variables = "";
-	my $maxes = "";
-	my $mins = "";
-	my $types = "";
-	my $comps = "";
-	my $mediaCpds = $media->mediacompounds();
-	for (my $i=0; $i < @{$mediaCpds}; $i++) {
-		$maxes .= $mediaCpds->[$i]->maxFlux()."|";
-		$mins .= "-100|";
-		$types .= "DRAIN_FLUX|";
-		$comps .= "e|";
-		$variables .= $mediaCpds->[$i]->compound()->id()."|";
-	}
-	chop($variables);
-	chop($maxes);
-	chop($mins);
-	chop($types);
-	chop($comps);
-	my $mediaData = [
-		"ID\tNAMES\tVARIABLES\tTYPES\tMAX\tMIN\tCOMPARTMENTS",
-		$name."\t".$name."\t".$variables."\t".$types."\t".$maxes."\t".$mins."\t".$comps
-	];
-	ModelSEED::utilities::PRINTFILE($dir."media.tbl",$mediaData);
-	#Set StringDBFile.txt
-	my $stringdb = [
-		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
-		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles/compoundDataFile.tbl\tTAB\tSC\tid",
-		"reaction\tid\tSINGLEFILE\t".$dir."reaction/\t".$dataDir."fbafiles/reactionDataFile.tbl\tTAB\t|\tid",
-		"cue\tNAME\tSINGLEFILE\t\t".$dataDir."ReactionDB/MFAToolkitInputFiles/cueTable.txt\tTAB\t|\tNAME",
-		"media\tID\tSINGLEFILE\t".$dataDir."ReactionDB/Media/\t".$dir."media.tbl\tTAB\t|\tID;NAMES"		
-	];
-	ModelSEED::utilities::PRINTFILE($dir."StringDBFile.txt",$stringdb);
-	#Write shell script
-	my $exec = [
-		"source ".ModelSEED::utilities::MODELSEEDCORE()."/bin/source-me.sh",
-		ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/mfatoolkit resetparameter "MFA input directory" '.$dataDir.'ReactionDB/ parameterfile "../Parameters/ProductionMFA.txt" parameterfile "../Parameters/GapFilling.txt" parameterfile "'.$dir.'CompleteGapfillingParameters.txt" LoadCentralSystem "'.$dir.'Model.tbl" > "'.$dir.'log.txt"'
-	];
-	ModelSEED::utilities::PRINTFILE($dir."runMFAToolkit.sh",$exec);
-	chmod 0775,$dir."runMFAToolkit.sh";
-	#Run shell script
-	system($dir."runMFAToolkit.sh");
-	#Parse CompleteGapfillingOutput.txt
-	if (!-e $dir."CompleteGapfillingOutput.txt") {
-		print "Gapfilling failed!";
+	ModelSEED::utilities::PRINTFILE($directory."InactiveModelReactions.txt",$inactiveList);
+	#Running the gapfilling
+	my $fbaResults = $form->runFBA();
+	#Parsing gapfilling results
+	if (!-e $directory."GapfillingComplete.txt") {
+		print STDERR "Gapfilling failed!";
 		return undef;
 	}
-	my $filedata = ModelSEED::utilities::LOADFILE($dir."CompleteGapfillingOutput.txt");
+	my $filedata = ModelSEED::utilities::LOADFILE($directory."CompleteGapfillingOutput.txt");
 	my $gfsolution = $self->add("gapfillingSolutions",{});
 	my $count = 0;
+	my $model = $self->parent();
 	for (my $i=0; $i < @{$filedata}; $i++) {
 		if ($filedata->[$i] =~ m/^bio00001/) {
 			my $array = [split(/\t/,$filedata->[$i])];
@@ -475,15 +257,15 @@ sub emergencyGapfilling {
 							ModelSEED::utilities::ERROR("Could not find gapfilled reaction ".$rxnid."!");
 						}
 						my $mdlrxn = $model->queryObject("modelreactions",{reaction_uuid => $rxn->uuid()});
-						my $direction = "=>";
+						my $direction = ">";
 						if ($sign eq "-") {
-							$direction = "<=";
+							$direction = "<";
 						}
 						if ($rxn->direction() ne $direction) {
-							$direction = "<=>";
+							$direction = "=";
 						}
 						if (defined($mdlrxn)) { 
-							$mdlrxn->direction("<=>");
+							$mdlrxn->direction("=");
 						} else {
 							$mdlrxn = $model->addReactionToModel({
 								reaction => $rxn,
@@ -505,6 +287,89 @@ sub emergencyGapfilling {
 	}
 	$gfsolution->solutionCost($count);
 	return $gfsolution;
+}
+
+sub parseGeneCandidates {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["geneCandidates"],{});
+	for (my $i=0; $i < @{$args->{geneCandidates}};$i++) {
+		my $candidate = $args->{geneCandidates}->[$i];
+		my $ftr = $self->interpretReference($candidate->{feature},"Feature");
+		if (defined($ftr)) {
+			(my $role,my $type,my $field,my $id) = $self->interpretReference($candidate->{role},"Role");
+			if (!defined($role)) {
+				$role = $self->mapping->add("roles",{
+					name => $id,
+					source => "GeneCandidates"
+				});
+			}
+			(my $orthoGenome,$type,$field,$id) = $self->interpretReference($candidate->{orthologGenome},"Genome");
+			if (!defined($orthoGenome)) {
+				$orthoGenome = $self->annotation->add("genomes",{
+					id => $id,
+					name => $id,
+					source => "GeneCandidates"
+				});
+			}
+			(my $ortho,$type,$field,$id) = $self->interpretReference($candidate->{ortholog},"Feature");
+			if (!defined($ortho)) {
+				$ortho = $self->annotation->add("features",{
+					id => $id,
+					genome_uuid => $orthoGenome->uuid(),
+				});
+				$ortho->add("featureroles",{
+					role_uuid => $role->uuid(),
+				});
+			}
+			$self->add("gapfillingGeneCandidates",{
+				feature_uuid => $ftr->uuid(),
+				ortholog_uuid => $ortho->uuid(),
+				orthologGenome_uuid => $orthoGenome->uuid(),
+				similarityScore => $candidate->{similarityScore},
+				distanceScore => $candidate->{distanceScore},
+				role_uuid => $role->uuid()
+			});
+		}
+	}
+}
+
+sub parseSetMultipliers {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["sets"],{});
+	for (my $i=0; $i < @{$args->{sets}};$i++) {
+		my $set = $args->{sets}->[$i];
+		my $obj = $self->interpretReference($set->{set},"Reactionset");
+		if (defined($obj)) {
+			$self->add("reactionSetMultipliers",{
+				reactionset_uuid => $obj->uuid(),
+				reactionsetType => $set->{reactionsetType},
+				multiplierType => $set->{multiplierType},
+				description => $set->{description},
+				multiplier => $set->{multiplier}
+			});
+		}
+	}
+}
+
+sub parseGuaranteedReactions {
+	my ($self,$args) = @_;
+	$args->{data} = "uuid";
+	$args->{class} = "Reaction";
+	$self->guaranteedReaction_uuids($self->parseReferenceList($args));
+}
+
+sub parseBlacklistedReactions {
+	my ($self,$args) = @_;
+	$args->{data} = "uuid";
+	$args->{class} = "Reaction";
+	$self->blacklistedReaction_uuids($self->parseReferenceList($args));
+}
+
+sub parseAllowableCompartments {
+	my ($self,$args) = @_;
+	$args->{data} = "uuid";
+	$args->{class} = "Compartment";
+	$self->allowableCompartment_uuids($self->parseReferenceList($args));
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -68,8 +68,8 @@ has fbaPhenotypeSimulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default 
 
 # LINKS:
 has media => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,media_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_media', weak_ref => 1);
-has geneKOs => (is => 'rw', isa => 'ModelSEED::MS::Feature', type => 'link(Annotation,features,geneKO_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_geneKOs', weak_ref => 1);
-has reactionKOs => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,reactionKO)', metaclass => 'Typed', lazy => 1, builder => '_build_reactionKOs', weak_ref => 1);
+has geneKOs => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Feature]', type => 'link(Annotation,features,geneKO_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_geneKOs');
+has reactionKOs => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Reaction]', type => 'link(Biochemistry,reactions,reactionKO_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_reactionKOs');
 
 
 # BUILDERS:
@@ -81,11 +81,11 @@ sub _build_media {
 }
 sub _build_geneKOs {
   my ($self) = @_;
-  return $self->getLinkedObject('Annotation','features',$self->geneKO_uuids());
+  return $self->getLinkedObjectArray('Annotation','features',$self->geneKO_uuids());
 }
 sub _build_reactionKOs {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','media',$self->reactionKO());
+  return $self->getLinkedObjectArray('Biochemistry','reactions',$self->reactionKO_uuids());
 }
 
 

@@ -48,7 +48,7 @@ has biomasses => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { retur
 has modelcompartments => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelCompartment)', metaclass => 'Typed', reader => '_modelcompartments', printOrder => '1');
 has modelcompounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelCompound)', metaclass => 'Typed', reader => '_modelcompounds', printOrder => '2');
 has modelreactions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(ModelReaction)', metaclass => 'Typed', reader => '_modelreactions', printOrder => '3');
-has fbaformulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaformulations', printOrder => '-1');
+has fbaFormulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(FBAFormulation)', metaclass => 'Typed', reader => '_fbaFormulations', printOrder => '-1');
 has Gapfillingformulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'child(GapfillingFormulation)', metaclass => 'Typed', reader => '_Gapfillingformulations', printOrder => '-1');
 
 
@@ -244,7 +244,7 @@ my $subobjects = [
           },
           {
             'printOrder' => -1,
-            'name' => 'fbaformulations',
+            'name' => 'fbaFormulations',
             'type' => 'child',
             'class' => 'FBAFormulation'
           },
@@ -256,7 +256,7 @@ my $subobjects = [
           }
         ];
 
-my $subobject_map = {biomasses => 0, modelcompartments => 1, modelcompounds => 2, modelreactions => 3, fbaformulations => 4, Gapfillingformulations => 5};
+my $subobject_map = {biomasses => 0, modelcompartments => 1, modelcompounds => 2, modelreactions => 3, fbaFormulations => 4, Gapfillingformulations => 5};
 sub _subobjects {
   my ($self, $key) = @_;
   if (defined($key)) {
@@ -289,9 +289,9 @@ around 'modelreactions' => sub {
   my ($orig, $self) = @_;
   return $self->_build_all_objects('modelreactions');
 };
-around 'fbaformulations' => sub {
+around 'fbaFormulations' => sub {
   my ($orig, $self) = @_;
-  return $self->_build_all_objects('fbaformulations');
+  return $self->_build_all_objects('fbaFormulations');
 };
 around 'Gapfillingformulations' => sub {
   my ($orig, $self) = @_;

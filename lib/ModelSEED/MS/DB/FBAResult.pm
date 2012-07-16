@@ -25,7 +25,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 # ATTRIBUTES:
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has resultNotes => (is => 'rw', isa => 'Str', printOrder => '3', default => '', type => 'attribute', metaclass => 'Typed');
+has notes => (is => 'rw', isa => 'Str', printOrder => '3', default => '', type => 'attribute', metaclass => 'Typed');
 has objectiveValue => (is => 'rw', isa => 'Num', printOrder => '2', type => 'attribute', metaclass => 'Typed');
 
 
@@ -72,7 +72,7 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 3,
-            'name' => 'resultNotes',
+            'name' => 'notes',
             'default' => '',
             'type' => 'Str',
             'perm' => 'rw'
@@ -86,7 +86,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, modDate => 1, resultNotes => 2, objectiveValue => 3};
+my $attribute_map = {uuid => 0, modDate => 1, notes => 2, objectiveValue => 3};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

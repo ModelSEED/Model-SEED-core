@@ -99,12 +99,11 @@ sub toJSON {
     $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
     my $data = $self->serializeToDB();
     my $JSON = JSON->new->utf8(1);
-    $JSON->pretty(1) if($args->{pretty});
+    $JSON->pretty(1) if($args->{pp} == 1);
     return $JSON->encode($data)
 }
 sub printJSONFile {
     my ($self,$filename,$args) = @_;
-    $args = ModelSEED::utilities::ARGS($args,[],{pp => 0});
     my $text = $self->toJSON($args);
     ModelSEED::utilities::PRINTFILE($filename,[$text]);
 }
@@ -140,6 +139,68 @@ sub _build_id {
     my ($self) = @_;
     my $alias = $self->getAlias($self->defaultNameSpace());
     return (defined($alias)) ? $alias : $self->uuid;
+}
+
+sub interpretReference {
+	my ($self,$ref,$expectedType) = @_;
+	my $array = [split(/\//,$ref)];
+	if (!defined($array->[2]) || (defined($expectedType) && $array->[0] ne $expectedType)) {
+		if (defined($expectedType) && @{$array} == 1) {
+			$array = [$expectedType,"id",$ref];
+		} else {
+			ModelSEED::utilities::ERROR($ref." is not a valid  reference!");
+		}
+	}
+	my $refTypeProvObj = {
+		"Role" => ["mapping","roles"],
+		"Reaction" => ["biochemistry","reactions"],
+		"Media" => ["biochemistry","media"],
+		"Feature" => ["annotation","features"],
+		"Genome" => ["annotation","genomes"],
+		"Compound" => ["biochemistry","compounds"],
+		"Compartment" => ["biochemistry","compartments"],
+		"Biomass" => ["model","biomasses"]
+	};
+	if (!defined($refTypeProvObj->{$array->[0]})) {
+		ModelSEED::utilities::ERROR("No specs to handle ref type ".$array->[0]);
+	}	
+	my $prov = $refTypeProvObj->{$array->[0]}->[0];
+	my $func = $refTypeProvObj->{$array->[0]}->[1];
+	my $obj;
+	if ($array->[1] eq "ModelSEED") {
+		$obj = $self->$prov()->queryObject($func,{"id" => $array->[2]});
+	} else {
+		$obj = $self->$prov()->queryObject($func,{$array->[1] => $array->[2]});
+	}
+	if (!defined($obj)) {
+		print STDERR "Could not find ".$ref."!\n";
+	}
+	return ($obj,$array->[0],$array->[1],$array->[2]);
+}
+
+sub parseReferenceList {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		string => "none",
+		delimiter => "|",
+		data => "obj",
+		class => undef
+	});
+	my $output = [];
+	if (!defined($args->{array})) {
+		$args->{array} = ModelSEED::utilities::parseArrayString($args);
+	}
+	for (my $i=0; $i < @{$args->{array}}; $i++) {
+		(my $obj) = $self->interpretReference($args->{array}->[$i],$args->{class});
+		if (defined($obj)) {
+			if ($args->{data} eq "obj") {
+				push(@{$output},$obj);
+			} elsif ($args->{data} eq "uuid") {
+				push(@{$output},$obj->uuid());
+			}	
+		}
+	}
+	return $output;
 }
 ######################################################################
 #Output functions
@@ -383,6 +444,15 @@ sub getLinkedObject {
         }
         return $sourceObj->getObject($attribute,$uuid);
     }
+}
+
+sub getLinkedObjectArray {
+    my ($self, $sourceType, $attribute, $array) = @_;
+    my $list = [];
+    foreach my $item (@{$array}) {
+    	push(@{$list},$self->getLinkedObject($sourceType,$attribute,$item));
+    }
+    return $list;
 }
 
 sub biochemistry {
