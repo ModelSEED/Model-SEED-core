@@ -5,6 +5,7 @@ use Test::More;
 use File::Temp qw(tempfile tempdir);
 use ModelSEED::Database::FileDB::KeyValueStore;
 
+my $delim = '..';
 my $testCount = 0;
 # test initialization
 {
@@ -76,9 +77,9 @@ my $testCount = 0;
     $kvstore->remove_metadata($id2);
     is_deeply $kvstore->get_metadata($id2), {}, "Removed all metadata";
 
-    $kvstore->set_metadata($id2, 'this.is.a', 'test');
+    $kvstore->set_metadata($id2, 'this' . $delim . 'is' . $delim . 'a', 'test');
     is_deeply {this => {is => {a => 'test'}}}, $kvstore->get_metadata($id2), "Saved nested metadata";
-    is_deeply {a => 'test'}, $kvstore->get_metadata($id2, 'this.is'), "Got nested metadata";
+    is_deeply {a => 'test'}, $kvstore->get_metadata($id2, 'this' . $delim . 'is'), "Got nested metadata";
 
     $testCount += 23;
 }

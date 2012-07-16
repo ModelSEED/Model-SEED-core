@@ -14,6 +14,8 @@ use Scalar::Util qw(looks_like_number);
 =head
 
 TODO
+  * Figure out better way to handle delimiters (for querying into metadata: aliases.main)
+      - for now changed from '.' to '..' to avoid conflicts
   * Put index file back in memory (stored in moose object)
       - test if changed via mod time and size
       - should speed up data access (as long as index hasn't changed)
@@ -413,7 +415,7 @@ sub _get_metadata {
 	return $meta;
     }
 
-    my @path = split(/\./, $selection);
+    my @path = split(/\.\./, $selection);
     my $last = pop(@path);
 
     # search through hash for selection
@@ -458,7 +460,7 @@ sub _set_metadata {
 	}
     }
 
-    my @path = split(/\./, $selection);
+    my @path = split(/\.\./, $selection);
     my $last = pop(@path);
     my $inner_hash = $meta;
     for (my $i=0; $i<scalar @path; $i++) {
@@ -496,7 +498,7 @@ sub _remove_metadata {
 	return (1, { meta => 1 });
     }
 
-    my @path = split(/\./, $selection);
+    my @path = split(/\.\./, $selection);
     my $last = pop(@path);
     my $inner_hash = $meta;
     for (my $i=0; $i<scalar @path; $i++) {
@@ -546,7 +548,7 @@ sub _find_objects {
             }
 
             # check if it's nested
-            my @path = split(/\./, $field);
+            my @path = split(/\.\./, $field);
             my $last = pop(@path);
             my $inner_hash = $meta;
             for (my $i=0; $i<scalar @path; $i++) {
