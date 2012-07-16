@@ -17,6 +17,7 @@ extends 'ModelSEED::MS::DB::FBAFormulation';
 has jobID => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobid' );
 has jobPath => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobpath' );
 has jobDirectory => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobdirectory' );
+has command => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, default => '' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -34,7 +35,7 @@ sub _buildjobid {
 
 sub _buildjobpath {
 	my ($self) = @_;
-	my $path = ModelSEED::utilities::MODELSEEDCORE()."data/fbajobs";
+	my $path = ModelSEED::utilities::MODELSEEDCORE()."/data/fbajobs";
 	if (!-d $path) {
 		File::Path::mkpath ($path);
 	}
@@ -61,10 +62,10 @@ Description:
 =cut
 sub runFBA {
 	my ($self) = @_;
-	if (!-e $self->jobDirectory()."runMFAToolkit.sh") {
+	if (!-e $self->jobDirectory()."/runMFAToolkit.sh") {
 		$self->createJobDirectory();
 	}
-	system($self->jobDirectory()."runMFAToolkit.sh");
+	system($self->command());
 	my $fbaresults = $self->add("fbaResults",{});
 	$fbaresults->loadMFAToolkitResults();
 	return $fbaresults;
@@ -77,10 +78,11 @@ Description:
 =cut
 sub createJobDirectory {
 	my ($self) = @_;
-	my $directory = $self->jobDirectory();
+	my $directory = $self->jobDirectory()."/";
 	my $translation = {
 		drainflux => "DRAIN_FLUX",
-		flux => "FLUX"
+		flux => "FLUX",
+		biomassflux => "FLUX"
 	};
 	#Print model to Model.tbl
 	my $model = $self->parent();
@@ -88,13 +90,23 @@ sub createJobDirectory {
 	my $mdlrxn = $model->modelreactions();
 	for (my $i=0; $i < @{$mdlrxn}; $i++) {
 		my $rxn = $mdlrxn->[$i];
-		my $line = $rxn->reaction()->id().";".$rxn->direction().";c;";
+		my $direction = $rxn->direction();
+		if ($direction eq "=") {
+			$direction = "<=>";	
+		} elsif ($direction eq ">") {
+			$direction = "=>";
+		} elsif ($direction eq "<") {
+			$direction = "<=";
+		}
+		my $line = $rxn->reaction()->id().";".$direction.";c;";
 		$line .= $rxn->gprString();
 		$line =~ s/kb\|g\.\d+\.//g;
 		$line =~ s/fig\|\d+\.\d+\.//g;
 		push(@{$mdlData},$line);
 	}
 	my $biomasses = $model->biomasses();
+	File::Path::mkpath ($directory."reaction");
+	File::Path::mkpath ($directory."MFAOutput/RawData/");
 	for (my $i=0; $i < @{$biomasses}; $i++) {
 		my $bio = $biomasses->[$i];
 		push(@{$mdlData},$bio->id().";=>;c;UNIVERSAL");
@@ -108,19 +120,20 @@ sub createJobDirectory {
 	ModelSEED::utilities::PRINTFILE($directory."Model.tbl",$mdlData);
 	#Setting drain max based on media
 	my $media = $self->media();
-	my $defaultMax = 0;
 	if ($media->name() eq "Complete") {
-		$defaultMax = 10000;
+		if ($self->defaultMaxDrainFlux() <= 0) {
+			$self->defaultMaxDrainFlux($self->defaultMaxFlux());
+		}
 	}
 	#Selecting the solver based on whether the problem is MILP
 	my $solver = "GLPK";
 	if ($self->fluxUseVariables() == 1 || $self->drainfluxUseVariables() == 1 || $self->findMinimalMedia()) {
-		$solver = "CPLEX"
+		$solver = "CPLEX";
 	}
 	#Setting gene KO
 	my $geneKO = "none";
-	for (my $i=0; $i < @{$self->geneKO()}; $i++) {
-		my $gene = $self->geneKO()->[$i];
+	for (my $i=0; $i < @{$self->geneKOs()}; $i++) {
+		my $gene = $self->geneKOs()->[$i];
 		if ($i == 0) {
 			$geneKO = $gene->id();	
 		} else {
@@ -129,8 +142,8 @@ sub createJobDirectory {
 	}
 	#Setting reaction KO
 	my $rxnKO = "none";
-	for (my $i=0; $i < @{$self->reactionKO()}; $i++) {
-		my $rxn = $self->reactionKO()->[$i];
+	for (my $i=0; $i < @{$self->reactionKOs()}; $i++) {
+		my $rxn = $self->reactionKOs()->[$i];
 		if ($i == 0) {
 			$rxnKO = $rxn->id();	
 		} else {
@@ -168,15 +181,15 @@ sub createJobDirectory {
 			if (defined($entity)) {
 				$objVarName = $entity->reaction()->id();
 				$objVarComp = $entity->modelcompartment()->label();
+				$metToOpt = "REACTANTS;".$entity->reaction()->id();
 			}
-			$metToOpt = "REACTANTS;".$entity->reaction()->id();
 		} elsif (lc($objterm->entityType()) eq "biomass") {
-			my $entity = $model->getObject("modelreactions",$objterm->entity_uuid());
+			my $entity = $model->getObject("biomasses",$objterm->entity_uuid());
 			if (defined($entity)) {
 				$objVarName = $entity->id();
 				$objVarComp = "none";
+				$metToOpt = "REACTANTS;".$entity->id();
 			}
-			$metToOpt = "REACTANTS;".$entity->id();
 		}
 		if (length($objVarName) > 0) {
 			$objective .= ";".$translation->{$objterm->variableType()}.";".$objVarName.";".$objVarComp.";".$objterm->coefficient();
@@ -234,7 +247,7 @@ sub createJobDirectory {
 		"create file on completion" => "FBAComplete.txt",
 		"Reactions to knockout" => $rxnKO,
 		"Genes to knockout" => $geneKO,
-		"output folder" => $self->jobid()."/",
+		"output folder" => $self->jobID()."/",
 		"use database fields" => 1,
 		"MFASolver" => $solver,
 		"exchange species" => $exchange,
@@ -257,11 +270,13 @@ sub createJobDirectory {
 		"determine minimal required media" => $self->findMinimalMedia(),
 		"Recursive MILP solution limit" => $self->numberOfSolutions()
 	};
-	if ($^O eq "MSWin32") {
+	my $exe = "MFAToolkit.exe";
+	if ($^O =~ m/^MSWin/) {
 		$parameters->{"scip executable"} = "../../optimization/scip.exe";
 		$parameters->{"perl directory"} = "C:/Perl/bin/perl.exe";
 		$parameters->{"os"} = "windows";
 	} else {
+		$exe = "mfatoolkit";
 		$parameters->{"scip executable"} = "../../optimization/scip";
 		$parameters->{"perl directory"} = "/usr/bin/perl";
 		$parameters->{"os"} = $^O;
@@ -305,7 +320,6 @@ sub createJobDirectory {
 			min => $mediaCpds->[$i]->minFlux()
 		};
 	}
-	
 	my $cpdbnds = $self->fbaCompoundBounds();
 	for (my $i=0; $i < @{$cpdbnds}; $i++) {
 		$userBounds->{$cpdbnds->[$i]->compound()->id()}->{$cpdbnds->[$i]->modelcompartment()->label()}->{$translation->{$cpdbnds->[$i]->variableType()}} = {
@@ -332,19 +346,21 @@ sub createJobDirectory {
 			}
 		}
 	}
-	my $mediaData = [
-		"ID\tNAMES\tVARIABLES\tTYPES\tMAX\tMIN\tCOMPARTMENTS",
-		$self->media()->name()."\t".
-		$self->media()->name()."\t".
-		join("|",@{$dataArrays->{var}})."\t".
-		join("|",@{$dataArrays->{type}})."\t".
-		join("|",@{$dataArrays->{max}})."\t".
-		join("|",@{$dataArrays->{min}})."\t".
-		join("|",@{$dataArrays->{comp}})
-	];
+	my $mediaData = ["ID\tNAMES\tVARIABLES\tTYPES\tMAX\tMIN\tCOMPARTMENTS"];
+	$mediaData->[1] = $self->media()->name()."\t".$self->media()->name()."\t";
+	if (defined($dataArrays->{var}) && @{$dataArrays->{var}} > 0) {
+		$mediaData->[1] .= 
+			join("|",@{$dataArrays->{var}})."\t".
+			join("|",@{$dataArrays->{type}})."\t".
+			join("|",@{$dataArrays->{max}})."\t".
+			join("|",@{$dataArrays->{min}})."\t".
+			join("|",@{$dataArrays->{comp}});
+	} else {
+		$mediaData->[1] .= "\t\t\t\t";
+	}
 	ModelSEED::utilities::PRINTFILE($directory."media.tbl",$mediaData);
 	#Set StringDBFile.txt
-	my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."data/";
+	my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."/data/";
 	my $stringdb = [
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
 		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles/compoundDataFile.tbl\tTAB\tSC\tid",
@@ -354,12 +370,107 @@ sub createJobDirectory {
 	];
 	ModelSEED::utilities::PRINTFILE($directory."StringDBFile.txt",$stringdb);
 	#Write shell script
+	$ENV{ILOG_LICENSE_FILE} = "C:/ILOG/CPLEX_Studio_AcademicResearch122/cplex/bin/x86_win32/access.ilm";
+	$ENV{ARGONNEDB} = $dataDir."ReactionDB/";
 	my $exec = [
-		"source ".ModelSEED::utilities::MODELSEEDCORE()."/bin/source-me.sh",
-		ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/mfatoolkit resetparameter "MFA input directory" '.$dataDir.'ReactionDB/ parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
+		ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/'.$exe.' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
 	];
 	ModelSEED::utilities::PRINTFILE($directory."runMFAToolkit.sh",$exec);
 	chmod 0775,$directory."runMFAToolkit.sh";
+	$self->command(ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/'.$exe.' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"');
+}
+=head3 parseObjectiveTerms
+Definition:
+	void parseObjectiveTerms(
+		[string]
+	);
+Description:
+	Parses array of strings specifying objective into objective term sub objects
+=cut
+sub parseObjectiveTerms {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["objTerms"],{});
+	my $terms = $args->{objTerms};
+	for (my $i=0; $i < @{$terms};$i++) {
+		(my $obj,my $type) = $self->interpretReference($terms->[$i]->{id});
+		if (defined($obj)) {
+			$self->add("fbaObjectiveTerms",{
+				coefficient => $terms->[$i]->{coefficient},
+				variableType => $terms->[$i]->{variableType},
+				entityType => $type,
+				entity_uuid => $obj->uuid(),
+			});
+		}
+	}
+}
+=head3 parseConstraints
+Definition:
+	void parseConstraints({
+		constraints => [string]
+	});
+Description:
+	Parses array of strings specifying special constraints into constraint objects
+=cut
+sub parseConstraints {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,["constraints"],{});
+	my $vartrans = {
+		f => "flux",ff => "forflux",rf => "revflux",
+		df => "drainflux",fdf => "fordrainflux",rdf => "revdrainflux",
+		ffu => "forfluxuse",rfu => "reffluxuse"
+	};
+	for (my $i=0; $i < @{$args->{constraints}};$i++) {
+		my $array = [split(/\+/,$args->{constraints}->[$i]->{terms})];
+		my $terms;
+		for (my $j=0; $j < @{$array};$j++) {
+			if ($array->[$j] =~ /\((\d+\.*\d*)\)(\w+)_([\w\/]+)\[(w+)\]/) {
+				my $coef = $1;
+				my $vartype = $vartrans->{$2};
+				(my $obj,my $type) = $self->interpretReference($3);
+				push(@{$terms},{
+					entity_uuid => $obj->uuid(),
+					entityType => $type,
+					variableType => $vartype,
+					coefficient => $coef
+				});
+			}
+		}
+		$self->add("fbaConstraints",{
+			name => $args->{constraints}->[$i]->{name},
+			rhs => $args->{constraints}->[$i]->{rhs},
+			sign => $args->{constraints}->[$i]->{sign},
+			fbaConstraintVariables => $terms
+		});
+	}
+}
+
+=head3 parseReactionKOList
+Definition:
+	void parseReactionKOList(
+		string => string(none),delimiter => string(|),array => [string]([])
+	);
+Description:
+	Parses a string or array of strings specifying a list of reaction KOs in the form of references
+=cut
+sub parseReactionKOList {
+	my ($self,$args) = @_;
+	$args->{data} = "uuid";
+	$args->{type} = "Reaction";
+	$self->reactionKO_uuids($self->parseReferenceList($args));
+}
+=head3 parseGeneKOList
+Definition:
+	void parseGeneKOList(
+		string => string(none),delimiter => string(|),array => [string]([])
+	);
+Description:
+	Parses a string or array of strings specifying a list of gene KOs in the form of references
+=cut
+sub parseGeneKOList {
+	my ($self,$args) = @_;
+	$args->{data} = "uuid";
+	$args->{type} = "Feature";
+	$self->geneKO_uuids($self->parseReferenceList($args));
 }
 
 __PACKAGE__->meta->make_immutable;

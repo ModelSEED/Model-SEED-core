@@ -16,6 +16,9 @@ Description:
 =cut
 sub ARGS {
 	my ($args,$mandatoryArguments,$optionalArguments) = @_;
+	if (ref($args) ne "HASH") {
+		ModelSEED::utilities::ERROR("Arguments not hash");	
+	}
 	if (defined($mandatoryArguments)) {
 		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
 			if (!defined($args->{$mandatoryArguments->[$i]})) {
@@ -169,6 +172,32 @@ sub LOADFILE {
     close(INPUT);
     return $DataArrayRef;
 }
+=head3 LOADTABLE
+Definition:
+	void ModelSEED::utilities::LOADTABLE(string:filename,string:delimiter);
+Description:	
+=cut
+sub LOADTABLE {
+    my ($filename,$delim) = @_;
+    my $output = {
+    	headings => [],
+    	data => []
+    };
+    if ($delim eq "|") {
+    	$delim = "\\|";	
+    }
+    if ($delim eq "\t") {
+    	$delim = "\\t";	
+    }
+    my $data = ModelSEED::utilities::LOADFILE($filename);
+    if (defined($data->[0])) {
+    	$output->{headings} = [split(/$delim/,$data->[0])];
+	    for (my $i=1; $i < @{$data}; $i++) {
+	    	push(@{$output->{data}},[split(/$delim/,$data->[$i])]);
+	    }
+    }
+    return $output;
+}
 
 =head3 MAKEXLS
 Definition:
@@ -310,6 +339,33 @@ sub Explore {
 			print $count.".1!\n";
 		}
 	}
+}
+=head3 parseArrayString
+Definition:
+	string = ModelSEED::utilities::parseArrayString({
+		string => string(none),
+		delimiter => string(|),
+		array => [](undef)	
+	});
+Description:
+	Parses string into array
+Example:
+=cut
+sub parseArrayString {
+	my ($args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		string => "none",
+		delimiter => "|",
+	});
+	if ($args->{delimiter} eq "|") {
+		$args->{delimiter} = "\\|";
+	}
+	my $output = [];
+	my $delim = $args->{delimiter};
+	if ($args->{string} ne "none") {
+		$output = [split(/$delim/,$args->{string})];
+	}
+	return $output;
 }
 
 1;

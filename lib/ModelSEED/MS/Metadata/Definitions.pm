@@ -48,8 +48,8 @@ $objectDefinitions->{FBAFormulation} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"},
-		{name => "geneKOs",attribute => "geneKO_uuids",parent => "Annotation",method=>"features"},
-		{name => "reactionKOs",attribute => "reactionKO",parent => "Biochemistry",method=>"media"},
+		{name => "geneKOs",attribute => "geneKO_uuids",parent => "Annotation",method=>"features",array => 1},
+		{name => "reactionKOs",attribute => "reactionKO_uuids",parent => "Biochemistry",method=>"reactions",array => 1},
 	],
     reference_id_types => [ qw(uuid) ],
 };
@@ -148,7 +148,7 @@ $objectDefinitions->{FBAResult} = {
 	attributes => [
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
-		{name => 'resultNotes',printOrder => 3,perm => 'rw',type => 'Str',req => 0,default => ""},
+		{name => 'notes',printOrder => 3,perm => 'rw',type => 'Str',req => 0,default => ""},
 		{name => 'objectiveValue',printOrder => 2,perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [
@@ -252,7 +252,7 @@ $objectDefinitions->{FBADeletionResult} = {
 	subobjects => [],
 	primarykeys => [ qw(geneko_uuids) ],
 	links => [
-		{name => "genekos",attribute => "geneko_uuids",parent => "Annotation",method=>"features"},
+		{name => "genekos",attribute => "geneko_uuids",parent => "Annotation",method=>"features",array => 1},
 	]
 };
 
@@ -268,8 +268,8 @@ $objectDefinitions->{FBAMinimalMediaResult} = {
 	primarykeys => [ qw(minimalMedia_uuid) ],
 	links => [
 		{name => "minimalMedia",attribute => "minimalMedia_uuid",parent => "Biochemistry",method=>"media"},
-		{name => "essentialNutrients",attribute => "essentialNutrient_uuids",parent => "Biochemistry",method=>"compounds"},
-		{name => "optionalNutrients",attribute => "optionalNutrient_uuids",parent => "Biochemistry",method=>"compounds"}
+		{name => "essentialNutrients",attribute => "essentialNutrient_uuids",parent => "Biochemistry",method=>"compounds",array => 1},
+		{name => "optionalNutrients",attribute => "optionalNutrient_uuids",parent => "Biochemistry",method=>"compounds",array => 1}
 	]
 };
 
@@ -294,9 +294,9 @@ $objectDefinitions->{GapfillingFormulation} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'fbaFormulation_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'balancedReactionsOnly',printOrder => 0,perm => 'rw',type => 'Bool',req => 0,default => "1"},
-		{name => 'guaranteedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
-		{name => 'blacklistedReactions',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
-		{name => 'allowableCompartments',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'guaranteedReaction_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'blacklistedReaction_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
+		{name => 'allowableCompartment_uuids',printOrder => 0,perm => 'rw',type => 'ArrayRef',req => 0,default => "sub{return [];}"},
 		{name => 'reactionActivationBonus',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "0"},
 		{name => 'drainFluxMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
 		{name => 'directionalityMultiplier',printOrder => 0,perm => 'rw',type => 'Num',req => 0,default => "1"},
@@ -316,6 +316,9 @@ $objectDefinitions->{GapfillingFormulation} = {
 	primarykeys => [ qw(uuid) ],
 	links => [
 		{name => "fbaFormulation",attribute => "fbaFormulation_uuid",parent => "Model",method=>"fbaFormulations"},
+		{name => "guaranteedReactions",attribute => "guaranteedReaction_uuids",parent => "Biochemistry",method=>"reactions",array => 1},
+		{name => "blacklistedReactions",attribute => "blacklistedReaction_uuids",parent => "Biochemistry",method=>"reactions",array => 1},
+		{name => "allowableCompartments",attribute => "allowableCompartment_uuids",parent => "Biochemistry",method=>"compartments",array => 1}
 	],
     reference_id_types => [ qw(uuid) ],
 };
@@ -946,7 +949,7 @@ $objectDefinitions->{Model} = {
 		{name => "modelcompartments",printOrder => 1,class => "ModelCompartment",type => "child"},
 		{name => "modelcompounds",printOrder => 2,class => "ModelCompound",type => "child"},
 		{name => "modelreactions",printOrder => 3,class => "ModelReaction",type => "child"},
-        {name => "fbaformulations",printOrder => -1,class => "FBAFormulation", type => "child"},
+        {name => "fbaFormulations",printOrder => -1,class => "FBAFormulation", type => "child"},
         {name => "Gapfillingformulations", printOrder => -1, class => "GapfillingFormulation", type => "child"},
 	],
 	primarykeys => [ qw(uuid) ],
@@ -975,7 +978,6 @@ $objectDefinitions->{Biomass} = {
 		{name => 'lipid',printOrder => 7,perm => 'rw',type => 'Num',req => 0,default => "0.05"},
 		{name => 'cofactor',printOrder => 8,perm => 'rw',type => 'Num',req => 0,default => "0.15"},
 		{name => 'energy',printOrder => 9,perm => 'rw',type => 'Num',req => 0,default => "40"},
-		{name => 'index',printOrder => -1,perm => 'rw',type => 'Int',req => 0}
 	],
 	subobjects => [
 		{name => "biomasscompounds",class => "BiomassCompound",type => "encompassed"}

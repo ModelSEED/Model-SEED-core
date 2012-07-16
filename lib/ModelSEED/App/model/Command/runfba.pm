@@ -77,14 +77,22 @@ sub execute {
     #Running FBA
     print STDERR "Running FBA..." if($opts->{verbose});
     my $fbaResult = $fbaform->runFBA();
-	print $out_fh $fbaResult->toJSON({pp => 1});
     #Standard commands that save results of the analysis to the database
-    if ($opts->{overwrite}) {
-    	print STDERR "Saving FBA results in original model..." if($opts->{verbose});
-    } elsif ($opts->{save}) {
-		$ref = $helper->process_ref_string($opts->{save}, "model", $auth->username);
-		print STDERR "Saving FBA results in new model ".$ref."..." if($opts->{verbose});
-		$model->save($ref);
+    if (!defined($fbaResult)) {
+    	print STDERR " FBA failed with no solution returned!\n";
+    } else {
+		print $out_fh $fbaform->toJSON({pp => 1});
+	    #Standard commands that save results of the analysis to the database
+	    if ($opts->{overwrite}) {
+	    	print STDERR "Saving model with FBA solution over original model...\n" if($opts->{verbose});
+	    	$model->add("fbaFormulations",$fbaform);
+	    	$store->save_object($ref,$model);
+	    } elsif ($opts->{save}) {
+			$ref = $helper->process_ref_string($opts->{save}, "model", $auth->username);
+			print STDERR "Saving model with FBA solution as new model ".$ref."...\n" if($opts->{verbose});
+			$model->add("fbaFormulations",$fbaform);
+			$store->save_object($ref,$model);
+	    }
     }
 }
 

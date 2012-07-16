@@ -23,6 +23,7 @@ has missingStructure => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 
 has biomassTransporter => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildbiomassTransporter' );
 has isTransporter => ( is => 'rw', isa => 'Bool',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildisTransporter' );
 has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
+has translatedDirection  => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildtranslatedDirection' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -44,24 +45,24 @@ sub _builddefinition {
 		if ($rgt->coefficient() < 0) {
 			my $coef = -1*$rgt->coefficient();
 			if (length($reactants) > 0) {
-				$reactants .= "+";	
+				$reactants .= " + ";	
 			}
 			if ($coef ne "1") {
 				$reactants .= "(".$coef.")";
 			}
-			$reactants .= $rgt->modelcompound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
+			$reactants .= $rgt->modelcompound()->compound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
 		} else {
 			if (length($products) > 0) {
-				$products .= "+";	
+				$products .= " + ";	
 			}
 			if ($rgt->coefficient() ne "1") {
 				$products .= "(".$rgt->coefficient().")";
 			}
-			$products .= $rgt->modelcompound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
+			$products .= $rgt->modelcompound()->compound()->name()."[".$rgt->modelcompound()->modelCompartmentLabel()."]";
 		}
 		
 	}
-	$reactants .= " ".$self->direction()." ";
+	$reactants .= " ".$self->translatedDirection()." ";
 	return $reactants.$products;
 }
 sub _buildmodelCompartmentLabel {
@@ -129,6 +130,17 @@ sub _buildisTransporter {
 sub _buildmapped_uuid {
 	my ($self) = @_;
 	return "00000000-0000-0000-0000-000000000000";
+}
+sub _buildtranslatedDirection {
+	my ($self) = @_;
+	if ($self->direction() eq "=") {
+		return "<=>";	
+	} elsif ($self->direction() eq ">") {
+		return "=>";
+	} elsif ($self->direction() eq "<") {
+		return "<=";
+	}
+	return $self->direction();
 }
 
 #***********************************************************************************************************
