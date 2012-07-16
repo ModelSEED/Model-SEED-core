@@ -100,6 +100,7 @@ sub methods {
 			"classify_model_entities",
 			"simulate_all_single_gene_knockout",
 			"simulate_model_growth",
+			"get_model_fba_results",
 			"get_model_reaction_classification_table",
             "get_role_to_complex",
             "get_complex_to_reaction",
@@ -1323,6 +1324,65 @@ sub fba_calculate_minimal_media {
     }
     return $mdl->fbaCalculateMinimalMedia($numFormulations,$reactionKO,$geneKO);
 }
+
+=head3 get_model_fba_results
+
+=item Definition: 
+
+    { string::model IDs => [ media => string::media_id,
+                             time => long::time
+                             fluxes => [ { reaction => string::reaction_id,
+                                           compartment => string::compartment_id,
+                                           flux => double::flux } ] ] }
+                           ]
+    } = FBAMODEL->get_model_fba_results( { model    => [string::model ids],
+                                                           user     => string::username,
+                                                           password => string::password 
+                                                       } );
+
+
+=item Description:
+
+    my $returnArrayRef = $FBAModel->get_model_fba_results_table($configHash);
+
+Where C<$configHash> is a hash reference with the following syntax:
+
+    my $configHash = {    "model"    => [ "Seed83333.1", "iJR904.1" ],
+                          "user"     => "bob",
+                          "password" => "password123",
+                    });
+
+=cut
+
+sub get_model_fba_results {
+	my ($self, $args) = @_;
+	$args = $self->process_arguments_and_authenticate($args,["model"]);
+	my $retval = {};
+	#Now retrieving the specified models from the database
+	for (my $i=0; $i < @{$args->{model}}; $i++) {
+		my $model = $self->figmodel()->get_model($args->{model}->[$i]);
+		if (defined($model)) {
+		    my $fbaobj = $self->figmodel()->database()->get_objects("fbaresult", { model => $args->{model}->[$i] });
+		    foreach my $obj (@$fbaobj) {
+			my $fbaresult = {};
+			$fbaresult->{media} = $obj->{media};
+			$fbaresult->{growth} = $obj->{growth};
+			$fbaresult->{time} = $obj->{time};
+			foreach my $fluxdata (split ";", $obj->{flux}) {
+			    my ($rxn_compartment, $flux) = split ":", $fluxdata;
+			    if ($rxn_compartment =~ /(rxn\d{5})(\w?)/) {
+				my $rxnobj = { reaction => $1, flux => $flux, compartment => $2 };
+				push @{$fbaresult->{fluxes}}, $rxnobj;
+			    }
+			}
+			push @{$retval->{$args->{model}->[$i]}}, $fbaresult;
+		    }
+		}
+	}
+	return $retval;
+}
+
+
 
 =head3 get_model_reaction_classification_table
 

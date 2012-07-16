@@ -85,8 +85,10 @@ my $builder = Module::Build->new(
         "XML::Simple" => 0,
         "YAML" => 0,
         "YAML::Any" => 0,
-		"YAML::XS" => 0,
+        "YAML::XS" => 0,
         "namespace::autoclean" => 0,
+        "Config::Tiny" => 0,
+        "XML::SAX::Base" => 0,
     },
     recommends => {
         'IO::Prompt' => 0,

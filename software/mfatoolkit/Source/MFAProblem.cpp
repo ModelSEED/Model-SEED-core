@@ -6065,17 +6065,9 @@ int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InP
 			  AddReaction = false;
 			}
 
-			//cout<<"Testing parameter: use database objects\t"<<GetParameter("use database objects")<<endl;
-		
 			if(AddReaction){
-			  cout << "Testing reaction " << RxnId << " with status " << rxnobj->get("status") << " and direction " << rxnobj->get("thermoReversibility") << "\t" << rxnobj->get("status").substr(0,2).compare("OK") << endl;
 
-			  Reaction* NewReaction = new Reaction(RxnId,InData);//,rxnobj->get("thermoReversibility"));;
-			  if(GetParameter("use database fields").compare("1") == 0){
-			    cout<<"Using database\n";
-			  }else{
-			    cout<<"Calculate for reaction\n";
-			  }
+			        Reaction* NewReaction = new Reaction(RxnId,InData);
 				
 				//Checking that only approved compartments are involved in the reaction
 				bool ContainsDissapprovedCompartments = false;

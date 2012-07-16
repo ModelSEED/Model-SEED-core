@@ -2640,10 +2640,19 @@ sub import_model_file {
 	}
 	#Clearing current model data in the database
 	if (defined($args->{id}) && length($args->{id}) > 0 && defined($mdl)) {
-		my $objs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
-		for (my $i=0; $i < @{$objs}; $i++) {
-			$objs->[$i]->delete();	
+		my $rxnmdlobjs = $mdl->figmodel()->database()->get_objects("rxnmdl",{MODEL => $args->{id}});
+		for (my $i=0; $i < @{$rxnmdlobjs}; $i++) {
+			$rxnmdlobjs->[$i]->delete();	
 		}
+		my $fvaobjs = $mdl->figmodel()->database()->get_objects("mdlfva",{MODEL => $args->{id}});
+		for (my $i=0; $i < @{$fvaobjs}; $i++) {
+			$fvaobjs->[$i]->delete();	
+		}
+		my $fbaobjs = $mdl->figmodel()->database()->get_objects("fbaresult",{model => $args->{id}});
+		for (my $i=0; $i < @{$fbaobjs}; $i++) {
+			$fbaobjs->[$i]->delete();	
+		}
+		
 	}
 	my $rxnmdl = ModelSEED::FIGMODEL::FIGMODELTable::load_table_from_array("",$args->{modelfiledata},"[;\\t]","|",1,["LOAD"]);
 	my $found = 0;
@@ -3258,10 +3267,10 @@ sub import_model {
 			$Update=1;
 		    }
 
-		    if (defined($row->{"CHARGE"}->[0]) && $row->{"CHARGE"} ne "" && $row->{"CHARGE"} != 10000000){
+		    if (defined($row->{"CHARGE"}->[0]) && $row->{"CHARGE"}->[0] ne "" && $row->{"CHARGE"}->[0] != 10000000){
 			if(defined($cpd->charge()) && $cpd->charge() != $row->{"CHARGE"}->[0]){
 			    push(@{$result->{outputFile}},"Charge different for ".$cpd->id()." from ".$cpd->charge()." to ".$row->{"CHARGE"}->[0]);
-			} 
+			}
 			if (!defined($cpd->charge()) || $cpd->charge() eq "" || $cpd->charge() == 10000000 || 
 			    ($Update==1 && $cpd->charge() != $row->{"CHARGE"}->[0])){
 			    $cpd->charge(10000000) if !defined($cpd->charge());
@@ -3271,7 +3280,7 @@ sub import_model {
 			    }
 			}
 		    }
-		    if (defined($row->{"MASS"}->[0]) && $row->{"MASS"} ne "" && $row->{"MASS"} != 10000000){
+		    if (defined($row->{"MASS"}->[0]) && $row->{"MASS"}->[0] ne "" && $row->{"MASS"}->[0] != 10000000){
 			if(defined($cpd->mass()) && $cpd->mass() != $row->{"MASS"}->[0]){
 			    push(@{$result->{outputFile}},"Mass different for ".$cpd->id()." from ".$cpd->mass()." to ".$row->{"MASS"}->[0]);
 			} 
@@ -3284,7 +3293,7 @@ sub import_model {
 			    }
 			}
 		    }
-		    if (defined($row->{"FORMULA"}->[0]) && $row->{"FORMULA"} ne "" && $row->{"FORMULA"} ne "noformula"){
+		    if (defined($row->{"FORMULA"}->[0]) && $row->{"FORMULA"}->[0] ne "" && $row->{"FORMULA"}->[0] ne "noformula"){
 			if(defined($cpd->formula()) && $cpd->formula() ne $row->{"FORMULA"}->[0]){
 			    push(@{$result->{outputFile}},"Formula different for ".$cpd->id()." from ".$cpd->formula()." to ".$row->{"FORMULA"}->[0]);
 			} 
@@ -3297,7 +3306,7 @@ sub import_model {
 			    }
 			}
 		    }
-		    if (defined($row->{"STRINGCODE"}->[0]) && $row->{"STRINGCODE"} ne "" && $row->{"STRINGCODE"} ne "nostringcode"){
+		    if (defined($row->{"STRINGCODE"}->[0]) && $row->{"STRINGCODE"}->[0] ne "" && $row->{"STRINGCODE"}->[0] ne "nostringcode"){
 			if(defined($cpd->stringcode()) && $cpd->stringcode() ne $row->{"STRINGCODE"}->[0]){
 			    push(@{$result->{outputFile}},"Stringcode different for ".$cpd->id()." from ".$cpd->stringcode()." to ".$row->{"STRINGCODE"}->[0]);
 			} 

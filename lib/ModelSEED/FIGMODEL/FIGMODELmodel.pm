@@ -362,9 +362,9 @@ sub changeDrains {
 	}
 	my $drainString = "";
 	foreach my $drn (keys(%{$drnHash})) {
-		$drainString .= ";".$drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max};
+		$drainString .= $drn.":".$drnHash->{$drn}->{min}.":".$drnHash->{$drn}->{max}.";";
 	}
-	
+	chop($drainString);
 
 	if ($drainString ne "cpd11416[c]:-10000:0;cpd15302[c]:-10000:10000;cpd08636[c]:-10000:0") {
 		ModelSEED::utilities::PRINTFILE($self->figmodel()->config('model directory')->[0].$self->owner()."/".$self->id()."/drains.txt",[$drainString]);
@@ -2004,6 +2004,12 @@ sub completeGapfilling {
 	}
 	$fbaObj->filename($args->{problemDirectory});
 	print "Creating problem directory: ",$fbaObj->filename(),"\n";
+
+	#Added by seaver to counter bug introduced using "Biomass" name
+	$args->{fbaStartParameters}->{parameters}->{objective}="MAX;DRAIN_FLUX;cpd11416;c;-1";
+
+	my $biomass=$self->ppo()->biomassReaction();
+	$args->{fbaStartParameters}->{parameters}->{"metabolites to optimize"}="REACTANTS;".$biomass;
 
 	$fbaObj->makeOutputDirectory({deleteExisting => $args->{startFresh}});
 	#Printing list of inactive reactions
@@ -5821,6 +5827,7 @@ sub PrintSBMLFile {
     if (-e $self->directory().$self->id().".xml") {
 	unlink($self->directory().$self->id().".xml");	
     }
+
     # convert ids to SIds
     my $idToSId = sub {
         my $id = shift @_;
@@ -5845,6 +5852,7 @@ sub PrintSBMLFile {
     if ($args->{media} ne "Complete") {
 	$args->{media} = $self->db()->get_moose_object("media",{id => $args->{media}});
     }
+
     if (!defined($args->{media})) {
 	$args->{media} = "Complete";
     }
@@ -5984,6 +5992,27 @@ sub PrintSBMLFile {
 			push(@{$output},'<species '.$stringToString->("id",$Compound.'_'.$Compartment).' '.$stringToString->("name",$Name).' '.$stringToString->("compartment",$cmpObj->id()).' '.$stringToString->("charge",$Charge).' boundaryCondition="false"/>');
 		}
 	}
+
+    if($biomassDrainC) {
+        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
+    }
+
+    #get drains
+    my $drains = $self->drains();
+    my %DrainHash=();
+    foreach my $dr (split(/;/,$drains)){
+	my @drs=split(/:/,$dr);
+	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
+	$ExchangeHash->{$drs[0]}="e";
+    }
+
+    #Add media to exchange hash if necessary
+    foreach my $cpd (keys %$mediaCpd){
+	if(!exists($ExchangeHash->{$cpd})){
+	    $ExchangeHash->{$cpd}="e";
+	}
+    }
+
 	
 	#Printing the boundary species
 	foreach my $Compound (keys(%{$ExchangeHash})) {
@@ -6011,9 +6040,6 @@ sub PrintSBMLFile {
 	}
 
 	#Add compounds for specific biomass drain if we haven't added them already
-    if($biomassDrainC) {
-        push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-    }
     if($biomassDrainB) {
         push(@{$output},'<species id="cpd11416_b" name="Biomass_noformula" compartment="e" charge="10000000" boundaryCondition="true"/>');
     }
@@ -6157,10 +6183,12 @@ sub PrintSBMLFile {
 		if (defined($cpdHash->{$ExCompound})) {
 			$cpdObj = $cpdHash->{$ExCompound}->[0];
 		}
-		if (!defined($cpdObj)) {
-			next;	
+		if ($ExCompound ne "cpd11416" && !defined($cpdObj)) {
+		    print STDERR "Skipping $ExCompound\n";
+		    next;
 		}
-		my $ExCompoundName = $cpdObj->name();
+		my $ExCompoundName = $cpdObj->name() if defined($cpdObj);
+		$ExCompoundName = "Biomass" if $ExCompound eq "cpd11416";
 		$ExCompoundName =~ s/[<>;&]//g;
 		$ObjectiveCoef = "0.0";
 		my $min = -10000;
@@ -6171,7 +6199,16 @@ sub PrintSBMLFile {
 				$min = -10000;
 			}
 		}
-		push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("name",'EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}).' reversible="true">');
+
+		my $reversible = "true";
+		if(exists($DrainHash{$ExCompound})){
+		    $min=$DrainHash{$ExCompound}{Min};
+		    $max=$DrainHash{$ExCompound}{Max};
+		    $reversible = "false" if($max == 0 || $min == 0);
+		}
+
+
+		push(@{$output},'<reaction '.$stringToString->("id",'EX_'.$ExCompound.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("name",'EX_'.$ExCompoundName.'_'.$ExchangeHash->{$ExCompound}).' '.$stringToString->("reversible",$reversible).'>');
 		push(@{$output},"\t".'<notes>');
 		push(@{$output},"\t\t".'<html:p>GENE_ASSOCIATION: </html:p>');
 		push(@{$output},"\t\t".'<html:p>PROTEIN_ASSOCIATION: </html:p>');
@@ -7374,6 +7411,12 @@ sub runFBAStudy {
 		clearOutput=>0
 	});	
 	#Setting the problem directory
+
+	if($self->figmodel->user() eq "seaver"){
+	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
+	    $args->{fbaStartParameters}->{parameters}->{"Allowable unbalanced reactions"}="rxn13428";
+	}
+
 	my $fbaObj = $self->fba($args->{fbaStartParameters});
 
 	if (!defined($args->{problemDirectory})) {
@@ -7670,6 +7713,17 @@ sub fbaCalculateGrowth {
 	}
 	$args->{fbaStartParameters}->{parameters}->{"optimize metabolite production if objective is zero"} = 1;
 	$args->{fbaStartParameters}->{parameters}->{"MFASolver"} = "GLPK";
+
+	#Added by seaver to counter bug introduced using "Biomass" name
+	$args->{fbaStartParameters}->{parameters}->{objective}="MAX;DRAIN_FLUX;cpd11416;c;-1";
+
+	my $biomass=$self->ppo()->biomassReaction();
+	$args->{fbaStartParameters}->{parameters}->{"metabolites to optimize"}="REACTANTS;".$biomass;
+
+	if($self->figmodel->user() eq "seaver"){
+	    $args->{fbaStartParameters}->{parameters}->{"use database objects seaver"}=1;
+	}
+
 	my $result = $self->runFBAStudy({
 		fbaStartParameters => $args->{fbaStartParameters},
 		setupParameters => {
@@ -7689,6 +7743,41 @@ sub fbaCalculateGrowth {
 	}
 	$result->{fbaObj}->clearOutput();
 	return $result;
+}
+=head3 fbaCalculateMinimalPathways
+Definition:
+	{}:Output = FIGMODELmodel->fbaCalculateMinimalPathways({
+		growth => double,
+		noGrowthCompounds => [string]:compound list	
+	});
+Description:
+	Calculating minimal pathways to reach some objective
+=cut
+sub fbaCalculateMinimalPathways {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		numsolutions => 5,
+		objective => undef,
+		additionalexchange => undef,
+		fbaStartParameters => {},
+	});
+	return $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setMinimalPathwaysStudy",
+			arguments => {
+				numsolutions=>$args->{numsolutions},
+				"objective" => $args->{objective},
+				"additionalexchange" => $args->{additionalexchange},
+			} 
+		},
+		saveLPfile => 1,
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
 }
 =head3 fbaCalculateMinimalMedia
 =item Definition:
