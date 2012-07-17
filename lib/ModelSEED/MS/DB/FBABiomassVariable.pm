@@ -18,6 +18,7 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 # ATTRIBUTES:
 has biomass_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
 has variableType => (is => 'rw', isa => 'Str', printOrder => '2', type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', printOrder => '3', type => 'attribute', metaclass => 'Typed');
 has lowerBound => (is => 'rw', isa => 'Num', printOrder => '6', type => 'attribute', metaclass => 'Typed');
 has upperBound => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
 has min => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', metaclass => 'Typed');
@@ -52,6 +53,13 @@ my $attributes = [
             'req' => 0,
             'printOrder' => 2,
             'name' => 'variableType',
+            'type' => 'Str',
+            'perm' => 'rw'
+          },
+          {
+            'req' => 0,
+            'printOrder' => 3,
+            'name' => 'class',
             'type' => 'Str',
             'perm' => 'rw'
           },
@@ -97,7 +105,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {biomass_uuid => 0, variableType => 1, lowerBound => 2, upperBound => 3, min => 4, max => 5, value => 6};
+my $attribute_map = {biomass_uuid => 0, variableType => 1, class => 2, lowerBound => 3, upperBound => 4, min => 5, max => 6, value => 7};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

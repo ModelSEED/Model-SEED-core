@@ -170,7 +170,8 @@ $objectDefinitions->{FBACompoundVariable} = {
 	class => 'encompassed',
 	attributes => [
 		{name => 'modelcompound_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'variableType',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'variableType',printOrder => 3,perm => 'rw',type => 'Str',req => 0},
+		{name => 'class',printOrder => 3,perm => 'rw',type => 'Str',req => 0},
 		{name => 'lowerBound',printOrder => 7,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'upperBound',printOrder => 8,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'min',printOrder => 5,perm => 'rw',type => 'Num',len => 1,req => 0},
@@ -190,6 +191,7 @@ $objectDefinitions->{FBABiomassVariable} = {
 	attributes => [
 		{name => 'biomass_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'variableType',printOrder => 2,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'class',printOrder => 3,perm => 'rw',type => 'Str',req => 0},
 		{name => 'lowerBound',printOrder => 6,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'upperBound',printOrder => 7,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'min',printOrder => 4,perm => 'rw',type => 'Num',len => 1,req => 0},
@@ -209,6 +211,7 @@ $objectDefinitions->{FBAReactionVariable} = {
 	attributes => [
 		{name => 'modelreaction_uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 		{name => 'variableType',printOrder => 3,perm => 'rw',type => 'Str',len => 1,req => 0},
+		{name => 'class',printOrder => 3,perm => 'rw',type => 'Str',req => 0},
 		{name => 'lowerBound',printOrder => 7,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'upperBound',printOrder => 8,perm => 'rw',type => 'Num',len => 1,req => 0},
 		{name => 'min',printOrder => 5,perm => 'rw',type => 'Num',len => 1,req => 0},

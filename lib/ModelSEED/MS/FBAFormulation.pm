@@ -268,7 +268,9 @@ sub createJobDirectory {
 		"metabolites to optimize" => $metToOpt,
 		"FBA experiment file" => $fbaExpFile,
 		"determine minimal required media" => $self->findMinimalMedia(),
-		"Recursive MILP solution limit" => $self->numberOfSolutions()
+		"Recursive MILP solution limit" => $self->numberOfSolutions(),
+		"database to process" => "NewCLI",
+		"database" => "NewCLI",
 	};
 	my $exe = "MFAToolkit.exe";
 	if ($^O =~ m/^MSWin/) {

@@ -11,7 +11,7 @@ cue directory|cues/
 new gene directory|newgenes/
 gene directory|genes/
 molfile directory|mol/
-output directory|../fbajobs/
+output directory|MFAToolkitOutputFiles/
 input directory|MFAToolkitInputFiles/
 media directory|Media/
 hydrogen filename|cpd00067

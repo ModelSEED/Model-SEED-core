@@ -16,7 +16,7 @@ Description:
 =cut
 sub ARGS {
 	my ($args,$mandatoryArguments,$optionalArguments) = @_;
-	if (ref($args) ne "HASH") {
+	if (defined($args) && ref($args) ne "HASH") {
 		ModelSEED::utilities::ERROR("Arguments not hash");	
 	}
 	if (defined($mandatoryArguments)) {
@@ -178,7 +178,10 @@ Definition:
 Description:	
 =cut
 sub LOADTABLE {
-    my ($filename,$delim) = @_;
+    my ($filename,$delim,$headingLine) = @_;
+    if (!defined($headingLine)) {
+    	$headingLine = 0;
+    }
     my $output = {
     	headings => [],
     	data => []
@@ -191,8 +194,8 @@ sub LOADTABLE {
     }
     my $data = ModelSEED::utilities::LOADFILE($filename);
     if (defined($data->[0])) {
-    	$output->{headings} = [split(/$delim/,$data->[0])];
-	    for (my $i=1; $i < @{$data}; $i++) {
+    	$output->{headings} = [split(/$delim/,$data->[$headingLine])];
+	    for (my $i=($headingLine+1); $i < @{$data}; $i++) {
 	    	push(@{$output->{data}},[split(/$delim/,$data->[$i])]);
 	    }
     }

@@ -214,7 +214,7 @@ sub loadMFAToolkitResults {
 	$self->parseFBAPhenotypeOutput();#not checked
 	$self->parseMinimalMediaResults();
 	$self->parseCombinatorialDeletionResults();
-	$self->parseFVAResults();#not checked
+	$self->parseFVAResults();
 }
 =head3 parseFluxFiles
 Definition:
@@ -533,128 +533,191 @@ sub parseFVAResults {
 	my ($self) = @_;
 	my $directory = $self->parent()->jobDirectory();
 	if (-e $directory."/MFAOutput/TightBoundsReactionData.txt" && -e $directory."/MFAOutput/TightBoundsCompoundData.txt") {
-#		my $results = {inactive=>"",dead=>"",positive=>"",negative=>"",variable=>"",posvar=>"",negvar=>"",positiveBounds=>"",negativeBounds=>"",variableBounds=>"",posvarBounds=>"",negvarBounds=>""};
-#		my $table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($directory."/MFAOutput/TightBoundsReactionData.txt",";","|",1,["DATABASE ID"]);
-#		my $variableTypes = ["FLUX","DELTAGG_ENERGY","REACTION_DELTAG_ERROR"];
-#		my $varAssoc = {
-#			FLUX => "",
-#			DELTAGG_ENERGY => " DELTAG",
-#			REACTION_DELTAG_ERROR => " SDELTAG",
-#			DRAIN_FLUX => "",
-#			DELTAGF_ERROR => " SDELTAGF",
-#			POTENTIAL => " POTENTIAL",
-#			LOG_CONC => " CONC"
-#		};
-#		for (my $i=0; $i < $table->size(); $i++) {
-#			my $row = $table->get_row($i);
-#			for (my $j=0; $j < @{$variableTypes}; $j++) {
-#				if (defined($row->{"Max ".$variableTypes->[$j]})) {
-#					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
-#					$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
-#					if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
-#						$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
-#					}
-#					if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
-#						$results->{tb}->{$row->{"DATABASE ID"}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
-#					}
-#				}
-#			}
-#		}
-#		#Loading compound tight bounds
-#		$table = ModelSEED::FIGMODEL::FIGMODELTable::load_table($directory."/MFAOutput/TightBoundsCompoundData.txt",";","|",1,["DATABASE ID"]);
-#		$variableTypes = ["DRAIN_FLUX","LOG_CONC","DELTAGF_ERROR","POTENTIAL"];
-#		for (my $i=0; $i < $table->size(); $i++) {
-#			my $row = $table->get_row($i);
-#			for (my $j=0; $j < @{$variableTypes}; $j++) {
-#				if (defined($row->{"Max ".$variableTypes->[$j]}) && $row->{"Max ".$variableTypes->[$j]}->[0] ne "1e+007") {
-#					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = $row->{"Max ".$variableTypes->[$j]}->[0];
-#					$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = $row->{"Min ".$variableTypes->[$j]}->[0];
-#					if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
-#						$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"max".$varAssoc->{$variableTypes->[$j]}} = 0;
-#					}
-#					if (abs($results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}}) < 0.0000001) {
-#						$results->{tb}->{$row->{"DATABASE ID"}->[0].$row->{COMPARTMENT}->[0]}->{"min".$varAssoc->{$variableTypes->[$j]}} = 0;
-#					}
-#				}
-#			}
-#		}
-#		#Setting class of modeled objects
-#		foreach my $obj (keys(%{$results->{tb}})) {
-#			$results->{tb}->{$obj}->{class} = "Variable";
-#			if ($results->{tb}->{$obj}->{min} > 0.000001) {
-#				$results->{tb}->{$obj}->{class} = "Positive";
-#				if ($obj =~ m/rxn/ || $obj =~ m/bio/) {
-#					$results->{positive} .= $obj.";";
-#					$results->{positiveBounds} .= $results->{tb}->{$obj}->{min}.":".$results->{tb}->{$obj}->{max}.";";
-#				}
-#			} elsif ($results->{tb}->{$obj}->{max} < -0.000001) {
-#				$results->{tb}->{$obj}->{class} = "Negative";
-#				if ($obj =~ m/rxn/ || $obj =~ m/bio/) {
-#					$results->{negative} .= $obj.";";
-#					$results->{negativeBounds} .= $results->{tb}->{$obj}->{min}.":".$results->{tb}->{$obj}->{max}.";";
-#				}
-#			} elsif ($results->{tb}->{$obj}->{max} < 0.0000001) {
-#				if ($results->{tb}->{$obj}->{min} > -0.0000001) {
-#					$results->{tb}->{$obj}->{class} = "Blocked";
-#				} else {
-#					$results->{tb}->{$obj}->{class} = "Negative variable";
-#					if ($obj =~ m/rxn/ || $obj =~ m/bio/) {
-#						$results->{negvar} .= $obj.";";
-#						$results->{negvarBounds} .= $results->{tb}->{$obj}->{min}.";";
-#					}
-#				}
-#			} elsif ($results->{tb}->{$obj}->{min} > -0.0000001) {
-#				$results->{tb}->{$obj}->{class} = "Positive variable";
-#				if ($obj =~ m/rxn/ || $obj =~ m/bio/) {
-#					$results->{posvar} .= $obj.";";
-#					$results->{posvarBounds} .= $results->{tb}->{$obj}->{max}.";";
-#				}
-#			} elsif ($obj =~ m/rxn/ || $obj =~ m/bio/) {
-#				$results->{variable} .= $obj.";";
-#				$results->{variableBounds} .= $results->{tb}->{$obj}->{min}.":".$results->{tb}->{$obj}->{max}.";";
-#			}
-#		}
-#		#Loading dead reactions from network analysis
-#		if (-e $directory."/DeadReactions.txt") {
-#			my $inputArray = $self->figmodel()->database()->load_single_column_file($directory."/DeadReactions.txt","");
-#			if (defined($inputArray)) {
-#				for (my $i=0; $i < @{$inputArray}; $i++) {
-#					if (defined($results->{tb}->{$inputArray->[$i]}) && $results->{tb}->{$inputArray->[$i]}->{class} eq "Blocked") {
-#						$results->{tb}->{$inputArray->[$i]}->{class} = "Dead";
-#						$results->{dead} .= $inputArray->[$i].";";
-#					}			
-#				}
-#			}
-#		}
-#		foreach my $obj (keys(%{$results->{tb}})) {
-#			if ($results->{tb}->{$obj}->{class} eq "Blocked" && ($obj =~ m/rxn/ || $obj =~ m/bio/)) {
-#				$results->{inactive} .= $obj.";";
-#			}
-#		}
-#		#Loading dead compounds from network analysis
-#		if (-e $directory."/DeadMetabolites.txt") {
-#			my $inputArray = $self->figmodel()->database()->load_single_column_file($directory."/DeadMetabolites.txt","");
-#			if (defined($inputArray)) {
-#				for (my $i=0; $i < @{$inputArray}; $i++) {
-#					if (defined($results->{tb}->{$inputArray->[$i]})) {
-#						$results->{tb}->{$inputArray->[$i]."c"}->{class} = "Dead";
-#					}			
-#				}
-#			}
-#		}
-#		if (-e $directory."/DeadEndMetabolites.txt") {
-#			my $inputArray = $self->figmodel()->database()->load_single_column_file($directory."/DeadEndMetabolites.txt","");
-#			if (defined($inputArray)) {
-#				for (my $i=0; $i < @{$inputArray}; $i++) {
-#					if (defined($results->{tb}->{$inputArray->[$i]})) {
-#						$results->{tb}->{$inputArray->[$i]."c"}->{class} = "Deadend";
-#					}			
-#				}
-#			}
-#		}
+		my $tbl = ModelSEED::utilities::LOADTABLE($directory."/MFAOutput/TightBoundsReactionData.txt",";",1);
+		if (defined($tbl->{headings}) && defined($tbl->{data})) {
+			my $idColumn = -1;
+			my $vartrans = {
+				FLUX => ["flux",-1,-1],
+				DELTAGG_ENERGY => ["deltag",-1,-1],
+				REACTION_DELTAG_ERROR => ["deltagerr",-1,-1]
+			};
+			my $deadRxn = {};
+			if (-e $directory."/DeadReactions.txt") {
+				my $inputArray = ModelSEED::utilities::LOADFILE($directory."/DeadReactions.txt","");
+				if (defined($inputArray)) {
+					for (my $i=0; $i < @{$inputArray}; $i++) {
+						$deadRxn->{$inputArray->[$i]} = 1;
+					}
+				}
+			}
+			for (my $i=0; $i < @{$tbl->{headings}}; $i++) {
+				if ($tbl->{headings}->[$i] eq "DATABASE ID") {
+					$idColumn = $i;
+				} else {
+					foreach my $vartype (keys(%{$vartrans})) {
+						if ($tbl->{headings}->[$i] eq "Max ".$vartype) {
+							$vartrans->{$vartype}->[2] = $i;
+							last;
+						} elsif ($tbl->{headings}->[$i] eq "Min ".$vartype) {
+							$vartrans->{$vartype}->[1] = $i;
+							last;
+						}
+					}
+				}
+			}
+			if ($idColumn >= 0) {
+				for (my $i=0; $i < @{$tbl->{data}}; $i++) {
+					my $row = $tbl->{data}->[$i];
+					if (defined($row->[$idColumn])) {
+						my $comp = "c";
+						my $id = $row->[$idColumn]."_".$comp."0";	
+						my $mdlrxn = $self->model()->queryObject("modelreactions",{id => $id});
+						if (defined($mdlrxn)) {
+							foreach my $vartype (keys(%{$vartrans})) {
+								if ($vartrans->{$vartype}->[1] != -1 && $vartrans->{$vartype}->[2] != -1) {
+									my $min = $row->[$vartrans->{$vartype}->[1]];
+									my $max = $row->[$vartrans->{$vartype}->[2]];
+									if (abs($min) < 0.0000001) {
+										$min = 0;	
+									}
+									if (abs($max) < 0.0000001) {
+										$max = 0;	
+									}
+									my $fbaRxnVar = $self->queryObject("fbaReactionVariables",{
+										modelreaction_uuid => $mdlrxn->uuid(),
+										variableType => $vartrans->{$vartype}->[0],
+									});
+									if (!defined($fbaRxnVar)) {
+										$fbaRxnVar = $self->add("fbaReactionVariables",{
+											modelreaction_uuid => $mdlrxn->uuid(),
+											variableType => $vartrans->{$vartype}->[0]
+										});	
+									}
+									$fbaRxnVar->min($min);
+									$fbaRxnVar->max($max);
+									if (defined($deadRxn->{$id})) {
+										$fbaRxnVar->class("Dead");
+									} elsif ($fbaRxnVar->min() > 0) {
+										$fbaRxnVar->class("Positive");
+									} elsif ($fbaRxnVar->max() < 0) {
+										$fbaRxnVar->class("Negative");
+									} elsif ($fbaRxnVar->min() == 0 && $fbaRxnVar->max() > 0) {
+										$fbaRxnVar->class("Positive variable");
+									} elsif ($fbaRxnVar->max() == 0 && $fbaRxnVar->min() < 0) {
+										$fbaRxnVar->class("Negative variable");
+									} elsif ($fbaRxnVar->max() == 0 && $fbaRxnVar->min() == 0) {
+										$fbaRxnVar->class("Blocked");
+									} else {
+										$fbaRxnVar->class("Variable");
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		$tbl = ModelSEED::utilities::LOADTABLE($directory."/MFAOutput/TightBoundsCompoundData.txt",";",1);
+		if (defined($tbl->{headings}) && defined($tbl->{data})) {
+			my $idColumn = -1;
+			my $compColumn = -1;
+			my $vartrans = {
+				DRAIN_FLUX => ["drainflux",-1,-1],
+				LOG_CONC => ["conc",-1,-1],
+				DELTAGF_ERROR => ["deltagferr",-1,-1],
+				POTENTIAL => ["potential",-1,-1]
+			};
+			my $deadCpd = {};
+			my $deadendCpd = {};
+			if (-e $directory."/DeadMetabolites.txt") {
+				my $inputArray = ModelSEED::utilities::LOADFILE($directory."/DeadMetabolites.txt","");
+				if (defined($inputArray)) {
+					for (my $i=0; $i < @{$inputArray}; $i++) {
+						$deadCpd->{$inputArray->[$i]} = 1;
+					}
+				}
+			}
+			if (-e $directory."/DeadEndMetabolites.txt") {
+				my $inputArray = ModelSEED::utilities::LOADFILE($directory."/DeadEndMetabolites.txt","");
+				if (defined($inputArray)) {
+					for (my $i=0; $i < @{$inputArray}; $i++) {
+						$deadendCpd->{$inputArray->[$i]} = 1;
+					}
+				}
+			}
+			for (my $i=0; $i < @{$tbl->{headings}}; $i++) {
+				if ($tbl->{headings}->[$i] eq "DATABASE ID") {
+					$idColumn = $i;
+				} elsif ($tbl->{headings}->[$i] eq "COMPARTMENT") {
+					$compColumn = $i;
+				} else {
+					foreach my $vartype (keys(%{$vartrans})) {
+						if ($tbl->{headings}->[$i] eq "Max ".$vartype) {
+							$vartrans->{$vartype}->[2] = $i;
+						} elsif ($tbl->{headings}->[$i] eq "Min ".$vartype) {
+							$vartrans->{$vartype}->[1] = $i;
+						}
+					}
+				}
+			}
+			if ($idColumn >= 0) {
+				for (my $i=0; $i < @{$tbl->{data}}; $i++) {
+					my $row = $tbl->{data}->[$i];
+					if (defined($row->[$idColumn])) {
+						my $comp = $row->[$compColumn];
+						my $id = $row->[$idColumn]."_".$comp."0";	
+						my $mdlcpd = $self->model()->queryObject("modelcompounds",{id => $id});
+						if (defined($mdlcpd)) {
+							foreach my $vartype (keys(%{$vartrans})) {
+								if ($vartrans->{$vartype}->[1] != -1 && $vartrans->{$vartype}->[2] != -1) {
+									my $min = $row->[$vartrans->{$vartype}->[1]];
+									my $max = $row->[$vartrans->{$vartype}->[2]];
+									if ($min != 10000000) {
+										if (abs($min) < 0.0000001) {
+											$min = 0;	
+										}
+										if (abs($max) < 0.0000001) {
+											$max = 0;	
+										}
+										my $fbaCpdVar = $self->queryObject("fbaCompoundVariables",{
+											modelcompound_uuid => $mdlcpd->uuid(),
+											variableType => $vartrans->{$vartype}->[0],
+										});
+										if (!defined($fbaCpdVar)) {
+											$fbaCpdVar = $self->add("fbaCompoundVariables",{
+												modelcompound_uuid => $mdlcpd->uuid(),
+												variableType => $vartrans->{$vartype}->[0],
+											});	
+										}
+										$fbaCpdVar->min($min);
+										$fbaCpdVar->max($max);
+										if (defined($deadCpd->{$id})) {
+											$fbaCpdVar->class("Dead");
+										} elsif (defined($deadendCpd->{$id})) {
+											$fbaCpdVar->class("Deadend");
+										} elsif ($fbaCpdVar->min() > 0) {
+											$fbaCpdVar->class("Positive");
+										} elsif ($fbaCpdVar->max() < 0) {
+											$fbaCpdVar->class("Negative");
+										} elsif ($fbaCpdVar->min() == 0 && $fbaCpdVar->max() > 0) {
+											$fbaCpdVar->class("Positive variable");
+										} elsif ($fbaCpdVar->max() == 0 && $fbaCpdVar->min() < 0) {
+											$fbaCpdVar->class("Negative variable");
+										} elsif ($fbaCpdVar->max() == 0 && $fbaCpdVar->min() == 0) {
+											$fbaCpdVar->class("Blocked");
+										} else {
+											$fbaCpdVar->class("Variable");
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 }
-
 
 __PACKAGE__->meta->make_immutable;
 1;
