@@ -578,6 +578,19 @@ sub printDatabaseTable {
 					$maxes .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->maxFlux();
 					$mins .= $mediacpds->{$args->{printList}->[$i]->id()}->[$j]->minFlux();
 				}
+				foreach  my $rxnid (keys %{$args->{rxnFluxConstraint}}) {
+				    $line .= "|";
+				    $types .= "|";
+				    $maxes .= "|";
+				    $mins .= "|";
+				    $comps .= "|";
+				    
+				    $line .= $rxnid;
+				    $types .= "FLUX";
+				    $comps .= "c";
+				    $maxes .= $args->{rxnFluxConstraint}->{$rxnid}->{max};
+				    $mins .= $args->{rxnFluxConstraint}->{$rxnid}->{min};
+				}
 			}
 			push(@{$output},$line."\t".$types."\t".$maxes."\t".$mins."\t".$comps);
 		}

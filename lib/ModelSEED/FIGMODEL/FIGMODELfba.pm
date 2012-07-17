@@ -44,7 +44,8 @@ sub new {
 		model=>undef,
 		media=>undef,
 		parameter_files=>["ProductionMFA"],
-		options => {}
+		options => {},
+		rxnFluxConstraint => {}
 	});
 	return $self->error_message({function => "new",args=>$args}) if (defined($args->{error}));
 	$self->{_problem_parameters} = ["drnRxn","geneKO","rxnKO","parsingFunction","model","media","parameter_files","uptakeLim"];
@@ -58,6 +59,7 @@ sub new {
 	$self->{_parameters} = $args->{parameters};
 	$self->{_filename} = $args->{filename};
 	$self->{_options} = $args->{options};
+	$self->{_rxnFluxConstraint} = $args->{rxnFluxConstraint};
 	for (my $i=0; $i < @{$self->figmodel()->config("data filenames")}; $i++) {
 		my $type = $self->figmodel()->config("data filenames")->[$i];
 		$self->{_dataFilename}->{$type} = $self->figmodel()->config($type." data filename")->[0];	
@@ -198,6 +200,15 @@ sub FBAStartParametersFromArguments {
 	if (defined($args->{arguments}->{fbajobdir})) {
 		$fbaStartParameters->{filename} = $args->{arguments}->{fbajobdir};
 	}
+	if (defined($args->{arguments}->{rxnFluxConstraint})) {
+	    my $temp = (ref($args->{arguments}->{rxnFluxConstraint}) ne "ARRAY") ? [split(/[;,]/,$args->{arguments}->{rxnFluxConstraint})] : $args->{arguments}->{rxnFluxConstraint};
+	    foreach (@{$temp}) {
+		my ($rxnid, $min, $max) = split /[:\|]/;
+		$fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{min} = $min;
+		$fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{max} = $max;
+	    }
+	}
+	
 	return $fbaStartParameters;
 }
 
@@ -366,7 +377,6 @@ sub printJobParametersToFile {
 		$self->figmodel()->database()->print_array_to_file($self->directory()."/".$args->{parameterFile},$parameterData);
 		$self->add_parameter_files([$self->directory()."/".$args->{parameterFile}]);
 	}
-        # shin: why do this?
 	$self->clear_parameters();
 	return {success=>1};
 }
@@ -411,7 +421,8 @@ sub printMediaFiles {
     ModelSEED::utilities::ERROR("Could not find media object for $first") if (!defined($mediaObj));
     $mediaObj->printDatabaseTable({
         filename => $self->directory()."/media.tbl",
-        printList => $args->{printList}
+        printList => $args->{printList},
+        rxnFluxConstraint => $self->{_rxnFluxConstraint}
     });
     $self->dataFilename({type=>"media",filename=>$self->directory()."/media.tbl"});
 }
@@ -2026,6 +2037,178 @@ sub parseGeneActivityAnalysisMaster {
     $result->{media} = $self->media();
     return $result;
 }
+
+=head3 setGimme
+=item Definition:
+	Output:{} = FIGMODELfba->setGimme({
+		RIscores => {string:reaction ID => double:reactin gene expression inconsistency score}
+	});
+=item Description:
+=cut
+sub setGimme {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["RIscores"],{
+		media => undef,
+		label => undef,
+	});
+	if (defined($args->{error})) {return $self->error_message({function => "setGimme",args => $args});}
+	#Setting default values for media, labels, and descriptions
+	my $filenameList;
+	my $jobs;
+	$self->parameter_files(["ProductionMFA"]);
+		#Setting simulation parameters 
+		$self->media($args->{media});
+		my $reactionViolationData = $self->model().";1";
+		foreach my $rxnid (keys(%{$args->{RIscores}})) {
+			if (defined($args->{RIscores}->{$rxnid})) {
+				$reactionViolationData .= ";".$rxnid.":".$args->{RIscores}->{$rxnid};
+			}
+		}
+		$self->set_parameters({
+			"FIGMODELfba_label"=>$args->{label},
+                        "Decompose reversible reactions"=>1, # Force bidirectional reactions to be divided, and flux to be positive. 
+			"Gene Inactivity Moderated by Metabolism and Expression" => $reactionViolationData
+		});
+	$self->parsingFunction("parseGimme");
+}
+
+=head3 parseGimme
+=item Definition:
+	Output:{} = FIGMODELfba->parseGimme({filename => string});
+    Output: {
+		status => string,(always returned string indicating status of the job as: running, crashed, finished)
+		model => string:model ID,
+		genome => string:genome ID,
+		labels => [string]:input study labels,
+		media => [string]:media IDs,
+		biomass => [double]:biomass predicted for each study,
+		fluxes => [{string => double}],
+		geneActivity => {string:gene id=>[string]}
+	}     
+=item Description:
+=cut
+sub parseGimme {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
+	if (defined($args->{error})) {return $self->error_message({function => "parseGimme",args => $args});}
+	$self->filename($args->{filename});
+        my $result;
+        my $report = $self->loadProblemReport();
+        if (defined($report) && defined($report->get_row(0))) {
+            my $row = $report->get_row(0);
+            if (defined($row->{Objective}->[0])) {
+                $result->{biomass} = $row->{Objective}->[0];
+            }
+        }
+        $result->{media} = $self->media();
+        my $flux = $self->loadFluxData();
+        foreach (keys %{$flux}) {
+            if (/(^rxn\d{5})/) {
+                $result->{fluxes}->{$1} = $flux->{$_};  
+            }
+            elsif (/^cpd\d{5}/) {
+                $result->{fluxes}->{$_} = $flux->{$_};  
+            }
+            elsif (/(^bio\d{5})/) {
+                $result->{newbio} = $flux->{$_};  
+            }
+            elsif (/Objectivec/) {
+                # Inconsistency Score.
+                $result->{IS} = $flux->{$_};  
+            }
+        }
+        
+        if (!defined $result->{fluxes}) {
+            return $self->error_message({message=>"Couldn't find /MFAOutput/SolutionCompoundData.txt in parseGimme",args => $args}) ;
+        }
+        return $result;
+}
+
+=head3 setSoftConstraint
+=item Definition:
+	Output:{} = FIGMODELfba->setSoftConstraint({});
+=item Description:
+=cut
+sub setSoftConstraint {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		media => undef,
+		label => undef,
+                kappa => 1,
+	});
+	if (defined($args->{error})) {return $self->error_message({function => "setSoftConstraint",args => $args});}
+	#Setting default values for media, labels, and descriptions
+	my $filenameList;
+	my $jobs;
+	$self->parameter_files(["ProductionMFA"]);
+        #Setting simulation parameters 
+        $self->media($args->{media});
+        my $reactionBounds = $self->model().";1;".$args->{kappa}; #model id, index and kappa value.
+        foreach my $rxnid (keys %{$self->{_rxnFluxConstraint}}) {
+            if (defined($self->{_rxnFluxConstraint}->{$rxnid})) {
+                $reactionBounds .= ";".$rxnid.":".$self->{_rxnFluxConstraint}->{$rxnid}->{min}.":".$self->{_rxnFluxConstraint}->{$rxnid}->{max};
+            }
+        }
+        delete $self->{_rxnFluxConstraint}; # prevent hard constraint.
+        $self->set_parameters({
+            "Soft Constraint" => $reactionBounds,
+            MFASolver => "GLPK",
+                              });
+	$self->parsingFunction("parseSoftConstraint");
+}
+
+=head3 parseSoftConstraint
+=item Definition:
+	Output:{} = FIGMODELfba->parseGimme({filename => string});
+    Output: {
+		status => string,(always returned string indicating status of the job as: running, crashed, finished)
+		model => string:model ID,
+		genome => string:genome ID,
+		labels => [string]:input study labels,
+		media => [string]:media IDs,
+		biomass => [double]:biomass predicted for each study,
+		fluxes => [{string => double}],
+		geneActivity => {string:gene id=>[string]}
+	}     
+=item Description:
+=cut
+sub parseSoftConstraint {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{filename=>$self->filename()});
+	if (defined($args->{error})) {return $self->error_message({function => "parseSoftConstraint",args => $args});}
+	$self->filename($args->{filename});
+        my $result;
+        my $report = $self->loadProblemReport();
+        if (defined($report) && defined($report->get_row(0))) {
+            my $row = $report->get_row(0);
+            if (defined($row->{Objective}->[0])) {
+                $result->{biomass} = $row->{Objective}->[0];
+            }
+        }
+        $result->{media} = $self->media();
+        my $flux = $self->loadFluxData();
+        foreach (keys %{$flux}) {
+            if (/(^rxn\d{5})/) {
+                $result->{rxnfluxes}->{$1} = $flux->{$_};  
+            }
+            elsif (/^cpd\d{5}/) {
+                $result->{cpdfluxes}->{$_} = $flux->{$_};  
+            }
+            elsif (/(^bio\d{5})/) {
+                $result->{growth} = $flux->{$_};  
+            }
+            elsif (/Objectivec/) {
+                # Inconsistency Score.
+                $result->{objective} = $flux->{$_};  
+            }
+        }
+        
+        if (!defined $result->{growth}) {
+            return $self->error_message({message=>"Couldn't find /MFAOutput/SolutionCompoundData.txt in parseSoftConstraint",args => $args}) ;
+        }
+        return $result;
+}
+
 
 =head3 setMultiPhenotypeStudy
 =item Definition:

@@ -656,12 +656,12 @@ sub users {
 			$obj->{$admin} = "admin";
 		}
 	}
-	# Add a "view" right to PUBLIC for public models
+	# Add a "view" right to public for public models
 	if(!defined($self->ppo())) {
 		ModelSEED::utilities::ERROR("Cannot check model rights without a defined PPO object!");
 	}
 	if($self->ppo()->public() eq 1) {
-		$obj->{PUBLIC} = "view";
+		$obj->{public} = "view";
 	}
 	return $obj;
 }
@@ -715,8 +715,8 @@ sub rights {
 	my $rights = $self->users();
 	if(defined($rights->{$username})) {
 		return $rights->{$username};
-	} elsif(defined($rights->{PUBLIC})) {
-		return $rights->{PUBLIC};
+	} elsif(defined($rights->{public})) {
+		return $rights->{public};
 	} else {
 		return "none";
 	}
@@ -7894,6 +7894,75 @@ sub fbaGeneActivityAnalysisMaster {
 		},
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "GeneActivityAnalysis.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+
+=head3 fbaGimme
+=item Definition:
+	$results = FIGMODELmodel->fbaGimme({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  RIscores => {string:reaction ID => double: reaction inconsistency score},
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaGimme {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["RIscores","label","media"],{
+		fbaStartParameters => {},
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setGimme",
+			arguments => {
+				RIscores=>$args->{RIscores},
+				media=>$args->{media},
+				label=>$args->{label},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "gimme.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+=head3 fbaSoftConstraint
+=item Definition:
+	$results = FIGMODELmodel->fbaSoftConstraint({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaSoftConstraint {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		fbaStartParameters => {},
+                kappa => undef,
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setSoftConstraint",
+			arguments => {
+                            kappa => $args->{kappa},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "softConstraint.txt",
 		startFresh => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,

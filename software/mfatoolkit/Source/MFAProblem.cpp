@@ -8004,6 +8004,208 @@ int MFAProblem::FitMicroarrayAssertions(Data* InData) {
 	return SUCCESS;
 }
 
+/*FitGimme
+Author: Shinnosuke Kondo, Hope College, 6/27/2012. The code is originated from FitMicroarrayAssertions.
+Description: Reads in a file with reaction gene expression inconsistency score made based on microarray data. 
+	Attempts to run the model in such a way that agreement with multiplication of each inconsistency score and flux is minimized*/
+int MFAProblem::FitGIMME(Data* InData) {
+	//Read in optimization parameters
+	OptimizationParameter* Parameters = ReadParameters();
+	//Adjusting settings for study
+	Parameters->DecomposeReversible = true;
+	Parameters->GeneConstraints = true;
+	Parameters->ReactionsUse = true;
+	Parameters->AllReactionsUse = true;
+	//Building problem
+	if (BuildMFAProblem(InData,Parameters) != SUCCESS) {
+		cerr << "Could not build gimme problem!" << endl;
+		return FAIL;
+	}
+	//Checking that model grows
+	string Note;
+	double ObjectiveValue = 0;
+	if (OptimizeSingleObjective(InData,Parameters,GetParameter("objective"),false,false,ObjectiveValue,Note) != SUCCESS) {
+		cerr << "Could not run gimme problem!" << endl;
+		return FAIL;
+	}
+	if (ObjectiveValue == 0) {
+		cerr << "Model did not grow!" << endl;
+		return FAIL;
+	}
+	//Fixing growth to a nonzero value
+	if (Max) {
+		LoadConstToSolver(MakeObjectiveConstraint(Parameters->OptimalObjectiveFraction*ObjectiveValue,GREATER)->Index);
+	} else {
+		LoadConstToSolver(MakeObjectiveConstraint(Parameters->OptimalObjectiveFraction*ObjectiveValue,LESS)->Index);
+	}
+	//Parsing microarray assertion into objective
+	vector<string>* RxnCoef = StringToStrings(GetParameter("Gene Inactivity Moderated by Metabolism and Expression"),";");
+	if (RxnCoef->size() <= 2) {
+		cerr << "No reaction inconsistency value was found!" << endl;
+		return FAIL;
+	}
+	string Model = (*RxnCoef)[0];
+	string Index = (*RxnCoef)[1];
+	map<string,double> CoeffMap;
+	LinEquation* NewObjective = InitializeLinEquation("Gimme objective");
+	for (int i=2; i < int(RxnCoef->size()); i++) {
+		vector<string>* CoefPair = StringToStrings((*RxnCoef)[i],":");
+		Reaction* CurrentReaction = InData->FindReaction("NAME;DATABASE;ENTRY",(*CoefPair)[0].data());
+		if (CurrentReaction != NULL) {
+			CoeffMap[(*CoefPair)[0]] = atof((*CoefPair)[1].data());
+		}
+		delete CoefPair;
+	} //Shin: Since these variables are inherited from single(biomass) optimization, they already have some constraints(e.g. biomass > 0.1 *opt_biomass).
+	for (int i=0; i < FNumVariables(); i++) {
+		if (GetVariable(i)->Type == FLUX || GetVariable(i)->Type == FORWARD_FLUX || GetVariable(i)->Type == REVERSE_FLUX) {
+			NewObjective->Variables.push_back(GetVariable(i));
+			if (CoeffMap.count(GetVariable(i)->Name) > 0) {
+				NewObjective->Coefficient.push_back(CoeffMap[GetVariable(i)->Name]);
+			} else {
+				NewObjective->Coefficient.push_back(0);
+			}
+		}
+	}
+	AddObjective(NewObjective);
+	SetMin();
+	LoadObjective();
+	//Optimizing objective
+	OptSolutionData* Solution = RunSolver(true,true,true);
+	if (Solution == NULL) {
+		cerr << "No solution found!" << endl;
+		return FAIL;
+	}
+	//Printing violating reactions in the problem report
+	string reactions;
+
+	Note.assign("Violating reactions:");	
+	if (Note.length() == 16) {
+		Note.assign("No violations");
+	} else {
+		Note = Note.substr(0,Note.length()-1);
+	}
+	PrintProblemReport(Solution->Objective,Parameters,Note);
+	delete RxnCoef;
+
+	return SUCCESS;
+}
+
+int MFAProblem::SoftConstraint(Data* InData) {
+	//Read in optimization parameters
+	OptimizationParameter* Parameters = ReadParameters();
+	//Adjusting settings for study
+	Parameters->DecomposeReversible = false;
+	Parameters->GeneConstraints = true;
+	Parameters->ReactionsUse = true;
+	Parameters->AllReactionsUse = true;
+	//Building problem
+	if (BuildMFAProblem(InData,Parameters) != SUCCESS) {
+		cerr << "Could not build soft constraint problem!" << endl;
+		return FAIL;
+	}
+	//Checking that model grows
+	string Note;
+	double ObjectiveValue = 0;
+	if (OptimizeSingleObjective(InData,Parameters,GetParameter("objective"),false,false,ObjectiveValue,Note) != SUCCESS) {
+		cerr << "Could not run soft constraint problem!" << endl;
+		return FAIL;
+	}
+	if (ObjectiveValue == 0) {
+		cerr << "Model did not grow!" << endl;
+		return FAIL;
+	}
+
+	MFAVariable* alpha = InitializeMFAVariable();
+	alpha->Name = (alpha->Name + "alpha");
+	alpha->Type = INTERVAL_USE; // what type it should be?
+	alpha->LowerBound = 0;
+	LoadVariable(AddVariable(alpha));
+
+	MFAVariable* beta = InitializeMFAVariable();
+	beta->Name = (beta->Name + "beta");
+	beta->Type = INTERVAL_USE; // what type it should be?
+	beta->LowerBound = 0;
+	LoadVariable(AddVariable(beta));
+
+	//Parsing reaction bounds into constraints
+	vector<string>* RxnBound = StringToStrings(GetParameter("Soft Constraint"),";");
+	if (RxnBound->size() <= 3) {
+		cerr << "No reaction specified as constrained!" << endl;
+		return FAIL;
+	}
+	string Model = (*RxnBound)[0];
+	string Index = (*RxnBound)[1];
+	double Kappa = atof((*RxnBound)[2].data());
+	map<string,map<string,double> > BoundMap;
+	cerr << "Kappa is " << Kappa << endl;
+	for (int i=3; i < int(RxnBound->size()); i++) {
+		vector<string>* BoundPair = StringToStrings((*RxnBound)[i],":");
+	Reaction* CurrentReaction = InData->FindReaction("NAME;DATABASE;ENTRY",(*BoundPair)[0].data());
+		if (CurrentReaction != NULL) {
+			BoundMap[(*BoundPair)[0]]["min"] = atof((*BoundPair)[1].data());
+			BoundMap[(*BoundPair)[0]]["max"] = atof((*BoundPair)[2].data());
+		}
+		delete BoundPair;
+	}
+	
+	for (int i=0; i < FNumVariables(); i++) {
+		if (GetVariable(i)->Type == FLUX || GetVariable(i)->Type == FORWARD_FLUX || GetVariable(i)->Type == REVERSE_FLUX) {
+			if (BoundMap.count(GetVariable(i)->Name) > 0) {
+
+				LinEquation* NewConstraint = InitializeLinEquation();
+					NewConstraint->RightHandSide = BoundMap[GetVariable(i)->Name]["min"];
+					NewConstraint->EqualityType =GREATER;
+					NewConstraint->ConstraintType = LINEAR;
+					NewConstraint->ConstraintMeaning.assign("objective constraint");
+					NewConstraint->Coefficient.push_back(1);
+					NewConstraint->Coefficient.push_back(1);
+					NewConstraint->Variables.push_back(GetVariable(i));
+					NewConstraint->Variables.push_back(alpha);
+					NewConstraint->AssociatedReaction = GetVariable(i)->AssociatedReaction;
+					NewConstraint->AssociatedSpecies = GetVariable(i)->AssociatedReaction->GetReactant(i);
+				LoadConstToSolver(AddConstraint(NewConstraint));
+
+				LinEquation* NewConstraint2 = InitializeLinEquation();
+					NewConstraint2->RightHandSide = BoundMap[GetVariable(i)->Name]["max"];
+					NewConstraint2->EqualityType =LESS;
+					NewConstraint->ConstraintType = LINEAR;
+					NewConstraint2->ConstraintMeaning.assign("objective constraint");
+					NewConstraint2->Coefficient.push_back(1);
+					NewConstraint2->Coefficient.push_back(-1);
+					NewConstraint2->Variables.push_back(GetVariable(i));
+					NewConstraint2->Variables.push_back(beta);
+					NewConstraint2->AssociatedReaction = GetVariable(i)->AssociatedReaction;
+					NewConstraint2->AssociatedSpecies = GetVariable(i)->AssociatedReaction->GetReactant(i);
+				LoadConstToSolver(AddConstraint(NewConstraint2));
+			} 
+		}
+	}		
+
+	Kappa = -1 * Kappa; // because objective is max.
+	LinEquation* NewObjective = CloneLinEquation(GetObjective());
+	NewObjective->Variables.push_back(alpha);
+	NewObjective->Variables.push_back(beta);
+	NewObjective->Coefficient.push_back(Kappa);
+	NewObjective->Coefficient.push_back(Kappa);
+	AddObjective(NewObjective);
+	SetMax();
+	LoadObjective();	
+	//Optimizing objective
+	OptSolutionData* Solution = RunSolver(true,true,true);
+	if (Solution == NULL) {
+		cerr << "No solution found!" << endl;
+		return FAIL;
+	}
+	
+	cerr << NewObjective->Variables[0]->Name <<": " <<NewObjective->Variables[0]->Value << endl;
+	cerr << NewObjective->Variables[1]->Name <<": " <<NewObjective->Variables[1]->Value << endl;
+	cerr << NewObjective->Variables[2]->Name <<": " <<NewObjective->Variables[2]->Value << endl;
+	PrintProblemReport(Solution->Objective,Parameters,Note);
+	delete RxnBound;
+
+	return SUCCESS;
+}
+
 /*GenerateMinimalReactionLists
 Author: Christopher Henry, Argonne National Laboratory, 11/15/2009
 Description: Given an objective, this function generates a list of every reaction involved in production*/

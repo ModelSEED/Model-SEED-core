@@ -16,6 +16,9 @@ Description:
 =cut
 sub ARGS {
 	my ($args,$mandatoryArguments,$optionalArguments) = @_;
+	if (! defined $args) {
+	    $args = {};
+	}
 	if (ref($args) ne "HASH") {
 		ModelSEED::utilities::ERROR("Arguments not hash");	
 	}

@@ -260,7 +260,7 @@ sub check {
 	my ($self,$array,$data) = @_;
 	my @calldata = caller(1);
 	my @temp = split(/:/,$calldata[3]);
-    my $function = pop(@temp);
+	my $function = pop(@temp);
 	if (!defined($data) || @{$data} == 0 || ($data->[0] eq $function && ref($data->[1]) eq "HASH" && keys(%{$data->[1]}) == 0)) {
 		print $self->usage($function,$array);
 		$self->finish("USAGE PRINTED");
@@ -1200,7 +1200,8 @@ sub fbacheckgrowth {
 		["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
 		["fbajobdir",0,undef,"Set directory in which FBA problem output files will be stored."],
 		["savelp",0,0,"User can choose to save the linear problem associated with the FBA run."],
-		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."]
+		["savetodb",0,0,"User can choose to save the results of the fba simulation in the database for later recal or visualization in cytoseed."],
+		["rxnFluxConstraint",0,undef,"A ';' delimited list of reactions to be constraint during the analysis. e.g. 'rxn00001|-99|111;rxn00002|-1000|1000'"],
 	],[@Data],"tests if a model is growing under a specific media");
 	$args->{media} =~ s/\_/ /g;
 	my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
@@ -1219,7 +1220,7 @@ sub fbacheckgrowth {
 			});
 		}	
 	}
-	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
     if (!defined($mdl)) {
 	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
@@ -1288,6 +1289,7 @@ sub fbacheckgrowth {
 	}
 	return $message;
 }
+
 
 =head
 =CATEGORY
@@ -1604,7 +1606,7 @@ sub fbageneactivityanalysis {
 	    for (my $i=1; $i < @tempArray; $i++) {
 		if ($tempArray[0] eq "Labels") {
 		    my $inner_input = {
-			fbaStartParameters => {},
+			fbaStartParameters => $fbaStartParameters,
 			findTightBounds => 0,
 			deleteNoncontributingRxn => 0,
 			identifyCriticalBiomassCpd => 0,
@@ -1653,12 +1655,13 @@ sub fbageneactivityanalysis {
     my $master_results = $mdl->fbaGeneActivityAnalysisMaster();
 
     # Conduct master analysis for every experimental media.
+    my $mediamap->{Complete} = $master_results;
     for (@$jobList) {
-	if ($_->{results}->{media} eq "Complete") {
-	    $_->{results}->{master} = $master_results;
-	    next;
-	}
-	$_->{results}->{master} = $mdl->fbaGeneActivityAnalysisMaster($_->{results}) unless ($_->{status} eq "failed");
+        next if ($_->{status} eq "failed");
+        if (!defined $mediamap->{$_->{results}->{media}}) {
+            $mediamap->{$_->{results}->{media}} = $mdl->fbaGeneActivityAnalysisMaster($_->{results});
+        }
+        $_->{results}->{master} = $mediamap->{$_->{results}->{media}};
     }
 
     # then collate the results
@@ -1704,15 +1707,28 @@ sub fbageneactivityanalysis {
 	    # These may not happen. But if happens, they would mess up the result.
 	    warn "No gene classification for gene $gene in Complete Media.\n" if !defined($geneClass->{$gene});
 	    warn "No gene classification for gene $gene in ". $jobList->[$i]->{results}->{media}." Media.\n" if (!defined($jobList->[$i]->{results}->{master}->{geneClass}->{$gene}));
-	    
+
+            my $inconsistency = 0;
+            if ($jobList->[$i]->{results}->{geneActivity}->{$gene}->{call} eq "on") {
+                $inconsistency = 1 unless ($jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction} =~ /^Essential|^on/)
+            }
+            elsif ($jobList->[$i]->{results}->{geneActivity}->{$gene}->{call} eq "off") {
+                $inconsistency = 1 if ($jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction} =~ /^Essential|^on/)
+            }
+            elsif ($jobList->[$i]->{results}->{geneActivity}->{$gene}->{call} !~ /^\?/) {
+                warn "unexpected input with gene $gene in $jobList->[$i]->{results}->{label}\n";
+            }
+            $results->{inconsistency}->[$i] += $inconsistency;
+
 	    $results->{geneActivity}->{$gene}->[$i] = $jobList->[$i]->{results}->{geneActivity}->{$gene}->{call}."/".$jobList->[$i]->{results}->{geneActivity}->{$gene}->{prediction};
 	}
+        $results->{inconsistency}->[$i] /= scalar (keys %{$results->{geneActivity}}) unless ( (keys %{$results->{geneActivity}}) == 0);
     }
-
 #Printing results
-    my $headings = ["Labels","Descriptions","Media","Model","Genome","Fluxes","Biomass"];
-    my $translation = {Labels => "labels",Descriptions => "descriptions",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass"};
-    my $filename = "GeneActivityResults-".$args->{model}.".txt";
+    my $headings = ["Labels","Descriptions","Media","Model","Genome","Fluxes","Biomass", "Inconsistency"];
+    my $translation = {Labels => "labels",Descriptions => "descriptions",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass", Inconsistency => "inconsistency"};
+    $args->{geneCalls} = File::Basename::basename($args->{geneCalls});
+    my $filename = "GeneActivityResults-".$args->{model}."-".$args->{geneCalls};
     open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
     my $count = 1;
 
@@ -1753,6 +1769,758 @@ sub fbageneactivityanalysis {
 =head
 =CATEGORY
 Flux Balance Analysis Operations
+=DESCRIPTION 
+=EXAMPLE
+
+=cut
+sub fbagimme {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["geneExpression",1,undef,"File with gene expressions"],
+	["cutoff",1,undef,"The threshold for gene expression data"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."]
+			    ],[@Data],"");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!-e $self->ws()->directory().$args->{geneExpression}) {
+    	ModelSEED::utilities::ERROR("Could not find gene expression file ".$self->ws()->directory().$args->{geneCalls});
+    }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
+    my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{geneExpression});
+    my $parsed;
+    
+    # parse data to hash by label and gene. 
+    for (my $i=0; $i < @{$data}; $i++) {
+            my @tempArray = split(/\t/,$data->[$i]);
+            if (@tempArray >= 2) {
+                for (my $i=1; $i < @tempArray; $i++) {
+                    if ($tempArray[0] eq "Labels") {
+                        my $inner_parsed = {
+                            label => $tempArray[$i]
+                        };
+                        $parsed->[$i] = $inner_parsed;
+                    } elsif ($tempArray[0] eq "Descriptions") {
+                        $parsed->[$i]->{description} = $tempArray[$i];
+                    } elsif ($tempArray[0] eq "Media") {
+                        if (length($tempArray[$i]) == 0) {
+                            $tempArray[$i] = "Complete";
+                        }
+                        $parsed->[$i]->{media} = $tempArray[$i];
+                    } else {
+                        if (!defined($parsed->[$i]->{media})) {
+                            $parsed->[$i]->{media} = "Complete";
+                        }
+                        if (!defined($parsed->[$i]->{description})) {
+                            $parsed->[$i]->{description} = "NONE";
+                        }
+                        if (!defined($parsed->[$i]->{label})) {
+                            $parsed->[$i]->{label} = "Experiment ".$i;
+                        }
+                        if ($tempArray[0] =~ /(peg\..+$)/) { # "rna.xxx" are ignored.
+                            my $pegid;                        
+                            $pegid = $1;
+                            $parsed->[$i]->{genes}->{$pegid} = $tempArray[$i];
+                        }                        
+		}
+	    }
+	}
+    }
+    shift @{$parsed}; # delete an empty element.
+
+    my $rxnTbl = $mdl->reaction_table;
+    my $input;
+    for(my $i=0; $i < @{$parsed}; $i++) {
+        $fbaStartParameters->{media} = $parsed->[$i]->{media};
+        my $inner_input = {
+            fbaStartParameters => $fbaStartParameters,
+            findTightBounds => 0,
+            deleteNoncontributingRxn => 0,
+            identifyCriticalBiomassCpd => 0,
+            label => $parsed->[$i]->{label},
+            description => $parsed->[$i]->{description},
+            media => $parsed->[$i]->{media},
+        };
+        $input->[$i] = $inner_input;
+        for (my $j=0; $j < $rxnTbl->size(); $j++) {
+            my $rxnData = $rxnTbl->get_row($j);
+            my $rxnid = $rxnData->{LOAD}->[0];
+
+            my $expression_value = 0;
+            $expression_value = $args->{cutoff} if (scalar @{$rxnData->{'ASSOCIATED PEG'}} == 0); 
+            
+            # Take the max value of "OR" genes.
+            foreach my $gene_raw (@{$rxnData->{'ASSOCIATED PEG'}}) {
+                my @pegs = split (/\+/, $gene_raw);
+
+                my $temp_expression_value = $parsed->[$i]->{genes}->{$pegs[0]}; # the first one.
+                # If data are not available for a reaction, it is treated as if 
+                # it surpassed the cutoff.
+                # See page 3, the left column of the paper.
+                if (!defined $temp_expression_value or $temp_expression_value eq "NA") { 
+                    $temp_expression_value=$args->{cutoff}; 
+                }
+                else {
+                    # Take the min value of "AND" genes.
+                    # This depends on the assumption that:
+                    # 	"peg.xxx+peg.yyy|peg.zzz" means xxx and yyy are "AND" genes, they and zzz are "OR" genes.
+                    # See page 8 of 'Gene Expression Data Processing' on the paper.
+                    foreach (my $k = 1; $k < @pegs; $k++) {
+                        my $current = $parsed->[$i]->{genes}->{$pegs[$k]};
+                        $temp_expression_value =  $current if ($current < $temp_expression_value);
+                    }    
+                }
+                $expression_value = $temp_expression_value if ($temp_expression_value > $expression_value);
+            }
+            
+            #$parsed->{rxns}->{$rxnid}->[$j] = $expression_value;
+            my $reaction_inconsistency_score = $args->{cutoff} - $expression_value;
+            if ($reaction_inconsistency_score <= 0) {
+                $reaction_inconsistency_score = 0 ;
+            }
+            else {
+                # reactions with expression values under cutoff. 
+                push (@{$parsed->[$i]->{rxnUnderCutoff}}, $rxnid);
+            }
+            $input->[$i]->{RIscores}->{$rxnid} = $reaction_inconsistency_score; 
+        }
+    }
+
+    # run fbaGimme for each experiment
+    my $jobList;
+    foreach my $exp (@{$input}) {
+	my $inner_results = $mdl->fbaGimme($exp);
+        my $success;
+        if (defined $inner_results->{success} && $inner_results->{success} == 0) {
+            $success = "failed";
+            $inner_results->{media} = $exp->{media};
+            $inner_results->{biomass} = "No growth";
+        }      
+	push @$jobList, {results => $inner_results,
+			status=>$success};
+    }
+
+    # then collate the results
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my $genome= $obj->genome();
+
+    #Compiling results into a single output hash
+    my $results;
+    for (my $i=0; $i < @{$jobList}; $i++) {
+	$results->{labels}->[$i] = $input->[$i]->{label};
+        $results->{descriptions}->[$i] = $input->[$i]->{description};
+	$results->{model}->[$i] = $args->{model};
+	$results->{genome}->[$i] = $genome;
+	$results->{cutoff}->[$i] = $args->{cutoff};
+	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
+	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
+	$results->{fluxes}->[$i] = $jobList->[$i]->{results}->{fluxes};
+        $results->{IS}->[$i] = $jobList->[$i]->{results}->{IS};
+        foreach my $rxnid (@{$parsed->[$i]->{rxnUnderCutoff}}) {
+            # was tried to be cut off, but need some flux 
+            $results->{conflict}->[$i] .=  $rxnid . ";" if ($jobList->[$i]->{results}->{fluxes}->{$rxnid} != 0);
+            # Compute inconsistency score of each reaction.         
+            $results->{gimme}->{$rxnid}->[$i] = abs($jobList->[$i]->{results}->{fluxes}->{$rxnid} * $input->[$i]->{RIscores}->{$rxnid});
+        }
+    }
+#Printing results
+    my $headings = ["Labels","Cutoff","Descriptions","Media","Model","Genome","Fluxes","Biomass","Inconsistency_Score", "Conflict_Reactions"];
+    my $translation = {Labels => "labels",Cutoff => "cutoff",Descriptions => "descriptions",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass", Inconsistency_Score => "IS", Conflict_Reactions => "conflict"};
+    $args->{geneExpression} = File::Basename::basename($args->{geneExpression});
+    my $filename = "gimmeResults-cutoff".$args->{cutoff}."-".$args->{model}."-".$args->{geneExpression};
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+
+    for (my $i=0; $i < @{$headings}; $i++) {
+	if (defined($results->{$translation->{$headings->[$i]}})) {
+	    print OUTPUT $headings->[$i];
+	    if ($headings->[$i] eq "Fluxes") {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t";
+		    foreach my $entity (keys(%{$results->{fluxes}->[$j]})) {
+			print OUTPUT $entity.":".$results->{fluxes}->[$j]->{$entity}.";";
+		    }
+		}
+	    } else {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+		}
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+
+    if (defined($results->{gimme})) {
+	foreach my $rxnid (sort keys(%{$results->{gimme}})) {
+	    # here we need to print the results for each experiment
+	    print OUTPUT $rxnid;
+	    for (my $j=0; $j < @{$results->{gimme}->{$rxnid}}; $j++) {
+		print OUTPUT "\t".$results->{gimme}->{$rxnid}->[$j];
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION 
+=EXAMPLE
+
+=cut
+sub fbaeflux {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["geneExpression",1,undef,"File with gene expressions"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+			    ],[@Data],"");
+
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!-e $self->ws()->directory().$args->{geneExpression}) {
+    	ModelSEED::utilities::ERROR("Could not find gene expression file ".$self->ws()->directory().$args->{geneCalls});
+    }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
+    my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{geneExpression});
+    my $parsed;
+    
+    # parse data to hash by label and gene. 
+    for (my $i=0; $i < @{$data}; $i++) {
+            my @tempArray = split(/\t/,$data->[$i]);
+            if (@tempArray >= 2) {
+                for (my $i=1; $i < @tempArray; $i++) {
+                    if ($tempArray[0] eq "Labels") {
+                        my $inner_parsed = {
+                            label => $tempArray[$i]
+                        };
+                        $parsed->[$i] = $inner_parsed;
+                    } elsif ($tempArray[0] eq "Descriptions") {
+                        $parsed->[$i]->{description} = $tempArray[$i];
+                    } elsif ($tempArray[0] eq "Media") {
+                        if (length($tempArray[$i]) == 0) {
+                            $tempArray[$i] = "Complete";
+                        }
+                        $parsed->[$i]->{media} = $tempArray[$i];
+                    } else {
+                        if (!defined($parsed->[$i]->{media})) {
+                            $parsed->[$i]->{media} = "Complete";
+                        }
+                        if (!defined($parsed->[$i]->{description})) {
+                            $parsed->[$i]->{description} = "NONE";
+                        }
+                        if (!defined($parsed->[$i]->{label})) {
+                            $parsed->[$i]->{label} = "Experiment ".$i;
+                        }
+                        if ($tempArray[0] =~ /(peg\..+$)/) { # "rna.xxx" are ignored.
+                            my $pegid;                        
+                            $pegid = $1;
+                            $parsed->[$i]->{genes}->{$pegid} = $tempArray[$i];
+                        }                        
+		}
+	    }
+	}
+    }
+    shift @{$parsed}; # delete an empty element.
+
+    # Associate genes with reactions 
+    my $rxnTbl = $mdl->reaction_table;
+    # run fba-fva to get range of each reaction
+    my $range;
+
+    my $input;
+    for(my $i=0; $i < @{$parsed}; $i++) {
+        if (!defined $range->{$parsed->[$i]->{media}}) {
+            $fbaStartParameters->{media} = $parsed->[$i]->{media};
+            $range->{$parsed->[$i]->{media}} = $mdl->fbaFVA({fbaStartParameters => $fbaStartParameters,}); # need to conduct for each media.
+        }
+        my $max = 0;
+        my $inner_input = {
+            fbaStartParameters => {},
+            label => $parsed->[$i]->{label},
+            description => $parsed->[$i]->{description},
+            media => $parsed->[$i]->{media},
+        };
+        $input->[$i] = $inner_input;
+        for (my $j=0; $j < $rxnTbl->size(); $j++) {
+            my $rxnData = $rxnTbl->get_row($j);
+            my $rxnid = $rxnData->{LOAD}->[0];
+
+            my $expression_value = 0;
+            $expression_value = -1 if (scalar @{$rxnData->{'ASSOCIATED PEG'}} == 0); # -1 indicates no expression value available.
+            
+            # Take the max value of "OR" genes.
+            foreach my $gene_raw (@{$rxnData->{'ASSOCIATED PEG'}}) {
+                my @pegs = split (/\+/, $gene_raw);
+
+                my $temp_expression_value = $parsed->[$i]->{genes}->{$pegs[0]}; # the first one.
+                # If data are not available for a reaction, full flux is allowed.
+                # See page 12, the left column of the paper.
+                if (!defined $temp_expression_value  or $temp_expression_value eq "NA") { 
+                    $temp_expression_value=-1; # -1 indicates no expression value available.
+                }
+                else {
+                    # Take the min value of "AND" genes.
+                    # This depends on the assumption that:
+                    # 	"peg.xxx+peg.yyy|peg.zzz" means xxx and yyy are "AND" genes, they and zzz are "OR" genes.
+                    # See page 8 of 'Gene Expression Data Processing' on the paper.
+                    foreach (my $k = 1; $k < @pegs; $k++) {
+                        my $current = $parsed->[$i]->{genes}->{$pegs[$k]};
+                        $temp_expression_value =  $current if ($current < $temp_expression_value);
+                    }    
+                }
+                $expression_value = $temp_expression_value if ($temp_expression_value > $expression_value or $temp_expression_value == -1);
+            }
+            $parsed->[$i]->{rxns}->{$rxnid} = $expression_value;
+            $max = $expression_value if ($max < $expression_value);
+        }
+        
+        foreach my $rxnid (keys %{$parsed->[$i]->{rxns}}) {
+            my $bound;
+            if ($parsed->[$i]->{rxns}->{$rxnid} == -1) {
+                # No gene was associated.
+                $bound = 1;
+            }
+            else {
+                # normalization with "sigmoidal,exponential and polynomial increasing function."
+                # see page 12, the right column.
+                sub f{
+                    return $_[0];
+                }
+                $bound = &f($parsed->[$i]->{rxns}->{$rxnid} / $max); 
+            }
+            
+            $input->[$i]->{upper}->{$rxnid} = $bound * $range->{$parsed->[$i]->{media}}->{tb}->{$rxnid}->{max};
+            $input->[$i]->{lower}->{$rxnid} = $bound * $range->{$parsed->[$i]->{media}}->{tb}->{$rxnid}->{min};
+        }
+    }
+    
+    my $jobList;    
+    for (my $i = 0; $i < @{$input}; $i++) {
+        delete $fbaStartParameters->{rxnFluxConstraint};
+        foreach my $rxnid (keys %{$input->[$i]->{upper}}) {
+            $fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{min} = $input->[$i]->{lower}->{$rxnid};
+            $fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{max} = $input->[$i]->{upper}->{$rxnid};
+        }
+        my $inner_results = $mdl->fbaCalculateGrowth({
+            fbaStartParameters => {
+                rxnFluxConstraint => $fbaStartParameters->{rxnFluxConstraint},
+                media => $input->[$i]->{media},
+            },
+            problemDirectory => $fbaStartParameters->{filename},
+        });
+	if (!defined($inner_results->{growth})) {
+		ModelSEED::utilities::ERROR("FBA growth test of ".$args->{model}." failed!");
+	}
+        $jobList->[$i]->{result} = $inner_results;
+    }
+    
+# then collate the results
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my $genome= $obj->genome();
+
+   my $results;
+   for (my $i=0; $i < @{$jobList}; $i++) {
+       $results->{labels}->[$i] = $input->[$i]->{label};
+       $results->{descriptions}->[$i] = $input->[$i]->{description};
+       $results->{media}->[$i] = $parsed->[$i]->{media};
+       $results->{biomass}->[$i] = $jobList->[$i]->{result}->{growth};
+       $results->{noGrowthCompounds}->[$i] = $jobList->[$i]->{result}->{noGrowthCompounds} if (defined($jobList->[$i]->{result}->{noGrowthCompounds}->[0]) and $jobList->[$i]->{result}->{growth} <= 0.000001);
+       foreach my $rxnid (keys %{$input->[$i]->{upper}}) {
+           $results->{rxnFluxConstraint}->[$i] .="$rxnid|". $input->[$i]->{lower}->{$rxnid}. "|". $input->[$i]->{upper}->{$rxnid}. ";";
+        }
+   }
+    
+    my $headings = ["Labels","Descriptions","Media","Biomass","Ungenerated_compounds", "Reaction_flux_constraint"];
+    my $translation = {Labels => "labels", Descriptions => "descriptions", Media => "media", Biomass => "biomass", Ungenerated_compounds => "noGrowthCompounds", Reaction_flux_constraint =>"rxnFluxConstraint"};
+
+    $args->{geneExpression} = File::Basename::basename($args->{geneExpression});
+    my $filename = "efluxResults-".$args->{model}."-".$args->{geneExpression};
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+
+    for (my $i=0; $i < @{$headings}; $i++) {
+        if (defined($results->{$translation->{$headings->[$i]}})) {
+	   print OUTPUT $headings->[$i];
+           if ($headings->[$i] eq "Ungenerated_compounds") {
+               for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+                   print OUTPUT "\t";
+                   foreach my $entity (@{$results->{noGrowthCompounds}->[$j]}) {
+                       my $cpd = $self->figmodel()->get_compound($entity);
+                       if(defined($cpd)) {
+                           print OUTPUT join(":", ($cpd->ppo->id, $cpd->ppo->name)) . ";";
+                       } else {
+                           print OUTPUT $entity . ";";
+                       }
+                   }
+               }
+           } else {
+               for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+                   print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+               }
+           }
+	   print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION 
+=EXAMPLE
+
+=cut
+sub fbaprom {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["geneCalls",1,undef,"File with gene calls"],
+        ["tfs",1,undef,"File with transcriptional factors adn their targets."],
+        ["kappa",0,1,"represents deviation from those constraints"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+			    ],[@Data],"");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!-e $self->ws()->directory().$args->{geneCalls}) {
+    	ModelSEED::utilities::ERROR("Could not find gene call file ".$self->ws()->directory().$args->{geneCalls});
+    }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
+    my $parsed;
+
+
+    my $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{geneCalls});
+    for (my $i=0; $i < @{$data}; $i++) {
+	my @tempArray = split(/\t/,$data->[$i]);
+	if (@tempArray >= 2) {
+	    for (my $i=1; $i < @tempArray; $i++) {
+		if ($tempArray[0] eq "Labels") {
+		    my $inner_parsed = {
+			label => $tempArray[$i]
+		    };
+		    $parsed->[$i] = $inner_parsed;
+		} elsif ($tempArray[0] eq "Descriptions") {
+		    $parsed->[$i]->{description} = $tempArray[$i];
+		} elsif ($tempArray[0] eq "Media") {
+		    if (length($tempArray[$i]) == 0) {
+			$tempArray[$i] = "Complete";
+		    }
+		    $parsed->[$i]->{media} = $tempArray[$i];
+		} else {
+		    if (!defined($parsed->[$i]->{media})) {
+			$parsed->[$i]->{media} = "Complete";
+		    }
+		    if (!defined($parsed->[$i]->{description})) {
+			$parsed->[$i]->{description} = "NONE";
+		    }
+		    if (!defined($parsed->[$i]->{label})) {
+			$parsed->[$i]->{label} = "Experiment ".$i;
+		    }
+		    $parsed->[$i]->{geneCalls}->{$tempArray[0]} = $tempArray[$i];
+		}
+	    }
+	}
+    }
+    shift @{$parsed}; # delete an empty element.
+
+    # Compute probability for each tf-target as loading it from a file.
+    $data = ModelSEED::utilities::LOADFILE($self->ws()->directory().$args->{tfs});
+
+    my %isOn = (-1 => 0,0 => 1,1 => 1); # expression value = 1 or 0 -> on, = -1 -> off. # but what if undef?
+    ## $probability_map->{target}->{transcriptional factor}->[0] = P(target = ON|TF = OFF)
+    ##                                                     ->[1] = P(target = ON|TF = ON)
+    my $probability_map = {}; 
+    foreach (@{$data}) {
+	my @genes = split;
+        next if (!$genes[0] =~ /^peg\..+/);
+        my $tf = shift @genes;
+        foreach my $target (@genes) {
+            my $tf_off_count = 0;
+            my $tf_on_count = 0;
+            $probability_map->{$target}->{$tf}= [0,0];
+
+            for(my $i=0; $i < @{$parsed}; $i++) {  
+                if ($isOn{$parsed->[$i]->{geneCalls}->{$tf}}) {
+                    $tf_on_count++;
+                    $probability_map->{$target}->{$tf}->[1]++ if ($isOn{$parsed->[$i]->{geneCalls}->{$target}});                     
+                }
+                else {
+                    $tf_off_count++;
+                    $probability_map->{$target}->{$tf}->[0]++ if ($isOn{$parsed->[$i]->{geneCalls}->{$target}});                     
+                }             
+            }
+            my $notFoundDefaultValue = 1; # = 0 if there are enough data.
+            if ($tf_on_count != 0) { 
+                $probability_map->{$target}->{$tf}->[1] /= $tf_on_count;
+            }
+            else {
+                $probability_map->{$target}->{$tf}->[1] = $notFoundDefaultValue;
+            }
+            
+            if ($tf_off_count != 0) {
+                $probability_map->{$target}->{$tf}->[0] /= $tf_off_count;
+            }
+            else {
+                $probability_map->{$target}->{$tf}->[0] = $notFoundDefaultValue;
+            }
+      }
+    }
+
+    # Associate genes with reactions 
+    my $rxnTbl = $mdl->reaction_table;
+    # run fba-fva to get range of each reaction
+#    use Clone qw(clone);
+    my $input;
+    my $range;
+    for(my $i=0; $i < @{$parsed}; $i++) {
+        if (!defined $range->{$parsed->[$i]->{media}}) {
+            $fbaStartParameters->{media} = $parsed->[$i]->{media};
+            $range->{$parsed->[$i]->{media}} = $mdl->fbaFVA({fbaStartParameters => $fbaStartParameters,}); # need to conduct for each media.
+        }
+        my $inner_input = {
+            fbaStartParameters => {media => $parsed->[$i]->{media},},
+            findTightBounds => 0,
+            deleteNoncontributingRxn => 0,
+            identifyCriticalBiomassCpd => 0,
+            label => $parsed->[$i]->{label},
+            kappa => $args->{kappa},
+        };
+        $input->[$i] = $inner_input;
+        for (my $j=0; $j < $rxnTbl->size(); $j++) {
+            my $rxnData = $rxnTbl->get_row($j);
+            my $rxnid = $rxnData->{LOAD}->[0];
+
+            my $p = 0;
+            $p = 1 if (scalar @{$rxnData->{'ASSOCIATED PEG'}} == 0);
+            
+            foreach my $gene_raw (@{$rxnData->{'ASSOCIATED PEG'}}) {
+                my @pegs = split (/\+/, $gene_raw);
+
+                # more than one genes: min
+                # more than one gene probabilities(or tfs): max
+                # No gene associated: 1
+                # at least one gene is associated, but no probability available: 1 
+                my $rxnP = 1; 
+                foreach my $peg (@pegs) {
+                    my $geneP = 0;
+                    # skip this if the peg is not on the map.
+                    foreach my $tf (keys %{$probability_map->{$peg}}) {
+                        my $current = $probability_map->{$peg}->{$tf}->[$isOn{$parsed->[$i]->{geneCalls}->{$tf}}];
+                        $geneP = $current if ($geneP < $current); # take max
+                    }
+                    $rxnP =  $geneP if ($geneP != 0 and $geneP < $rxnP); # take min. But if no p available, use 1.
+                }
+                    $p = $rxnP if ($rxnP > $p);
+            }
+
+            
+            # ignore if no change have been made.
+            if ($p != 1) {
+                $parsed->[$i]->{rxns}->{$rxnid} = $p;
+                $input->[$i]->{upper}->{$rxnid} = $p * $range->{$parsed->[$i]->{media}}->{tb}->{$rxnid}->{max};
+                $input->[$i]->{lower}->{$rxnid} = $p * $range->{$parsed->[$i]->{media}}->{tb}->{$rxnid}->{min};
+            }
+        }
+    }
+    my $jobList;    
+    for (my $i = 0; $i < @{$input}; $i++) {
+        foreach my $rxnid (keys %{$input->[$i]->{upper}}) {
+            $fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{min} = $input->[$i]->{lower}->{$rxnid};
+            $fbaStartParameters->{rxnFluxConstraint}->{$rxnid}->{max} = $input->[$i]->{upper}->{$rxnid};
+        }
+        $input->[$i]->{fbaStartParameters}->{rxnFluxConstraint} = $fbaStartParameters->{rxnFluxConstraint};
+	my $inner_results = $mdl->fbaSoftConstraint($input->[$i]);
+        my $success;
+        if (defined $inner_results->{success} && $inner_results->{success} == 0) {
+            $success = "failed";
+            $inner_results->{media} = $input->[$i]->{media};
+            $inner_results->{biomass} = "No growth";
+        }      
+	push @$jobList, {results => $inner_results,
+			status=>$success};
+    }
+
+    # then collate the results
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my $genome= $obj->genome();
+
+    #Compiling results into a single output hash
+    my $results;
+     for (my $i=0; $i < @{$jobList}; $i++) {
+	$results->{labels}->[$i] = $input->[$i]->{label};
+	$results->{model}->[$i] = $args->{model};
+	$results->{genome}->[$i] = $genome;
+	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
+	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
+	$results->{cpdfluxes}->[$i] = $jobList->[$i]->{results}->{cpdfluxes};
+        $results->{objective}->[$i] = $jobList->[$i]->{results}->{objective};
+
+        foreach my $rxnid (sort keys %{$jobList->[$i]->{results}->{rxnfluxes}}) {
+            $results->{rxnfluxes}->{$rxnid}->[$i] = $jobList->[$i]->{results}->{rxnfluxes}->{$rxnid};
+        }
+    }
+#Printing results
+    my $headings = ["Labels","Media","Model","Genome","Cpdfluxes","Biomass","Objective"];
+    my $translation = {Labels => "labels",Media => "media",Model => "model",Genome => "genome",Cpdfluxes => "cpdfluxes",Biomass => "biomass", Objective => "objective"};
+    
+    $args->{geneCalls} = File::Basename::basename($args->{geneCalls});
+    my $filename = "promResults-".$args->{model}."-".$args->{geneCalls};
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+
+    for (my $i=0; $i < @{$headings}; $i++) {
+	if (defined($results->{$translation->{$headings->[$i]}})) {
+	    print OUTPUT $headings->[$i];
+	    if ($headings->[$i] eq "Cpdfluxes") {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t";
+		    foreach my $entity (keys(%{$results->{cpdfluxes}->[$j]})) {
+			print OUTPUT $entity.":".$results->{cpdfluxes}->[$j]->{$entity}.";";
+		    }
+		}
+	    } else {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+		}
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+
+    if (defined($results->{rxnfluxes})) {
+	foreach my $rxnid (sort keys(%{$results->{rxnfluxes}})) {
+	    # here we need to print the results for each experiment
+	    print OUTPUT $rxnid;
+	    for (my $j=0; $j < @{$results->{rxnfluxes}->{$rxnid}}; $j++) {
+		print OUTPUT "\t".$results->{rxnfluxes}->{$rxnid}->[$j];
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
+=DESCRIPTION 
+=EXAMPLE
+
+=cut
+sub fbasoftconstraint {
+    my($self,@Data) = @_;
+    my $args = $self->check([
+	["model",1,undef,"Full ID of the model to be analyzed"],
+	["rxnKO",0,undef,"A ',' delimited list of reactions to be knocked out during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where reactions to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["geneKO",0,undef,"A ',' delimited list of genes to be knocked out during the analysis. May also provide the name of a [[Gene Knockout File]] in the workspace where genes to be knocked out are listed. This file MUST have a '.lst' extension."],
+	["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
+	["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
+	["options",0,undef,"A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+        ["kappa",1,1,"represents deviation from those constraints"],
+        ["rxnFluxConstraint",1,undef,"A ';' delimited list of reactions to be constraint during the analysis. e.g. 'rxn00001|-99|111;rxn00002|-1000|1000'"]
+			    ],[@Data],"");
+    my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
+    my $mdl = $self->figmodel()->get_model($args->{model});
+    if (!defined($mdl)) {
+	ModelSEED::utilities::ERROR("Model ".$args->{model}." not found in database!");
+    }
+    if (!-e $self->ws()->directory().$args->{geneCalls}) {
+    	ModelSEED::utilities::ERROR("Could not find gene call file ".$self->ws()->directory().$args->{geneCalls});
+    }
+    # read the input file with experiments as columns with labels, media, descriptions and gene calls
+    my $parsed;
+
+    my $jobList;    
+	my $inner_results = $mdl->fbaSoftConstraint({fbaStartParameters => $fbaStartParameters, kappa => $args->{kappa}});
+	push @$jobList, {results => $inner_results};
+
+    # then collate the results
+    my $obj = $self->db()->get_object("model",{id => $args->{model}});
+    my $genome= $obj->genome();
+
+    #Compiling results into a single output hash
+    my $results;
+     for (my $i=0; $i < @{$jobList}; $i++) {
+	$results->{labels}->[$i] = "soft constraint";
+	$results->{model}->[$i] = $args->{model};
+	$results->{genome}->[$i] = $genome;
+	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
+	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
+	$results->{cpdfluxes}->[$i] = $jobList->[$i]->{results}->{cpdfluxes};
+        $results->{objective}->[$i] = $jobList->[$i]->{results}->{objective};
+
+        foreach my $rxnid (sort keys %{$jobList->[$i]->{results}->{rxnfluxes}}) {
+            $results->{rxnfluxes}->{$rxnid}->[$i] = $jobList->[$i]->{results}->{rxnfluxes}->{$rxnid};
+        }
+    }
+
+#Printing results
+    my $headings = ["Labels","Media","Model","Genome","Cpdfluxes","Biomass","Objective"];
+    my $translation = {Labels => "labels",Media => "media",Model => "model",Genome => "genome",Cpdfluxes => "cpdfluxes",Biomass => "biomass", Objective => "objective"};
+    my $filename = "softConstraintResults-".$args->{model}.".txt";
+    open (OUTPUT, ">".$self->ws()->directory().$filename) or die "Cannot open $filename:$!";
+
+    for (my $i=0; $i < @{$headings}; $i++) {
+	if (defined($results->{$translation->{$headings->[$i]}})) {
+	    print OUTPUT $headings->[$i];
+	    if ($headings->[$i] eq "Cpdfluxes") {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t";
+		    foreach my $entity (keys(%{$results->{cpdfluxes}->[$j]})) {
+			print OUTPUT $entity.":".$results->{cpdfluxes}->[$j]->{$entity}.";";
+		    }
+		}
+	    } else {
+		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
+		    print OUTPUT "\t".$results->{$translation->{$headings->[$i]}}->[$j];
+		}
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+
+    if (defined($results->{rxnfluxes})) {
+	foreach my $rxnid (sort keys(%{$results->{rxnfluxes}})) {
+	    # here we need to print the results for each experiment
+	    print OUTPUT $rxnid;
+	    for (my $j=0; $j < @{$results->{rxnfluxes}->{$rxnid}}; $j++) {
+		print OUTPUT "\t".$results->{rxnfluxes}->{$rxnid}->[$j];
+	    }
+	    print OUTPUT "\n";
+	}
+    }
+    close(OUTPUT);
+    print "The results were printed to $filename.\n"; 
+}
+
+=head
+=CATEGORY
+Flux Balance Analysis Operations
 =DESCRIPTION
 This function utilizes flux balance analysis to calculate a minimal media for the specified model. 
 =EXAMPLE
@@ -1768,6 +2536,7 @@ sub fbaminimalmedia {
 		["drainRxn",0,undef,"A ',' delimited list of reactions whose reactants will be added as drain fluxes in the model during the analysis. May also provide the name of a [[Reaction List File]] in the workspace where drain reactions are listed. This file MUST have a '.lst' extension."],
 		["uptakeLim",0,undef,"Specifies limits on uptake of various atoms. For example 'C:1;S:5'"],
 		["options",0,"forcedGrowth","A ';' delimited list of optional keywords that toggle the use of various additional constrains during the analysis. See [[Flux Balance Analysis Options Documentation]]."],
+		["rxnFluxConstraint",0,undef,"A ';' delimited list of reactions to be constraint during the analysis. e.g. 'rxn00001|-99|111;rxn00002|-1000|1000'"],
 	],[@Data],"calculates the minimal media for the specified model");
 	my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
     my $mdl = $self->figmodel()->get_model($args->{model});
@@ -1831,6 +2600,7 @@ sub fbafva {
 		["savetodb",0,0,"If set to '1', this flag indicates that the results of the fva should be preserved in the Model SEED database associated with the indicated metabolic model. Database storage of results is necessary for results to appear in the Model SEED web interface."],
 		["filename",0,undef,"The name of the file in the user's workspace where the FVA results should be printed. An extension should not be included."],
 		["saveformat",0,"EXCEL","The format in which the output of the FVA should be stored. Options include 'EXCEL' or 'TEXT'."],
+		["rxnFluxConstraint",0,undef,"A ';' delimited list of reactions to be constraint during the analysis. e.g. 'rxn00001|-99|111;rxn00002|-1000|1000'"],
 	],[@Data],"performs FVA (Flux Variability Analysis) studies");
 	#$args->{media} =~ s/\_/ /g;
     my $fbaStartParameters = $self->figmodel()->fba()->FBAStartParametersFromArguments({arguments => $args});
@@ -1915,7 +2685,6 @@ sub fbafva {
 					}
 				}
 			}
-			#print Data::Dumper->Dump([$newRow]);
 			$rxntbl->add_row($newRow);
 		} elsif ($obj =~ m/(cpd\d+)(\[[[a-z]+\])*/) {
 			$newRow->{"Compound"} = [$1];
