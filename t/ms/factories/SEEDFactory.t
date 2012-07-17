@@ -1,40 +1,71 @@
 use strict;
 use warnings;
 use ModelSEED::MS::Factories::SEEDFactory;
-use ModelSEED::MS::Biochemistry;
 use Test::More;
 use Data::Dumper;
-
 my $testCount = 0;
 {
-    # IMPORTANT - change hardcoded data directory in ObjectManager before running
-
-    # my $om = ModelSEED::MS::ObjectManager->new();
-    # $om->authenticate();
-    # my $seedfact = ModelSEED::MS::Factories::SEEDFactory->new({om => $om});
-    # ok defined($om), "Created object manager!";
-    # ok defined($seedfact), "Created seedfactory!";
-    # my $anno = $seedfact->buildMooseAnnotation({
-    # 	genome_id => "83333.1"
-    # });
-    # my $mapping = $anno->mapping();
-    # ok defined($anno), "Created annotation!";
-    # ok defined($mapping), "Created mapping!";
-    # print "Saving objects!";
-    # $anno->save();
-    # $mapping->save();
-
-     print "Loading objects!\n";
-     my $newom = ModelSEED::MS::ObjectManager->new();
-     $newom->authenticate();
-     my $newanno = $newom->get("Annotation",
-         $newom->filedb->get_user_uuids("Annotation", $newom->user->{login})->[0]);
-     my $newmapp = $newom->get("Mapping",
-         $newom->filedb->get_user_uuids("Mapping", $newom->user->{login})->[0]);
-
-     print STDERR Dumper([$newanno]); # OM returns raw data, not a moose object
-     print STDERR Dumper([$newmapp]); # OM returns raw data, not a moose object
+     # Test basic object initialization
+     my $factory = ModelSEED::MS::Factories::SEEDFactory->new;
+     ok defined $factory, "Should create factory object";
+     ok defined $factory->sapsvr, "Should create SAP server object";
+     ok defined $factory->msseedsvr, "Should create MS Seed Support object";
+     ok defined $factory->kbsvr, "Should create Kbase CDMI object";
 
     $testCount += 4;
 }
+
+# Tests for genome source
+{
+    my $factory = ModelSEED::MS::Factories::SEEDFactory->new;
+    my %genomesToType = qw(
+        83333.1 PUBSEED
+        107806.10 PUBSEED
+        224308.1 PUBSEED
+        kb|g.0 KBase
+    );
+    foreach my $id (keys %genomesToType) {
+        my $got = $factory->getGenomeSource($id);
+        my $expected = $genomesToType{$id};
+        is $got, $expected, "Should get correct type for $id";
+        $testCount += 1;
+    }
+}
+
+# Tests for listing genomes
+{
+    my $factory = ModelSEED::MS::Factories::SEEDFactory->new;
+    my $kbGenomes = $factory->availableGenomes(source => 'KBASE');
+    ok scalar(keys %$kbGenomes), "Got more than zero genomes from KBase";
+    my $seedGenomes = $factory->availableGenomes(source => 'pubseed');
+    ok scalar(keys %$seedGenomes), "Got more than zero genomes from PubSEED";
+    # TODO - implement list for RAST
+    $testCount += 2;
+}
+
+# TODO Tests for getting genome source
+
+# Tests for getting genome attributes
+{
+    my $factory = ModelSEED::MS::Factories::SEEDFactory->new;
+    my @genomes = qw(kb|g.0 83333.1 224308.1);
+    foreach my $id (@genomes) {
+        my $a = $factory->getGenomeAttributes($id);
+        ok defined($a->{name}), "$id has name";
+        ok defined($a->{taxonomy}), "$id has name";
+        ok defined($a->{size}), "$id has size";
+        ok defined($a->{gc}), "$id has gc";
+        $testCount += 4;
+    }
+}
+
+# TODO Tests for getting genome features
+{
+    my $factory = ModelSEED::MS::Factories::SEEDFactory->new;
+    my @genomes = qw(kb|g.0);
+    foreach my $id (@genomes) {
+        my $a = $factory->getGenomeFeatures($id);
+    }
+}
+
 done_testing($testCount);

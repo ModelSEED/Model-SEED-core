@@ -1,71 +1,129 @@
 ########################################################################
-# ModelSEED::MS::Factories - This is the factory for producing the moose objects from the SEED data
+# ModelSEED::MS::Factories::Annotation
+# 
 # Authors: Christopher Henry, Scott Devoid, Paul Frybarger
 # Contact email: chenry@mcs.anl.gov
-# Development location: Mathematics and Computer Science Division, Argonne National Lab
-# Date of module creation: 2012-03-15T16:44:01
+# Development location:
+#   Mathematics and Computer Science Division, Argonne National Lab;
+#   Computation Institute, University of Chicago
+#
+# Date of module creation: 2012-06-03
 ########################################################################
-use strict;
-use namespace::autoclean;
+=pod
+=head1 ModelSEED::MS::Factories::Annotation
+
+A factory for producing an Annotation object from several data
+sources.
+
+=head2 ABSTRACT
+
+    my $fact = ModelSEED::MS::Factories::Annotation->new;
+
+    # Get list of available genome IDs
+    my $genomes = $fact->availableGenomes();
+    my $kbase_genomes = $fact->availableGenomes(source => 'KBase');
+    my $rast_genomes = $fact->availableGenomes(source => 'RAST');
+    my $pubseed_genomes = $fact->availableGenomes(source => 'PubSEED');
+    # These are all array refs of genome IDs
+
+=cut
+package ModelSEED::MS::Factories::SEEDFactory;
+use common::sense;
+use Moose;
 use Class::Autouse qw(
 	ModelSEED::MS::Mapping
 	ModelSEED::MS::Annotation
 	ModelSEED::utilities
 	ModelSEED::MS::Utilities::GlobalFunctions
+    Bio::KBase::CDMI::Client
+    SAPserver
+    MSSeedSupportClient
 );
-package ModelSEED::MS::Factories::SEEDFactory;
-use Moose;
-use SAPserver;
-use MSSeedSupportClient;
+use Data::Dumper; # DEBUG
 
 # ATTRIBUTES:
-has sapsvr => ( is => 'rw', isa => 'SAPserver', lazy => 1, builder => '_buildsapsvr' );
-has msseedsvr => ( is => 'rw', isa => 'MSSeedSupportClient', lazy => 1, builder => '_buildmsseedsvr' );
+has auth => (is => 'rw', isa => 'ModelSEED::Auth');
+has sapsvr => ( is => 'rw', isa => 'SAPserver', lazy => 1, builder => '_build_sapsvr' );
+has kbsvr => ( is => 'rw', isa => 'Bio::KBase::CDMI::Client', lazy => 1, builder => '_build_kbsvr');
+has msseedsvr => ( is => 'rw', isa => 'MSSeedSupportClient', lazy => 1, builder => '_build_msseedsvr' );
 has om => ( is => 'rw', isa => 'ModelSEED::Store');
 
 
 # BUILDERS:
-sub _buildsapsvr { return SAPserver->new(); }
-sub _buildmsseedsvr { return MSSeedSupportClient->new(); }
+sub _build_sapsvr { return SAPserver->new(); }
+sub _build_kbsvr { return Bio::KBase::CDMI::Client->new("http://bio-data-1.mcs.anl.gov/services/cdmi_api") };
+sub _build_msseedsvr { return MSSeedSupportClient->new(); }
 
 
 # CONSTANTS:
 sub _type { return 'SEEDFactory'; }
 
-
 # FUNCTIONS:
+sub availableGenomes {
+    my $self = shift @_;
+    my $args = $self->_getArgs(@_);
+    my $source = $args->{source};
+    my $servers = [qw(sapsvr kbsvr msseedsvr)];
+    if(defined($source)) {
+        my %sourceMap = qw(
+            pubseed sapsvr
+            kbase kbsvr
+            rast msseedsvr
+        );
+        die "Unknown Source: $source" unless(defined $sourceMap{lc($source)});
+        $servers = [ $sourceMap{lc($source)} ];
+    }
+    my $data;
+    foreach my $server (@$servers) {
+        my $hash;
+        if($server eq 'sapsvr') {
+            $hash = $self->$server->all_genomes({-prokaryotic => 0})
+        } elsif($server eq 'kbsvr') {
+            $hash = $self->$server->all_entities_Genome(0, 10000000, [qw(scientific_name)]);
+            $hash = { map { $_ => $hash->{$_}->{scientific_name} } keys %$hash };
+        }
+        foreach my $key (keys %$hash) {
+            $data->{$key} = $hash->{$key};
+        }
+    }
+    return $data;
+}
+
 sub buildMooseAnnotation {
 	my ($self,$args) = @_;
 	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		mapping_uuid => undef,
-		mapping => undef,
-		source => undef,
-        verbose => 0,
+        mapping_uuid => undef,
+        mapping      => undef,
+        source       => undef,
+        verbose      => 0,
 	});
 	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});	
+		$args->{source} = $self->getGenomeSource($args->{genome_id});	
         print "Genome source is " . $args->{source} . ".\n" if($args->{verbose});
 	}
 	if (!defined($args->{mapping})) {
 		$args->{mapping} = $self->getMappingObject({mapping_uuid => $args->{mapping_uuid}});
 	}
     print "Getting genome attributes...\n" if($args->{verbose});
-	my $genomeData = $self->getGenomeAttributes({genome_id => $args->{genome_id},source => $args->{source}});
+	my $genomeData = $self->getGenomeAttributes($args->{genome_id});
     my $annoationObj = ModelSEED::MS::Annotation->new({
         name => $genomeData->{name}
     });
-	my $genomeObj = $annoationObj->add("genomes",{
-		id => $args->{genome_id},
-		name => $genomeData->{name},
-		source => $args->{source},
-		taxonomy => $genomeData->{taxonomy},
-		size => $genomeData->{size},
-		gc => $genomeData->{gc},
-	});
+    my $genomeObj = $annoationObj->add("genomes", {
+        id       => $args->{genome_id},
+        name     => $genomeData->{name},
+        source   => $args->{source},
+        taxonomy => $genomeData->{taxonomy},
+        size     => $genomeData->{size},
+        gc       => $genomeData->{gc},
+    });
 	$annoationObj->mapping_uuid($args->{mapping}->uuid());
 	$annoationObj->mapping($args->{mapping});
 	if (!defined($genomeData->{features})) {
-		$genomeData->{features} = $self->getGenomeFeatures({genome_id => $args->{genome_id},source => $args->{source}});
+		$genomeData->{features} = $self->getGenomeFeatures({
+                genome_id => $args->{genome_id},
+                source    => $args->{source},
+        });
 	}
     my $featureCount = scalar(@{$genomeData->{features}});
     print "Mapping $featureCount genome feature to metabolic roles...\n" if($args->{verbose});
@@ -134,39 +192,34 @@ sub getMappingObject {
 }
 
 sub getGenomeSource {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{});
-	my $result = $self->sapsvr()->exists({-type => 'Genome',-ids => [$args->{genome_id}]});
-	if ($result->{$args->{genome_id}} eq "1") {
+	my ($self,$id) = @_;
+    my $result;
+	$result = $self->sapsvr->exists({-type => 'Genome', -ids => [$id]});
+	if (defined $result->{$id} && $result->{$id} eq 1) {
 		return "PUBSEED";
 	}
-	$result = $self->MSSeedSupportClient()->genomeType({ids => [$args->{genome_id}]});
-	return $result->{$args->{genome_id}};
+    $result = $self->kbsvr->get_entity_Genome([$id], []);
+    if(defined($result->{$id})) {
+        return "KBase";
+    }
+	$result = $self->mssvr->genomeType({ids => [$id]});
+	return $result->{$id};
 }
 
 sub getGenomeFeatures {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		source => undef,
-		withSequences => 0 
-	});
-	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
-	}
+	my ($self, $id, $source) = @_;
+    $source = $self->getGenomeSource($id) unless defined $source;
 	my $features;
-	if ($args->{source} eq "PUBSEED") {
-		my $featureHash = $self->sapsvr()->all_features({-ids => $args->{genome_id}});
-		if (!defined($featureHash->{$args->{genome_id}})) {
-			ModelSEED::utilities::ERROR("Could not load features for pubseed genome:".$args->{genome_id});
+	if ($source eq "PUBSEED") {
+		my $featureHash = $self->sapsvr->all_features({-ids => $id});
+		if (!defined($featureHash->{$id})) {
+			die "Could not load features for pubseed genome: $id";
 		}
-		my $featureList = $featureHash->{$args->{genome_id}};
+		my $featureList = $featureHash->{$id};
 		my $functions = $self->sapsvr()->ids_to_functions({-ids => $featureList});
 		my $locations = $self->sapsvr()->fid_locations({-ids => $featureList});
 		#my $aliases = $self->sapsvr()->fids_to_ids({-ids => $featureList,-protein => 1});
 		my $sequences;
-		if ($args->{withSequences} == 1) {
-			$sequences = $self->sapsvr()->ids_to_sequences({-ids => $featureList,-protein => 1});
-		}
 		for (my $i=0; $i < @{$featureList}; $i++) {
 			my $row = {ID => [$featureList->[$i]],TYPE => ["peg"]};
 			if ($featureList->[$i] =~ m/\d+\.\d+\.([^\.]+)\.\d+$/) {
@@ -197,13 +250,56 @@ sub getGenomeFeatures {
 			}
 			push(@{$features},$row);			
 		}
-	} else {
-		if (!defined($self->parent()) || !defined($self->parent()->user())) {
-			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
-		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
+	} elsif($source eq "KBase") {
+        my $contigs  = $self->kbsvr->get_relationship_IsComposedOf([$id], [], [], [qw(id)]);
+        $contigs = [ map { $_->[2]->{id} } @$contigs ]; # extract contig ids
+        my $features = $self->kbsvr->get_relationship_IsLocusFor(
+            $contigs, [qw(id)],
+            [qw(begin dir len ordinal)],
+            [qw(id feature_type function source_id alias)]
+        );
+        map {
+            $_ = {
+                ID => $_->[2]->{id},
+                TYPE => $_->[2]->{feature_type},
+                CONTIG => $_->[0]->{id},
+                START => $_->[1]->{begin},
+                STOP => $_->[1]->{begin} + $_->[1]->{len},
+                DIRECTION => ($_->[1]->{dir} eq "+") ? "for" : "rev",
+            };
+        } @$features; # reformat features
+        my $feature_ids = [ map { $_->{ID} } @$features ];
+        my $functions = $self->kbsvr->get_relationship_HasFunctional(
+            $feature_ids, [qw(id)], [], [qw(id)],
+        ); # get feature roles
+        # generate map from features to functions
+        my $feature_to_functions = {};
+        foreach my $entry (@$functions) {
+            my $feature = $entry->[0]->{id};
+            my $function = $entry->[2]->{id};
+            if(!defined($feature_to_functions->{$feature})) {
+                $feature_to_functions->{$feature} = [];
+            }
+            push(@{$feature_to_functions->{$feature}}, $function);
+        }
+        # add functions to each feature
+        foreach my $feature (@$features) {
+            my $id = $feature->{ID};
+            if(defined($feature_to_functions->{$id})) {
+                my $function = $feature_to_functions->{$id};
+                push(@{$feature->{ROLES}}, $function);
+            }
+        }
+    } elsif(defined($self->auth) && $self->auth->isa("ModelSEED::Auth::Basic")) {
+        my $output = $self->msseedsvr()->genomeData(
+            {
+                ids      => [ $id ],
+                username => $self->auth->username,
+                password => $self->auth->password,
+            }
+        );
 		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
+			die "Could not load data for rast genome: $id";
 		}
 		for (my $i=0; $i < $output->{features}; $i++) {
 			my $ftr = $output->{features}->[$i];
@@ -241,42 +337,60 @@ sub getGenomeFeatures {
 }
 
 sub getGenomeAttributes {
-	my ($self,$args) = @_;
-	$args = ModelSEED::utilities::ARGS($args,["genome_id"],{
-		source => undef
-	});
-	if (!defined($args->{source})) {
-		$args->{source} = $self->getGenomeSource({genome_id => $args->{genome_id}});
-	}
-	my $attributes;
-	if ($args->{source} eq "PUBSEED") {
-		my $genomeHash = $self->sapsvr()->genome_data({
-			-ids => [$args->{genome_id}],
-			-data => ["gc-content", "dna-size","name","taxonomy"]
-		});
-		if (!defined($genomeHash->{$args->{genome_id}})) {
-			ModelSEED::utilities::ERROR("Could not load data for pubseed genome:".$args->{genome_id});
-		}
-		$attributes->{name} = $genomeHash->{$args->{genome_id}}->[2];
-		$attributes->{taxonomy} = $genomeHash->{$args->{genome_id}}->[3];
-		$attributes->{size} = $genomeHash->{$args->{genome_id}}->[1];
-		$attributes->{gc} = $genomeHash->{$args->{genome_id}}->[0];
-	} else {
-		if (!defined($self->parent()) || !defined($self->parent()->user())) {
-			ModelSEED::utilities::USEERROR("Cannot retrieve a private genome or metagneome without specifying username or password!");
-		}
-		my $output = $self->msseedsvr()->genomeData({ids => [$args->{genome_id}],username => $self->parent()->user()->login(),password => $self->parent()->user()->password()});
-		if (!defined($output->{features})) {
-			ModelSEED::utilities::ERROR("Could not load data for rast genome:".$args->{genome_id});
-		}
-		$attributes->{name} = $output->{name};
-		$attributes->{taxonomy} = $output->{taxonomy};
-		$attributes->{size} = $output->{size};
-		$attributes->{gc} = $output->{gc};
-		$attributes->{features} = $output->{features};
-	}
-	return $attributes;
+	my ($self,$id, $source) = @_;
+    my ($data, $attributes);
+    $source = $self->getGenomeSource($id) unless defined $source;
+    if( $source eq 'PUBSEED') {
+        $data = $self->sapsvr()->genome_data({
+            -ids => [$id],
+            -data => [qw(gc-content dna-size name taxonomy)]
+        });
+        if(defined($data->{$id})) {
+            $attributes = {
+                name => $data->{$id}->[2],
+                taxonomy => $data->{$id}->[3],
+                size => $data->{$id}->[1],
+                gc => $data->{$id}->[0],
+            };
+        }
+    } elsif($source eq "KBase") {
+        $data = $self->kbsvr->get_entity_Genome([$id],
+            [qw(scientific_name source_id dna_size gc_content)]
+        );
+        if(defined($data->{$id})) {
+            $attributes = {
+                name     => $data->{$id}->{scientific_name},
+                taxonomy => $data->{$id}->{source_id},
+                size     => $data->{$id}->{dna_size},
+                gc       => $data->{$id}->{gc_content},
+            };
+        }
+    } elsif(defined($self->auth) && $self->auth->isa("ModelSEED::Auth::Basic")) {
+        $data = $self->msseedsvr->genomeData({
+            ids      => [ $id ],
+            username => $self->auth->username,
+            password => $self->auth->password,
+        });
+        $attributes = $data;
+    }
+    return $attributes;
 }
 
+# _getArgs : @_ -> \%
+# Convert ARGS to Hash
+# Either $_[0] == \%
+# or @_ casts to \%
+# or \% := {}
+sub _getArgs {
+    my $self = shift @_;
+    if(ref($_[0]) eq 'HASH') {
+        return $_[0];
+    } elsif(scalar(@_) % 2 == 0) {
+        my %hash = @_;
+        return \%hash;
+    } else {
+        return {};
+    }
+}
 
 __PACKAGE__->meta->make_immutable;

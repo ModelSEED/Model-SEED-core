@@ -50,6 +50,7 @@ my $builder = Module::Build->new(
         "IPC::Run" => 0,
         "JSON" => 0,
         "JSON::Any" => 0,
+        "JSON::RPC::Client" => 0,
         "LWP::Simple" => 0,
         "LWP::UserAgent" => 0,
         "List::MoreUtils" => 0,
