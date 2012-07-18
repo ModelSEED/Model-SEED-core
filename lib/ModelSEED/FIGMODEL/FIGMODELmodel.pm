@@ -5907,6 +5907,23 @@ sub PrintSBMLFile {
 		}
 	}
 
+    #get drains
+    my $drains = $self->drains();
+    my %DrainHash=();
+    foreach my $dr (split(/;/,$drains)){
+	my @drs=split(/:/,$dr);
+	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
+	$ExchangeHash->{$drs[0]}="e";
+	$CompoundList{$drs[0]}{e}=1;
+    }
+
+    #Add media to exchange hash if necessary
+    foreach my $cpd (keys %$mediaCpd){
+	$ExchangeHash->{$cpd}="e";
+	$CompoundList{$cpd}{e}=1;
+    }
+
+
 	#Printing header to SBML file
 	my $ModelName = $idToSId->($self->id());
 	my $output;
@@ -5995,22 +6012,6 @@ sub PrintSBMLFile {
 
     if($biomassDrainC) {
         push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-    }
-
-    #get drains
-    my $drains = $self->drains();
-    my %DrainHash=();
-    foreach my $dr (split(/;/,$drains)){
-	my @drs=split(/:/,$dr);
-	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
-	$ExchangeHash->{$drs[0]}="e";
-    }
-
-    #Add media to exchange hash if necessary
-    foreach my $cpd (keys %$mediaCpd){
-	if(!exists($ExchangeHash->{$cpd})){
-	    $ExchangeHash->{$cpd}="e";
-	}
     }
 
 	
