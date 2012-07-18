@@ -23,8 +23,8 @@ has 'MEDIA' => (is => 'ro', isa => 'Str', required => 1);#, metaclass => 'DoNotS
 has 'entity' => (is => 'ro', isa => 'Str', required => 1, index => 0, metaclass => 'Indexed');
 has 'type' => (is => 'ro', isa => 'Str', required => 1, index => 1, metaclass => 'Indexed');
 has 'concentration' => (is => 'ro', isa => 'Num', required => 1, index => 2, metaclass => 'Indexed');
-has 'maxFlux' => (is => 'ro', isa => 'Int', required => 1, index => 3, metaclass => 'Indexed');
-has 'minFlux' => (is => 'ro', isa => 'Int', required => 1, index => 4, metaclass => 'Indexed');
+has 'maxFlux' => (is => 'ro', isa => 'Num', required => 1, index => 3, metaclass => 'Indexed');
+has 'minFlux' => (is => 'ro', isa => 'Num', required => 1, index => 4, metaclass => 'Indexed');
 
 sub BUILD {
     my ($self,$params) = @_;

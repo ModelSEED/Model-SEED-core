@@ -22,9 +22,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has fbaFormulation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
 has balancedReactionsOnly => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has guaranteedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has blacklistedReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has allowableCompartments => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has guaranteedReaction_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has blacklistedReaction_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has allowableCompartment_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
 has reactionActivationBonus => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
 has drainFluxMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
 has directionalityMultiplier => (is => 'rw', isa => 'Num', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
@@ -48,7 +48,10 @@ has gapfillingSolutions => (is => 'rw', isa => 'ArrayRef[HashRef]', default => s
 
 
 # LINKS:
-has fbaFormulation => (is => 'rw', isa => 'ModelSEED::MS::fbaFormulations', type => 'link(Model,fbaFormulations,fbaFormulation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_fbaFormulation', weak_ref => 1);
+has fbaFormulation => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', type => 'link(Model,fbaFormulations,fbaFormulation_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_fbaFormulation', weak_ref => 1);
+has guaranteedReactions => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Reaction]', type => 'link(Biochemistry,reactions,guaranteedReaction_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_guaranteedReactions');
+has blacklistedReactions => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Reaction]', type => 'link(Biochemistry,reactions,blacklistedReaction_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_blacklistedReactions');
+has allowableCompartments => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Compartment]', type => 'link(Biochemistry,compartments,allowableCompartment_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_allowableCompartments');
 
 
 # BUILDERS:
@@ -57,6 +60,18 @@ sub _build_modDate { return DateTime->now()->datetime(); }
 sub _build_fbaFormulation {
   my ($self) = @_;
   return $self->getLinkedObject('Model','fbaFormulations',$self->fbaFormulation_uuid());
+}
+sub _build_guaranteedReactions {
+  my ($self) = @_;
+  return $self->getLinkedObjectArray('Biochemistry','reactions',$self->guaranteedReaction_uuids());
+}
+sub _build_blacklistedReactions {
+  my ($self) = @_;
+  return $self->getLinkedObjectArray('Biochemistry','reactions',$self->blacklistedReaction_uuids());
+}
+sub _build_allowableCompartments {
+  my ($self) = @_;
+  return $self->getLinkedObjectArray('Biochemistry','compartments',$self->allowableCompartment_uuids());
 }
 
 
@@ -89,7 +104,7 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'guaranteedReactions',
+            'name' => 'guaranteedReaction_uuids',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
             'perm' => 'rw'
@@ -97,7 +112,7 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'blacklistedReactions',
+            'name' => 'blacklistedReaction_uuids',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
             'perm' => 'rw'
@@ -105,7 +120,7 @@ my $attributes = [
           {
             'req' => 0,
             'printOrder' => 0,
-            'name' => 'allowableCompartments',
+            'name' => 'allowableCompartment_uuids',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
             'perm' => 'rw'
@@ -191,7 +206,7 @@ my $attributes = [
           }
         ];
 
-my $attribute_map = {uuid => 0, fbaFormulation_uuid => 1, balancedReactionsOnly => 2, guaranteedReactions => 3, blacklistedReactions => 4, allowableCompartments => 5, reactionActivationBonus => 6, drainFluxMultiplier => 7, directionalityMultiplier => 8, deltaGMultiplier => 9, noStructureMultiplier => 10, noDeltaGMultiplier => 11, biomassTransporterMultiplier => 12, singleTransporterMultiplier => 13, transporterMultiplier => 14, modDate => 15};
+my $attribute_map = {uuid => 0, fbaFormulation_uuid => 1, balancedReactionsOnly => 2, guaranteedReaction_uuids => 3, blacklistedReaction_uuids => 4, allowableCompartment_uuids => 5, reactionActivationBonus => 6, drainFluxMultiplier => 7, directionalityMultiplier => 8, deltaGMultiplier => 9, noStructureMultiplier => 10, noDeltaGMultiplier => 11, biomassTransporterMultiplier => 12, singleTransporterMultiplier => 13, transporterMultiplier => 14, modDate => 15};
 sub _attributes {
   my ($self, $key) = @_;
   if (defined($key)) {

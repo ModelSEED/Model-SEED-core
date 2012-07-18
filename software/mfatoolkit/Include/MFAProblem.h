@@ -153,6 +153,8 @@ public:
 	int SolutionReconciliation(Data* InData, OptimizationParameter* InParameters);
 	string MediaSensitivityExperiment(Data* InData, OptimizationParameter* InParameters, vector<MFAVariable*> CurrentKO, vector<MFAVariable*> NonessentialMedia);
 	int FitMicroarrayAssertions(Data* InData);
+	int FitGIMME(Data* InData);
+	int SoftConstraint(Data* InData);
 	int GenerateMinimalReactionLists(Data* InData);
 	int ParseRegExp(OptimizationParameter* InParameters, Data* InData, string Expression);
 	int AddRegulatoryConstraints(OptimizationParameter* InParameters, Data* InData);

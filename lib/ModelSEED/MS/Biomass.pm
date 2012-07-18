@@ -19,6 +19,7 @@ has equation => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata',
 has equationCode => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildequationcode' );
 has mapped_uuid  => ( is => 'rw', isa => 'ModelSEED::uuid',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmapped_uuid' );
 has id  => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildid' );
+has index  => ( is => 'rw', isa => 'Int',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildindex' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -55,6 +56,21 @@ sub _buildid {
 		$prefix .= "0";
 	}
 	return $prefix.$self->index();
+}
+sub _buildindex {
+	my ($self) = @_;
+	my $index = 0;
+	if (defined($self->parent())) {
+		my $biomasses = $self->parent()->biomasses();
+		for (my $i=0; $i < @{$biomasses}; $i++) {
+			if ($biomasses->[$i]->uuid() eq $self->uuid()) {
+				$index = ($i+1);	
+			} else {
+				$biomasses->[$i]->index($i+1);
+			}
+		}
+	}
+	return $index;
 }
 
 #***********************************************************************************************************

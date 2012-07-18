@@ -43,7 +43,6 @@ my $builder = Module::Build->new(
         "HTTP::Request" => 0,
         "HTTP::Response" => 0,
         "IO::Compress::Gzip" => 0, # core
-        "IO::Prompt::Tiny" => 0,
         "IO::Socket::INET" => 0, # core
         "IO::Uncompress::Gunzip" => 0, # core
         "IPC::Open2" => 0, # core
@@ -85,12 +84,12 @@ my $builder = Module::Build->new(
         "XML::Simple" => 0,
         "YAML" => 0,
         "YAML::Any" => 0,
-		"YAML::XS" => 0,
+        "YAML::XS" => 0,
         "namespace::autoclean" => 0,
+        "Config::Tiny" => 0,
+        "XML::SAX::Base" => 0,
     },
-    recommends => {
-        'IO::Prompt' => 0,
-    },
+    recommends => {},
     recursive_test_files => 1,
     add_to_cleanup      => [ 'ModelSeedCore-*' ],
     create_makefile_pl => 'traditional',

@@ -23,8 +23,8 @@ has optionalNutrient_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0',
 
 # LINKS:
 has minimalMedia => (is => 'rw', isa => 'ModelSEED::MS::Media', type => 'link(Biochemistry,media,minimalMedia_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_minimalMedia', weak_ref => 1);
-has essentialNutrients => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,essentialNutrient_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_essentialNutrients', weak_ref => 1);
-has optionalNutrients => (is => 'rw', isa => 'ModelSEED::MS::Compound', type => 'link(Biochemistry,compounds,optionalNutrient_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_optionalNutrients', weak_ref => 1);
+has essentialNutrients => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Compound]', type => 'link(Biochemistry,compounds,essentialNutrient_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_essentialNutrients');
+has optionalNutrients => (is => 'rw', isa => 'ArrayRef[ModelSEED::MS::Compound]', type => 'link(Biochemistry,compounds,optionalNutrient_uuids)', metaclass => 'Typed', lazy => 1, builder => '_build_optionalNutrients');
 
 
 # BUILDERS:
@@ -34,11 +34,11 @@ sub _build_minimalMedia {
 }
 sub _build_essentialNutrients {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','compounds',$self->essentialNutrient_uuids());
+  return $self->getLinkedObjectArray('Biochemistry','compounds',$self->essentialNutrient_uuids());
 }
 sub _build_optionalNutrients {
   my ($self) = @_;
-  return $self->getLinkedObject('Biochemistry','compounds',$self->optionalNutrient_uuids());
+  return $self->getLinkedObjectArray('Biochemistry','compounds',$self->optionalNutrient_uuids());
 }
 
 

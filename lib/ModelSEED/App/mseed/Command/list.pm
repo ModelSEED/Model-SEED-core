@@ -14,6 +14,7 @@ sub abstract { return "List and retrive objects from workspace or datastore."; }
 sub opt_spec {
     return (
         ["verbose|v", "Print out additional information about the object, tab-delimited"],
+        ["mine", "Only list items that I own"],
         ["with|w:s@", "Append a tab-delimited column with this attribute"],
     );
 }
@@ -32,7 +33,12 @@ sub execute {
     if(defined($ref)) {
         # Base level collection ( want a list of aliases )
         if($ref->type eq 'collection' && 0 == @{$ref->parent_collections}) {
-            my $aliases = $store->get_aliases({ type => $ref->base });
+            my $aliases;
+            if ($opts->{mine}) {
+                $aliases = $store->get_aliases({ type => $ref->base, owner => $auth->username });
+            } else {
+                $aliases = $store->get_aliases({ type => $ref->base, owner => $auth->username });
+            }
             # Construct references from alias data
             # TODO: Why isn't this part of Store / Database ?
             my $refs = [
