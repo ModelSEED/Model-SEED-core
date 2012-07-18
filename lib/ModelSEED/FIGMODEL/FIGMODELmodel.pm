@@ -5913,8 +5913,8 @@ sub PrintSBMLFile {
     foreach my $dr (split(/;/,$drains)){
 	my @drs=split(/:/,$dr);
 	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
-	$ExchangeHash->{$drs[0]}="e";
-	$CompoundList{$drs[0]}{e}=1;
+	$ExchangeHash->{$drs[0]}="c";
+	$CompoundList{$drs[0]}{c}=1;
     }
 
     #Add media to exchange hash if necessary
