@@ -2377,16 +2377,18 @@ sub fbaprom {
 	$results->{genome}->[$i] = $genome;
 	$results->{media}->[$i] = $jobList->[$i]->{results}->{media};
 	$results->{biomass}->[$i] = $jobList->[$i]->{results}->{biomass};
-	$results->{cpdfluxes}->[$i] = $jobList->[$i]->{results}->{cpdfluxes};
+        $results->{fluxes}->[$i] = $jobList->[$i]->{results}->{rxnfluxes};
+	%{$results->{fluxes}->[$i]} =  (%{$jobList->[$i]->{results}->{rxnfluxes}},%{$jobList->[$i]->{results}->{cpdfluxes}});
+        
         $results->{objective}->[$i] = $jobList->[$i]->{results}->{objective};
 
-        foreach my $rxnid (sort keys %{$jobList->[$i]->{results}->{rxnfluxes}}) {
-            $results->{rxnfluxes}->{$rxnid}->[$i] = $jobList->[$i]->{results}->{rxnfluxes}->{$rxnid};
+        foreach my $rxnid (sort keys %{$input->[$i]->{upper}}) {
+            $results->{rxnFluxConstraint}->[$i] .= "$rxnid|". $input->[$i]->{lower}->{$rxnid}. "|". $input->[$i]->{upper}->{$rxnid}. ";";
         }
     }
 #Printing results
-    my $headings = ["Labels","Media","Model","Genome","Cpdfluxes","Biomass","Objective"];
-    my $translation = {Labels => "labels",Media => "media",Model => "model",Genome => "genome",Cpdfluxes => "cpdfluxes",Biomass => "biomass", Objective => "objective"};
+    my $headings = ["Labels","Media","Model","Genome","Fluxes","Biomass","Objective","Reaction_flux_constraint"];
+    my $translation = {Labels => "labels",Media => "media",Model => "model",Genome => "genome",Fluxes => "fluxes",Biomass => "biomass", Objective => "objective",Reaction_flux_constraint => "rxnFluxConstraint"};
     
     $args->{geneCalls} = File::Basename::basename($args->{geneCalls});
     my $filename = "promResults-".$args->{model}."-".$args->{geneCalls};
@@ -2395,11 +2397,11 @@ sub fbaprom {
     for (my $i=0; $i < @{$headings}; $i++) {
 	if (defined($results->{$translation->{$headings->[$i]}})) {
 	    print OUTPUT $headings->[$i];
-	    if ($headings->[$i] eq "Cpdfluxes") {
+	    if ($headings->[$i] eq "Fluxes") {
 		for (my $j=0; $j < @{$results->{$translation->{$headings->[$i]}}}; $j++) {
 		    print OUTPUT "\t";
-		    foreach my $entity (keys(%{$results->{cpdfluxes}->[$j]})) {
-			print OUTPUT $entity.":".$results->{cpdfluxes}->[$j]->{$entity}.";";
+		    foreach my $entity (keys(%{$results->{fluxes}->[$j]})) {
+			print OUTPUT $entity.":".$results->{fluxes}->[$j]->{$entity}.";";
 		    }
 		}
 	    } else {
