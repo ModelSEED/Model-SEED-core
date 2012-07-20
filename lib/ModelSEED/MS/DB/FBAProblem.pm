@@ -5,6 +5,7 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::FBAProblem;
+our $VERSION = 1;
 use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::ObjectiveTerm;
 use ModelSEED::MS::Constraint;
@@ -44,6 +45,7 @@ sub _build_uuid { return Data::UUID->new()->create_str(); }
 
 
 # CONSTANTS:
+sub __version__ { return $VERSION; }
 sub _type { return 'FBAProblem'; }
 
 my $attributes = [
