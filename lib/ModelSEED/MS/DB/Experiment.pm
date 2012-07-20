@@ -5,6 +5,7 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::Experiment;
+our $VERSION = 1;
 use ModelSEED::MS::IndexedObject;
 use Moose;
 use namespace::autoclean;
@@ -41,6 +42,7 @@ sub _build_genome {
 
 
 # CONSTANTS:
+sub __version__ { return $VERSION; }
 sub _type { return 'Experiment'; }
 
 my $attributes = [
