@@ -37,7 +37,7 @@ sub __upgrade__ {
         1.0 => sub { $_[0]->{z} = 0; $_[0] },
     };
     my ($v) = grep { $version == $_ } keys %$routines;
-    return $routines->{$v};
+    return $routines->{$v} if defined $v;
 }
 1;
 package B; # Simple class with no version
