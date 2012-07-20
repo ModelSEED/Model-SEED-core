@@ -5,6 +5,7 @@
 # Development location: Mathematics and Computer Science Division, Argonne National Lab
 ########################################################################
 package ModelSEED::MS::DB::Annotation;
+our $VERSION = 1;
 use ModelSEED::MS::IndexedObject;
 use ModelSEED::MS::Genome;
 use ModelSEED::MS::Feature;
@@ -51,6 +52,7 @@ sub _build_mapping {
 
 
 # CONSTANTS:
+sub __version__ { return $VERSION; }
 sub _type { return 'Annotation'; }
 
 my $attributes = [

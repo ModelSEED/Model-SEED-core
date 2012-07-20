@@ -93,7 +93,7 @@ $objectDefinitions->{FBAReactionBound} = {
 		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
 	],
 	subobjects => [],
-	primarykeys => [ qw(reaction_uuid, variableType) ],
+	primarykeys => [ qw(reaction_uuid variableType) ],
 	links => []
 };
 
@@ -107,7 +107,7 @@ $objectDefinitions->{FBACompoundBound} = {
 		{name => 'lowerBound',printOrder => 0,perm => 'rw',type => 'Num',req => 1},
 	],
 	subobjects => [],
-	primarykeys => [ qw(reaction_uuid, variableType) ],
+	primarykeys => [ qw(reaction_uuid variableType) ],
 	links => []
 };
 
@@ -122,7 +122,7 @@ $objectDefinitions->{FBAPhenotypeSimulation} = {
 		{name => 'observedGrowthFraction',printOrder => 0,perm => 'rw',type => 'Num',req => 0},
 	],
 	subobjects => [],
-	primarykeys => [ qw(reaction_uuid, variableType) ],
+	primarykeys => [ qw(reaction_uuid variableType) ],
 	links => [
 		{name => "media",attribute => "media_uuid",parent => "Biochemistry",method=>"media"}
 	]
@@ -429,6 +429,7 @@ $objectDefinitions->{FBAProblem} = {
 	primarykeys => [ qw(uuid) ],
 	links => [],
     reference_id_types => [ qw(uuid) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{ObjectiveTerm} = {
@@ -605,6 +606,7 @@ $objectDefinitions->{User} = {
     primarykeys => [ qw(uuid) ],
     links => [],
     reference_id_types => [ qw(uuid) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{Biochemistry} = {
@@ -631,6 +633,7 @@ $objectDefinitions->{Biochemistry} = {
 	primarykeys => [ qw(uuid) ],
 	links => [],
     reference_id_types => [ qw(uuid alias) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{AliasSet} = {
@@ -963,6 +966,7 @@ $objectDefinitions->{Model} = {
 		{name => "modelanalysis",attribute => "modelanalysis_uuid",parent => "ModelSEED::Store",method=>"ModelAnalysis", weak => 0},
 	],
     reference_id_types => [ qw(uuid alias) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{Biomass} = {
@@ -1150,6 +1154,7 @@ $objectDefinitions->{Annotation} = {
 		{name => "mapping",attribute => "mapping_uuid",parent => "ModelSEED::Store",method=>"Mapping", weak => 0},
 	],
     reference_id_types => [ qw(uuid alias) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{Feature} = {
@@ -1234,6 +1239,7 @@ $objectDefinitions->{Mapping} = {
 		{name => "biochemistry",attribute => "biochemistry_uuid",parent => "ModelSEED::Store",method=>"Biochemistry", weak => 0},
 	],
     reference_id_types => [ qw(uuid alias) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{UniversalReaction} = {
@@ -1457,6 +1463,7 @@ $objectDefinitions->{Experiment} = {
 		{name => "genome",attribute => "genome_uuid",parent => "ModelSEED::Store",method=>"genomes"},
 	],
     reference_id_types => [ qw(uuid alias) ],
+    version => 1.0,
 };
 
 $objectDefinitions->{ExperimentDataPoint} = {

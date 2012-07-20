@@ -37,6 +37,30 @@ use Moose;
 use namespace::autoclean;
 use ModelSEED::utilities;
 use Scalar::Util qw(weaken);
+our $VERSION = undef;
+
+around BUILDARGS => sub {
+    my $orig  = shift;
+    my $class = shift;
+    my $hash = {};
+    if ( ref $_[0] eq 'HASH' ) {
+        $hash = shift;    
+    } elsif ( scalar @_ % 2 == 0 ) {
+        my %h = @_;
+        $hash = \%h;
+    }
+    my $objVersion = $hash->{__VERSION__};
+    my $classVersion = $class->__version__;
+    if (defined $objVersion && $objVersion != $classVersion) {
+        if (defined(my $fn = $class->__upgrade__($objVersion))) {
+            $hash = $fn->($hash);
+        } else {
+            die "Invalid Object\n";
+        }
+    }
+    return $class->$orig($hash);
+};
+
 
 sub BUILD {
     my ($self,$params) = @_;
@@ -66,6 +90,8 @@ sub BUILD {
 sub serializeToDB {
     my ($self) = @_;
     my $data = {};
+    my $v = $self->VERSION;
+    $data = { __VERSION__ => $v } if defined $v;
     my $attributes = $self->_attributes();
     foreach my $item (@{$attributes}) {
     	my $name = $item->{name};	
@@ -556,6 +582,9 @@ sub _build_all_objects {
 
     return $objs;
 }
+
+sub __version__ { $VERSION }
+sub __upgrade__ { return sub { return $_[0] } }
 
 __PACKAGE__->meta->make_immutable;
 1;

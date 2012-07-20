@@ -24,7 +24,7 @@ foreach my $name (keys(%{$objects})) {
 
     #Creating package statement
     push(@$output, "package ModelSEED::MS::DB::" . $name . ";");
-
+    push(@$output, "our \$VERSION = " . $object->{version} . ";") if defined $object->{version};
     #Creating perl use statements
     my $baseObject = "BaseObject";
     if ($object->{class} eq "indexed") {
@@ -218,47 +218,9 @@ foreach my $name (keys(%{$objects})) {
 
     #Printing constants
     push(@$output, "# CONSTANTS:");
+    push(@$output, "sub __version__ { return \$VERSION; }") if defined $object->{version};
     push(@$output, "sub _type { return '" . $name . "'; }");
 
-
-=head1
-
-if (defined($typeToFunction)) {
-push(@$output, "", "my \$typeToFunction = {");
-foreach my $key (keys(%{$typeToFunction})) {
-push(@$output, "$tab $key => '".$typeToFunction->{$key}."',");
-}
-push(@$output, "};");
-push(@$output,
-"sub _typeToFunction {",
-"$tab my (\$self, \$key) = \@_;",
-"$tab if (defined(\$key)) {",
-"$tab $tab return \$typeToFunction->{\$key};",
-"$tab } else {",
-"$tab $tab return \$typeToFunction;",
-"$tab }",
-"}"
-);
-}
-if (defined($functionToType)) {
-push(@$output, "", "my \$functionToType = {");
-foreach my $key (keys %$functionToType) {
-push(@$output, "$tab $key => '" . $functionToType->{$key} . "',");
-}
-push(@$output, "};");
-push(@$output,
-"sub _functionToType {",
-"$tab my (\$self, \$key) = \@_;",
-"$tab if (defined(\$key)) {",
-"$tab $tab return \$functionToType->{\$key};",
-"$tab } else {",
-"$tab $tab return \$functionToType;",
-"$tab }",
-"}"
-);
-}
-
-=cut
 
     # add _attributes and _subobjects
 
