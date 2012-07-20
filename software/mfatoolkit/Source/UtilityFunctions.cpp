@@ -318,7 +318,7 @@ void MakeDirectory(const char* InFilename) {
 	ostringstream strout;
 	string One("/");
 	string Two("\\");
-	if (GetParameter("os").compare("linux") == 0) {
+	if (GetParameter("os").compare("linux") == 0 || GetParameter("os").compare("darwin") == 0) {
 		findandreplace(Filename,Two,One);
 	} else {
 		findandreplace(Filename,One,Two);

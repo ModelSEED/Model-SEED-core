@@ -288,7 +288,7 @@ sub get_reaction_data {
 		for (my $j=0; $j < @{$args->{model}}; $j++) {
 			my $model = $self->figmodel()->get_model($args->{model}->[$j]);
 			if (defined($model)) {
-				my $rxnmdl = $model->rxnmdl();
+				my $rxnmdl = $model->rxnmdl({});
 				for (my $k=0; $k < @{$rxnmdl}; $k++) {
 					if (!defined($idHash->{$rxnmdl->[$k]->REACTION()})) {
 						my $obj = $model->figmodel()->database()->get_object("reaction",{id => $rxnmdl->[$k]->REACTION()});

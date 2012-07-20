@@ -656,12 +656,12 @@ sub users {
 			$obj->{$admin} = "admin";
 		}
 	}
-	# Add a "view" right to PUBLIC for public models
+	# Add a "view" right to public for public models
 	if(!defined($self->ppo())) {
 		ModelSEED::utilities::ERROR("Cannot check model rights without a defined PPO object!");
 	}
 	if($self->ppo()->public() eq 1) {
-		$obj->{PUBLIC} = "view";
+		$obj->{public} = "view";
 	}
 	return $obj;
 }
@@ -715,8 +715,8 @@ sub rights {
 	my $rights = $self->users();
 	if(defined($rights->{$username})) {
 		return $rights->{$username};
-	} elsif(defined($rights->{PUBLIC})) {
-		return $rights->{PUBLIC};
+	} elsif(defined($rights->{public})) {
+		return $rights->{public};
 	} else {
 		return "none";
 	}
@@ -5907,6 +5907,23 @@ sub PrintSBMLFile {
 		}
 	}
 
+    #get drains
+    my $drains = $self->drains();
+    my %DrainHash=();
+    foreach my $dr (split(/;/,$drains)){
+	my @drs=split(/:/,$dr);
+	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
+	$ExchangeHash->{$drs[0]}="c";
+	$CompoundList{$drs[0]}{c}=1;
+    }
+
+    #Add media to exchange hash if necessary
+    foreach my $cpd (keys %$mediaCpd){
+	$ExchangeHash->{$cpd}="e";
+	$CompoundList{$cpd}{e}=1;
+    }
+
+
 	#Printing header to SBML file
 	my $ModelName = $idToSId->($self->id());
 	my $output;
@@ -5995,22 +6012,6 @@ sub PrintSBMLFile {
 
     if($biomassDrainC) {
         push(@{$output},'<species id="cpd11416_c" name="Biomass_noformula" compartment="c" charge="10000000" boundaryCondition="false"/>');
-    }
-
-    #get drains
-    my $drains = $self->drains();
-    my %DrainHash=();
-    foreach my $dr (split(/;/,$drains)){
-	my @drs=split(/:/,$dr);
-	$DrainHash{$drs[0]}={Max=>$drs[2],Min=>$drs[1]};
-	$ExchangeHash->{$drs[0]}="e";
-    }
-
-    #Add media to exchange hash if necessary
-    foreach my $cpd (keys %$mediaCpd){
-	if(!exists($ExchangeHash->{$cpd})){
-	    $ExchangeHash->{$cpd}="e";
-	}
     }
 
 	
@@ -7894,6 +7895,75 @@ sub fbaGeneActivityAnalysisMaster {
 		},
 		problemDirectory => $args->{problemDirectory},
 		parameterFile => "GeneActivityAnalysis.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+
+=head3 fbaGimme
+=item Definition:
+	$results = FIGMODELmodel->fbaGimme({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  RIscores => {string:reaction ID => double: reaction inconsistency score},
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaGimme {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,["RIscores","label","media"],{
+		fbaStartParameters => {},
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setGimme",
+			arguments => {
+				RIscores=>$args->{RIscores},
+				media=>$args->{media},
+				label=>$args->{label},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "gimme.txt",
+		startFresh => 1,
+		removeGapfillingFromModel => 0,
+		forcePrintModel => 1,
+		runProblem => 1,
+		clearOuput => 1
+	});
+	return $results;
+}
+=head3 fbaSoftConstraint
+=item Definition:
+	$results = FIGMODELmodel->fbaSoftConstraint({});
+	$arguments = {media => opt string:media ID or "," delimited list of compounds,
+				  rxnKO => [string::reaction ids],
+				  geneKO	 => [string::gene ids]}
+	$results = {jobid => integer:job ID}
+=item Description:
+=cut
+sub fbaSoftConstraint {
+	my ($self,$args) = @_;
+	$args = $self->figmodel()->process_arguments($args,[],{
+		fbaStartParameters => {},
+                kappa => undef,
+	});
+	my $results = $self->runFBAStudy({
+		fbaStartParameters => $args->{fbaStartParameters},
+		setupParameters => {
+			function => "setSoftConstraint",
+			arguments => {
+                            kappa => $args->{kappa},
+			} 
+		},
+		problemDirectory => $args->{problemDirectory},
+		parameterFile => "softConstraint.txt",
 		startFresh => 1,
 		removeGapfillingFromModel => 0,
 		forcePrintModel => 1,

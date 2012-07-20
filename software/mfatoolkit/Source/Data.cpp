@@ -1254,6 +1254,20 @@ void Data::PerformMFA() {
 		return;
 	}
 
+	//Fitting gimme data
+	if (GetParameter("Gene Inactivity Moderated by Metabolism and Expression").length() > 0 && GetParameter("Gene Inactivity Moderated by Metabolism and Expression").compare("NONE") != 0) {
+		NewProblem->FitGIMME(this);
+		delete NewProblem;
+		return;
+	}
+
+	//Do soft constraint, then report flux.
+	if (GetParameter("Soft Constraint").length() > 0 && GetParameter("Soft Constraint").compare("NONE") != 0) {
+		NewProblem->SoftConstraint(this);
+		delete NewProblem;
+		return;
+	}
+
 	//Generating pathways to objective
 	if (GetParameter("Generate pathways to objective").compare("1") == 0) {
 		NewProblem->GenerateMinimalReactionLists(this);
