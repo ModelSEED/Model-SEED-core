@@ -32,6 +32,42 @@ sub _builddefinition {
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
+=head3 printDBFiles
+Definition:
+	void ModelSEED::MS::Biochemistry->printDBFiles({
+		forceprint => 0
+	});
+Description:
+	Creates files with biochemistry data for use by the MFAToolkit
+=cut
+sub printDBFiles {
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{
+		forceprint => 0
+	});
+	my $path = ModelSEED::utilities::MODELSEEDCORE()."/data/fbafiles/";
+	if (-e $path.$self->uuid()."-compounds.tbl" && $args->{forceprint} eq "0") {
+		return;	
+	}
+	my $output = ["abbrev	charge	deltaG	deltaGErr	formula	id	mass	name"];
+	my $cpds = $self->compounds();
+	for (my $i=0; $i < @{$cpds}; $i++) {
+		my $cpd = $cpds->[$i];
+		my $line = $cpd->abbreviation()."\t".$cpd->defaultCharge()."\t".$cpd->deltaG()."\t".$cpd->deltaGErr()."\t".
+			$cpd->formula()."\t".$cpd->id()."\t".$cpd->mass()."\t".$cpd->name();
+		push(@{$output},$line);
+	}
+	ModelSEED::utilities::PRINTFILE($path.$self->uuid()."-compounds.tbl",$output);
+	$output = ["abbrev	deltaG	deltaGErr	equation	id	name	reversibility	status	thermoReversibility"];
+	my $rxns = $self->reactions();
+	for (my $i=0; $i < @{$rxns}; $i++) {
+		my $rxn = $rxns->[$i];
+		my $line = $rxn->abbreviation()."\t".$rxn->deltaG()."\t".$rxn->deltaGErr()."\t".$rxn->equation()."\t".$rxn->id()."\t".
+			$rxn->name()."\t".$rxn->direction()."\t".$rxn->status()."\t".$rxn->thermoReversibility();
+		push(@{$output},$line);
+	}
+	ModelSEED::utilities::PRINTFILE($path.$self->uuid()."-reactions.tbl",$output);
+}
 =head3 makeDBModel
 Definition:
 	ModelSEED::MS::ModelReaction = ModelSEED::MS::Biochemistry->makeDBModel({

@@ -65,6 +65,7 @@ sub runFBA {
 	if (!-e $self->jobDirectory()."/runMFAToolkit.sh") {
 		$self->createJobDirectory();
 	}
+	$self->biochemistry()->printDBFiles();
 	system($self->command());
 	my $fbaresults = $self->add("fbaResults",{});
 	$fbaresults->loadMFAToolkitResults();
@@ -281,7 +282,7 @@ sub createJobDirectory {
 		$exe = "mfatoolkit";
 		$parameters->{"scip executable"} = "../../optimization/scip";
 		$parameters->{"perl directory"} = "/usr/bin/perl";
-		$parameters->{"os"} = $^O;
+		$parameters->{"os"} = "linux";
 		
 	}
 	#Setting thermodynamic constraints
@@ -363,10 +364,11 @@ sub createJobDirectory {
 	ModelSEED::utilities::PRINTFILE($directory."media.tbl",$mediaData);
 	#Set StringDBFile.txt
 	my $dataDir = ModelSEED::utilities::MODELSEEDCORE()."/data/";
+	my $biochemid = $model->biochemistry()->uuid();
 	my $stringdb = [
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
-		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles/compoundDataFile.tbl\tTAB\tSC\tid",
-		"reaction\tid\tSINGLEFILE\t".$directory."reaction/\t".$dataDir."fbafiles/reactionDataFile.tbl\tTAB\t|\tid",
+		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles".$biochemid."-compounds.tbl\tTAB\tSC\tid",
+		"reaction\tid\tSINGLEFILE\t".$directory."reaction/\t".$dataDir."fbafiles/".$biochemid."-reactions.tbl\tTAB\t|\tid",
 		"cue\tNAME\tSINGLEFILE\t\t".$dataDir."ReactionDB/MFAToolkitInputFiles/cueTable.txt\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$dataDir."ReactionDB/Media/\t".$directory."media.tbl\tTAB\t|\tID;NAMES"		
 	];
