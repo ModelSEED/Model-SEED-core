@@ -5,7 +5,7 @@ use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
-use ModelSEED::MS::Factories::SEEDFactory;
+use ModelSEED::MS::Factories::Annotation;
 use Time::HiRes qw(time);
 use Data::Dumper;
 
@@ -32,8 +32,8 @@ $mapping->biochemistry($biochem);
 #$objectData = JSON::Any->decode($string);
 #my $anno = ModelSEED::MS::Annotation->new($objectData);
 #$anno->mapping($mapping);
-my $seedFactory = ModelSEED::MS::Factories::SEEDFactory->new();
-my $anno = $seedFactory->buildMooseAnnotation({
+my $seedFactory = ModelSEED::MS::Factories::Annotation->new();
+my $anno = $seedFactory->build({
 	genome_id => "83333.1",
 	mapping => $mapping
 });
