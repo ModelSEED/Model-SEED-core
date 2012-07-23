@@ -218,22 +218,21 @@ sub doBiochemistryAndMapping {
     #            formula (string): a pH-neutral formula for the compound
     #            label (string): primary name of the compound, for use in displaying
     #                            reactions
-    #            msid (string): common modeling ID of this compound
+    #            source-id (string): common modeling ID of this compound
     #            uncharged-formula (string): a electrically neutral formula for the compound
     #    
     {
         my $a = {
-            id => 'uuid',
-            msid => 'id',
-            mass => 'mass',
-            'mod-date' => 'modDate',
-            abbr => 'abbreviation',
-            'default-charge' => 'defaultCharge',
-            'deltaG' => 'deltaG',
+            id             => 'uuid',
+            'source-id'    => 'id',
+            mass           => 'mass',
+            'mod-date'     => 'modDate',
+            abbr           => 'abbreviation',
+            'charge'       => 'defaultCharge',
+            'deltaG'       => 'deltaG',
             'deltaG-error' => 'deltaGErr',
-            formula => 'formula',
-            label => 'name',
-            'uncharged-formula' => 'unchargedFormula',
+            formula        => 'formula',
+            label          => 'name',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/compound.dtx", \%columns, $biochemObj->compounds);
@@ -253,11 +252,11 @@ sub doBiochemistryAndMapping {
     {
         my $a = {
             id => 'uuid', 
-            msid => 'id',
-            'is-minimal' => 'isMinimal',
+            'is-defined' => 'isMinimal',
             'mod-date' => 'modDate',
             name => 'name',
-            type => 'type',
+            description => 'type',
+            'source-id' => 'id',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/media.dtx", \%columns, $biochemObj->media);
@@ -278,24 +277,24 @@ sub doBiochemistryAndMapping {
 #            thermodynamic-reversibility (char): computed reversibility of this reaction
 #                                                in a pH-neutral environment
 #            abbr (string): abbreviated name of this reaction
-#            msid (string): common modeling ID of this reaction
+#            source-id (string): common modeling ID of this reaction
 #            name (string): descriptive name of this reaction
 #            status (string): string indicating additional information about this
 #                             reaction, generally indicating whether the reaction
 #                             is balanced and/or accurate
     {
         my $a = {
-            id => 'uuid',
-            'default-protons' => 'defaultProtons',
-            deltaG => 'deltaG',
-            'deltaG-error' => 'deltaGErr',
-            direction => 'direction',
-            'mod-date' => 'modDate',
+            id                            => 'uuid',
+            'default-protons'             => 'defaultProtons',
+            deltaG                        => 'deltaG',
+            'deltaG-error'                => 'deltaGErr',
+            direction                     => 'direction',
+            'mod-date'                    => 'modDate',
             'thermodynamic-reversibility' => 'thermoReversibility',
-            abbr => 'abbreviation',
-            msid => 'id',
-            name => 'name',
-            status => 'status',
+            abbr                          => 'abbreviation',
+            'source-id'                   => 'id',
+            name                          => 'name',
+            status                        => 'status',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/reaction.dtx", \%columns, $biochemObj->reactions);
@@ -343,16 +342,14 @@ sub doBiochemistryAndMapping {
     #            from-link (string): id of the source Media.
     #            to-link (string): id of the target Compound.
     #            concentration (float): concentration of the compound in the media
-    #            maximum-flux (float): maximum flux of the compound for this media
-    #            minimum-flux (float): minimum flux of the compound for this media
+    #            concentraiton-units (string) ; 
     #    
     {
         my $a = { 
             'from-link' => 'media_uuid',
             'to-link' => 'compound_uuid',
             concentration => 'concentration',
-            'maximum-flux' => 'maxFlux',
-            'minimum-flux' => 'minFlux',
+            'concentration-units' => sub { 'mmol/L' },
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         my $mediaCompounds = [];
@@ -362,8 +359,6 @@ sub doBiochemistryAndMapping {
                     media_uuid    => $media->uuid,
                     compound_uuid => $mediacpd->compound_uuid,
                     concentration => $mediacpd->concentration,
-                    maxFlux       => $mediacpd->maxFlux,
-                    minFlux       => $mediacpd->minFlux,
                 };
                 push(@$mediaCompounds, $hash);
             }
@@ -486,7 +481,6 @@ sub doBiochemistryAndMapping {
             'to-link' => 'localized_compound',
             coefficient => 'coefficient',
             cofactor => 'isCofactor',
-            'is-transport' => 'isTransport',
          };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         my $reagents = [];
@@ -626,25 +620,34 @@ sub doModel {
     ##
     ## Model
     {
+        # TODO : Fix feature-count, must be # of features w/ reactions
+        # Generate feature-count
+        my $features = {};
+        my $mdlrxns = $model->modelreactions;
+        foreach my $rxn (@$mdlrxns) {
+            my $proteins = $rxn->modelReactionProteins;
+            foreach my $protein (@$proteins) {
+                my $subunits = $protein->modelReactionProteinSubunits;
+                foreach my $subunit (@$subunits) {
+                    my $genes = $subunit->modelReactionProteinSubunitGenes;
+                    foreach my $gene (@$genes) {
+                        my $feature = $gene->feature;
+                        $features->{$feature->id} = 1;
+                    }
+                }
+            }
+        }
         my $a = {
-            id         => 'uuid',
-            'mod-date' => 'modDate',
-            name       => 'name',
-            'reaction-count' => sub {
-                return scalar(@{$_[0]->modelreactions});
-            },
-            'compound-count' => sub {
-                return scalar(@{$_[0]->modelcompounds});
-            },
-            'annotation-count' => sub {
-                return scalar(@{$_[0]->modelcompounds});
-            },
-            'annotation-count' => sub {
-                return scalar(@{$_[0]->annotation->features});
-            },
-            status  => 'status',
-            version => 'version',
-            type    => 'type',
+            id               => 'uuid',
+            'mod-date'       => 'modDate',
+            name             => 'name',
+            'reaction-count' => sub { scalar( @{ $_[0]->modelreactions } ) },
+            'compound-count' => sub { scalar( @{ $_[0]->modelcompounds } ) },
+            'feature-count'  => sub { scalar( keys %$features ); },
+            status           => 'status',
+            version          => 'version',
+            type             => 'type',
+            'source-id'      => 'id',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/Model.dtx", \%columns, [$model], $append);
@@ -652,11 +655,11 @@ sub doModel {
     ## LocationInstance ( ModelCompartment )
     {
         my $a = {
-            id                  => 'uuid',
-            'compartment-index' => 'compartmentIndex',
-            pH                  => 'pH',
-            potential           => 'potential',
-            label               => 'label',
+            id        => 'uuid',
+            index     => 'compartmentIndex',
+            pH        => 'pH',
+            potential => 'potential',
+            label     => 'label',
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/LocationInstance.dtx", \%columns, $model->modelcompartments, $append);
@@ -665,9 +668,12 @@ sub doModel {
     {
         my $mdl_cpds = $model->modelcompounds;
         my $a = {
-            id      => 'uuid',
-            charge  => 'charge',
-            formula => 'formula',
+            id             => 'uuid',
+            charge         => 'charge',
+            formula        => 'formula',
+            deltaG         => sub { $_[0]->compound->deltaG },
+            'deltaG-error' => sub { $_[0]->compound->deltaGErr },
+            'source-id'    => sub { $_[0]->compound->id },
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/CompoundInstance.dtx", \%columns, $mdl_cpds, $append);
@@ -675,9 +681,10 @@ sub doModel {
     ## ReactionInstance ( ModelReaction )
     {
         my $a = {
-            id        => 'uuid',
-            direction => 'direction',
-            proton    => 'protons',
+            id          => 'uuid',
+            direction   => 'direction',
+            proton      => 'protons',
+            'source-id' => sub { $_[0]->reaction->id },
         };
         tie my %columns, 'Tie::Hash::Sorted', 'Hash' => $a;
         buildTable("$directory/ReactionInstance.dtx", \%columns, $model->modelreactions, $append);
@@ -695,6 +702,7 @@ sub doModel {
             lipid       => 'lipid',
             protein     => 'protein',
             'mod-date'  => 'modDate',
+            'source-id' => 'id',
         };
         my $b = {
             id   => 'uuid',
