@@ -224,7 +224,7 @@ sub createBiochemistry {
                 for (my $j=0;$j < @{$list}; $j++) {
                     my ($name, $count) = split(/:/,$list->[$j]);
                     unless(defined $name && defined $count) {
-                        warn "Bad cue: " . $list->[$j];
+                        warn "Bad cue: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
                         next;
                     }
                     my $cue = $biochemistry->queryObject("cues",{name => $name});
@@ -254,7 +254,7 @@ sub createBiochemistry {
 			 	for (my $j=0;$j < @$list; $j++) {
 			 		my ($pk, $atom) = split(/:/,$list->[$j]);
                     unless(defined $pk && defined $atom) {
-                        warn "Bad pKa: " . $list->[$j];
+                        warn "Bad pKa: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
                         next;
                     }
 			 		$cpd->add("pks", {type => "pKa", pk => $pk, atom => $atom});
@@ -266,7 +266,7 @@ sub createBiochemistry {
 			 	for (my $j=0;$j < @$list; $j++) {
 			 		my ($pk, $atom) = split(/:/,$list->[$j]);
                     unless(defined $pk && defined $atom) {
-                        warn "Bad pKb: " . $list->[$j];
+                        warn "Bad pKb: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
                         next;
                     }
 			 		$cpd->add("pks", {type => "pKb", pk => $pk, atom => $atom});
@@ -348,12 +348,12 @@ sub createBiochemistry {
             my $cueListString = $rxns->[$i]->structuralCues();
 			next unless(defined($cueListString) && length($cueListString) > 0 && @{$rxn->reactionCues} == 0 );
             # PPO uses different delmiter from Model flat-files
-            my $cueDelimiter = $self->_getCueDelmiterRegex($cueListString);
+            my $cueDelimiter = $self->_getDelimiterRegex($cueListString);
             my $list = [split(/$cueDelimiter/, $rxns->[$i]->structuralCues)];
             for (my $j=0;$j < @{$list}; $j++) {
                 my ($name, $count) = split(/:/, $list->[$j]);
                 unless( defined $name && defined $count ) {
-                    warn "Bad cue: " . $list->[$j];
+                    warn "Bad cue: " . $list->[$j] . " for " . $rxns->[$i]->id . "\n";
                     next;
                 }
                 my $cue = $biochemistry->queryObject("cues",{name => $name} );
