@@ -150,7 +150,8 @@ sub createBiochemistry {
 	#Adding structural cues to biochemistry
 	if ($args->{addStructuralCues} == 1) {
 		my $data = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/MFAToolkitInputFiles/cueTable.txt");
-		my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/Input/FinalGroups.dat");
+        # TODO : how to detangle this dependency on MFAToolkit ( cli call? )
+		my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/etc/FinalGroups.dat");
 		my $cuePriority;
 		for (my $i=2;$i < @{$priorities}; $i++) {
 			my $array = [split(/_/,$priorities->[$i])];
