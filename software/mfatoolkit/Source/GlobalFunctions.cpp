@@ -24,9 +24,6 @@ ofstream OuputLog;
 
 StringDB* stringDatabase;
 
-//This is a simple two-D text-based database loaded from a flat file
-map<string, map<string, map<string, string, std::less<string> >, std::less<string> >, std::less<string> > CompleteDatabase;
-
 //These are all of the global data that is available throughout the program through the access functions listed here
 map<string , string , std::less<string> > Parameters;
 
@@ -69,6 +66,16 @@ ostringstream ErrorFile;
 
 ifstream GlobalInput;
 ofstream GlobalOutput;
+
+bool verboseSetting;
+
+bool verbose() {
+	return verboseSetting;
+}
+
+void setVerbose(bool inVerbose) {
+	verboseSetting = inVerbose;
+}
 
 void CloseIOFiles() {
 	if (GlobalInput.is_open()) {
@@ -142,16 +149,21 @@ double AskNum(const char* Question) {
 }
 
 int LoadStringDB() {
-	char* temp = getenv ("ModelSeedDBSpec");
-	if (temp != NULL) {
-		stringDatabase = new StringDB(CheckFilename(temp),FProgramPath());
-		cout<< "Loading Database Table MSDBS\t"<<temp<<endl;
-		return SUCCESS;
+	string filename;
+	if (getenv ("ModelSeedDBSpec") != NULL) {
+		filename.assign(getenv ("ModelSeedDBSpec"));
 	}
-	
-	cout<< "Loading Database Table DBSF\t"<<GetParameter("database spec file")<<endl;
-
-	stringDatabase = new StringDB(GetParameter("database spec file"),FProgramPath());
+	if (filename.length() == 0) {
+		filename = GetParameter("database spec file");
+		if (filename.compare("none") == 0) {
+			stringDatabase = NULL;
+			return FAIL;
+		}
+	}
+	if (verbose()) {
+		cout<< "Loading Database Table "<< filename <<endl;
+	}
+	stringDatabase = new StringDB(filename,FProgramPath());
 	return SUCCESS;
 }
 
@@ -161,7 +173,6 @@ StringDB* GetStringDB() {
 
 //This function is reponsible for reading in all of the global data
 int Initialize() {
-	LoadTextDatabase();
 	LoadStringDB();
 	string OutputIndex = GetParameter("output index");
 	string Filename(FOutputFilepath());
@@ -172,7 +183,7 @@ int Initialize() {
 	SetParameter("Error filename",Filename.data());
 	ofstream Output(Filename.data());
 	Output.close();
-	
+
 	Filename.assign(FOutputFilepath());
 	Filename.append("Output");
 	Filename.append(OutputIndex);
@@ -252,55 +263,6 @@ void InitializeInternalReferences() {
 	InternalReferenceConversion["CPD_LOAD"] = CPD_LOAD;
 }
 
-int LoadTextDatabase() {
-	string Filename(GetParameter("input directory")+GetParameter("database")+".txt");
-	ifstream Input;
-	if (!OpenInput(Input,Filename)) {
-		return FAIL;
-	}
-	bool New = false;
-	string CurrentObject;
-	string CurrentObjectID;
-	while (!Input.eof()) {
-		vector<string>* Strings = GetStringsFileline(Input, "|");
-		if (Strings->size() == 1 && (*Strings)[0].compare("NEW") == 0) {
-			New = true;
-		} else if (Strings->size() == 2) {
-			if (New) {
-				CurrentObject = (*Strings)[0];
-				CurrentObjectID = (*Strings)[1];
-				New = false;
-			} else {
-				if ((*Strings)[1].find("{") != (*Strings)[1].npos) {
-					vector<string>* StringsTwo = StringToStrings((*Strings)[1],"{}",false);
-					string NewParameterValue;
-					for (int i=0; i < int(StringsTwo->size()); i++) {
-						NewParameterValue.append((*StringsTwo)[i]);
-						i++;
-						if (i != int(StringsTwo->size())) {
-							if ((*StringsTwo)[i].substr(0,1).compare("$") == 0) {
-								string Temp = (*StringsTwo)[i].substr(1,(*StringsTwo)[i].length()-1);
-								NewParameterValue.append(getenv(Temp.data()));
-							} else {
-								string SubParameterValue = GetParameter((*StringsTwo)[i].data());
-								NewParameterValue.append(SubParameterValue);
-							}
-						}
-					}
-					(*Strings)[1] = NewParameterValue;
-					delete StringsTwo;
-				}
-				CompleteDatabase[CurrentObject][CurrentObjectID][(*Strings)[0]] = (*Strings)[1];
-			}
-		}
-
-		delete Strings;
-	}
-
-	Input.close();
-	return SUCCESS;
-}
-
 void ClearParameterDependance(string InParameterName) {
 	if (InParameterName.compare("CLEAR ALL PARAMETER DEPENDANCE") == 0) {
 		//Scanning through the parameters and removing any cases where one parameter depends on the value of another
@@ -328,20 +290,6 @@ void ClearParameterDependance(string InParameterName) {
 			delete Strings;
 		}
 	}
-}
-
-string QueryTextDatabase(string Object, string ObjectID, string Subobject) {
-	return CompleteDatabase[Object][ObjectID][Subobject];
-}
-
-vector<string> GetTextDatabaseObjectList(string Object) {
-	vector<string> Result;
-
-	for (map<string, map<string, string, std::less<string> >, std::less<string> >::iterator MapIT; MapIT != CompleteDatabase[Object].end(); MapIT++) {
-		Result.push_back(MapIT->first);
-	}
-
-	return Result;
 }
 
 int TranslateFileHeader(string& InHeader, int Object) {
@@ -423,32 +371,6 @@ int LoadFileReferences() {
 	return SUCCESS;
 }
 
-int LoadFIGMODELParameters() {
-	if (FileExists(GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("FIGMODEL config file"))) {
-		ifstream Input;
-		if (!OpenInput(Input,GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("FIGMODEL config file"))) {
-			return FAIL;
-		}
-		do {
-			vector<string>* Strings  = GetStringsFileline(Input,"|");
-			if (Strings->size() > 0 && (*Strings)[0].length() > 0 && (*Strings)[0].substr(0,1).compare("%") != 0) {
-				if ((*Strings)[0].substr(0,1).compare(".") == 0) {
-					(*Strings)[0] = (*Strings)[0].substr(1,(*Strings)[0].length()-1);
-					if ((*Strings)[1].length() > 11 && (*Strings)[1].substr(0,11).compare("ReactionDB/") == 0) {
-						(*Strings)[1] = (*Strings)[1].substr(11);
-					}
-					(*Strings)[1].insert(0,GetDatabaseDirectory(GetParameter("database"),"root directory"));
-				}
-				(*Strings)[0].insert(0,"FIGMODEL ");
-				Parameters[ (*Strings)[0] ] = (*Strings)[1];
-			}
-			delete Strings;
-		} while(!Input.eof());
-		Input.close();
-	}
-	return SUCCESS;
-}
-
 void Cleanup() {
 	FlushErrorFile();
 	OuputLog.close();
@@ -471,44 +393,28 @@ void Cleanup() {
 	PrintFileLineOutput();
 }
 
-int LoadParameters() {
-	//Open the file containing a list of all text files which contain various input parameters for this software
-	ifstream Input;
-	string Filename(FProgramPath());
-	Filename.append(FInputParameterFile());
-	if (!OpenInput(Input, Filename)) {
-		return FAIL;
-	}
-
-	//Read in the filename of each text file containing input parameters, open the files and read in the parameters
-	do {
-		string Line = GetFileLine(Input);
-		if (Line.length() > 3) {
-			LoadParameterFile(Line);
-		}
-	} while(!Input.eof());
-	//Close the file listing all of the input parameter filenames
-	Input.close();
-
-	return SUCCESS;
-}
-
 int LoadParameterFile(string Filename) {
 	ifstream Input;
 	if (!OpenInput(Input, Filename)) {
 		return FAIL;
 	}
 
-	cout<<"Reading parameter file: "<< Filename << endl;
+	if (verbose()) {
+	  cout<<"Reading parameter file: "<< Filename << endl;
+	}
 
 	//Read in the parameters and store them
 	do {
 		vector<string>* Strings = GetStringsFileline(Input, "|",false);
 		if (Strings->size() >= 2) {
 			if(Parameters[ (*Strings)[0] ].length()==0){
-			  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			  if (verbose()) {
+				  cout << "Reading parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			  }
 			}else{
-			  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			  if (verbose()) {
+				  cout << "Overwriting parameter: "<<(*Strings)[0]<<" with value: "<<(*Strings)[1]<<" from file: "<<Filename<<endl;
+			  }
 			}
 			Parameters[ (*Strings)[0] ] = (*Strings)[1];
 		}
@@ -537,7 +443,7 @@ void SetParameter(const char* ParameterLabel,const char* NewValue) {
 }
 
 string FOutputFilepath() {
-	string Temp(GetDatabaseDirectory(GetParameter("database"),"output directory"));
+	string Temp(GetDatabaseDirectory(false));
 	if (GetParameter("Network output location").compare("none") != 0 && GetParameter("Network output location").length() > 0) {
 		Temp.assign(GetParameter("Network output location"));
 	}
@@ -606,7 +512,6 @@ bool PrintPathways(map<Species* , list<Pathway*> , std::less<Species*> >* InPath
 		return false;
 	}
 	
-	double Temperature = atof(GetParameter("Temperature").data());
 	bool PrintmMDeltaG = (GetParameter("print mM delta G").compare("1") == 0);
 	Output << "Index|Length|Names|Intermediates|Reaction Entries|Reaction Operators|Reactions with names|Reactions with entries|Cumulative DeltaG|Cumulative Uncertainty|Overall reaction with entries|Overall reaction with names" << endl;
 
@@ -998,15 +903,14 @@ LinEquation* CloneLinEquation(LinEquation* InLinEquation) {
 }
 
 int ReadConstraints(const char* ConstraintFilename, struct ConstraintsToAdd* AddConstraints, struct ConstraintsToModify* ModConstraints) {
-	
 	string ConstraintsFilename(ConstraintFilename);
-	if (ConstraintsFilename.length() == 0) {
-		ConstraintsFilename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("user constraints filename");
-		if (ConstraintsFilename.compare("none") == 0) {
+	if (ConstraintsFilename.length() == 0 || ConstraintsFilename.compare("none") == 0) {
+		if (GetParameter("user constraints filename").compare("none") == 0) {
 			delete AddConstraints;
 			delete ModConstraints;
 			return FAIL;
 		}
+		ConstraintsFilename = GetDatabaseDirectory(true)+GetParameter("user constraints filename");
 	}
 
 	ifstream Input;
@@ -1244,6 +1148,9 @@ FileBounds* ReadBounds(string mediaName) {
 		mediaName = mediaName.substr(0,mediaName.length()-4);
 	}
 	StringDBObject* mediaObj = GetStringDB()->get_object("media",GetStringDB()->get_table("media")->get_id_column(),mediaName);
+	if (mediaObj == NULL) {
+		return NULL;
+	}
 	FileBounds* InputBounds = new FileBounds;
 	vector<string>* vars = mediaObj->getAll("VARIABLES");
 	vector<string>* types = mediaObj->getAll("TYPES");
@@ -1381,7 +1288,7 @@ OptimizationParameter* ReadParameters() {
 		PCompounds = GetParameter("Compounds excluded from potential constraints");
 		if (PCompounds.length() > 0 && PCompounds.compare("none") != 0) {
 			if (PCompounds.compare("NoPConstraintList.txt") == 0) {
-				string PConsFilename = GetDatabaseDirectory(GetParameter("database"),"input directory")+"NoPConstraintList.txt";
+				string PConsFilename = GetDatabaseDirectory(true)+"NoPConstraintList.txt";
 				vector<string> PCompoundsList = ReadStringsFromFile(PConsFilename);
 				for (int i=0; i < int(PCompoundsList.size()); i++) {
 					NewParameters->PotentialEnergyCompounds[PCompoundsList[i]] = true;
@@ -1395,7 +1302,7 @@ OptimizationParameter* ReadParameters() {
 			}
 		}
 	} else if (PCompounds.compare("PConstraintList.txt") == 0) {
-		string PConsFilename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Compounds to have potential constraint");
+		string PConsFilename = GetDatabaseDirectory(true)+GetParameter("Compounds to have potential constraint");
 		vector<string> PCompoundsList = ReadStringsFromFile(PConsFilename);
 		for (int i=0; i < int(PCompoundsList.size()); i++) {
 			NewParameters->PotentialEnergyCompounds[PCompoundsList[i]] = true;
@@ -1479,7 +1386,7 @@ OptimizationParameter* ReadParameters() {
 
 	//Loading FBA experiment data from file if specified
 	if (GetParameter("FBA experiment file").length() > 0 && ConvertToLower(GetParameter("FBA experiment file")).compare("none") != 0) {
-		vector<string> lines = ReadStringsFromFile(GetDatabaseDirectory(GetParameter("database"),"output directory")+GetParameter("output folder")+GetParameter("FBA experiment file"),false);
+		vector<string> lines = ReadStringsFromFile(GetDatabaseDirectory(false)+GetParameter("output folder")+GetParameter("FBA experiment file"),false);
 		string temp = "";
 		for (int i=1; i < int(lines.size()); i++) {
 			if (temp.length() > 0) {
@@ -1592,17 +1499,15 @@ OptimizationParameter* ReadParameters() {
 	}
 
 	// Loading user-set constraints
-	string Filename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("user constraints filename");
-	
 	NewParameters->ModConstraints = new ConstraintsToModify;
 	NewParameters->AddConstraints = new ConstraintsToAdd;
 
-	if (Filename.compare("none") != 0) {
-		int Status = ReadConstraints(Filename.data(), (NewParameters->AddConstraints), (NewParameters->ModConstraints));
+	if (GetParameter("user constraints filename").compare("none") != 0) {
+		int Status = ReadConstraints((GetDatabaseDirectory(true)+GetParameter("user constraints filename")).data(), (NewParameters->AddConstraints), (NewParameters->ModConstraints));
 	}
 
 	//Loading user-set bounds on variables
-	Filename = GetParameter("user bounds filename");
+	string Filename = GetParameter("user bounds filename");
 	NewParameters->UserBounds = NULL;
 	if (Filename.compare("none") != 0) {
 		NewParameters->UserBounds = ReadBounds(Filename.data());
@@ -2470,11 +2375,11 @@ OptSolutionData* ParseSCIPSolution(string Filename,vector<MFAVariable*> Variable
 	return NewSolution;
 }
 
-string GetDatabaseDirectory(string Database,string Entity) {
-	if (Entity.compare("root directory") != 0) {
-		return QueryTextDatabase("database",Database,"root directory")+QueryTextDatabase("database",Database,Entity);
+string GetDatabaseDirectory(bool inputdir) {
+	if (inputdir) {
+		return GetParameter("database root input directory");
 	} else {
-		return QueryTextDatabase("database",Database,Entity);
+		return GetParameter("database root output directory");
 	}
 }
 

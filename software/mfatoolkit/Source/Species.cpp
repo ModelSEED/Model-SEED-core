@@ -882,7 +882,7 @@ int Species::SaveSpecies(string InFilename) {
 	}
 
 	if (InFilename.substr(1,1).compare(":") != 0 && InFilename.substr(0,1).compare("/") != 0) {
-		InFilename = GetDatabaseDirectory(GetParameter("database"),"new "+Entity+" directory")+InFilename;
+		InFilename = GetDatabaseDirectory(false)+InFilename;
 	}
 
 	ofstream Output;
@@ -1242,10 +1242,10 @@ int Species::LoadSpecies(string InFilename) {
 	}
 	if (!FCue() && GetParameter("load compound structure").compare("1") == 0) {
 		if (GetData("STRUCTURE_FILE",STRING).length() == 0) {
-			if (FileExists(GetDatabaseDirectory(GetParameter("database"),"molfile directory")+"pH7/"+GetData("DATABASE",STRING)+".mol")) {
-				SetData("STRUCTURE_FILE",(GetDatabaseDirectory(GetParameter("database"),"molfile directory")+"pH7/"+GetData("DATABASE",STRING)+".mol").data(),STRING);
-			} else if (FileExists(GetDatabaseDirectory(GetParameter("database"),"molfile directory")+GetData("DATABASE",STRING)+".mol")) {
-				SetData("STRUCTURE_FILE",(GetDatabaseDirectory(GetParameter("database"),"molfile directory")+GetData("DATABASE",STRING)+".mol").data(),STRING);
+			if (FileExists(GetParameter("molfile directory")+"pH7/"+GetData("DATABASE",STRING)+".mol")) {
+				SetData("STRUCTURE_FILE",(GetParameter("molfile directory")+"pH7/"+GetData("DATABASE",STRING)+".mol").data(),STRING);
+			} else if (FileExists(GetParameter("molfile directory")+GetData("DATABASE",STRING)+".mol")) {
+				SetData("STRUCTURE_FILE",(GetParameter("molfile directory")+GetData("DATABASE",STRING)+".mol").data(),STRING);
 				AddErrorMessage("No pH7 molfile exists for this compound.");
 				FErrorFile() << "No pH7 molfile exists for compound: " << GetData("DATABASE",STRING) << endl;	
 				FlushErrorFile();
@@ -1535,9 +1535,9 @@ void Species::ReadFromMol(string InFilename) {
 	}
 
 	if (!FileExists(InFilename)) {
-		InFilename = GetDatabaseDirectory(GetParameter("database"),"molfile directory")+"pH7/"+InFilename;
+		InFilename = GetParameter("molfile directory")+"pH7/"+InFilename;
 		if (!FileExists(InFilename)) {
-			InFilename = GetDatabaseDirectory(GetParameter("database"),"molfile directory")+InFilename;
+			InFilename = GetParameter("molfile directory")+InFilename;
 		}
 		if (FileExists(InFilename)) {
 			SetData("STRUCTURE_FILE",InFilename.data(),STRING);
@@ -2032,8 +2032,8 @@ void Species::ReadFromDat(string InFilename) {
 	
 	if (!FileExists(InFilename)) {
 		if (InFilename.substr(InFilename.length()-4).compare(".gds") == 0) {
-			if (FileExists(GetDatabaseDirectory(GetParameter("database"),"cue directory")+"StructureFiles/"+InFilename)) {
-				InFilename = GetDatabaseDirectory(GetParameter("database"),"cue directory")+"StructureFiles/"+InFilename;
+			if (FileExists(GetParameter("cue directory")+"StructureFiles/"+InFilename)) {
+				InFilename = GetParameter("cue directory")+"StructureFiles/"+InFilename;
 			}
 		}
 	}
@@ -2993,7 +2993,7 @@ void Species::ReplaceCoAWithFullMolecule() {
 				delete CoAAtom;
 			}
 			
-			string Filename(GetDatabaseDirectory(GetParameter("database"),"molfile directory")+GetParameter("CoA structure file location"));
+			string Filename(GetParameter("molfile directory")+GetParameter("CoA structure file location"));
 			string EmptyString;
 			Species* NewSpecies = new Species(EmptyString,MainData);
 			if (Filename.substr(Filename.length()-3,3).compare("dat") == 0) {

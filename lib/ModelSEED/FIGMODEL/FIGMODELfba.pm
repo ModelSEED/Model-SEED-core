@@ -357,6 +357,8 @@ sub printJobParametersToFile {
 	$self->setOptionParameters();
 	$self->parameters()->{"output folder"} = $self->filename()."/";
 	$self->parameters()->{"Network output location"} = "/scratch/" if ($args->{printToScratch} == 1);
+	$self->parameters()->{"database root output directory"} = $self->figmodel()->config("MFAToolkit output directory")->[0]."/";
+	$self->parameters()->{"database root input directory"} = $self->directory()."/";
 	if ($^O eq "MSWin32") {
 		$self->parameters()->{"scip executable"} = "../../optimization/scip.exe";
 		$self->parameters()->{"perl directory"} = "C:/Perl/bin/perl.exe";
@@ -364,8 +366,7 @@ sub printJobParametersToFile {
 	} else {
 		$self->parameters()->{"scip executable"} = "../../optimization/scip";
 		$self->parameters()->{"perl directory"} = "/usr/bin/perl";
-		$self->parameters()->{"os"} = $^O;
-		
+		$self->parameters()->{"os"} = "linux";	
 	}
 	$self->makeOutputDirectory() if (!-d $self->directory());
 	my $parameterData;
@@ -487,6 +488,32 @@ sub runProblemDirectory {
 	my $results = $self->loadProblemDirectory($args);
 	return $self->error_message({function => "runProblemDirectory",args=>$results}) if (defined($results->{error}));
 	return $self->runFBA();
+}
+
+=head3 mfatoolkitBinary
+Definition:
+	string = FIGMODELfba->mfatoolkitBinary();
+Description:
+	Returns the location of the MFAToolkit binary
+=cut
+sub mfatoolkitBinary {
+	my ($self) = @_;
+	if (!defined($self->{mfatoolkitbinary})) {
+		if (defined($ENV{"MFAToolkitBinary"}) && -e $ENV{"MFAToolkitBinary"}) {
+			$self->{mfatoolkitbinary} = $ENV{"MFAToolkitBinary"};
+		} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit") {
+			$self->{mfatoolkitbinary} = ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit";
+		} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe") {
+			$self->{mfatoolkitbinary} = ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe";
+		} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit") {
+			$self->{mfatoolkitbinary} = ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit";
+		} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe") {
+			$self->{mfatoolkitbinary} = ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe";
+		} else {
+			ModelSEED::utilities::ERROR("Could not find MFAToolkit executable");
+		}
+	}
+	return $self->{mfatoolkitbinary};
 }
 
 =head3 loadProblemDirectoryResults
@@ -1038,7 +1065,7 @@ sub runFBA {
 	if (!defined($args->{logfile})) {
 		$args->{logfile} = "fba-".$args->{filename}.".log";
 	}
-	my $commandLine = {logfile => "",model => "",files => "",excutable => $self->figmodel()->config("MFAToolkit executable")->[0]};
+	my $commandLine = {logfile => "",model => "",files => "",excutable => $self->mfatoolkitBinary()};
 	if ($args->{studyType} eq "LoadCentralSystem") {
 		if ($self->model() =~ m/Complete:(.+)/) {
 			$self->parameters()->{"Min flux"} = -10000;

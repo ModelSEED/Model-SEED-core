@@ -66,7 +66,6 @@ public:
 	//File input
 	int LoadSystem(string Filename, bool StructCues = false);
 	int LoadStructuralCues();
-	void LoadNonmetabolicGenes();
 
 	//Input
 	Species* AddSpecies(string Filename);
@@ -134,7 +133,6 @@ public:
 	void SearchForPathways();
 	void PerformMFA();
 	void PollStructuralCues();
-	void ProcessEntireDatabase();
 	void FindDeadEnds();
 	void IdentifyCompoundWithIdenticalStructures();
 	void LabelKEGGSingleCofactors();

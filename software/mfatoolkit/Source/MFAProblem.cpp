@@ -777,7 +777,6 @@ int MFAProblem::BuildMFAProblem(Data* InData,OptimizationParameter*& InParameter
 
 	//Adding variables and constraints associated with deletion optimizations
 	if (InParameters->GeneConstraints && InParameters->DeletionOptimization) {
-		InData->LoadNonmetabolicGenes();
 		InData->AutomaticallyCreateGeneIntervals(InParameters);
 		Gene* StartingGene = NULL;
 		for (int i=0; i < InData->FNumGenes(); i++) {
@@ -3706,7 +3705,7 @@ int MFAProblem::RunMediaExperiments(Data* InData, OptimizationParameter* InParam
 
 	ifstream Input;
 	//I read in the media file list
-	string MFAInputFilename = GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("media list file");
+	string MFAInputFilename = GetDatabaseDirectory(true)+GetParameter("media list file");
 	if (!OpenInput(Input,MFAInputFilename)) {
 		return FAIL;
 	}
@@ -3741,7 +3740,7 @@ int MFAProblem::RunMediaExperiments(Data* InData, OptimizationParameter* InParam
 		string Filename = Temp+".txt";
 		//Checking that the filename is valid
 		if (Temp.length() > 0) {
-			if (FileExists(GetDatabaseDirectory(GetParameter("database"),"media directory")+Filename)) {
+			if (FileExists(GetDatabaseDirectory(true)+Filename)) {
 				//Reloading the solver if it was reset during an analysis
 				if (!FProblemLoaded()) {
 					LoadSolver();
@@ -4731,7 +4730,7 @@ int MFAProblem::FindSpecificExtremePathways(Data* InData, OptimizationParameter*
 	
 	//I read in the list of reactions to find the extreme pathways for
 	ifstream Input;
-	string Filename = GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("Extreme pathway reaction list");
+	string Filename = GetDatabaseDirectory(true)+GetParameter("Extreme pathway reaction list");
 	if (!OpenInput(Input,Filename)) {
 		return FAIL;
 	}
@@ -6040,7 +6039,12 @@ int MFAProblem::LoadGapFillingReactions(Data* InData, OptimizationParameter* InP
 		//Iterating through the list and loading any reaction that is not already present in the model		
 
 		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
-		cout << "Loading GapFillingReactions\n";
+		if (rxntbl == NULL) {
+			return FAIL;
+		}
+		if (verbose()) {
+			cout << "Loading GapFillingReactions\n";
+		}
 		for (int i=0; i < rxntbl->number_of_objects();i++) {
 			StringDBObject* rxnobj = rxntbl->get_object(i);
 			string RxnId = rxnobj->get("id");
@@ -7325,7 +7329,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	int SolutionIndex = 0;
 
 	//Loading the data on the original model performance
-	string Filename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Solution data for model optimization")+"-OPEM.txt";
+	string Filename = GetDatabaseDirectory(true)+GetParameter("Solution data for model optimization")+"-OPEM.txt";
 	ifstream InputTwo;
 	if (!OpenInput(InputTwo,Filename)) {
 		Note.append("Could not open file specifying original model performance.");
@@ -7343,7 +7347,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	InputTwo.clear();
 
 	//Loading the solution data
-	Filename = (GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Solution data for model optimization")+"-GFEM.txt");
+	Filename = (GetDatabaseDirectory(true)+GetParameter("Solution data for model optimization")+"-GFEM.txt");
 	if (OpenInput(Input,Filename)) {
 		do {
 			Strings = GetStringsFileline(Input,";");
@@ -7547,7 +7551,7 @@ int MFAProblem::SolutionReconciliation(Data* InData, OptimizationParameter* InPa
 	Input.clear();
 
 	//Loading the gap generation solution data
-	Filename = (GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Solution data for model optimization")+"-GGEM.txt");
+	Filename = (GetDatabaseDirectory(true)+GetParameter("Solution data for model optimization")+"-GGEM.txt");
 	if (OpenInput(Input,Filename)) {
 		//Resetting the error matrix to hold the data for the gap generation solutions
 		ErrorMatrix.clear();
@@ -8826,7 +8830,7 @@ void MFAProblem::PrintProblemReport(double SingleObjective,OptimizationParameter
 }	
 
 int MFAProblem::LoadTightBounds(Data* InData, bool SetBoundToTightBounds) {
-	string Filename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Tight bounds input filename");
+	string Filename = GetDatabaseDirectory(true)+GetParameter("Tight bounds input filename");
 	
 	FileBounds* TightBounds = ReadBounds(Filename.data());
 

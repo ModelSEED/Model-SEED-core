@@ -50,20 +50,36 @@ sub printDBFiles {
 		return;	
 	}
 	my $output = ["abbrev	charge	deltaG	deltaGErr	formula	id	mass	name"];
+	my $columns = ["abbreviation","defaultCharge","deltaG","deltaGErr","formula","id","mass","name"];
 	my $cpds = $self->compounds();
 	for (my $i=0; $i < @{$cpds}; $i++) {
 		my $cpd = $cpds->[$i];
-		my $line = $cpd->abbreviation()."\t".$cpd->defaultCharge()."\t".$cpd->deltaG()."\t".$cpd->deltaGErr()."\t".
-			$cpd->formula()."\t".$cpd->id()."\t".$cpd->mass()."\t".$cpd->name();
+		my $line = "";
+		foreach my $column (@{$columns}) {
+			if (length($line) > 0) {
+				$line .= "\t";
+			}
+			if (defined($cpd->$column())) {
+				$line .= $cpd->$column();
+			}
+		}
 		push(@{$output},$line);
 	}
 	ModelSEED::utilities::PRINTFILE($path.$self->uuid()."-compounds.tbl",$output);
 	$output = ["abbrev	deltaG	deltaGErr	equation	id	name	reversibility	status	thermoReversibility"];
+	$columns = ["abbreviation","deltaG","deltaGErr","equation","id","name","direction","status","thermoReversibility"];
 	my $rxns = $self->reactions();
 	for (my $i=0; $i < @{$rxns}; $i++) {
 		my $rxn = $rxns->[$i];
-		my $line = $rxn->abbreviation()."\t".$rxn->deltaG()."\t".$rxn->deltaGErr()."\t".$rxn->equation()."\t".$rxn->id()."\t".
-			$rxn->name()."\t".$rxn->direction()."\t".$rxn->status()."\t".$rxn->thermoReversibility();
+		my $line = "";
+		foreach my $column (@{$columns}) {
+			if (length($line) > 0) {
+				$line .= "\t";
+			}
+			if (defined($rxn->$column())) {
+				$line .= $rxn->$column();
+			}
+		}
 		push(@{$output},$line);
 	}
 	ModelSEED::utilities::PRINTFILE($path.$self->uuid()."-reactions.tbl",$output);

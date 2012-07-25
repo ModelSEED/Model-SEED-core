@@ -64,59 +64,61 @@ int Data::LoadSystem(string Filename, bool StructCues) {
 	if (Filename.compare("Complete") == 0) {
 		vector<string> ReactionList;
 		StringDBTable* rxntbl = GetStringDB()->get_table("reaction");
-		for (int i=0; i < rxntbl->number_of_objects();i++) {
-			StringDBObject* rxnobj = rxntbl->get_object(i);
-			ReactionList.push_back(rxnobj->get("id"));
-		}
-		vector<string>* AllowedUnbalancedReactions = StringToStrings(GetParameter("Allowable unbalanced reactions"),",");
-		vector<string>* DissapprovedCompartments = NULL;
-		if (GetParameter("dissapproved compartments").compare("none") != 0) {
-			DissapprovedCompartments = StringToStrings(GetParameter("dissapproved compartments"),";");
-		}
-		//Iterating through the list and loading any reaction that is not already present in the model
-		for (int i=0; i < int (ReactionList.size()); i++) {
-			Reaction* NewReaction = new Reaction(ReactionList[i],this);
-			//Checking that only approved compartments are involved in the reaction
-			bool ContainsDissapprovedCompartments = false;
-			if (DissapprovedCompartments != NULL) {
-				for (int j=0; j < NewReaction->FNumReactants(); j++) {
-					for (int k=0; k < int(DissapprovedCompartments->size()); k++) {
-						if ((*DissapprovedCompartments)[k].compare(GetCompartment(NewReaction->GetReactantCompartment(j))->Abbreviation) == 0) {
-							ContainsDissapprovedCompartments = true;
+		if (rxntbl != NULL) {
+			for (int i=0; i < rxntbl->number_of_objects();i++) {
+				StringDBObject* rxnobj = rxntbl->get_object(i);
+				ReactionList.push_back(rxnobj->get("id"));
+			}
+			vector<string>* AllowedUnbalancedReactions = StringToStrings(GetParameter("Allowable unbalanced reactions"),",");
+			vector<string>* DissapprovedCompartments = NULL;
+			if (GetParameter("dissapproved compartments").compare("none") != 0) {
+				DissapprovedCompartments = StringToStrings(GetParameter("dissapproved compartments"),";");
+			}
+			//Iterating through the list and loading any reaction that is not already present in the model
+			for (int i=0; i < int (ReactionList.size()); i++) {
+				Reaction* NewReaction = new Reaction(ReactionList[i],this);
+				//Checking that only approved compartments are involved in the reaction
+				bool ContainsDissapprovedCompartments = false;
+				if (DissapprovedCompartments != NULL) {
+					for (int j=0; j < NewReaction->FNumReactants(); j++) {
+						for (int k=0; k < int(DissapprovedCompartments->size()); k++) {
+							if ((*DissapprovedCompartments)[k].compare(GetCompartment(NewReaction->GetReactantCompartment(j))->Abbreviation) == 0) {
+								ContainsDissapprovedCompartments = true;
+							}
 						}
 					}
 				}
-			}
-			
-			if (!ContainsDissapprovedCompartments) {
-				//Checking if the reaction is balanced
-				if (!NewReaction->BalanceReaction(false,false)) {
-					NewReaction->AddData("UNBALANCED","YES",STRING);
-				}
-				if (GetParameter("Balanced reactions in gap filling only").compare("0") == 0 || NewReaction->GetData("UNBALANCED",STRING).length() == 0) {
-					NewReaction->SetType(NewReaction->CalculateDirectionalityFromThermo());
-					AddReaction(NewReaction);
-				} else {
-					for (int j=0; j < int(AllowedUnbalancedReactions->size()); j++) {
-						if (NewReaction->GetData("DATABASE",STRING).compare((*AllowedUnbalancedReactions)[j]) == 0) {
-							NewReaction->SetType(NewReaction->CalculateDirectionalityFromThermo());
-							AddReaction(NewReaction);
-							break;
-						}
-					}
-				}
-			}
-		}
-		delete DissapprovedCompartments;
-		delete AllowedUnbalancedReactions;
 
-		if (GetParameter("Complete model biomass reaction").compare("NONE") != 0) {
-			Reaction* NewReaction = new Reaction(GetParameter("Complete model biomass reaction"),this);
-			AddReaction(NewReaction);
+				if (!ContainsDissapprovedCompartments) {
+					//Checking if the reaction is balanced
+					if (!NewReaction->BalanceReaction(false,false)) {
+						NewReaction->AddData("UNBALANCED","YES",STRING);
+					}
+					if (GetParameter("Balanced reactions in gap filling only").compare("0") == 0 || NewReaction->GetData("UNBALANCED",STRING).length() == 0) {
+						NewReaction->SetType(NewReaction->CalculateDirectionalityFromThermo());
+						AddReaction(NewReaction);
+					} else {
+						for (int j=0; j < int(AllowedUnbalancedReactions->size()); j++) {
+							if (NewReaction->GetData("DATABASE",STRING).compare((*AllowedUnbalancedReactions)[j]) == 0) {
+								NewReaction->SetType(NewReaction->CalculateDirectionalityFromThermo());
+								AddReaction(NewReaction);
+								break;
+							}
+						}
+					}
+				}
+			}
+			delete DissapprovedCompartments;
+			delete AllowedUnbalancedReactions;
+
+			if (GetParameter("Complete model biomass reaction").compare("NONE") != 0) {
+				Reaction* NewReaction = new Reaction(GetParameter("Complete model biomass reaction"),this);
+				AddReaction(NewReaction);
+			}
 		}
 	} else {
 		if (!StructCues && Filename.substr(1,1).compare(":") != 0 && Filename.substr(0,1).compare("/") != 0) {
-			Filename = GetDatabaseDirectory(GetParameter("database"),"model directory") + Filename;
+			Filename = GetDatabaseDirectory(true) + Filename;
 		}
 
 		if (!OpenInput(Input,Filename)) {
@@ -232,49 +234,6 @@ int Data::LoadStructuralCues() {
 	}
 
 	return Result;
-}
-
-void Data::LoadNonmetabolicGenes() {
-	//Getting a list of every gene in the gene database	
-	vector<string> Filenames = GetDirectoryFileList(GetDatabaseDirectory(GetParameter("database"),"gene directory"));
-	//Scanning through the gene list and loading any genes that are not already loaded
-	for (int i=0; i < int(Filenames.size()); i++) {
-		if (Filenames[i].length() > 4 && Filenames[i].substr(0,4).compare("peg.") == 0) {
-			if (FindGene("DATABASE",Filenames[i].data()) == NULL) {
-				AddGene(Filenames[i]);
-			}
-		}
-	}
-	//Setting Gene Next and Previous parameters
-	//First searching for the gene with the lowest start coordinate
-	Gene* FirstGene = NULL;
-	double LowestCoord = FLAG;
-	for (int i=0; i < FNumGenes(); i++) {
-		if (LowestCoord > GetGene(i)->GetDoubleData("START COORD")) {
-			LowestCoord = GetGene(i)->GetDoubleData("START COORD");
-			FirstGene = GetGene(i);
-		}
-	}
-	//Now iterating through the genome searching for the next gene neighbor
-	Gene* CurrentGene = FirstGene;
-	do {
-		Gene* NextGene = NULL;
-		LowestCoord = FLAG;
-		for (int i=0; i < FNumGenes(); i++) {
-			if (GetGene(i)->GetDoubleData("START COORD") > CurrentGene->GetDoubleData("END COORD") && LowestCoord > GetGene(i)->GetDoubleData("START COORD")) {
-				LowestCoord = GetGene(i)->GetDoubleData("START COORD");
-				NextGene = GetGene(i);
-			}
-		}
-		if (NextGene == NULL) {
-			CurrentGene->SetNext(FirstGene);
-			FirstGene->SetPrevious(CurrentGene);
-		} else {
-			CurrentGene->SetNext(NextGene);
-			NextGene->SetPrevious(CurrentGene);
-		}
-		CurrentGene = NextGene;
-	} while (CurrentGene != NULL);
 }
 
 Species* Data::AddSpecies(string Filename) {
@@ -639,7 +598,7 @@ void Data::ClearSpeciesDatabaseLinks() {
 
 void Data::LoadGeneIntervals() {
 	ifstream Input;
-	string MFAInputFilename = GetDatabaseDirectory(GetParameter("database"),"root directory")+GetParameter("interval experiment list file");
+	string MFAInputFilename = GetDatabaseDirectory(true)+GetParameter("interval experiment list file");
 	if (!OpenInput(Input,MFAInputFilename)) {
 		return;
 	}
@@ -732,7 +691,7 @@ void Data::AddAlias(int Type,string One,string Two) {
 };
 
 void Data::LoadGeneDictionary() {
-	string Filename = GetDatabaseDirectory(GetParameter("database"),"input directory")+GetParameter("Gene dictionary");
+	string Filename = GetDatabaseDirectory(true)+GetParameter("Gene dictionary");
 	if (FileExists(Filename)) {
 		vector< vector<string> >* GeneDictionaryData = LoadMultipleColumnFile(Filename,";");
 		for (int i=0; i < int(GeneDictionaryData->size()); i++) {
@@ -1434,92 +1393,6 @@ void Data::PollStructuralCues() {
 	Output.close();
 }
 
-void Data::ProcessEntireDatabase() {
-	//Processing compounds first
-	if (GetParameter("Calculations:compounds:process list").compare("NONE") != 0) {
-		string Database = GetParameter("database to process");
-		SetData("DATABASE",Database.data(),STRING);
-		SetData("FILENAME",Database.data(),STRING);
-		int FilenameLength = atoi(QueryTextDatabase("database",Database,"compound filename length").data());
-		string FilenamePrefix = QueryTextDatabase("database",Database,"compound filename prefix");
-		string input = GetParameter("Calculations:compounds:process list");
-		vector<string> ids;
-		if (input.compare("ALL") == 0) {
-			ids = GetDirectoryFileList(GetDatabaseDirectory(Database,"compound directory"));
-		} else if (input.length() > 5 && input.substr(0,5).compare("LIST:") == 0) {
-			string input = input.substr(5);
-			ids = (*StringToStrings(input, ";",true));
-		} else {
-			ids = ReadStringsFromFile(input,false);
-		}
-		//Loading each compound and performing all calculations
-		for (int i=0; i < int(ids.size()); i++) {
-			if (ids[i].compare("Filenames.txt") != 0 && ids[i].compare("Combined.txt") != 0) {
-				if (FilenameLength == -1 || FilenameLength == ids[i].length()) {
-					if (FilenamePrefix.compare("NONE") == 0 || (ids[i].length() >= FilenamePrefix.length() && ids[i].substr(0,FilenamePrefix.length()).compare(FilenamePrefix) == 0)) {
-						Species* NewSpecies = new Species(ids[i],this,false);
-						NewSpecies->AddData(Database.data(),NewSpecies->GetData("DATABASE",STRING).data(),DATABASE_LINK);
-						NewSpecies->PerformAllCalculations(GetParameter("label atoms").compare("1") == 0,GetParameter("determine stringcode").compare("1") == 0,GetParameter("look for cycles").compare("1") == 0,GetParameter("calculate properties from groups").compare("1") == 0,GetParameter("determine formula from structure file").compare("1") == 0);
-						AddSpecies(NewSpecies);
-					}
-				}
-			}
-		}
-		//Now I identify and note all of the compounds with identical 2D structures so I can eliminate synonymous compounds from the DB
-		LabelKEGGSingleCofactors();
-		if (GetParameter("Calculations:reactions:process list").compare("NONE") == 0) {
-			IdentifyCompoundWithIdenticalStructures();
-			for (int i=0; i < FNumSpecies(); i++) {
-				GetSpecies(i)->SaveSpecies(GetSpecies(i)->GetData("FILENAME",STRING));
-			}
-		}
-	}
-	//Processing reactions second
-	if (GetParameter("Calculations:reactions:process list").compare("NONE") != 0) {
-		string Database = GetParameter("database to process");
-		SetData("DATABASE",Database.data(),STRING);
-		SetData("FILENAME",Database.data(),STRING);
-		int FilenameLength = atoi(QueryTextDatabase("database",Database,"reaction filename length").data());
-		string FilenamePrefix = QueryTextDatabase("database",Database,"reaction filename prefix");
-		string input = GetParameter("Calculations:reactions:process list");
-		vector<string> ids;
-		if (input.compare("ALL") == 0) {
-			ids = GetDirectoryFileList(GetDatabaseDirectory(Database,"reaction directory"));
-		} else if (input.length() > 5 && input.substr(0,5).compare("LIST:") == 0) {
-			input = input.substr(5,input.length()-5);
-			vector<string>* temp = StringToStrings(input, ";",true);
-			ids = (*temp);
-			delete temp;
-		} else {
-			ids = ReadStringsFromFile(input,false);
-		}
-		//Now I load each reaction file, run all requested calculations, and save the file again
-		for (int i=0; i < int(ids.size()); i++) {
-			if (ids[i].compare("Filenames.txt") != 0 && ids[i].compare("Combined.txt") != 0) {
-				if (FilenameLength == -1 || FilenameLength == ids[i].length()) {
-					if (FilenamePrefix.compare("NONE") == 0 || (ids[i].length() >= FilenamePrefix.length() && ids[i].substr(0,FilenamePrefix.length()).compare(FilenamePrefix) == 0)) {
-						Reaction* NewReaction = new Reaction(ids[i],this);
-						NewReaction->AddData(Database.data(),NewReaction->GetData("DATABASE",STRING).data(),DATABASE_LINK);
-						AddReaction(NewReaction);
-					}
-				}
-			}
-		}
-		MergeReactants();
-		for (int i=0; i < FNumReactions(); i++) {
-			GetReaction(i)->PerformAllCalculations();
-		}
-		LabelKEGGCofactorPairs();
-		for (int i=0; i < FNumSpecies(); i++) {
-			GetSpecies(i)->SaveSpecies(GetSpecies(i)->GetData("FILENAME",STRING));
-		}
-		IdentifyCompoundWithIdenticalStructures();
-		for (int i=0; i < FNumReactions(); i++) {
-			GetReaction(i)->SaveReaction(GetReaction(i)->GetData("FILENAME",STRING));
-		}
-	}
-}
-
 //Identifies the dead end metabolites and reactions in the model
 void Data::FindDeadEnds() {
 	ResetAllBools(false,true,false,false,true,true,false);
@@ -2006,9 +1879,9 @@ int Data::SaveSystem() {
 	//I'm assuming we will store all reaction or peg lists (which basically amount to databases) in some directory somewhere
 	string Filename = "New"+GetData("FILENAME",STRING);
 	if (GetData("ParentDB",STRING).length() > 0) {
-		Filename = GetDatabaseDirectory(GetData("ParentDB",STRING),"model directory") + Filename;
+		Filename = GetDatabaseDirectory(false) + Filename;
 	} else {
-		Filename = GetDatabaseDirectory(GetParameter("database"),"model directory") + Filename;
+		Filename = GetDatabaseDirectory(false) + Filename;
 	}
 
 	//This code snippet adds the file extension

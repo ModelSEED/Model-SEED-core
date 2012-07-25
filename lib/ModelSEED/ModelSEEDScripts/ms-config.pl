@@ -197,7 +197,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
     foreach my $lib (@$perl5Libs) {
         $bootstrap .= "use lib '$lib';\n";
     }
-    $bootstrap .= "use ModelSEED::ModelDriver;\n";
     foreach my $key (keys %$envSettings) {
         next unless(defined($key) && defined($envSettings->{$key}));
         if($key eq "PATH") {
@@ -206,16 +205,6 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
         }
         $bootstrap .= '$ENV{'.$key.'} = "'.$envSettings->{$key}."\";\n";
     }
-    $bootstrap .= <<'BOOTSTRAP';
-sub run {
-    if (defined($ARGV[0])) {
-    	my $prog = shift(@ARGV);
-    	local @ARGV = @ARGV;
-    	do $prog;
-    }
-}
-1;
-BOOTSTRAP
     open(my $fh, ">", $directoryRoot."/config/ModelSEEDbootstrap.pm") || die($!);
     print $fh $bootstrap;
     close($fh);
@@ -269,18 +258,17 @@ BOOTSTRAP
     }
 	my $plFileList = {
 		"/lib/ModelSEED/FIGMODELscheduler.pl" => "QueueDriver",
-		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver",
+		"/bin/ModelDriver.pl" => "ModelDriver",
         "/lib/ModelSEED/ModelSEEDScripts/ms-load-mysql.pl" => "ms-load-mysql",
 		$ppoScript => "CreateDBScheme",
 		$mfatoolkitScript => "makeMFAToolkit",
-		"/lib/ModelSEED/ModelDriver.pl" => "ModelDriver"
 	};
 	foreach my $file (keys(%$plFileList)) {
 		if (-e $directoryRoot."/bin/".$plFileList->{$file}.$extension) {
 			unlink $directoryRoot."/bin/".$plFileList->{$file}.$extension;	
 		}
 		my $script = <<SCRIPT;
-perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();" "$directoryRoot$file" $arguments
+perl "$directoryRoot$file" \$*
 SCRIPT
         open(my $fh, ">", $directoryRoot."/bin/".$plFileList->{$file}.$extension) || die($!);
         print $fh $script;
@@ -364,7 +352,7 @@ SCRIPT
 		}
 		$function =~ s/-//;
 		my $script = <<SCRIPT;
-perl -e "use lib '$directoryRoot/config/';" -e "use ModelSEEDbootstrap;" -e "run();"  "$directoryRoot/lib/ModelSEED/ModelDriver.pl" "$function" $arguments
+perl "$directoryRoot/bin/ModelDriver.pl" "$function" \$*
 SCRIPT
         open(my $fh, ">", $directoryRoot."/bin/".$filename.$extension) || die($!);
         print $fh $script;
@@ -427,6 +415,7 @@ if(lc($Config->{Database}->{type}) eq 'sqlite' &&
 #Creating public useraccount
 {	
 	require $directoryRoot."/config/ModelSEEDbootstrap.pm";
+	require $directoryRoot."/lib/ModelSEED/FIGMODEL.pm";
 	my $figmodel = ModelSEED::FIGMODEL->new();
 	if ($figmodel->config("PPO_tbl_user")->{name}->[0] eq "ModelDB") {
 		my $usrObj = $figmodel->database()->get_object("user",{login => "public"});

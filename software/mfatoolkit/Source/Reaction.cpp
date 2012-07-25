@@ -1964,7 +1964,6 @@ int Reaction::SaveReaction(string InFilename) {
 	}
 	
 	if (InFilename.substr(1,1).compare(":") != 0 && InFilename.substr(0,1).compare("/") != 0) {
-		//InFilename = GetDatabaseDirectory(GetParameter("database"),"new reaction directory")+InFilename;
 		InFilename = FOutputFilepath()+"reactions/"+InFilename;
 	}
 	

@@ -255,7 +255,7 @@ int Gene::LoadGene(string InFilename) {
 	SetData("FILENAME",InFilename.data(),STRING);
 
 	if (!FileExists(InFilename)) {
-		InFilename = GetDatabaseDirectory(GetParameter("database"),"gene directory")+InFilename;
+		InFilename = GetDatabaseDirectory(true)+InFilename;
 		if (!FileExists(InFilename)) {
 			return FAIL;
 		}
@@ -303,7 +303,7 @@ int Gene::SaveGene(string InFilename) {
 	}
 	
 	if (InFilename.substr(1,1).compare(":") != 0 && InFilename.substr(0,1).compare("/") != 0) {
-		InFilename = GetDatabaseDirectory(GetParameter("database"),"new gene directory")+InFilename;
+		InFilename = GetDatabaseDirectory(false)+InFilename;
 	}
 
 	ofstream Output;

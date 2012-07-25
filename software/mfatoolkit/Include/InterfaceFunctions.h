@@ -25,8 +25,6 @@ void DriverOptions();
 
 void LoadDatabaseFile(const char* DatabaseFilename);
 
-void ProcessDatabase();
-
 //Commandline functions
 //This function interprets the command line and calls the appriaprate commandline subfunction listed below
 void CommandlineInterface(vector<string> Arguments);

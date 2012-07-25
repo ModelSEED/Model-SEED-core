@@ -18,6 +18,7 @@ has jobID => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', me
 has jobPath => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobpath' );
 has jobDirectory => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobdirectory' );
 has command => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, default => '' );
+has mfatoolkitBinary => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmfatoolkitBinary' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -45,6 +46,23 @@ sub _buildjobpath {
 sub _buildjobdirectory {
 	my ($self) = @_;
 	return $self->jobPath()."/".$self->jobID();
+}
+
+sub _buildmfatoolkitBinary {
+	my ($self) = @_;
+	if (defined($ENV{"MFAToolkitBinary"}) && -e $ENV{"MFAToolkitBinary"}) {
+		return $ENV{"MFAToolkitBinary"};
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe";
+	} else {
+		ModelSEED::utilities::ERROR("Could not find MFAToolkit executable");
+	}
 }
 
 #***********************************************************************************************************
@@ -270,8 +288,8 @@ sub createJobDirectory {
 		"FBA experiment file" => $fbaExpFile,
 		"determine minimal required media" => $self->findMinimalMedia(),
 		"Recursive MILP solution limit" => $self->numberOfSolutions(),
-		"database to process" => "NewCLI",
-		"database" => "NewCLI",
+		"database root output directory" => $self->jobPath()."/",
+		"database root input directory" => $self->jobDirectory()."/",
 	};
 	my $exe = "MFAToolkit.exe";
 	if ($^O =~ m/^MSWin/) {
@@ -367,7 +385,7 @@ sub createJobDirectory {
 	my $biochemid = $model->biochemistry()->uuid();
 	my $stringdb = [
 		"Name\tID attribute\tType\tPath\tFilename\tDelimiter\tItem delimiter\tIndexed columns",
-		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles".$biochemid."-compounds.tbl\tTAB\tSC\tid",
+		"compound\tid\tSINGLEFILE\t".$dataDir."ReactionDB/compounds/\t".$dataDir."fbafiles/".$biochemid."-compounds.tbl\tTAB\tSC\tid",
 		"reaction\tid\tSINGLEFILE\t".$directory."reaction/\t".$dataDir."fbafiles/".$biochemid."-reactions.tbl\tTAB\t|\tid",
 		"cue\tNAME\tSINGLEFILE\t\t".$dataDir."ReactionDB/MFAToolkitInputFiles/cueTable.txt\tTAB\t|\tNAME",
 		"media\tID\tSINGLEFILE\t".$dataDir."ReactionDB/Media/\t".$directory."media.tbl\tTAB\t|\tID;NAMES"		
@@ -377,11 +395,11 @@ sub createJobDirectory {
 	$ENV{ILOG_LICENSE_FILE} = "C:/ILOG/CPLEX_Studio_AcademicResearch122/cplex/bin/x86_win32/access.ilm";
 	$ENV{ARGONNEDB} = $dataDir."ReactionDB/";
 	my $exec = [
-		ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/'.$exe.' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
+		$self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
 	];
 	ModelSEED::utilities::PRINTFILE($directory."runMFAToolkit.sh",$exec);
 	chmod 0775,$directory."runMFAToolkit.sh";
-	$self->command(ModelSEED::utilities::MODELSEEDCORE().'/software/mfatoolkit/bin/'.$exe.' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"');
+	$self->command($self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"');
 }
 =head3 parseObjectiveTerms
 Definition:

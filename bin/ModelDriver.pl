@@ -1,4 +1,3 @@
-#!/usr/bin/env perl
 use FindBin qw($Bin);
 use lib $Bin.'/../config';
 use lib $Bin.'/../lib';
@@ -8,6 +7,7 @@ use lib $Bin.'/../lib/PPO';
 use lib $Bin.'/../lib/FigKernelPackages';
 use lib $Bin.'/../lib/ModelSEED/ModelSEEDClients';
 use ModelSEEDbootstrap;
+use ModelSEED::ModelDriver;
 $|=1;
 ModelSEED::ModelDriver->run(@ARGV);
 1;

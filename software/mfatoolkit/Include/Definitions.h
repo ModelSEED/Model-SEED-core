@@ -59,16 +59,6 @@
 #define COA_ID "CoA"
 #define NUM_NON_H_COA_ATOMS 48
 #define MAX_PATH_LENGTH 50
-
-//Paths
-//#ifndef VISSTUDIO
-#define STATIC_INPUT_FILE "InputFileList.txt"
-#define COMMANDLINE_INPUT_FILE "InputFileList.txt"
-//#else
-//#define STATIC_INPUT_FILE "../InputFileList.txt"
-//#define COMMANDLINE_INPUT_FILE "../InputFileList.txt"
-//#endif
-
 #define ERROR_LOG "Error.log"
 #define OUTPUT_LOG "Output.log"
 

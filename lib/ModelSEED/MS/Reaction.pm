@@ -134,12 +134,12 @@ sub createEquation {
 				if (length($reactcode) > 0) {
 					$reactcode .= " + ";	
 				}
-				$reactcode .= "(".$coef.")".$sortedCpd->[$i].$compartment;
+				$reactcode .= "(".$coef.") ".$sortedCpd->[$i].$compartment;
 			} elsif ($rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]} > 0) {
 				if (length($productcode) > 0) {
 					$productcode .= " + ";	
 				}
-				$productcode .= "(".$rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]}.")".$sortedCpd->[$i].$compartment;
+				$productcode .= "(".$rgtHash->{$sortedCpd->[$i]}->{$comps->[$j]}.") ".$sortedCpd->[$i].$compartment;
 			} 
 		}
 	}

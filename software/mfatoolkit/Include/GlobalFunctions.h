@@ -32,6 +32,10 @@ struct FileBounds;
 struct OptimizationParameter;
 struct MapData;
 
+bool verbose();
+
+void setVerbose(bool inVerbose);
+
 string AskString(const char* Question);
 
 bool Ask(const char* Question);
@@ -48,21 +52,11 @@ int TranslateFileHeader(string& InHeader, int Object);
 
 int LoadFileReferences();
 
-int LoadFIGMODELParameters();
-
-int LoadTextDatabase();
-
 void ClearParameterDependance(string InParameterName);
 
-string QueryTextDatabase(string Object, string ObjectID, string Subobject);
-
-string GetDatabaseDirectory(string Database,string Entity);
-
-vector<string> GetTextDatabaseObjectList(string Object);
+string GetDatabaseDirectory(bool inputdir);
 
 void Cleanup();
-
-int LoadParameters();
 
 int LoadParameterFile(string Filename);
 

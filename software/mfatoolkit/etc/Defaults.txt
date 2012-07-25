@@ -1,21 +1,20 @@
-database spec file|../Input/Singlefile.txt|
-structural cue database file|FinalGroups.dat|
-user constraints filename|UserConstraints.txt|
+database spec file|none|
+structural cue database file|FinalGroups.txt|
+user constraints filename|none|
 MFA problem report filename|ProblemReport.txt|
-input directory|../Input/|Directory where input files are stored|MFA files
-scripts directory|../../../bin/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
-output folder|Test/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
-compartments file|Compartments.dat|This indicates where the file containing the cellular compartment data is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
-filename for file reference data|FileReferences.dat|This is the name of the file which contains the data used to parse input files into the internal database.|Filenames required for proper program start up
-atom types filename|AtomTypes.dat|This indicates where the file containing the data on the various types of atoms is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
-FIGMODEL config file|../../../config/FIGMODELConfig.txt|0|Misc data
+input directory|../etc/|Directory where input files are stored|MFA files
+scripts directory|../bin/|This is the directory where all perl scripts used by the MFAToolpack are located. This should be a complete path.|Filenames required for proper program start up
+output folder|default/|"This is the specific folder located in the ""output path"" where the results from the current run will be stored."|Filenames required for proper program start up
+compartments file|DefaultCompartments.txt|This indicates where the file containing the cellular compartment data is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
+filename for file reference data|FileReferences.txt|This is the name of the file which contains the data used to parse input files into the internal database.|Filenames required for proper program start up
+atom types filename|AtomTypes.txt|This indicates where the file containing the data on the various types of atoms is located. This can be relative to the program directory or a complete path.|Filenames required for proper program start up
 source database|NONE|Filename of source database
 print all output to stdout|0|This binary parameter indicates when output should be redirected to the standard output|Database information
 MFA output|MFAOutput/|Subdirectory where output from FBA studies is printed
 reactants to merge|NONE|0|Database information
 save query data on input|0|0|Database information
-database to process|Argonne|0|Database information
-database|Argonne|0|Database information
+database to process|DefaultPaths|0|Database information
+database|DefaultPaths|0|Database information
 entities to process|ProcessList.txt|The name of a file containing a list of the compounds and reactions to be processed by the MFAToolkit|Database information
 overide errors|1|This binary parameter indicates that errors will be ignored and energies will be calculated regardless of whether or not there is an error for the reaction or compound.|Code operation preferences
 simple constraint and variable names|0|Indicates that complex and more descriptive variable and constraint names should not be used.
@@ -235,7 +234,7 @@ Compounds excluded from potential constraints|none|Create Gibbs energy constrain
 Compounds to have potential constraint|ALL|Only create Gibbs energy constraints for these compounds or ALL or PConstraintsFile.txt|MFA Parameter
 Add regulatory constraint to problem|0|MFA parameters
 Base compound regulation on media files|0|MFA parameters
-Regulatory constraint file|../../Input/RegulatoryConstraints.txt|MFA parameters
+Regulatory constraint file|../Input/RegulatoryConstraints.txt|MFA parameters
 Gene dictionary|NONE|0|MFA parameters
 Compounds to have potential constraint|ALL|Only create Gibbs energy constraints for these compounds or ALL or PConstraintsFile.txt|MFA Parameter
 Check potential constraints feasibility|0|checks each of the chemical potential constraints if they affect the solution|MFA Parameter
@@ -256,3 +255,7 @@ delete noncontributing reactions|0|0|MFA parameters
 Function mapping filename|../Input/FunctionRoleMapping.txt|0|MFA parameters
 Reaction database filename|../Input/ReactionDatabase.txt|0|MFA parameters
 hope scenarios filename|../Input/HopeScenarios.txt|0|MFA parameters
+database root output directory|../temp/|0|MFA parameters
+database root input directory|../etc/|0|MFA parameters
+molfile directory|../etc/mol/|0/MFA parameters
+cue directory|../etc/cues/|0/MFA parameters

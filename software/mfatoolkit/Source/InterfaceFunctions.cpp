@@ -21,25 +21,18 @@
 #include "MFAToolkit.h"
 
 void CommandlineInterface(vector<string> Arguments) {
-	bool InputArgument = false;	
 	vector<string> ParameterFiles;
+	ParameterFiles.push_back("../etc/Defaults.txt");
 	for (int i=0; i < int(Arguments.size()); i++) {
-		if (Arguments[i].compare("inputfilelist") == 0) {
-			if (int(Arguments.size()) >= i+2) {
-				InputArgument = true;
-				SetInputParametersFile(Arguments[i+1].data());
-			}
-		} if (Arguments[i].compare("parameterfile") == 0) {
+		if (Arguments[i].compare("parameterfile") == 0) {
 			if (int(Arguments.size()) >= i+2) {
 				ParameterFiles.push_back(Arguments[i+1].data());
 				i++;
 			}
-		} 
+		} else if (Arguments[i].compare("-verbose") == 0) {
+			setVerbose(true);
+		}
 	}
-	if (!InputArgument) {
-		SetInputParametersFile(COMMANDLINE_INPUT_FILE);
-	}
-	LoadParameters();
 	for(int i=0; i < int(ParameterFiles.size()); i++) {
 		LoadParameterFile(ParameterFiles[i]);
 	}
@@ -56,7 +49,6 @@ void CommandlineInterface(vector<string> Arguments) {
 	if (Initialize() != SUCCESS) {
 		return;
 	}
-	LoadFIGMODELParameters();
 	ClearParameterDependance("CLEAR ALL PARAMETER DEPENDANCE");
 	for (int i=0; i < int(Arguments.size()); i++) {
 		if (Arguments[i].compare("stringcode") == 0) {
@@ -76,8 +68,6 @@ void CommandlineInterface(vector<string> Arguments) {
 			} else {
 				LoadDatabaseFile(Arguments[i+1].data());		
 			}
-		} else if (Arguments[i].compare("ProcessDatabase") == 0) {
-			ProcessDatabase();
 		} else if (Arguments[i].compare("metabolites") == 0) {
 			if (int(Arguments.size()) < i+2) {
 				cout << "Insufficient arguments" << endl;
@@ -146,9 +136,9 @@ void CreateStringCode(string InputFilename, string OutputFilename) {
 void LoadDatabaseFile(const char* DatabaseFilename) {
 	if (GetParameter("Network output location").compare("none") != 0 && GetParameter("Network output location").length() > 0) {
 		if (GetParameter("os").compare("windows") == 0) {
-			system(("move "+GetDatabaseDirectory(GetParameter("database"),"output directory")+GetParameter("output folder")+" "+GetParameter("Network output location")).data());
+			system(("move "+GetDatabaseDirectory(false)+GetParameter("output folder")+" "+GetParameter("Network output location")).data());
 		} else {
-			system(("cp -r "+GetDatabaseDirectory(GetParameter("database"),"output directory")+GetParameter("output folder")+" "+GetParameter("Network output location")).data());
+			system(("cp -r "+GetDatabaseDirectory(false)+GetParameter("output folder")+" "+GetParameter("Network output location")).data());
 		}
 	}
 	
@@ -281,13 +271,6 @@ void LoadDatabaseFile(const char* DatabaseFilename) {
 		}
 		// FlushErrorFile();
 	}
-	delete NewData;
-};
-
-void ProcessDatabase() {
-	//Creating datastructure for all program data
-	Data* NewData = new Data(0);
-	NewData->ProcessEntireDatabase();
 	delete NewData;
 };
 

@@ -27,18 +27,9 @@ int main ( int argc, char **argv) {
 	SetProgramPath(argv[0]);
 	SetParameter("output index","0");
 	SetParameter("Error filename","stderr.log");
+	setVerbose(false);
 	if (argc == 1) {
-		SetInputParametersFile(STATIC_INPUT_FILE);
-		if (LoadParameters() == FAIL) {
-			return 1;
-		}
-		ClearParameterDependance("CLEAR ALL PARAMETER DEPENDANCE");
-		if (Initialize() == FAIL) {
-			return 1;
-		}
-		LoadFIGMODELParameters();
-		ClearParameterDependance("CLEAR ALL PARAMETER DEPENDANCE");
-		DriverOptions();
+		cout << "Insufficient arguments! Usage: mfatoolkit parameterfile <new filename> resetparameter <parameter name> <parameter value> LoadCentralSystem <model name> -verbose" << endl;
 	} else {
 		vector<string> Arguments;
 		for (int i=0; i < argc; i++) {
@@ -55,70 +46,11 @@ int main ( int argc, char **argv) {
 	OutputPath = OutputPath.substr(0,OutputPath.length()-1);
 	if (GetParameter("Network output location").compare("none") != 0 && GetParameter("Network output location").length() > 0) {
 		if (GetParameter("os").compare("windows") == 0) {
-			system(("move "+OutputPath+" "+GetDatabaseDirectory(GetParameter("database"),"output directory")).data());
+			system(("move "+OutputPath+" "+GetDatabaseDirectory(false)).data());
 		} else {
-			system(("cp -r  "+OutputPath+" "+GetDatabaseDirectory(GetParameter("database"),"output directory")).data());
+			system(("cp -r  "+OutputPath+" "+GetDatabaseDirectory(false)).data());
 			system(("rm -rf "+OutputPath).data());
 		}
 	}
 	return 0;
-};
-
-void DriverOptions() {
-	int Choice;
-	cout << "File manipulation options:" << endl;
-	cout << "1: Load a model from the centralized database" << endl;
-	cout << "2: Process entire database" << endl;
-	cout << "3: " << endl;
-	cout << "4: Process models for MFAToolkitCGI" << endl;
-	cout << "5: " << endl;
-	cout << "6: " << endl;
-	cout << "7: " << endl;
-	cout << endl;
-	Choice = int(AskNum("Input choice : "));
-
-	switch (Choice) {
-		case 1: {
-			LoadDatabaseFile("");
-			break;
-		}
-		case 2: {
-			ProcessDatabase();
-			break;
-		}
-		case 3: {
-			break;
-		}
-		case 4: {
-			ProcessWebInterfaceModels();
-			break;
-		}
-		case 5: {
-			break;
-		}
-		case 6: {
-			break;
-		}
-		case 7: {
-			break;
-		}
-		case 8: {
-			break;
-		}
-		case 9: {
-			break;
-		}
-		case 10: {
-			break;
-		}
-		case 11: {
-			break;
-		}
-		case 12: {
-			break;
-		}
-		default: {
-			cout << endl << "Choice not recognized. Ending program...";
-		}
-	}
 };
