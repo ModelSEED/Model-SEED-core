@@ -219,9 +219,8 @@ sub createBiochemistry {
             my $cueListString = $cpds->[$i]->structuralCues();
 			next unless(defined($cueListString) && length($cueListString) > 0);
             # PPO uses different delmiter from Model flat-files
-            my $cueDelimiter = qr{;};
-            $cueDelimiter = qr{\|} if(split(/\|/, $cueListString) > 1);
-            my $list = [split($cueDelimiter,$cueListString)];
+            my $delimiterRegex = $self->_getDelimiterRegex($cueListString);
+            my $list = [split($delimiterRegex,$cueListString)];
             for (my $j=0;$j < @{$list}; $j++) {
                 my ($name, $count) = split(/:/,$list->[$j]);
                 unless(defined $name && defined $count) {
@@ -247,7 +246,8 @@ sub createBiochemistry {
 		#Adding pka and pkb
 		if ($args->{addPK} == 1) {
 			if (defined($cpds->[$i]->pKa()) && length($cpds->[$i]->pKa()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->pKa())];
+                my $delimiterRegex = $self->_getDelimiterRegex->($cpds->[$i]->pKa());
+			 	my $list = [split($delimiterRegex,$cpds->[$i]->pKa())];
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		my $array = [split(/:/,$list->[$j])];
 			 		$cpd->add("pks",{
@@ -258,7 +258,8 @@ sub createBiochemistry {
 			 	}
 			 }
 			 if (defined($cpds->[$i]->pKb()) && length($cpds->[$i]->pKb()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->pKb())];
+                my $delimiterRegex = $self->_getDelimiterRegex->($cpds->[$i]->pKb());
+			 	my $list = [split($delimiterRegex,$cpds->[$i]->pKb())];
 			 	for (my $j=0;$j < @{$list}; $j++) {
 			 		my $array = [split(/:/,$list->[$j])];
 			 		$cpd->add("pks",{
@@ -344,8 +345,7 @@ sub createBiochemistry {
             my $cueListString = $rxns->[$i]->structuralCues();
 			next unless(defined($cueListString) && length($cueListString) > 0 && @{$rxn->reactionCues} == 0 );
             # PPO uses different delmiter from Model flat-files
-            my $cueDelimiter = qr{;};
-            $cueDelimiter = qr{\|} if(split(/\|/, $cueListString) > 1);
+            my $cueDelimiter = $self->_getCueDelmiterRegex($cueListString);
             my $list = [split(/$cueDelimiter/, $rxns->[$i]->structuralCues)];
             for (my $j=0;$j < @{$list}; $j++) {
                 my ($name, $count) = split(/:/, $list->[$j]);
@@ -856,6 +856,16 @@ sub createAnnotation {
 		genome_id => $args->{genome},
 		mapping => $args->{mapping}
 	});
+}
+
+# The PPO files use ";" as subdelimiters in some tables
+# The model flat-files use "|" in these cases
+# Returns a regex that matches the correct thingy.
+sub _getDelimiterRegex {
+    my ($self, $string) = @_;
+    my $DelimiterRegex = qr{;};
+    $DelimiterRegex = qr{\|} if(split(/\|/, $string) > 1);
+    return $DelimiterRegex;
 }
 
 __PACKAGE__->meta->make_immutable;
