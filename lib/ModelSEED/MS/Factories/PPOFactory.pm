@@ -217,56 +217,59 @@ sub createBiochemistry {
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
             my $cueListString = $cpds->[$i]->structuralCues();
-			next unless(defined($cueListString) && length($cueListString) > 0);
-            # PPO uses different delmiter from Model flat-files
-            my $delimiterRegex = $self->_getDelimiterRegex($cueListString);
-            my $list = [split($delimiterRegex,$cueListString)];
-            for (my $j=0;$j < @{$list}; $j++) {
-                my ($name, $count) = split(/:/,$list->[$j]);
-                unless(defined $name && defined $count) {
-                    warn "Bad cue: " . $list->[$j];
-                    next;
-                }
-                my $cue = $biochemistry->queryObject("cues",{name => $name});
-                if (!defined($cue)) {
-                    $cue = $biochemistry->add("cues",{
-                        locked => "0",
-                        name => $name,
-                        abbreviation => $name,
-                        smallMolecule => 0,
-                        priority => -1
+			if(defined($cueListString) && length($cueListString) > 0) {
+                # PPO uses different delmiter from Model flat-files
+                my $delimiterRegex = $self->_getDelimiterRegex($cueListString);
+                my $list = [split($delimiterRegex,$cueListString)];
+                for (my $j=0;$j < @{$list}; $j++) {
+                    my ($name, $count) = split(/:/,$list->[$j]);
+                    unless(defined $name && defined $count) {
+                        warn "Bad cue: " . $list->[$j];
+                        next;
+                    }
+                    my $cue = $biochemistry->queryObject("cues",{name => $name});
+                    if (!defined($cue)) {
+                        $cue = $biochemistry->add("cues",{
+                            locked => "0",
+                            name => $name,
+                            abbreviation => $name,
+                            smallMolecule => 0,
+                            priority => -1
+                        });
+                    }
+                    $cpd->add("compoundCues",{
+                        cue_uuid => $cue->uuid(),
+                        count => $count,
                     });
                 }
-                $cpd->add("compoundCues",{
-                    cue_uuid => $cue->uuid(),
-                    count => $count,
-                });
-			}
+            }
 		}
 		#Adding pka and pkb
 		if ($args->{addPK} == 1) {
-			if (defined($cpds->[$i]->pKa()) && length($cpds->[$i]->pKa()) > 0) {
-                my $delimiterRegex = $self->_getDelimiterRegex->($cpds->[$i]->pKa());
-			 	my $list = [split($delimiterRegex,$cpds->[$i]->pKa())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->add("pks",{
-						type => "pKa",
-						pk => $array->[0],
-						atom => $array->[1]
-					});
+            my $pka = $cpds->[$i]->pKa();
+            my $pkb = $cpds->[$i]->pKb();
+            if(defined $pka && length $pka > 0) {
+                my $delimiterRegex = $self->_getDelimiterRegex($pka);
+			 	my $list = [ split($delimiterRegex,$pka) ];
+			 	for (my $j=0;$j < @$list; $j++) {
+			 		my ($pk, $atom) = split(/:/,$list->[$j]);
+                    unless(defined $pk && defined $atom) {
+                        warn "Bad pKa: " . $list->[$j];
+                        next;
+                    }
+			 		$cpd->add("pks", {type => "pKa", pk => $pk, atom => $atom});
 			 	}
 			 }
-			 if (defined($cpds->[$i]->pKb()) && length($cpds->[$i]->pKb()) > 0) {
-                my $delimiterRegex = $self->_getDelimiterRegex->($cpds->[$i]->pKb());
-			 	my $list = [split($delimiterRegex,$cpds->[$i]->pKb())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->add("pks",{
-						type => "pKb",
-						pk => $array->[0],
-						atom => $array->[1]
-					});
+            if(defined $pkb && length $pkb > 0) {
+                my $delimiterRegex = $self->_getDelimiterRegex($pkb);
+			 	my $list = [ split($delimiterRegex,$pkb) ];
+			 	for (my $j=0;$j < @$list; $j++) {
+			 		my ($pk, $atom) = split(/:/,$list->[$j]);
+                    unless(defined $pk && defined $atom) {
+                        warn "Bad pKb: " . $list->[$j];
+                        next;
+                    }
+			 		$cpd->add("pks", {type => "pKb", pk => $pk, atom => $atom});
 			 	}
 			 }
 		}
