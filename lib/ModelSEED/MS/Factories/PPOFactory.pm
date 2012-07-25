@@ -358,7 +358,7 @@ sub createBiochemistry {
                 }
                 my $cue = $biochemistry->queryObject("cues",{name => $name} );
                 if (!defined($cue)) {
-                    $biochemistry->add("cues",{
+                    $cue = $biochemistry->add("cues",{
                         locked => "0",
                         name => $name,
                         abbreviation => $name,
