@@ -216,25 +216,32 @@ sub createBiochemistry {
 		}
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
-			if (defined($cpds->[$i]->structuralCues()) && length($cpds->[$i]->structuralCues()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->structuralCues())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
-			 		if (!defined($cue)) {
-			 			$cue = $biochemistry->add("cues",{
-			 				locked => "0",
-							name => $array->[0],
-							abbreviation => $array->[0],
-							smallMolecule => 0,
-							priority => -1
-			 			});
-			 		}
-			 		$cpd->add("compoundCues",{
-						cue_uuid => $cue->uuid(),
-						count => $array->[1]
-					});
-			 	}
+            my $cueListString = $cpds->[$i]->structuralCues();
+			next unless(defined($cueListString) && length($cueListString) > 0);
+            # PPO uses different delmiter from Model flat-files
+            my $cueDelimiter = ";";
+            $cueDelimiter = "\|" if(split(/\|/, $cueListString) > 1);
+            my $list = [split(/$cueDelimiter/,$cueListString)];
+            for (my $j=0;$j < @{$list}; $j++) {
+                my ($name, $count) = split(/\:/,$list->[$j]);
+                unless(defined $name && defined $count) {
+                    warn "Bad cue: " . $list->[$j];
+                    next;
+                }
+                my $cue = $biochemistry->queryObject("cues",{name => $name});
+                if (!defined($cue)) {
+                    $cue = $biochemistry->add("cues",{
+                        locked => "0",
+                        name => $name,
+                        abbreviation => $name,
+                        smallMolecule => 0,
+                        priority => -1
+                    });
+                }
+                $cpd->add("compoundCues",{
+                    cue_uuid => $cue->uuid(),
+                    count => $count,
+                });
 			}
 		}
 		#Adding pka and pkb
@@ -334,32 +341,34 @@ sub createBiochemistry {
         $biochemistry->add("reactions", $rxn);
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
-            if (   defined( $rxns->[$i]->structuralCues )
-                && length( $rxns->[$i]->structuralCues ) > 0
-                && @{ $rxn->reactionCues } == 0 )
-            {
-			 	my $list = [split(/\|/,$rxns->[$i]->structuralCues)];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		if (length($list->[$j]) > 0) {
-				 		my $array = [split(/:/,$list->[$j])];
-				 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
-				 		if (!defined($cue)) {
-				 			$biochemistry->add("cues",{
-				 				locked => "0",
-								name => $array->[0],
-								abbreviation => $array->[0],
-								smallMolecule => 0,
-								priority => -1
-				 			});
-				 		}
-				 		$rxn->add("reactionCues",{
-							cue_uuid => $cue->uuid(),
-							count => $array->[1]
-						});
-			 		}
-			 	}
-			}
-		}
+            my $cueListString = $rxns->[$i]->structuralCues();
+			next unless(defined($cueListString) && length($cueListString) > 0 && @{$rxn->reactionCues} == 0 );
+            # PPO uses different delmiter from Model flat-files
+            my $cueDelimiter = ";";
+            $cueDelimiter = "\|" if(split(/\|/, $cueListString) > 1);
+            my $list = [split(/$cueDelimiter/, $rxns->[$i]->structuralCues)];
+            for (my $j=0;$j < @{$list}; $j++) {
+                my ($name, $count) = split(/:/, $list->[$j]);
+                unless( defined $name && defined $count ) {
+                    warn "Bad cue: " . $list->[$j];
+                    next;
+                }
+                my $cue = $biochemistry->queryObject("cues",{name => $name} );
+                if (!defined($cue)) {
+                    $biochemistry->add("cues",{
+                        locked => "0",
+                        name => $name,
+                        abbreviation => $name,
+                        smallMolecule => 0,
+                        priority => -1
+                    });
+                }
+                $rxn->add("reactionCues",{
+                    cue_uuid => $cue->uuid(),
+                    count => $count,
+                });
+            }
+        }
 		#Adding ModelSEED ID and EC numbers as aliases
 		my $ecnumbers = [];
 		if (defined($rxns->[$i]->enzyme()) && length($rxns->[$i]->enzyme()) > 0) {
