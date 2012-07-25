@@ -14,18 +14,34 @@
 
 Authenticated storage interface layer
 
-=head1 METHODS
+=head2 ABSTRACT
 
-=head2 new
+=head2 NOTE
+
+For each function in the I<METHODS> section, C<$ref> is
+a L<ModelSEED::Reference> object or a string that produces
+a valid L<ModelSEED::Reference> object when the constructor
+for that class is called thusly:
+
+    my $ref = ModelSEED::Reference->new( ref => $str );
+
+=head2 METHODS
+
+=head3 new
 
     my $Store = ModelSEED::Store->new(\%);
+    my $Store = ModelSEED::Store->new(%);
 
 This initializes a Storage interface object. This accepts a hash
-reference to configuration details. In addition to authentication,
-which is required and will be covered in a moment, this currently
-accepts one parameter:
+or hash reference to configuration details:
 
 =over
+
+=item auth
+
+The authorization to use when accessing data, i.e. the user requesting
+data / objects.  B<This is required> and must be an instance of a
+class that implements the L<ModelSEED::Auth> interface.
 
 =item database
 
@@ -36,53 +52,11 @@ L<ModelSEED::Configuration> package.
 
 =back
 
-=head3 Authentication
+=head3 Object Methods
 
-The C<new> method requires authentication information. Without this,
-or if authentication fails, the class will raise an exception
-C<"Unauthorized">. Currently the class accepts one type of
-authentication:
+These functions operate on L<ModelSEED::MS> objects.
 
-=over
-
-=item Basic
-
-Basic Authentication - Requires "username" and "password" fields.
-This will attempt to authenticate against the data in the Store::Private
-dataset under the type "user". If no user is found, it will attempt
-to use the L<ModelSEED::ModelSEEDClients::MSSeedSupportClient>
-package to retrieve authentication information from the central
-servers.
-
-=item Public
-
-
-=back
-
-=head2 Other Functions
-
-This package has the same set of functions as C<ModelSEED::Store::Private>
-but these functions do not accept a "user" as the first argument.
-All other arguments are "shifted up by one". For example, in the
-private interface, we have this function:
-
-    my $data = $StorePrivate->get_data("alice", "model", "alice/myModel");
-
-This is equivalent to the following function in the L<ModelSEED::Store>
-interface, provided that the user C<alice> authenticated during
-initialization:
-
-    my $data = $Store->get_data("model", "alice/myModel");
-
-Therefore, you should consult the L<ModelSEED::Store::Private>
-documentation for further method details.
-
-=head2 Helper Functions
-
-Finally this class has a few helper functions that assist in
-object creation. Currently there is only one function:
-
-=head3 create
+=head4 create
 
     my $object = $Store->create("Biochemistry, { name => "Foo" });
 
@@ -92,6 +66,70 @@ object with the "parent" pointing back at the C<$Store> instance.
 This instance will be used if C<$object->save()> is called without
 another store object. It will also be used if the L<ModelSEED::MS>
 object needs additional data.
+
+=head4 has_object
+
+    my $bool = $Store->has_object($ref);
+
+Returns true if the object matching the reference exists in the database.
+Otherwise returns false.
+
+=head4 get_object
+
+    my $obj  = $Store->get_object($ref);
+
+Returns an object for the reference if it exists. Otherwise, returns undef.
+
+=head4 save_object
+
+    my $bool  = $Store->save_object($ref, $obj, $config);
+
+Saves the object C<$obj> using the reference C<$ref>. Returns true
+if the save was successful, false otherwise. C<$config> is an
+optional hash ref.  This is passed to the C<save_data> function
+L<ModelSEED::Database> as C<$config>.  See the documentation of
+that function for details.
+
+=head4 find_objects
+
+B<TODO: Not implemented.>
+
+=head3 Data Methods
+
+These functions operate on standard perl hashes. Each of these
+functions have the same calling conventions as the I<Object Methods>
+functions, but with perl hashes instead of blessed L<ModelSEED::MS>
+objects.
+
+=head4 has_data
+
+    my $bool = $Store->has_data($ref);
+
+=head4 get_data
+
+    my $data = $Store->get_data($ref);
+
+=head4 save_data
+
+    my $bool = $Store->save_data($ref, $data, $config);
+
+=head4 find_data
+
+B<TODO: Not implemented.>
+
+=head3 Alias Methods
+
+These functions manipulate aliases and read/write permissions on aliases.
+For deatails on usage, see the I<Alias Functions> section of L<ModelSEED::Database>
+
+    my \@aliases   = $Store->get_aliases($query);
+    my \@usernames = $Store->alias_viewers($ref);
+    my $username   = $Store->alias_owner($ref);
+    my $bool       = $Store->alias_public($ref);
+
+    my $success = $Store->add_viewer( $ref, $username );
+    my $success = $Store->revmove_viewer( $ref, $username );
+    my $success = $Store->set_public( $ref, $bool );
 
 =cut
 package ModelSEED::Store;
@@ -130,8 +168,8 @@ sub get_object {
     my $o = $self->get_data($ref);
     my $class = $self->_get_class($ref);
     $self->_load_class($class);
-    $o->{parent} = $self;
-    return $class->new($o);
+    $o->{parent} = $self if defined $o;
+    return (defined($o)) ? $class->new($o) : undef;
 }
 
 sub save_object {
