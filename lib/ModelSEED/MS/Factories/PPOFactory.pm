@@ -219,11 +219,11 @@ sub createBiochemistry {
             my $cueListString = $cpds->[$i]->structuralCues();
 			next unless(defined($cueListString) && length($cueListString) > 0);
             # PPO uses different delmiter from Model flat-files
-            my $cueDelimiter = ";";
-            $cueDelimiter = "\|" if(split(/\|/, $cueListString) > 1);
-            my $list = [split(/$cueDelimiter/,$cueListString)];
+            my $cueDelimiter = qr{;};
+            $cueDelimiter = qr{\|} if(split(/\|/, $cueListString) > 1);
+            my $list = [split($cueDelimiter,$cueListString)];
             for (my $j=0;$j < @{$list}; $j++) {
-                my ($name, $count) = split(/\:/,$list->[$j]);
+                my ($name, $count) = split(/:/,$list->[$j]);
                 unless(defined $name && defined $count) {
                     warn "Bad cue: " . $list->[$j];
                     next;
@@ -344,8 +344,8 @@ sub createBiochemistry {
             my $cueListString = $rxns->[$i]->structuralCues();
 			next unless(defined($cueListString) && length($cueListString) > 0 && @{$rxn->reactionCues} == 0 );
             # PPO uses different delmiter from Model flat-files
-            my $cueDelimiter = ";";
-            $cueDelimiter = "\|" if(split(/\|/, $cueListString) > 1);
+            my $cueDelimiter = qr{;};
+            $cueDelimiter = qr{\|} if(split(/\|/, $cueListString) > 1);
             my $list = [split(/$cueDelimiter/, $rxns->[$i]->structuralCues)];
             for (my $j=0;$j < @{$list}; $j++) {
                 my ($name, $count) = split(/:/, $list->[$j]);
