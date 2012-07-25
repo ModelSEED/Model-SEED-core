@@ -12,7 +12,7 @@ use ModelSEED::MS::Utilities::GlobalFunctions;
 use Class::Autouse qw(
     ModelSEED::MS::Mapping
     ModelSEED::MS::Model
-    ModelSEED::MS::Factories::SEEDFactory
+    ModelSEED::MS::Factories::Annotation
 );
 use Moose;
 use namespace::autoclean;
@@ -841,7 +841,7 @@ sub createAnnotation {
 	if (!defined($args->{name})) {
 		$args->{name} = $self->namespace()."/".$args->{genome}.".annotation";
 	}
-	my $factory = ModelSEED::MS::Factories::SEEDFactory->new();
+	my $factory = ModelSEED::MS::Factories::Annotation->new();
 	return $factory->buildMooseAnnotation({
 		genome_id => $args->{genome},
 		mapping => $args->{mapping}

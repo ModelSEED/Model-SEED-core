@@ -27,7 +27,6 @@ use Class::Autouse qw(
     ModelSEED::Auth
     ModelSEED::MS::Model
     ModelSEED::MS::Biomass
-    ModelSEED::MS::Factories::SEEDFactory
 );
 use Try::Tiny;
 use Moose;
