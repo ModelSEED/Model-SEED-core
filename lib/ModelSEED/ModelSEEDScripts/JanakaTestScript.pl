@@ -5,7 +5,7 @@ use ModelSEED::MS::Biochemistry;
 use ModelSEED::MS::Mapping;
 use ModelSEED::MS::Annotation;
 use ModelSEED::MS::Model;
-use ModelSEED::MS::Factories::SEEDFactory;
+use ModelSEED::MS::Factories::Annotation;
 use Time::HiRes qw(time);
 use IO::Compress::Gzip qw(gzip);
 use IO::Uncompress::Gunzip qw(gunzip);

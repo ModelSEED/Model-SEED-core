@@ -33,6 +33,7 @@ END
 sub opt_spec {
     return (
         ["location|l:s", "Where are you importing from. Defaults to 'model_seed'"],
+        ["model|m:s", "String for a model id to use as biochemistry source"],
         ["store|s:s", "Identify which store to save the biochemistry to"],
         ["verbose|v", "Print detailed output of import status"],
         ["dry|d", "Perform a dry run; that is, do everything but saving"],
@@ -73,6 +74,12 @@ sub execute {
             username => $auth->username,
             password => $auth->password,
         });
+        if ($opts->{model}) {
+            my $mdl_id = $opts->{model};
+            my $mdl = $figmodel->get_model($mdl_id);
+            $self->usage_error("Could not find model: $mdl_id") unless(defined($mdl));
+            $figmodel = $mdl->figmodel();
+        }
         my $factory = ModelSEED::MS::Factories::PPOFactory->new({
             figmodel => $figmodel,
             namespace => $auth->username,

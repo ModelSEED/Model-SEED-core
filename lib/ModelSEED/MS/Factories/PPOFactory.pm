@@ -12,7 +12,7 @@ use ModelSEED::MS::Utilities::GlobalFunctions;
 use Class::Autouse qw(
     ModelSEED::MS::Mapping
     ModelSEED::MS::Model
-    ModelSEED::MS::Factories::SEEDFactory
+    ModelSEED::MS::Factories::Annotation
 );
 use Moose;
 use namespace::autoclean;
@@ -150,7 +150,8 @@ sub createBiochemistry {
 	#Adding structural cues to biochemistry
 	if ($args->{addStructuralCues} == 1) {
 		my $data = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/data/ReactionDB/MFAToolkitInputFiles/cueTable.txt");
-		my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/Input/FinalGroups.dat");
+        # TODO : how to detangle this dependency on MFAToolkit ( cli call? )
+		my $priorities = ModelSEED::utilities::LOADFILE($ENV{MODEL_SEED_CORE}."/software/mfatoolkit/etc/FinalGroups.txt");
 		my $cuePriority;
 		for (my $i=2;$i < @{$priorities}; $i++) {
 			my $array = [split(/_/,$priorities->[$i])];
@@ -215,49 +216,60 @@ sub createBiochemistry {
 		}
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
-			if (defined($cpds->[$i]->structuralCues()) && length($cpds->[$i]->structuralCues()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->structuralCues())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
-			 		if (!defined($cue)) {
-			 			$cue = $biochemistry->add("cues",{
-			 				locked => "0",
-							name => $array->[0],
-							abbreviation => $array->[0],
-							smallMolecule => 0,
-							priority => -1
-			 			});
-			 		}
-			 		$cpd->add("compoundCues",{
-						cue_uuid => $cue->uuid(),
-						count => $array->[1]
-					});
-			 	}
-			}
+            my $cueListString = $cpds->[$i]->structuralCues();
+			if(defined($cueListString) && length($cueListString) > 0) {
+                # PPO uses different delmiter from Model flat-files
+                my $delimiterRegex = $self->_getDelimiterRegex($cueListString);
+                my $list = [split($delimiterRegex,$cueListString)];
+                for (my $j=0;$j < @{$list}; $j++) {
+                    my ($name, $count) = split(/:/,$list->[$j]);
+                    unless(defined $name && defined $count) {
+                        warn "Bad cue: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
+                        next;
+                    }
+                    my $cue = $biochemistry->queryObject("cues",{name => $name});
+                    if (!defined($cue)) {
+                        $cue = $biochemistry->add("cues",{
+                            locked => "0",
+                            name => $name,
+                            abbreviation => $name,
+                            smallMolecule => 0,
+                            priority => -1
+                        });
+                    }
+                    $cpd->add("compoundCues",{
+                        cue_uuid => $cue->uuid(),
+                        count => $count,
+                    });
+                }
+            }
 		}
 		#Adding pka and pkb
 		if ($args->{addPK} == 1) {
-			if (defined($cpds->[$i]->pKa()) && length($cpds->[$i]->pKa()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->pKa())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->add("pks",{
-						type => "pKa",
-						pk => $array->[0],
-						atom => $array->[1]
-					});
+            my $pka = $cpds->[$i]->pKa();
+            my $pkb = $cpds->[$i]->pKb();
+            if(defined $pka && length $pka > 0) {
+                my $delimiterRegex = $self->_getDelimiterRegex($pka);
+			 	my $list = [ split($delimiterRegex,$pka) ];
+			 	for (my $j=0;$j < @$list; $j++) {
+			 		my ($pk, $atom) = split(/:/,$list->[$j]);
+                    unless(defined $pk && defined $atom) {
+                        warn "Bad pKa: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
+                        next;
+                    }
+			 		$cpd->add("pks", {type => "pKa", pk => $pk, atom => $atom});
 			 	}
 			 }
-			 if (defined($cpds->[$i]->pKb()) && length($cpds->[$i]->pKb()) > 0) {
-			 	my $list = [split(/;/,$cpds->[$i]->pKb())];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		my $array = [split(/:/,$list->[$j])];
-			 		$cpd->add("pks",{
-						type => "pKb",
-						pk => $array->[0],
-						atom => $array->[1]
-					});
+            if(defined $pkb && length $pkb > 0) {
+                my $delimiterRegex = $self->_getDelimiterRegex($pkb);
+			 	my $list = [ split($delimiterRegex,$pkb) ];
+			 	for (my $j=0;$j < @$list; $j++) {
+			 		my ($pk, $atom) = split(/:/,$list->[$j]);
+                    unless(defined $pk && defined $atom) {
+                        warn "Bad pKb: " . $list->[$j] . " for " . $cpds->[$i]->id . "\n";
+                        next;
+                    }
+			 		$cpd->add("pks", {type => "pKb", pk => $pk, atom => $atom});
 			 	}
 			 }
 		}
@@ -333,32 +345,33 @@ sub createBiochemistry {
         $biochemistry->add("reactions", $rxn);
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
-            if (   defined( $rxns->[$i]->structuralCues )
-                && length( $rxns->[$i]->structuralCues ) > 0
-                && @{ $rxn->reactionCues } == 0 )
-            {
-			 	my $list = [split(/\|/,$rxns->[$i]->structuralCues)];
-			 	for (my $j=0;$j < @{$list}; $j++) {
-			 		if (length($list->[$j]) > 0) {
-				 		my $array = [split(/:/,$list->[$j])];
-				 		my $cue = $biochemistry->queryObject("cues",{name => $array->[0]});
-				 		if (!defined($cue)) {
-				 			$biochemistry->add("cues",{
-				 				locked => "0",
-								name => $array->[0],
-								abbreviation => $array->[0],
-								smallMolecule => 0,
-								priority => -1
-				 			});
-				 		}
-				 		$rxn->add("reactionCues",{
-							cue_uuid => $cue->uuid(),
-							count => $array->[1]
-						});
-			 		}
-			 	}
-			}
-		}
+            my $cueListString = $rxns->[$i]->structuralCues();
+			next unless(defined($cueListString) && length($cueListString) > 0 && @{$rxn->reactionCues} == 0 );
+            # PPO uses different delmiter from Model flat-files
+            my $cueDelimiter = $self->_getDelimiterRegex($cueListString);
+            my $list = [split(/$cueDelimiter/, $rxns->[$i]->structuralCues)];
+            for (my $j=0;$j < @{$list}; $j++) {
+                my ($name, $count) = split(/:/, $list->[$j]);
+                unless( defined $name && defined $count ) {
+                    warn "Bad cue: " . $list->[$j] . " for " . $rxns->[$i]->id . "\n";
+                    next;
+                }
+                my $cue = $biochemistry->queryObject("cues",{name => $name} );
+                if (!defined($cue)) {
+                    $cue = $biochemistry->add("cues",{
+                        locked => "0",
+                        name => $name,
+                        abbreviation => $name,
+                        smallMolecule => 0,
+                        priority => -1
+                    });
+                }
+                $rxn->add("reactionCues",{
+                    cue_uuid => $cue->uuid(),
+                    count => $count,
+                });
+            }
+        }
 		#Adding ModelSEED ID and EC numbers as aliases
 		my $ecnumbers = [];
 		if (defined($rxns->[$i]->enzyme()) && length($rxns->[$i]->enzyme()) > 0) {
@@ -841,11 +854,21 @@ sub createAnnotation {
 	if (!defined($args->{name})) {
 		$args->{name} = $self->namespace()."/".$args->{genome}.".annotation";
 	}
-	my $factory = ModelSEED::MS::Factories::SEEDFactory->new();
+	my $factory = ModelSEED::MS::Factories::Annotation->new();
 	return $factory->buildMooseAnnotation({
 		genome_id => $args->{genome},
 		mapping => $args->{mapping}
 	});
+}
+
+# The PPO files use ";" as subdelimiters in some tables
+# The model flat-files use "|" in these cases
+# Returns a regex that matches the correct thingy.
+sub _getDelimiterRegex {
+    my ($self, $string) = @_;
+    my $DelimiterRegex = qr{;};
+    $DelimiterRegex = qr{\|} if(split(/\|/, $string) > 1);
+    return $DelimiterRegex;
 }
 
 __PACKAGE__->meta->make_immutable;
