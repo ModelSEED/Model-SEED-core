@@ -393,8 +393,6 @@ sub createJobDirectory {
 	];
 	ModelSEED::utilities::PRINTFILE($directory."StringDBFile.txt",$stringdb);
 	#Write shell script
-	$ENV{ILOG_LICENSE_FILE} = "C:/ILOG/CPLEX_Studio_AcademicResearch122/cplex/bin/x86_win32/access.ilm";
-	$ENV{ARGONNEDB} = $dataDir."ReactionDB/";
 	my $exec = [
 		$self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
 	];
