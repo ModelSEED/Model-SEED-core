@@ -1056,8 +1056,8 @@ $objectDefinitions->{ModelReaction} = {
 		{name => 'uuid',printOrder => 0,perm => 'rw',type => 'ModelSEED::uuid',req => 0},
 		{name => 'modDate',printOrder => -1,perm => 'rw',type => 'Str',req => 0},
 		{name => 'reaction_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
-		{name => 'direction',printOrder => -1,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
-		{name => 'protons',printOrder => -1,perm => 'rw',type => 'Num',req => 0,default => 0},
+		{name => 'direction',printOrder => 5,perm => 'rw',type => 'Str',len => 1,req => 0,default => "="},
+		{name => 'protons',printOrder => 7,perm => 'rw',type => 'Num',req => 0,default => 0},
 		{name => 'modelcompartment_uuid',printOrder => -1,perm => 'rw',type => 'ModelSEED::uuid',req => 1},
 	],
 	subobjects => [

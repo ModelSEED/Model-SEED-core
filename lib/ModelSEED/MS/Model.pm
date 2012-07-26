@@ -309,6 +309,7 @@ sub buildModelFromAnnotation {
 			if ($compartments->{$cpxrxn->compartment()}->{present} == 1) {
 				my $mdlrxn = $self->addReactionToModel({
 					reaction => $cpxrxn->reaction(),
+					direction => $cpxrxn->reaction()->thermoReversibility()
 				});
 				$mdlrxn->addModelReactionProtein({
 					proteinDataTree => $compartments->{$cpxrxn->compartment()},
@@ -321,6 +322,7 @@ sub buildModelFromAnnotation {
 	foreach my $universalRxn (@{$universalReactions}) {
 		my $mdlrxn = $self->addReactionToModel({
 			reaction => $universalRxn->reaction(),
+			direction => $universalRxn->reaction()->thermoReversibility()
 		});
 		$mdlrxn->addModelReactionProtein({
 			proteinDataTree => {note => "Universal reaction"},
@@ -655,7 +657,6 @@ sub addReactionToModel {
 		});
 		my $speciesHash;
 		my $cpdHash;
-		my $mdlcpdHash;
 		for (my $i=0; $i < @{$rxn->reagents()}; $i++) {
 			my $rgt = $rxn->reagents()->[$i];
 			my $coefficient = $rgt->coefficient();
@@ -665,16 +666,20 @@ sub addReactionToModel {
 					compound => $rgt->compound(),
 					modelCompartment => $transCmp,
 				});
-				$mdlcpdHash->{$transcpd->uuid()} = $transcpd;
-				$speciesHash->{$transcpd->uuid()} = $coefficient;
+				if (!defined($speciesHash->{$transcpd->uuid()})) {
+					$speciesHash->{$transcpd->uuid()} = 0;
+				}
+				$speciesHash->{$transcpd->uuid()} += $coefficient;
 				$coefficient = $coefficient*-1;
 			}	
 			my $mdlcpd = $self->addCompoundToModel({
 				compound => $rgt->compound(),
 				modelCompartment => $mdlcmp,
 			});
-			$mdlcpdHash->{$mdlcpd->uuid()} = $mdlcpd;
-			$speciesHash->{$mdlcpd->uuid()} = $coefficient;
+			if (!defined($speciesHash->{$mdlcpd->uuid()})) {
+				$speciesHash->{$mdlcpd->uuid()} = 0;
+			}
+			$speciesHash->{$mdlcpd->uuid()} += $coefficient;
 		}
 		foreach my $mdluuid (keys(%{$speciesHash})) {
 			if ($speciesHash->{$mdluuid} != 0) {

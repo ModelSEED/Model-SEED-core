@@ -21,8 +21,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
 has reaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
-has direction => (is => 'rw', isa => 'Str', printOrder => '-1', default => '=', type => 'attribute', metaclass => 'Typed');
-has protons => (is => 'rw', isa => 'Num', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has direction => (is => 'rw', isa => 'Str', printOrder => '5', default => '=', type => 'attribute', metaclass => 'Typed');
+has protons => (is => 'rw', isa => 'Num', printOrder => '7', default => '0', type => 'attribute', metaclass => 'Typed');
 has modelcompartment_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
@@ -81,7 +81,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => -1,
+            'printOrder' => 5,
             'name' => 'direction',
             'default' => '=',
             'type' => 'Str',
@@ -89,7 +89,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => -1,
+            'printOrder' => 7,
             'name' => 'protons',
             'default' => 0,
             'type' => 'Num',

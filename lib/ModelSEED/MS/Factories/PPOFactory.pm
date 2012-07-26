@@ -312,13 +312,14 @@ sub createBiochemistry {
 	print "Handling reactions!\n" if($args->{verbose});
 	#Adding reactions to biochemistry 		
 	my $rxns = $args->{database}->get_objects("reaction");
+	my $directionTranslation = {"<=>" => "=","<=" => "<","=>" => ">"};
 	for (my $i=0; $i < @{$rxns}; $i++) {
 		my $data = {
 			locked => "0",
 			name => $rxns->[$i]->name(),
 			abbreviation => $rxns->[$i]->abbrev(),
-			reversibility => $rxns->[$i]->reversibility(),
-			thermoReversibility => $rxns->[$i]->thermoReversibility(),
+			reversibility => $directionTranslation->{$rxns->[$i]->reversibility()},
+			thermoReversibility => $directionTranslation->{$rxns->[$i]->thermoReversibility()},
 			defaultProtons => 0,
 			deltaG => $rxns->[$i]->deltaG(),
 			deltaGErr => $rxns->[$i]->deltaGErr(),
@@ -334,14 +335,7 @@ sub createBiochemistry {
 		$rxn->loadFromEquation({
 			equation => $rxns->[$i]->equation(),
 			aliasType => "ModelSEED",
-			direction => $rxns->[$i]->thermoReversibility()
 		});
-#		my $code = $rxn->equationCode();
-#		if (!defined($codeHash->{$code})) {
-#			#Adding the new core reaction and reaction to the database
-#			$codeHash->{$code} = $rxn;
-#			$biochemistry->add("reactions",$rxn);
-#		}
         $biochemistry->add("reactions", $rxn);
 		#Adding structural cues
 		if ($args->{addStructuralCues} == 1) {
@@ -867,7 +861,8 @@ sub createAnnotation {
 sub _getDelimiterRegex {
     my ($self, $string) = @_;
     my $DelimiterRegex = qr{;};
-    $DelimiterRegex = qr{\|} if(split(/\|/, $string) > 1);
+    my @array = split(/\|/, $string);
+    $DelimiterRegex = qr{\|} if(@array > 1);
     return $DelimiterRegex;
 }
 
