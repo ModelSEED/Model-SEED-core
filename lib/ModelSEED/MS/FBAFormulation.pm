@@ -258,6 +258,7 @@ sub createJobDirectory {
 	}
 	#Setting parameters
 	my $parameters = {
+		"perform MFA" => 1,
 		"Default min drain flux" => $self->defaultMinDrainFlux(),
 		"Default max drain flux" => $self->defaultMaxDrainFlux(),
 		"Max flux" => $self->defaultMaxFlux(),
@@ -395,11 +396,11 @@ sub createJobDirectory {
 	$ENV{ILOG_LICENSE_FILE} = "C:/ILOG/CPLEX_Studio_AcademicResearch122/cplex/bin/x86_win32/access.ilm";
 	$ENV{ARGONNEDB} = $dataDir."ReactionDB/";
 	my $exec = [
-		$self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
+		$self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"'
 	];
 	ModelSEED::utilities::PRINTFILE($directory."runMFAToolkit.sh",$exec);
 	chmod 0775,$directory."runMFAToolkit.sh";
-	$self->command($self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "../Parameters/ProductionMFA.txt" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"');
+	$self->command($self->mfatoolkitBinary().' resetparameter "MFA input directory" "'.$dataDir.'ReactionDB/" parameterfile "'.$directory.'SpecializedParameters.txt" LoadCentralSystem "'.$directory.'Model.tbl" > "'.$directory.'log.txt"');
 }
 =head3 parseObjectiveTerms
 Definition:
