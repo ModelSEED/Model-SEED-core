@@ -93,7 +93,7 @@ my ($Config,$extension,$arguments,$delim,$os,$configFile);
 	    $Config->{Database}->{filename} =
 	        $Config->{Optional}->{dataDirectory} . "/ModelDB/ModelDB.db";
 	}
-    if ($os ne "windows") {
+    if ($os ne "windows" && !defined($Config->{Optimizers}->{includeDirectoryGLPK})) {
 	    my $glpksol = `which glpsol`;
 	    chomp $glpksol;
 	    $glpksol =~ s/\/bin\/glpsol//;
