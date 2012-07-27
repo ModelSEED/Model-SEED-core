@@ -326,8 +326,19 @@ sub getRastGenomeData {
 		getDNASequence => 0	
 	});
 	my $figmodel = $self->figmodel();
+    my $featuresTbl = ModelSEED::FIGMODEL::FIGMODELTable->new(
+        [
+            "ID",           "GENOME",       "ESSENTIALITY", "ALIASES",
+            "TYPE",         "LOCATION",     "LENGTH",       "DIRECTION",
+            "MIN LOCATION", "MAX LOCATION", "ROLES",        "SOURCE",
+            "SEQUENCE"
+        ],
+        "NONE",
+        [ "ID", "ALIASES", "TYPE", "ROLES", "GENOME" ],
+        "\t", "|", undef
+    );
 	my $output = {
-		features => ModelSEED::FIGMODEL::FIGMODELTable->new(["ID","GENOME","ESSENTIALITY","ALIASES","TYPE","LOCATION","LENGTH","DIRECTION","MIN LOCATION","MAX LOCATION","ROLES","SOURCE","SEQUENCE"],"NONE",["ID","ALIASES","TYPE","ROLES","GENOME"],"\t","|",undef),
+        features => [],
 		gc => 0.5,
 		genome => $args->{genome},
 		owner => "master"
@@ -453,10 +464,23 @@ sub getRastGenomeData {
 		if ($temp[@temp-2] > $temp[@temp-1]) {
 			$Direction = "rev";
 		}
-		my $newRow = $output->{features}->add_row({"ID" => [$Row->[0]],"GENOME" => [$args->{genome}],"ALIASES" => $AliaseArray,"TYPE" => [$Row->[3]],"LOCATION" => [$Row->[1]],"DIRECTION" => [$Direction],"LENGTH" => [$Row->[5]-$Row->[4]],"MIN LOCATION" => [$Row->[4]],"MAX LOCATION" => [$Row->[5]],"SOURCE" => [$output->{source}],"ROLES" => $RoleArray});
+        my $newRow = {
+            "ID"           => [ $Row->[0] ],
+            "GENOME"       => [ $args->{genome} ],
+            "ALIASES"      => $AliaseArray,
+            "TYPE"         => [ $Row->[3] ],
+            "LOCATION"     => [ $Row->[1] ],
+            "DIRECTION"    => [$Direction],
+            "LENGTH"       => [ $Row->[5] - $Row->[4] ],
+            "MIN LOCATION" => [ $Row->[4] ],
+            "MAX LOCATION" => [ $Row->[5] ],
+            "SOURCE"       => [ $output->{source} ],
+            "ROLES"        => $RoleArray
+        };
 		if (defined($Sequence) && length($Sequence) > 0) {
 			$newRow->{SEQUENCE}->[0] = $Sequence;
 		}
+        push(@{$output->{features}}, $newRow);
 	}
 	return $output;
 }
