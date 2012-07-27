@@ -22,35 +22,35 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::Model', weak_ref => 1, type =>
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has fva => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has comboDeletions => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has fluxMinimization => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has findMinimalMedia => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has notes => (is => 'rw', isa => 'Str', printOrder => '0', default => '', type => 'attribute', metaclass => 'Typed');
-has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has regulatorymodel_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has fva => (is => 'rw', isa => 'Bool', printOrder => '10', default => '0', type => 'attribute', metaclass => 'Typed');
+has comboDeletions => (is => 'rw', isa => 'Int', printOrder => '11', default => '0', type => 'attribute', metaclass => 'Typed');
+has fluxMinimization => (is => 'rw', isa => 'Bool', printOrder => '12', default => '0', type => 'attribute', metaclass => 'Typed');
+has findMinimalMedia => (is => 'rw', isa => 'Bool', printOrder => '13', default => '0', type => 'attribute', metaclass => 'Typed');
+has notes => (is => 'rw', isa => 'Str', printOrder => '-1', default => '', type => 'attribute', metaclass => 'Typed');
+has expressionData_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 has objectiveConstraintFraction => (is => 'rw', isa => 'ModelSEED::varchar', printOrder => '0', default => 'none', type => 'attribute', metaclass => 'Typed');
-has allReversible => (is => 'rw', isa => 'Int', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has defaultMaxFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
-has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
-has defaultMinDrainFlux => (is => 'rw', isa => 'Int', printOrder => '0', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
-has maximizeObjective => (is => 'rw', isa => 'Bool', printOrder => '0', required => 1, default => '1', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has geneKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has reactionKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has parameters => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
-has uptakeLimits => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
-has numberOfSolutions => (is => 'rw', isa => 'Int', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has simpleThermoConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has thermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has noErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
-has minimizeErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '0', default => '1', type => 'attribute', metaclass => 'Typed');
+has allReversible => (is => 'rw', isa => 'Int', printOrder => '14', default => '0', type => 'attribute', metaclass => 'Typed');
+has defaultMaxFlux => (is => 'rw', isa => 'Int', printOrder => '20', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
+has defaultMaxDrainFlux => (is => 'rw', isa => 'Int', printOrder => '22', required => 1, default => '1000', type => 'attribute', metaclass => 'Typed');
+has defaultMinDrainFlux => (is => 'rw', isa => 'Int', printOrder => '21', required => 1, default => '-1000', type => 'attribute', metaclass => 'Typed');
+has maximizeObjective => (is => 'rw', isa => 'Bool', printOrder => '-1', required => 1, default => '1', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleFlux => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has decomposeReversibleDrainFlux => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has fluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has drainfluxUseVariables => (is => 'rw', isa => 'Bool', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has geneKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has reactionKO_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has parameters => (is => 'rw', isa => 'HashRef', printOrder => '-1', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has uptakeLimits => (is => 'rw', isa => 'HashRef', printOrder => '-1', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has numberOfSolutions => (is => 'rw', isa => 'Int', printOrder => '23', default => '1', type => 'attribute', metaclass => 'Typed');
+has simpleThermoConstraints => (is => 'rw', isa => 'Bool', printOrder => '15', default => '1', type => 'attribute', metaclass => 'Typed');
+has thermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '16', default => '1', type => 'attribute', metaclass => 'Typed');
+has noErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '17', default => '1', type => 'attribute', metaclass => 'Typed');
+has minimizeErrorThermodynamicConstraints => (is => 'rw', isa => 'Bool', printOrder => '18', default => '1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -59,11 +59,11 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 # SUBOBJECTS:
 has fbaObjectiveTerms => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAObjectiveTerm)', metaclass => 'Typed', reader => '_fbaObjectiveTerms', printOrder => '-1');
-has fbaConstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraint)', metaclass => 'Typed', reader => '_fbaConstraints', printOrder => '-1');
-has fbaReactionBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionBound)', metaclass => 'Typed', reader => '_fbaReactionBounds', printOrder => '-1');
-has fbaCompoundBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundBound)', metaclass => 'Typed', reader => '_fbaCompoundBounds', printOrder => '-1');
-has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAResult)', metaclass => 'Typed', reader => '_fbaResults', printOrder => '-1');
-has fbaPhenotypeSimulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAPhenotypeSimulation)', metaclass => 'Typed', reader => '_fbaPhenotypeSimulations', printOrder => '-1');
+has fbaConstraints => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAConstraint)', metaclass => 'Typed', reader => '_fbaConstraints', printOrder => '1');
+has fbaReactionBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionBound)', metaclass => 'Typed', reader => '_fbaReactionBounds', printOrder => '2');
+has fbaCompoundBounds => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundBound)', metaclass => 'Typed', reader => '_fbaCompoundBounds', printOrder => '3');
+has fbaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'result(FBAResult)', metaclass => 'Typed', reader => '_fbaResults', printOrder => '5');
+has fbaPhenotypeSimulations => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAPhenotypeSimulation)', metaclass => 'Typed', reader => '_fbaPhenotypeSimulations', printOrder => '4');
 
 
 # LINKS:
@@ -95,7 +95,7 @@ sub _type { return 'FBAFormulation'; }
 my $attributes = [
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -109,41 +109,41 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'regulatorymodel_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'media_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 10,
             'name' => 'fva',
             'default' => 0,
             'type' => 'Bool',
             'perm' => 'rw'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 11,
             'name' => 'comboDeletions',
             'default' => 0,
             'type' => 'Int',
             'perm' => 'rw'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 12,
             'name' => 'fluxMinimization',
             'default' => 0,
             'type' => 'Bool',
             'perm' => 'rw'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 13,
             'name' => 'findMinimalMedia',
             'default' => 0,
             'type' => 'Bool',
@@ -151,7 +151,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'notes',
             'default' => '',
             'type' => 'Str',
@@ -159,7 +159,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'expressionData_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -175,7 +175,7 @@ my $attributes = [
           {
             'len' => 255,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 14,
             'name' => 'allReversible',
             'default' => '0',
             'type' => 'Int',
@@ -183,7 +183,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 20,
             'name' => 'defaultMaxFlux',
             'default' => 1000,
             'type' => 'Int',
@@ -191,7 +191,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 22,
             'name' => 'defaultMaxDrainFlux',
             'default' => 1000,
             'type' => 'Int',
@@ -199,7 +199,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 21,
             'name' => 'defaultMinDrainFlux',
             'default' => -1000,
             'type' => 'Int',
@@ -207,7 +207,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'maximizeObjective',
             'default' => 1,
             'type' => 'Bool',
@@ -216,7 +216,7 @@ my $attributes = [
           {
             'len' => 32,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'decomposeReversibleFlux',
             'default' => 0,
             'type' => 'Bool',
@@ -225,7 +225,7 @@ my $attributes = [
           {
             'len' => 32,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'decomposeReversibleDrainFlux',
             'default' => 0,
             'type' => 'Bool',
@@ -234,7 +234,7 @@ my $attributes = [
           {
             'len' => 32,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'fluxUseVariables',
             'default' => 0,
             'type' => 'Bool',
@@ -243,7 +243,7 @@ my $attributes = [
           {
             'len' => 32,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'drainfluxUseVariables',
             'default' => 0,
             'type' => 'Bool',
@@ -251,7 +251,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'geneKO_uuids',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -259,7 +259,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'reactionKO_uuids',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -267,7 +267,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'parameters',
             'default' => 'sub{return {};}',
             'type' => 'HashRef',
@@ -275,7 +275,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'uptakeLimits',
             'default' => 'sub{return {};}',
             'type' => 'HashRef',
@@ -283,7 +283,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 23,
             'name' => 'numberOfSolutions',
             'default' => 1,
             'type' => 'Int',
@@ -291,7 +291,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 15,
             'name' => 'simpleThermoConstraints',
             'default' => 1,
             'type' => 'Bool',
@@ -299,7 +299,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 16,
             'name' => 'thermodynamicConstraints',
             'default' => 1,
             'type' => 'Bool',
@@ -307,7 +307,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 17,
             'name' => 'noErrorThermodynamicConstraints',
             'default' => 1,
             'type' => 'Bool',
@@ -315,7 +315,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 18,
             'name' => 'minimizeErrorThermodynamicConstraints',
             'default' => 1,
             'type' => 'Bool',
@@ -346,31 +346,31 @@ my $subobjects = [
             'class' => 'FBAObjectiveTerm'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 1,
             'name' => 'fbaConstraints',
             'type' => 'encompassed',
             'class' => 'FBAConstraint'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 2,
             'name' => 'fbaReactionBounds',
             'type' => 'encompassed',
             'class' => 'FBAReactionBound'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 3,
             'name' => 'fbaCompoundBounds',
             'type' => 'encompassed',
             'class' => 'FBACompoundBound'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 5,
             'name' => 'fbaResults',
-            'type' => 'encompassed',
+            'type' => 'result',
             'class' => 'FBAResult'
           },
           {
-            'printOrder' => -1,
+            'printOrder' => 4,
             'name' => 'fbaPhenotypeSimulations',
             'type' => 'encompassed',
             'class' => 'FBAPhenotypeSimulation'

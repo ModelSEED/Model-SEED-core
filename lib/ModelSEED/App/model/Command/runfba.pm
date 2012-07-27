@@ -12,9 +12,9 @@ sub abstract { return "Fill gaps in the reaction network for a model"; }
 sub usage_desc { return "model runfba [ model || - ] [options]"; }
 sub opt_spec {
     return (
-        ["config|c:s", "Configuration filename for formulating the gapfilling"],
-        ["overwrite|o", "Overwrite existing model with gapfilled model"],
-        ["save|s:s", "Save gapfilled model to new model name"],
+        ["config|c:s", "Configuration filename for formulating the FBA"],
+        ["overwrite|o", "Save FBA solution in existing model"],
+        ["save|s:s", "Save FBA solution in a new model"],
         ["verbose|v", "Print verbose status information"],
         ["fileout|f:s", "Name of file where FBA solution object will be printed"],
         ["media:s","Media formulation to be used for the FBA simulation"],
@@ -36,6 +36,7 @@ sub opt_spec {
         ["thermoconst","Use standard thermodynamic constraints"],
         ["nothermoerror","Do not include uncertainty in thermodynamic constraints"],
         ["minthermoerror","Minimize uncertainty in thermodynamic constraints"],
+        ["html","Print FBA results in HTML"],
     );
 }
 
@@ -81,7 +82,6 @@ sub execute {
     if (!defined($fbaResult)) {
     	print STDERR " FBA failed with no solution returned!\n";
     } else {
-		print $out_fh $fbaform->toJSON({pp => 1});
 	    #Standard commands that save results of the analysis to the database
 	    if ($opts->{overwrite}) {
 	    	print STDERR "Saving model with FBA solution over original model...\n" if($opts->{verbose});
@@ -92,6 +92,11 @@ sub execute {
 			print STDERR "Saving model with FBA solution as new model ".$ref."...\n" if($opts->{verbose});
 			$model->add("fbaFormulations",$fbaform);
 			$store->save_object($ref,$model);
+	    }
+	    if ($opts->{html}) {
+	    	print $out_fh $fbaform->createHTML();
+	    } else {
+	    	print $out_fh $fbaform->toJSON({pp => 1});
 	    }
     }
 }

@@ -17,10 +17,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 # ATTRIBUTES:
 has label => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has geneKO => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has reactionKO => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has observedGrowthFraction => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has geneKO => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has reactionKO => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', required => 1, default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has media_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has observedGrowthFraction => (is => 'rw', isa => 'Num', printOrder => '2', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -47,7 +47,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'geneKO',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -55,7 +55,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'reactionKO',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -63,14 +63,14 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'media_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => 2,
             'name' => 'observedGrowthFraction',
             'type' => 'Num',
             'perm' => 'rw'

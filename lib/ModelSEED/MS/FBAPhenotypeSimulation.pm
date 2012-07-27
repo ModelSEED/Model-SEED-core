@@ -14,13 +14,25 @@ extends 'ModelSEED::MS::DB::FBAPhenotypeSimulation';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
-
+has knockouts => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildknockouts' );
+has mediaID => ( is => 'rw', isa => 'Str',printOrder => '1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmediaID' );
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
-
-
+sub _buildknockouts {
+	my ($self) = @_;
+	my $geneKO = join(", ",@{$self->geneKO()});
+	my $rxnKO = join(", ",@{$self->reactionKO()});
+	if (length($geneKO) > 0 && length($rxnKO) > 0) {
+		return $geneKO.", ".$rxnKO;
+	}
+	return $geneKO.$rxnKO;
+}
+sub _buildmediaID {
+	my ($self) = @_;
+	return $self->media()->id();
+}
 
 #***********************************************************************************************************
 # CONSTANTS:
@@ -29,7 +41,6 @@ extends 'ModelSEED::MS::DB::FBAPhenotypeSimulation';
 #***********************************************************************************************************
 # FUNCTIONS:
 #***********************************************************************************************************
-
 
 __PACKAGE__->meta->make_immutable;
 1;

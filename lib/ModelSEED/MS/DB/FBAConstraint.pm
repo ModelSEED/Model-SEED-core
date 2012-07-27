@@ -17,9 +17,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has name => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has rhs => (is => 'rw', isa => 'Num', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
-has sign => (is => 'rw', isa => 'Str', printOrder => '0', default => '0', type => 'attribute', metaclass => 'Typed');
+has name => (is => 'rw', isa => 'Str', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has rhs => (is => 'rw', isa => 'Num', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
+has sign => (is => 'rw', isa => 'Str', printOrder => '-1', default => '0', type => 'attribute', metaclass => 'Typed');
 
 
 # SUBOBJECTS:
@@ -38,7 +38,7 @@ sub _type { return 'FBAConstraint'; }
 my $attributes = [
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'name',
             'default' => '0',
             'type' => 'Str',
@@ -46,7 +46,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'rhs',
             'default' => '0',
             'type' => 'Num',
@@ -54,7 +54,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'sign',
             'default' => '0',
             'type' => 'Str',

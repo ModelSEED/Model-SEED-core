@@ -16,10 +16,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', type => 'attribute', metaclass => 'Typed');
-has entityType => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has variableType => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has coefficient => (is => 'rw', isa => 'Num', printOrder => '0', type => 'attribute', metaclass => 'Typed');
+has entity_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
+has entityType => (is => 'rw', isa => 'Str', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has variableType => (is => 'rw', isa => 'Str', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has coefficient => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -35,21 +35,21 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'entity_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'entityType',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'variableType',
             'type' => 'Str',
             'perm' => 'rw'
@@ -57,7 +57,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'coefficient',
             'type' => 'Num',
             'perm' => 'rw'

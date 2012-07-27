@@ -11,10 +11,34 @@ package ModelSEED::MS::FBAConstraintVariable;
 use Moose;
 use namespace::autoclean;
 extends 'ModelSEED::MS::DB::FBAConstraintVariable';
+#***********************************************************************************************************
+# ADDITIONAL ATTRIBUTES:
+#***********************************************************************************************************
+has entity => ( is => 'rw', isa => 'Ref',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildentity' );
+
+#***********************************************************************************************************
+# BUILDERS:
+#***********************************************************************************************************
+sub _buildentity {
+	my ($self) = @_;
+	my $typeTranslation = {
+		ModelCompound => "modelcompounds",
+		ModelReaction => "modelreactions",
+		Biomass => "biomasses"
+	};
+	if (defined($typeTranslation->{$self->entityType()})) {
+		return $self->model()->getObject($typeTranslation->{$self->entityType()},$self->entity_uuid());
+	}
+	ModelSEED::utilities::ERROR("Unrecognized entity type:".$self->entityType());
+}
+
+#***********************************************************************************************************
 # CONSTANTS:
-#TODO
+#***********************************************************************************************************
+
+#***********************************************************************************************************
 # FUNCTIONS:
-#TODO
+#***********************************************************************************************************
 
 
 __PACKAGE__->meta->make_immutable;

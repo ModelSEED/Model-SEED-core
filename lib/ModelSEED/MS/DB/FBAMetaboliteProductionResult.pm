@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has modelCompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has maximumProduction => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has modelCompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has maximumProduction => (is => 'rw', isa => 'Num', printOrder => '3', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -37,14 +37,14 @@ sub _type { return 'FBAMetaboliteProductionResult'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'modelCompound_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 3,
             'name' => 'maximumProduction',
             'type' => 'Num',
             'perm' => 'rw'

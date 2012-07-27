@@ -46,6 +46,9 @@ sub printDBFiles {
 		forceprint => 0
 	});
 	my $path = ModelSEED::utilities::MODELSEEDCORE()."/data/fbafiles/";
+	if (!-d $path) {
+		File::Path::mkpath ($path);
+	}
 	if (-e $path.$self->uuid()."-compounds.tbl" && $args->{forceprint} eq "0") {
 		return;	
 	}

@@ -16,9 +16,9 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has minimalMedia_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has essentialNutrient_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has optionalNutrient_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has minimalMedia_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has essentialNutrient_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has optionalNutrient_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -48,21 +48,21 @@ sub _type { return 'FBAMinimalMediaResult'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'minimalMedia_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'essentialNutrient_uuids',
             'type' => 'ArrayRef',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'optionalNutrient_uuids',
             'type' => 'ArrayRef',
             'perm' => 'rw'

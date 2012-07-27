@@ -14,13 +14,26 @@ extends 'ModelSEED::MS::DB::FBAPhenotypeSimultationResult';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
+has mediaID => ( is => 'rw', isa => 'Str',printOrder => '0', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmediaID' );
+has knockouts => ( is => 'rw', isa => 'Str',printOrder => '1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildknockouts' );
+has observedGrowthFraction => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildobservedGrowth' );
 
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
-
-
+sub _buildmediaID {
+	my ($self) = @_;
+	return $self->fbaPhenotypeSimulation()->media()->id();
+}
+sub _buildknockouts {
+	my ($self) = @_;
+	return $self->fbaPhenotypeSimulation()->knockouts();
+}
+sub _buildobservedGrowthFraction {
+	my ($self) = @_;
+	return $self->fbaPhenotypeSimulation()->observedGrowthFraction();
+}
 
 #***********************************************************************************************************
 # CONSTANTS:

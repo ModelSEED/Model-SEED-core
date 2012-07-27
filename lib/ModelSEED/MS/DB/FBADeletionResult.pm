@@ -16,8 +16,8 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has geneko_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has growthFraction => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has geneko_uuids => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has growthFraction => (is => 'rw', isa => 'Num', printOrder => '1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -37,14 +37,14 @@ sub _type { return 'FBADeletionResult'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'geneko_uuids',
             'type' => 'ArrayRef',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 1,
             'name' => 'growthFraction',
             'type' => 'Num',
             'perm' => 'rw'

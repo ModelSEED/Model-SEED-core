@@ -232,82 +232,88 @@ sub parseReferenceList {
 #Output functions
 ######################################################################
 sub createHTML {
-	my ($self) = @_;
+	my ($self,$args) = @_;
+	$args = ModelSEED::utilities::ARGS($args,[],{internal => 0});
 	my $data = $self->createReadableData();
-	my $output = [
-		'<!doctype HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">',
-		'<html><head>',
-		'<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>',
-		'    <script type="text/javascript">',
-		'        function UpdateTableHeaders() {',
-		'            $("div.divTableWithFloatingHeader").each(function() {',
-		'                var originalHeaderRow = $(".tableFloatingHeaderOriginal", this);',
-		'                var floatingHeaderRow = $(".tableFloatingHeader", this);',
-		'                var offset = $(this).offset();',
-		'                var scrollTop = $(window).scrollTop();',
-		'                if ((scrollTop > offset.top) && (scrollTop < offset.top + $(this).height())) {',
-		'                    floatingHeaderRow.css("visibility", "visible");',
-		'                    floatingHeaderRow.css("top", Math.min(scrollTop - offset.top, $(this).height() - floatingHeaderRow.height()) + "px");',
-		'                    // Copy row width from whole table',
-		'                    floatingHeaderRow.css(\'width\', "2000px");',
-		'                    // Copy cell widths from original header',
-		'                    $("th", floatingHeaderRow).each(function(index) {',
-		'                        var cellWidth = $("th", originalHeaderRow).eq(index).css(\'width\');',
-		'                        $(this).css(\'width\', cellWidth);',
-		'                    });',
-		'                }',
-		'                else {',
-		'                    floatingHeaderRow.css("visibility", "hidden");',
-		'                    floatingHeaderRow.css("top", "0px");',
-		'                }',
-		'            });',
-		'        }',
-		'        $(document).ready(function() {',
-		'            $("table.tableWithFloatingHeader").each(function() {',
-		'                $(this).wrap("<div class=\"divTableWithFloatingHeader\" style=\"position:relative\"></div>");',
-		'                var originalHeaderRow = $("tr:first", this)',
-		'                originalHeaderRow.before(originalHeaderRow.clone());',
-		'                var clonedHeaderRow = $("tr:first", this)',
-		'                clonedHeaderRow.addClass("tableFloatingHeader");',
-		'                clonedHeaderRow.css("position", "absolute");',
-		'                clonedHeaderRow.css("top", "0px");',
-		'                clonedHeaderRow.css("left", $(this).css("margin-left"));',
-		'                clonedHeaderRow.css("visibility", "hidden");',
-		'                originalHeaderRow.addClass("tableFloatingHeaderOriginal");',
-		'            });',
-		'            UpdateTableHeaders();',
-		'            $(window).scroll(UpdateTableHeaders);',
-		'            $(window).resize(UpdateTableHeaders);',
-		'        });',
-		'    </script>',
-		'<style type="text/css">',
-		'h1 {',
-		'    font-size: 16px;',
-		'}',
-		'table.tableWithFloatingHeader {',
-		'    font-size: 12px;',
-		'    text-align: left;',
-		'	 border: 0;',
-		'	 width: 2000px;',
-		'}',
-		'th {',
-		'    font-size: 14px;',
-		'    background: #ddd;',
-		'	 border: 1px solid black;',
-		'    vertical-align: top;',
-		'    padding: 5px 5px 5px 5px;',
-		'}',
-		'td {',
-		'   font-size: 12px;',
-		'	vertical-align: top;',
-		'}',
-		'</style></head>',
-		'<h2>'.$self->_type().' attributes</h2>',
-		'<table class="tableWithFloatingHeader">',
-		'<tr><th>'.join("</th><th>",@{$data->{attributes}->{headings}}).'</th></tr>',
-		'<tr><td>'.join("</td><td>",@{$data->{attributes}->{data}->[0]}).'</td></tr>',
-		'</table>'
-	];
+	my $output = [];
+	if ($args->{internal} == 0) {
+		push(@{$output},(
+			'<!doctype HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">',
+			'<html><head>',
+			'<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>',
+			'    <script type="text/javascript">',
+			'        function UpdateTableHeaders() {',
+			'            $("div.divTableWithFloatingHeader").each(function() {',
+			'                var originalHeaderRow = $(".tableFloatingHeaderOriginal", this);',
+			'                var floatingHeaderRow = $(".tableFloatingHeader", this);',
+			'                var offset = $(this).offset();',
+			'                var scrollTop = $(window).scrollTop();',
+			'                if ((scrollTop > offset.top) && (scrollTop < offset.top + $(this).height())) {',
+			'                    floatingHeaderRow.css("visibility", "visible");',
+			'                    floatingHeaderRow.css("top", Math.min(scrollTop - offset.top, $(this).height() - floatingHeaderRow.height()) + "px");',
+			'                    // Copy row width from whole table',
+			'                    floatingHeaderRow.css(\'width\', "1200px");',
+			'                    // Copy cell widths from original header',
+			'                    $("th", floatingHeaderRow).each(function(index) {',
+			'                        var cellWidth = $("th", originalHeaderRow).eq(index).css(\'width\');',
+			'                        $(this).css(\'width\', cellWidth);',
+			'                    });',
+			'                }',
+			'                else {',
+			'                    floatingHeaderRow.css("visibility", "hidden");',
+			'                    floatingHeaderRow.css("top", "0px");',
+			'                }',
+			'            });',
+			'        }',
+			'        $(document).ready(function() {',
+			'            $("table.tableWithFloatingHeader").each(function() {',
+			'                $(this).wrap("<div class=\"divTableWithFloatingHeader\" style=\"position:relative\"></div>");',
+			'                var originalHeaderRow = $("tr:first", this)',
+			'                originalHeaderRow.before(originalHeaderRow.clone());',
+			'                var clonedHeaderRow = $("tr:first", this)',
+			'                clonedHeaderRow.addClass("tableFloatingHeader");',
+			'                clonedHeaderRow.css("position", "absolute");',
+			'                clonedHeaderRow.css("top", "0px");',
+			'                clonedHeaderRow.css("left", $(this).css("margin-left"));',
+			'                clonedHeaderRow.css("visibility", "hidden");',
+			'                originalHeaderRow.addClass("tableFloatingHeaderOriginal");',
+			'            });',
+			'            UpdateTableHeaders();',
+			'            $(window).scroll(UpdateTableHeaders);',
+			'            $(window).resize(UpdateTableHeaders);',
+			'        });',
+			'    </script>',
+			'<style type="text/css">',
+			'h1 {',
+			'    font-size: 16px;',
+			'}',
+			'table.tableWithFloatingHeader {',
+			'    font-size: 12px;',
+			'    text-align: left;',
+			'	 border: 0;',
+			'	 width: 1200px;',
+			'}',
+			'th {',
+			'    font-size: 14px;',
+			'    background: #ddd;',
+			'	 border: 1px solid black;',
+			'    vertical-align: top;',
+			'    padding: 5px 5px 5px 5px;',
+			'}',
+			'td {',
+			'   font-size: 16px;',
+			'	vertical-align: top;',
+			'	border: 1px solid black;',
+			'}',
+			'</style></head>'
+		));
+	}
+	push(@{$output},'<h2>'.$self->_type().' attributes</h2>');
+	push(@{$output},'<table>');
+	for (my $i=0; $i < @{$data->{attributes}->{headings}}; $i++) {
+		push(@{$output},"<tr><th>".$data->{attributes}->{headings}->[$i]."</th><td style='font-size:16px;border: 1px solid black;'>".$data->{attributes}->{data}->[0]->[$i]."</td></tr>");
+	}
+	push(@{$output},'</table>');
 	foreach my $subobject (@{$data->{subobjects}}) {
 		push(@{$output},(
 			'<h2>'.$subobject->{name}.' subobjects</h2>',
@@ -319,7 +325,21 @@ sub createHTML {
 		}
 		push(@{$output},'</table>');
 	}
-	push(@{$output},'</html>');
+	if (defined($data->{results})) {
+		for (my $i=0; $i < @{$data->{results}}; $i++) {
+			my $rs = $data->{results}->[$i];
+			my $objects = $self->$rs();
+			if (defined($objects->[0])) {
+				push(@{$output},"<h2>".$rs." objects</h2>");
+				for (my $j=0; $j < @{$objects}; $j++) {
+					push(@{$output},$objects->[$j]->createHTML({internal => 1}));
+				}
+			}
+		}
+	}
+	if ($args->{internal} == 0) {
+		push(@{$output},'</html>');
+	}
 	my $html = join("\n",@{$output});
 	return $html;
 }
@@ -341,13 +361,26 @@ sub createReadableStringArray {
 			push(@{$output},"}");
 		}
 	}
+	if (defined($data->{results})) {
+		for (my $i=0; $i < @{$data->{results}}; $i++) {
+			my $rs = $data->{results}->[$i];
+			my $objects = $self->$rs();
+			if (defined($objects->[0])) {
+				push(@{$output},$rs." objects {");
+				for (my $j=0; $j < @{$objects}; $j++) {
+					push(@{$output},@{$objects->[$j]->createReadableStringArray()});
+				}
+				push(@{$output},"}");
+			}
+		}
+	}
 	return $output;
 }
 
 sub createReadableData {
 	my ($self) = @_;
 	my $data;
-	my ($sortedAtt,$sortedSO) = $self->getReadableAttributes();
+	my ($sortedAtt,$sortedSO,$sortedRS) = $self->getReadableAttributes();
 	$data->{attributes}->{headings} = $sortedAtt;
 	for (my $i=0; $i < @{$data->{attributes}->{headings}}; $i++) {
 		my $att = $data->{attributes}->{headings}->[$i];
@@ -369,6 +402,9 @@ sub createReadableData {
 			push(@{$data->{subobjects}},$soData);
 		}
 	}
+	for (my $i=0; $i < @{$sortedRS}; $i++) {
+		push(@{$data->{results}},$sortedRS->[$i]);
+	}
 	return $data;
  }
  
@@ -378,11 +414,16 @@ sub getReadableAttributes {
 	my $attributes = [];
 	my $prioritySO = {};
 	my $attributesSO = [];
+	my $priorityRS = {};
+	my $attributesRS = [];
 	my $class = 'ModelSEED::MS::'.$self->_type();
 	foreach my $attr ( $class->meta->get_all_attributes ) {
 		if ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->printOrder() != -1 && ($attr->type() eq "attribute" || $attr->type() eq "msdata")) {
 			push(@{$attributes},$attr->name());
 			$priority->{$attr->name()} = $attr->printOrder();
+		} elsif ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->printOrder() != -1 && $attr->type() =~ m/^result/) {
+			push(@{$attributesRS},$attr->name());
+			$priorityRS->{$attr->name()} = $attr->printOrder();
 		} elsif ($attr->isa('ModelSEED::Meta::Attribute::Typed') && $attr->printOrder() != -1) {
 			push(@{$attributesSO},$attr->name());
 			$prioritySO->{$attr->name()} = $attr->printOrder();
@@ -390,7 +431,8 @@ sub getReadableAttributes {
 	}
 	my $sortedAtt = [sort { $priority->{$a} <=> $priority->{$b} } @{$attributes}];
 	my $sortedSO = [sort { $prioritySO->{$a} <=> $prioritySO->{$b} } @{$attributesSO}];
-	return ($sortedAtt,$sortedSO);
+	my $sortedRS = [sort { $priorityRS->{$a} <=> $priorityRS->{$b} } @{$attributesRS}];
+	return ($sortedAtt,$sortedSO,$sortedRS);
 }
 ######################################################################
 #SubObject manipulation functions

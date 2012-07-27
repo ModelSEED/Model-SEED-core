@@ -16,14 +16,14 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has modelcompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has modelcompound_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 has variableType => (is => 'rw', isa => 'Str', printOrder => '3', type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'Str', printOrder => '3', type => 'attribute', metaclass => 'Typed');
-has lowerBound => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
-has upperBound => (is => 'rw', isa => 'Num', printOrder => '8', type => 'attribute', metaclass => 'Typed');
-has min => (is => 'rw', isa => 'Num', printOrder => '5', type => 'attribute', metaclass => 'Typed');
-has max => (is => 'rw', isa => 'Num', printOrder => '6', type => 'attribute', metaclass => 'Typed');
-has value => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', printOrder => '9', type => 'attribute', metaclass => 'Typed');
+has lowerBound => (is => 'rw', isa => 'Num', printOrder => '4', type => 'attribute', metaclass => 'Typed');
+has upperBound => (is => 'rw', isa => 'Num', printOrder => '5', type => 'attribute', metaclass => 'Typed');
+has min => (is => 'rw', isa => 'Num', printOrder => '7', type => 'attribute', metaclass => 'Typed');
+has max => (is => 'rw', isa => 'Num', printOrder => '8', type => 'attribute', metaclass => 'Typed');
+has value => (is => 'rw', isa => 'Num', printOrder => '6', type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -43,7 +43,7 @@ sub _type { return 'FBACompoundVariable'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'modelcompound_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -57,7 +57,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 3,
+            'printOrder' => 9,
             'name' => 'class',
             'type' => 'Str',
             'perm' => 'rw'
@@ -65,7 +65,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 7,
+            'printOrder' => 4,
             'name' => 'lowerBound',
             'type' => 'Num',
             'perm' => 'rw'
@@ -73,7 +73,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 8,
+            'printOrder' => 5,
             'name' => 'upperBound',
             'type' => 'Num',
             'perm' => 'rw'
@@ -81,7 +81,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 5,
+            'printOrder' => 7,
             'name' => 'min',
             'type' => 'Num',
             'perm' => 'rw'
@@ -89,7 +89,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 6,
+            'printOrder' => 8,
             'name' => 'max',
             'type' => 'Num',
             'perm' => 'rw'
@@ -97,7 +97,7 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 0,
-            'printOrder' => 4,
+            'printOrder' => 6,
             'name' => 'value',
             'type' => 'Num',
             'perm' => 'rw'

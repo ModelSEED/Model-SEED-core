@@ -19,6 +19,9 @@ has jobPath => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', 
 has jobDirectory => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildjobdirectory' );
 has command => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, default => '' );
 has mfatoolkitBinary => ( is => 'rw', isa => 'Str',printOrder => '-1', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmfatoolkitBinary' );
+has readableObjective => ( is => 'rw', isa => 'Str',printOrder => '2', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildreadableObjective' );
+has mediaID => ( is => 'rw', isa => 'Str',printOrder => '0', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildmediaID' );
+has knockouts => ( is => 'rw', isa => 'Str',printOrder => '3', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildknockouts' );
 
 #***********************************************************************************************************
 # BUILDERS:
@@ -56,13 +59,70 @@ sub _buildmfatoolkitBinary {
 		return ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit";
 	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe") {
 		return ModelSEED::utilities::MODELSEEDCORE()."/bin/MFAToolkit.exe";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/mfatoolkit") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/bin/mfatoolkit";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/bin/mfatoolkit.exe") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/bin/mfatoolkit.exe";
 	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit") {
 		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit";
 	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe") {
 		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/MFAToolkit.exe";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/mfatoolkit") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/mfatoolkit";
+	} elsif (-e ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/mfatoolkit.exe") {
+		return ModelSEED::utilities::MODELSEEDCORE()."/software/mfatoolkit/bin/mfatoolkit.exe";
 	} else {
 		ModelSEED::utilities::ERROR("Could not find MFAToolkit executable");
 	}
+}
+
+sub _buildreadableObjective {
+	my ($self) = @_;
+	my $string = "Max { ";
+	if ($self->maximizeObjective() == 0) {
+		$string = "Min { ";
+	}
+	my $terms = $self->fbaObjectiveTerms();
+	for (my $i=0; $i < @{$terms}; $i++) {
+		my $term = $terms->[$i];
+		if ($i > 0) {
+			$string .= " + ";
+		}
+		my $coef = "";
+		if ($term->coefficient() != 1) {
+			$coef = "(".$term->coefficient().") ";
+		}
+		$string .= $coef.$term->entity()->id()."_".$term->variableType();
+	}
+	$string .= " }";
+	return $string;
+}
+sub _buildmediaID {
+	my ($self) = @_;
+	return $self->media()->id();
+}
+sub _buildknockouts {
+	my ($self) = @_;
+	my $string = "";
+	my $genekos = $self->geneKOs();
+	for (my $i=0; $i < @{$genekos}; $i++) {
+		if ($i > 0) {
+			$string .= ", ";
+		}
+		$string .= $genekos->[$i]->id();
+	}
+	my $rxnstr = "";
+	my $rxnkos = $self->reactionKOs();
+	for (my $i=0; $i < @{$rxnkos}; $i++) {
+		if ($i > 0) {
+			$rxnstr .= ", ";
+		}
+		$rxnstr .= $rxnkos->[$i]->id();
+	}
+	if (length($string) > 0 && length($rxnstr) > 0) {
+		return $string.", ".$rxnstr;
+	}
+	return $string.$rxnstr;
 }
 
 #***********************************************************************************************************

@@ -16,16 +16,21 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has variableType => (is => 'rw', isa => 'Str', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has upperBound => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has lowerBound => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
+has modelreaction_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has variableType => (is => 'rw', isa => 'Str', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has upperBound => (is => 'rw', isa => 'Num', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
+has lowerBound => (is => 'rw', isa => 'Num', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
+has modelReaction => (is => 'rw', isa => 'ModelSEED::MS::ModelReaction', type => 'link(Model,modelreactions,modelreaction_uuid)', metaclass => 'Typed', lazy => 1, builder => '_build_modelReaction', weak_ref => 1);
 
 
 # BUILDERS:
+sub _build_modelReaction {
+  my ($self) = @_;
+  return $self->getLinkedObject('Model','modelreactions',$self->modelreaction_uuid());
+}
 
 
 # CONSTANTS:
@@ -34,28 +39,28 @@ sub _type { return 'FBAReactionBound'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'modelreaction_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'variableType',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'upperBound',
             'type' => 'Num',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'lowerBound',
             'type' => 'Num',
             'perm' => 'rw'

@@ -26,7 +26,7 @@ sub _buildreactionID {
 }
 sub _buildreactionName {
 	my ($self) = @_;
-	return $self->modelreaction()->reaction()->reaction()->name();
+	return $self->modelreaction()->reaction()->name();
 }
 
 #***********************************************************************************************************

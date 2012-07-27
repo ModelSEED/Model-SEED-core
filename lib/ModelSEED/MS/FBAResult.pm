@@ -14,10 +14,15 @@ extends 'ModelSEED::MS::DB::FBAResult';
 #***********************************************************************************************************
 # ADDITIONAL ATTRIBUTES:
 #***********************************************************************************************************
+has resultObjective => ( is => 'rw', isa => 'Str',printOrder => '0', type => 'msdata', metaclass => 'Typed', lazy => 1, builder => '_buildresultObjective' );
 
 #***********************************************************************************************************
 # BUILDERS:
 #***********************************************************************************************************
+sub _buildresultObjective {
+	my ($self) = @_;
+	return $self->parent()->readableObjective()." = ".$self->objectiveValue();
+}
 
 #***********************************************************************************************************
 # CONSTANTS:
@@ -236,16 +241,35 @@ sub parseFluxFiles {
 				$drainCompartmentColumns->{$1} = $i;
 			}
 		}
+		my $mediaCpdHash = {};
+		my $mediaCpds = $self->parent()->media()->mediacompounds();
+		for (my $i=0; $i < @{$mediaCpds}; $i++) {
+			$mediaCpdHash->{$mediaCpds->[$i]->compound()->id()} = 1;
+		}
 		if ($compoundColumn != -1) {
 			foreach my $row (@{$tbl->{data}}) {
 				foreach my $comp (keys(%{$drainCompartmentColumns})) {
 					if ($row->[$drainCompartmentColumns->{$comp}] ne "none") {
 						my $mdlcpd = $self->model()->queryObject("modelcompounds",{id => $row->[$compoundColumn]."_".$comp."0"});
 						if (defined($mdlcpd)) {
+							my $value = $row->[$drainCompartmentColumns->{$comp}];
+							if (abs($value) < 0.00000001) {
+								$value = 0;
+							}
+							my $lower = $self->parent()->defaultMinDrainFlux();
+							my $upper = $self->parent()->defaultMaxDrainFlux();
+							if ($comp eq "e" && defined($mediaCpdHash->{$mdlcpd->compound()->id()})) {
+								$upper = $self->parent()->defaultMaxFlux();
+							}
 							$self->add("fbaCompoundVariables",{
 								modelcompound_uuid => $mdlcpd->uuid(),
 								variableType => "drainflux",
-								value => $row->[$drainCompartmentColumns->{$comp}]
+								value => $value,
+								lowerBound => $lower,
+								upperBound => $upper,
+								min => $lower,
+								max => $upper,
+								class => "unknown"
 							});
 						}
 					}
@@ -270,10 +294,26 @@ sub parseFluxFiles {
 					if ($row->[$fluxCompartmentColumns->{$comp}] ne "none") {
 						my $mdlrxn = $self->model()->queryObject("modelreactions",{id => $row->[$reactionColumn]."_".$comp."0"});
 						if (defined($mdlrxn)) {
+							my $value = $row->[$fluxCompartmentColumns->{$comp}];
+							if (abs($value) < 0.00000001) {
+								$value = 0;
+							}
+							my $lower = -1*$self->parent()->defaultMaxFlux();
+							my $upper = $self->parent()->defaultMaxFlux();
+							if ($mdlrxn->direction() eq "<") {
+								$upper = 0;
+							} elsif ($mdlrxn->direction() eq ">") {
+								$lower = 0;
+							}
 							$self->add("fbaReactionVariables",{
 								modelreaction_uuid => $mdlrxn->uuid(),
 								variableType => "flux",
-								value => $row->[$fluxCompartmentColumns->{$comp}]
+								value => $value,
+								lowerBound => $lower,
+								upperBound => $upper,
+								min => $lower,
+								max => $upper,
+								class => "unknown"
 							});
 						}
 					}

@@ -23,10 +23,10 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAFormulation', weak_ref => 1
 
 
 # ATTRIBUTES:
-has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '0', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
+has uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', lazy => 1, builder => '_build_uuid', type => 'attribute', metaclass => 'Typed');
 has modDate => (is => 'rw', isa => 'Str', printOrder => '-1', lazy => 1, builder => '_build_modDate', type => 'attribute', metaclass => 'Typed');
-has notes => (is => 'rw', isa => 'Str', printOrder => '3', default => '', type => 'attribute', metaclass => 'Typed');
-has objectiveValue => (is => 'rw', isa => 'Num', printOrder => '2', type => 'attribute', metaclass => 'Typed');
+has notes => (is => 'rw', isa => 'Str', printOrder => '1', default => '', type => 'attribute', metaclass => 'Typed');
+has objectiveValue => (is => 'rw', isa => 'Num', printOrder => '-1', type => 'attribute', metaclass => 'Typed');
 
 
 # ANCESTOR:
@@ -35,11 +35,11 @@ has ancestor_uuid => (is => 'rw', isa => 'uuid', type => 'ancestor', metaclass =
 
 # SUBOBJECTS:
 has fbaCompoundVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBACompoundVariable)', metaclass => 'Typed', reader => '_fbaCompoundVariables', printOrder => '2');
-has fbaReactionVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionVariable)', metaclass => 'Typed', reader => '_fbaReactionVariables', printOrder => '1');
-has fbaBiomassVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBABiomassVariable)', metaclass => 'Typed', reader => '_fbaBiomassVariables', printOrder => '0');
-has fbaPhenotypeSimultationResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAPhenotypeSimultationResult)', metaclass => 'Typed', reader => '_fbaPhenotypeSimultationResults', printOrder => '0');
-has fbaDeletionResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBADeletionResult)', metaclass => 'Typed', reader => '_fbaDeletionResults', printOrder => '0');
-has minimalMediaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAMinimalMediaResult)', metaclass => 'Typed', reader => '_minimalMediaResults', printOrder => '0');
+has fbaReactionVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAReactionVariable)', metaclass => 'Typed', reader => '_fbaReactionVariables', printOrder => '3');
+has fbaBiomassVariables => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBABiomassVariable)', metaclass => 'Typed', reader => '_fbaBiomassVariables', printOrder => '1');
+has fbaPhenotypeSimultationResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAPhenotypeSimultationResult)', metaclass => 'Typed', reader => '_fbaPhenotypeSimultationResults', printOrder => '6');
+has fbaDeletionResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBADeletionResult)', metaclass => 'Typed', reader => '_fbaDeletionResults', printOrder => '4');
+has minimalMediaResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAMinimalMediaResult)', metaclass => 'Typed', reader => '_minimalMediaResults', printOrder => '5');
 has fbaMetaboliteProductionResults => (is => 'rw', isa => 'ArrayRef[HashRef]', default => sub { return []; }, type => 'encompassed(FBAMetaboliteProductionResult)', metaclass => 'Typed', reader => '_fbaMetaboliteProductionResults', printOrder => '0');
 
 
@@ -57,7 +57,7 @@ sub _type { return 'FBAResult'; }
 my $attributes = [
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
@@ -71,7 +71,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 3,
+            'printOrder' => 1,
             'name' => 'notes',
             'default' => '',
             'type' => 'Str',
@@ -79,7 +79,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 2,
+            'printOrder' => -1,
             'name' => 'objectiveValue',
             'type' => 'Num',
             'perm' => 'rw'
@@ -109,31 +109,31 @@ my $subobjects = [
             'class' => 'FBACompoundVariable'
           },
           {
-            'printOrder' => 1,
+            'printOrder' => 3,
             'name' => 'fbaReactionVariables',
             'type' => 'encompassed',
             'class' => 'FBAReactionVariable'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 1,
             'name' => 'fbaBiomassVariables',
             'type' => 'encompassed',
             'class' => 'FBABiomassVariable'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 6,
             'name' => 'fbaPhenotypeSimultationResults',
             'type' => 'encompassed',
             'class' => 'FBAPhenotypeSimultationResult'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 4,
             'name' => 'fbaDeletionResults',
             'type' => 'encompassed',
             'class' => 'FBADeletionResult'
           },
           {
-            'printOrder' => 0,
+            'printOrder' => 5,
             'name' => 'minimalMediaResults',
             'type' => 'encompassed',
             'class' => 'FBAMinimalMediaResult'

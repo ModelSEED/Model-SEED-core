@@ -16,14 +16,14 @@ has parent => (is => 'rw', isa => 'ModelSEED::MS::FBAResult', weak_ref => 1, typ
 
 
 # ATTRIBUTES:
-has simulatedGrowthFraction => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has simulatedGrowth => (is => 'rw', isa => 'Num', printOrder => '0', required => 1, type => 'attribute', metaclass => 'Typed');
-has class => (is => 'rw', isa => 'Str', printOrder => '3', required => 1, type => 'attribute', metaclass => 'Typed');
-has noGrowthCompounds => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has dependantReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has dependantGenes => (is => 'rw', isa => 'ArrayRef', printOrder => '0', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
-has fluxes => (is => 'rw', isa => 'HashRef', printOrder => '0', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
-has fbaPhenotypeSimulation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '4', required => 1, type => 'attribute', metaclass => 'Typed');
+has simulatedGrowthFraction => (is => 'rw', isa => 'Num', printOrder => '3', required => 1, type => 'attribute', metaclass => 'Typed');
+has simulatedGrowth => (is => 'rw', isa => 'Num', printOrder => '4', required => 1, type => 'attribute', metaclass => 'Typed');
+has class => (is => 'rw', isa => 'Str', printOrder => '5', required => 1, type => 'attribute', metaclass => 'Typed');
+has noGrowthCompounds => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has dependantReactions => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has dependantGenes => (is => 'rw', isa => 'ArrayRef', printOrder => '-1', default => sub{return [];}, type => 'attribute', metaclass => 'Typed');
+has fluxes => (is => 'rw', isa => 'HashRef', printOrder => '-1', default => sub{return {};}, type => 'attribute', metaclass => 'Typed');
+has fbaPhenotypeSimulation_uuid => (is => 'rw', isa => 'ModelSEED::uuid', printOrder => '-1', required => 1, type => 'attribute', metaclass => 'Typed');
 
 
 # LINKS:
@@ -43,14 +43,14 @@ sub _type { return 'FBAPhenotypeSimultationResult'; }
 my $attributes = [
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 3,
             'name' => 'simulatedGrowthFraction',
             'type' => 'Num',
             'perm' => 'rw'
           },
           {
             'req' => 1,
-            'printOrder' => 0,
+            'printOrder' => 4,
             'name' => 'simulatedGrowth',
             'type' => 'Num',
             'perm' => 'rw'
@@ -58,14 +58,14 @@ my $attributes = [
           {
             'len' => 1,
             'req' => 1,
-            'printOrder' => 3,
+            'printOrder' => 5,
             'name' => 'class',
             'type' => 'Str',
             'perm' => 'rw'
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'noGrowthCompounds',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -73,7 +73,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'dependantReactions',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -81,7 +81,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'dependantGenes',
             'default' => 'sub{return [];}',
             'type' => 'ArrayRef',
@@ -89,7 +89,7 @@ my $attributes = [
           },
           {
             'req' => 0,
-            'printOrder' => 0,
+            'printOrder' => -1,
             'name' => 'fluxes',
             'default' => 'sub{return {};}',
             'type' => 'HashRef',
@@ -97,7 +97,7 @@ my $attributes = [
           },
           {
             'req' => 1,
-            'printOrder' => 4,
+            'printOrder' => -1,
             'name' => 'fbaPhenotypeSimulation_uuid',
             'type' => 'ModelSEED::uuid',
             'perm' => 'rw'
