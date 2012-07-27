@@ -135,7 +135,7 @@ sub prepareFBAFormulation {
 			$form->defaultMaxDrainFlux(10000);
 		}	
 	}
-	$form->objectiveConstraintFraction(0.1);
+	$form->objectiveConstraintFraction(1);
 	$form->defaultMaxFlux(10000);
 	$form->defaultMinDrainFlux(-10000);
 	$form->fluxUseVariables(1);
@@ -178,7 +178,7 @@ sub prepareFBAFormulation {
 	#Setting other important parameters
 	$form->parameters()->{"Complete gap filling"} = 1;
 	$form->parameters()->{"Reaction activation bonus"} = $self->reactionActivationBonus();
-	$form->parameters()->{"Minimum flux for use variable positive constraint"} = 1;
+	$form->parameters()->{"Minimum flux for use variable positive constraint"} = 10;
 	$form->parameters()->{"Objective coefficient file"} = "NONE";
 	$form->parameters()->{"just print LP file"} = "0";
 	$form->parameters()->{"use database fields"} = "1";
