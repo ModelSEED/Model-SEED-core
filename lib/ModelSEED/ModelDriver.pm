@@ -653,16 +653,19 @@ sub temptransfermodels {
 							if (!defined($row->{"ASSOCIATED PEG"})) {
 								$row->{"ASSOCIATED PEG"}->[0] = "UNKNOWN";
 							}
-							$self->db()->create_object("rxnmdl",{
-								MODEL => $models->[$i],
-								REACTION => $row->{LOAD}->[0],
-								directionality => $row->{DIRECTIONALITY}->[0],
-								compartment => $row->{COMPARTMENT}->[0],
-								pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
-								confidence => $row->{CONFIDENCE}->[0],
-								notes => join("|",@{$row->{NOTES}}),
-								reference => join("|",@{$row->{REFERENCE}})
-							});
+							my $rxn = $self->db()->get_object("rxnmdl",{MODEL => $models->[$i],REACTION => $row->{LOAD}->[0]});
+							if (!defined($rxn)) {
+								$self->db()->create_object("rxnmdl",{
+									MODEL => $models->[$i],
+									REACTION => $row->{LOAD}->[0],
+									directionality => $row->{DIRECTIONALITY}->[0],
+									compartment => $row->{COMPARTMENT}->[0],
+									pegs => join("|",@{$row->{"ASSOCIATED PEG"}}),
+									confidence => $row->{CONFIDENCE}->[0],
+									notes => join("|",@{$row->{NOTES}}),
+									reference => join("|",@{$row->{REFERENCE}})
+								});
+							}
 						}
 					}
 				} else {
