@@ -585,6 +585,7 @@ sub temptransfermodels {
     my($self,@Data) = @_;
 	my $args = $self->check([
 		["model",1,undef,"model to be transfered"],
+		["start",0,0,"starting index"],
 	],[@Data],"transitions models in the old database into the new database system");
 	my $models = ModelSEED::Interface::interface::PROCESSIDLIST({
 		objectType => "model",
@@ -600,7 +601,7 @@ sub temptransfermodels {
 			push(@{$models},$objs->[$i]->id());
 		}
 	}
-	for (my $i=0; $i < @{$models}; $i++) {
+	for (my $i=$args->{start}; $i < @{$models}; $i++) {
 		my $obj = $self->db()->get_object("model",{id => $models->[$i]});
 		if (defined($obj)) {
 			my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
