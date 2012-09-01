@@ -602,6 +602,7 @@ sub temptransfermodels {
 		}
 	}
 	for (my $i=$args->{start}; $i < @{$models}; $i++) {
+		print "Model ".$i."\n";
 		my $obj = $self->db()->get_object("model",{id => $models->[$i]});
 		if (defined($obj)) {
 			my $mdldir = "/vol/model-dev/MODEL_DEV_DB/Models2/".$obj->owner()."/".$models->[$i]."/".$obj->version()."/";
