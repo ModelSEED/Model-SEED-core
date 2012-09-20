@@ -608,7 +608,7 @@ sub dbdump {
     for (my $i=0; $i < @{$tblList}; $i++) {
     	my $objs = $db->get_objects($tblList->[$i]);
     	my $tbl = $db->ppo_rows_to_table({
-			filename =>  $self->ws()->directory().$args->{folder}.$tblList->[$i],
+			filename =>  $self->ws()->directory().$args->{folder}."/".$tblList->[$i].".tbl",
 			hash_headings => [],
 			delimiter => "\t",
 			item_delimiter => '|',
