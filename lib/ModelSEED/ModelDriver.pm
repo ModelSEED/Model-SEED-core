@@ -575,6 +575,51 @@ sub dbcreateobject {
 }
 =head
 =CATEGORY
+Database Operations
+=DESCRIPTION
+This function dumps tables to files
+=EXAMPLE
+./dbdump
+=cut
+sub dbdump {
+    my ($self, @Data) = @_;
+    my $args = $self->check([
+		["folder",0,undef,"Name of folder where results should be printed"],
+		["model",0,undef,"Name of model for which data should be printed"],
+	],[@Data],"dump tables for load in new ModelSEED");
+    #Setting folder value
+    if (!defined($args->{folder})) {
+    	$args->{folder} = "maindb";
+    	if (defined($args->{model})) {
+    		$args->{folder} = $args->{model};
+    	}
+    }
+    #Creating directory
+    if(!-d $self->ws()->directory().$args->{folder}) {
+		File::Path::mkpath $self->ws()->directory().$args->{folder};
+	}
+	my $db = $self->db();
+    #If model defined, use model provenance DB
+    if (defined($args->{model})) {
+    	my $model = $self->figmodel()->get_model($args->{model});
+    	$db = $model->figmodel()->database();
+    }
+    my $tblList = ["rxnmdl","compartment","rxncpx","cpxrole","ssrole","model","bof","compound","reaction","cpdals","rxnals","media","mediacpd","role","subsystem","complex"];
+    for (my $i=0; $i < @{$tblList}; $i++) {
+    	my $objs = $db->get_objects($tblList->[$i]);
+    	my $tbl = $db->ppo_rows_to_table({
+			filename =>  $self->ws()->directory().$args->{folder}.$tblList->[$i],
+			hash_headings => [],
+			delimiter => "\t",
+			item_delimiter => '|',
+			prefix => '',
+			heading_remap => undef,
+    	},$objs);
+    	$tbl->save();
+    }
+}
+=head
+=CATEGORY
 Temporary Operations
 =DESCRIPTION
 This function handles the transition of models in the old database into the new database system
