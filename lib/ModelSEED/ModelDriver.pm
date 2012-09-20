@@ -604,7 +604,7 @@ sub dbdump {
     	my $model = $self->figmodel()->get_model($args->{model});
     	$db = $model->figmodel()->database();
     }
-    my $tblList = ["rxnmdl","compartment","rxncpx","cpxrole","ssrole","model","bof","compound","reaction","cpdals","rxnals","media","mediacpd","role","subsystem","complex"];
+    my $tblList = ["compartment","rxncpx","cpxrole","ssrole","model","bof","compound","reaction","cpdals","rxnals","media","mediacpd","role","subsystem","complex"];
     for (my $i=0; $i < @{$tblList}; $i++) {
     	my $objs = $db->get_objects($tblList->[$i]);
     	my $tbl = $db->ppo_rows_to_table({
