@@ -6426,7 +6426,9 @@ sub generate_reaction_data_table {
 				} elsif ($headings->[$j] eq "NAME") {
 					$newRow->{$headings->[$j]}->[0] = $obj->name();
 				} elsif ($headings->[$j] eq "EC NUMBER(S)" && $biomass == 0 && length($obj->enzyme()) > 2) {
-					push(@{$newRow->{$headings->[$j]}},split(/\|/,substr($obj->enzyme(),1,length($obj->enzyme())-2)));
+					my $enzyme = $obj->enzyme();
+					$enzyme =~ s/^\|(.+)\|$/$1/;
+					push(@{$newRow->{$headings->[$j]}},split(/\|/,$enzyme));
 				} elsif ($headings->[$j] eq "DELTAG (kcal/mol)" && $biomass == 0) {
 					$newRow->{$headings->[$j]}->[0] = $obj->deltaG();
 				} elsif ($headings->[$j] eq "DELTAG ERROR (kcal/mol)" && $biomass == 0) {
